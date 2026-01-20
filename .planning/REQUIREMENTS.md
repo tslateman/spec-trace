@@ -88,33 +88,33 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SPEC-01 | TBD | Pending |
-| SPEC-02 | TBD | Pending |
-| SPEC-03 | TBD | Pending |
-| SPEC-04 | TBD | Pending |
-| SPEC-05 | TBD | Pending |
-| LINK-01 | TBD | Pending |
-| LINK-02 | TBD | Pending |
-| LINK-03 | TBD | Pending |
-| LINK-04 | TBD | Pending |
-| VERIFY-01 | TBD | Pending |
-| VERIFY-02 | TBD | Pending |
-| VERIFY-03 | TBD | Pending |
-| DASH-01 | TBD | Pending |
-| DASH-02 | TBD | Pending |
-| DASH-03 | TBD | Pending |
-| DASH-04 | TBD | Pending |
-| DASH-05 | TBD | Pending |
-| DASH-06 | TBD | Pending |
-| NAV-01 | TBD | Pending |
-| NAV-02 | TBD | Pending |
-| NAV-03 | TBD | Pending |
+| SPEC-01 | Phase 1 | Pending |
+| SPEC-02 | Phase 1 | Pending |
+| SPEC-03 | Phase 1 | Pending |
+| SPEC-04 | Phase 1 | Pending |
+| SPEC-05 | Phase 1 | Pending |
+| LINK-01 | Phase 2 | Pending |
+| LINK-02 | Phase 2 | Pending |
+| LINK-03 | Phase 2 | Pending |
+| LINK-04 | Phase 2 | Pending |
+| VERIFY-01 | Phase 3 | Pending |
+| VERIFY-02 | Phase 3 | Pending |
+| VERIFY-03 | Phase 3 | Pending |
+| DASH-01 | Phase 3 | Pending |
+| DASH-02 | Phase 3 | Pending |
+| DASH-03 | Phase 4 | Pending |
+| DASH-04 | Phase 3 | Pending |
+| DASH-05 | Phase 4 | Pending |
+| DASH-06 | Phase 4 | Pending |
+| NAV-01 | Phase 4 | Pending |
+| NAV-02 | Phase 4 | Pending |
+| NAV-03 | Phase 4 | Pending |
 
 **Coverage:**
 - v1 requirements: 21 total
-- Mapped to phases: 0
-- Unmapped: 21 (pending roadmap)
+- Mapped to phases: 21
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-01-19*
-*Last updated: 2026-01-19 after initial definition*
+*Last updated: 2026-01-19 after roadmap creation*
