@@ -27,11 +27,11 @@ SpecTrace delivers requirements traceability in four phases: first establishing 
   3. Requirements reflect parent/child hierarchy from nested markdown structure
   4. Requirements can be filtered by category tags
   5. Spec changes are tracked via git (no separate versioning needed)
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 01-01: Django project setup, database schema, requirement model with treebeard hierarchy
-- [ ] 01-02: Spec parser (python-frontmatter + markdown) and CLI import command
+- [ ] 01-01-PLAN.md — Django project setup, database schema, requirement model with treebeard hierarchy
+- [ ] 01-02-PLAN.md — Spec parser (python-frontmatter + markdown) and CLI import command
 
 ### Phase 2: Test Integration
 **Goal**: Tests can be annotated with requirement IDs and the system extracts these links
@@ -87,11 +87,12 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 0/2 | Not started | - |
+| 1. Foundation | 0/2 | Planned | - |
 | 2. Test Integration | 0/1 | Not started | - |
 | 3. Verification & Core Dashboard | 0/2 | Not started | - |
 | 4. Dashboard Features & Navigation | 0/2 | Not started | - |
 
 ---
 *Roadmap created: 2026-01-19*
+*Phase 1 planned: 2026-01-19*
 *Depth: quick (4 phases, 7 plans total)*
