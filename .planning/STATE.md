@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-01-19)
 
 **Core value:** PMs can see, at any moment, which requirements are verified by passing tests
-**Current focus:** Phase 3 - Verification & Core Dashboard (Phase 2 complete)
+**Current focus:** Phase 4 - Advanced Features (Phase 3 complete)
 
 ## Current Position
 
 Phase: 3 of 4 (Verification & Core Dashboard)
-Plan: 1 of 2 in current phase
-Status: In progress
-Last activity: 2026-01-21 - Completed 03-01-PLAN.md (JUnit XML import)
+Plan: 2 of 2 in current phase
+Status: Phase complete
+Last activity: 2026-01-21 - Completed 03-02-PLAN.md (Django dashboard)
 
-Progress: [####------] 50% (4/8 plans)
+Progress: [######----] 62% (5/8 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 4
-- Average duration: 4 min
-- Total execution time: 14 min
+- Total plans completed: 5
+- Average duration: 3.4 min
+- Total execution time: 17 min
 
 **By Phase:**
 
@@ -29,10 +29,10 @@ Progress: [####------] 50% (4/8 plans)
 |-------|-------|-------|----------|
 | 01-foundation | 2 | 6 min | 3 min |
 | 02-test-integration | 1 | 5 min | 5 min |
-| 03-verification-dashboard | 1 | 3 min | 3 min |
+| 03-verification-dashboard | 2 | 6 min | 3 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (4 min), 01-02 (2 min), 02-01 (5 min), 03-01 (3 min)
+- Last 5 plans: 01-01 (4 min), 01-02 (2 min), 02-01 (5 min), 03-01 (3 min), 03-02 (3 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -58,6 +58,9 @@ Recent decisions affecting current work:
 | Unknown requirement IDs produce warnings | 02-01 | Non-blocking validation - allows tests to run before specs exist |
 | Denormalized verification_status on Requirement | 03-01 | Fast dashboard queries, recomputed on import |
 | ManyToMany for test-requirement links | 03-01 | One test can verify multiple requirements and vice versa |
+| unfold.admin.ModelAdmin for all admin classes | 03-02 | Consistent modern styling over TreeAdmin |
+| Dashboard callback for custom metrics | 03-02 | Inject context variables to admin index template |
+| Yellow background for untested requirements | 03-02 | Makes coverage gaps visible at a glance |
 
 ### External Context
 
@@ -76,5 +79,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-01-21
-Stopped at: Completed 03-01-PLAN.md (JUnit XML import)
+Stopped at: Completed 03-02-PLAN.md (Django dashboard)
 Resume file: None
