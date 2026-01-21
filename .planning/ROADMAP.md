@@ -57,11 +57,11 @@ Plans:
   3. Dashboard shows all requirements organized by hierarchy
   4. Dashboard shows summary metrics: total requirements, % passing, % failing, % untested
   5. Untested requirements are visually highlighted (coverage gaps obvious at a glance)
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 03-01: Verification status computation and JUnit XML import
-- [ ] 03-02: Django dashboard with django-unfold (hierarchical view, metrics, coverage highlighting)
+- [ ] 03-01-PLAN.md — JUnit XML import, TestRun/TestResult models, verification status computation
+- [ ] 03-02-PLAN.md — Django-unfold dashboard with hierarchical tree view, metrics banner, coverage highlighting
 
 ### Phase 4: Dashboard Features & Navigation
 **Goal**: Users can explore traceability with matrix view, search, and bidirectional navigation
@@ -89,7 +89,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 |-------|----------------|--------|-----------|
 | 1. Foundation | 2/2 | Complete | 2026-01-19 |
 | 2. Test Integration | 1/1 | Complete | 2026-01-20 |
-| 3. Verification & Core Dashboard | 0/2 | Not started | - |
+| 3. Verification & Core Dashboard | 0/2 | Planned | - |
 | 4. Dashboard Features & Navigation | 0/2 | Not started | - |
 
 ---
@@ -99,3 +99,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 *Phase 1 completed: 2026-01-19*
 *Phase 2 planned: 2026-01-20*
 *Phase 2 completed: 2026-01-20*
+*Phase 3 planned: 2026-01-20*
