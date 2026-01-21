@@ -1,0 +1,82 @@
+{
+  "version": "1.0",
+  "links": [
+    {
+      "test_nodeid": "spectrace/tests/test_example.py::test_login_success",
+      "requirement_id": "REQ-AUTH-01",
+      "reason": null,
+      "test_file": "tests/test_example.py",
+      "test_function": "test_login_success",
+      "test_class": null,
+      "line_number": 10
+    },
+    {
+      "test_nodeid": "spectrace/tests/test_example.py::test_login_with_mfa",
+      "requirement_id": "REQ-AUTH-01",
+      "reason": "tests full auth flow",
+      "test_file": "tests/test_example.py",
+      "test_function": "test_login_with_mfa",
+      "test_class": null,
+      "line_number": 17
+    },
+    {
+      "test_nodeid": "spectrace/tests/test_example.py::test_login_with_mfa",
+      "requirement_id": "REQ-AUTH-02",
+      "reason": "tests full auth flow",
+      "test_file": "tests/test_example.py",
+      "test_function": "test_login_with_mfa",
+      "test_class": null,
+      "line_number": 17
+    },
+    {
+      "test_nodeid": "spectrace/tests/test_example.py::test_login_failure",
+      "requirement_id": "REQ-AUTH-01",
+      "reason": null,
+      "test_file": "tests/test_example.py",
+      "test_function": "test_login_failure",
+      "test_class": null,
+      "line_number": 24
+    },
+    {
+      "test_nodeid": "spectrace/tests/test_example.py::TestAuthentication::test_logout",
+      "requirement_id": "REQ-AUTH-03",
+      "reason": null,
+      "test_file": "tests/test_example.py",
+      "test_function": "test_logout",
+      "test_class": "TestAuthentication",
+      "line_number": 34
+    },
+    {
+      "test_nodeid": "spectrace/tests/test_example.py::test_data_processing[1]",
+      "requirement_id": "REQ-DATA-01",
+      "reason": null,
+      "test_file": "tests/test_example.py",
+      "test_function": "test_data_processing",
+      "test_class": null,
+      "line_number": 41
+    },
+    {
+      "test_nodeid": "spectrace/tests/test_example.py::test_data_processing[2]",
+      "requirement_id": "REQ-DATA-01",
+      "reason": null,
+      "test_file": "tests/test_example.py",
+      "test_function": "test_data_processing",
+      "test_class": null,
+      "line_number": 41
+    },
+    {
+      "test_nodeid": "spectrace/tests/test_example.py::test_data_processing[3]",
+      "requirement_id": "REQ-DATA-01",
+      "reason": null,
+      "test_file": "tests/test_example.py",
+      "test_function": "test_data_processing",
+      "test_class": null,
+      "line_number": 41
+    }
+  ],
+  "summary": {
+    "total_links": 8,
+    "unique_tests": 7,
+    "unique_requirements": 4
+  }
+}

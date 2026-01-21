@@ -1,4 +1,4 @@
-.PHONY: help install install-dev test migrate makemigrations shell run clean setup
+.PHONY: help install install-dev test migrate makemigrations shell run clean setup demo
 
 help:
 	@echo "Available targets:"
@@ -11,6 +11,7 @@ help:
 	@echo "  run             Start development server"
 	@echo "  clean           Remove caches and build artifacts"
 	@echo "  setup           Create admin user (admin/admin)"
+	@echo "  demo            Run the SpecTrace demo"
 
 install:
 	uv pip install -e .
@@ -40,3 +41,6 @@ clean:
 
 setup:
 	python scripts/setup.py
+
+demo:
+	python scripts/demo.py

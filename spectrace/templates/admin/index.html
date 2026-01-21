@@ -5,29 +5,29 @@
 <div class="p-6">
     <!-- Metrics Banner -->
     <div class="mb-8 grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+        <div class="bg-white dark:bg-gray-900 rounded-lg shadow p-4 border border-gray-200 dark:border-gray-700">
             <div class="text-sm text-gray-500 dark:text-gray-400">Total Requirements</div>
-            <div class="text-3xl font-bold text-gray-900 dark:text-white">{{ total_requirements }}</div>
+            <div class="text-3xl font-bold text-gray-900 dark:text-white">{{ total_requirements|default:"0" }}</div>
         </div>
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-l-4 border-green-500">
+        <div class="bg-white dark:bg-gray-900 rounded-lg shadow p-4 border border-gray-200 dark:border-gray-700 border-l-4 border-l-green-500">
             <div class="text-sm text-gray-500 dark:text-gray-400">Passing</div>
-            <div class="text-3xl font-bold text-green-600">{{ passing_count }}</div>
-            <div class="text-sm text-green-500">{{ passing_pct }}%</div>
+            <div class="text-3xl font-bold text-green-600 dark:text-green-400">{{ passing_count|default:"0" }}</div>
+            <div class="text-sm text-green-600 dark:text-green-400">{{ passing_pct|default:"0" }}%</div>
         </div>
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-l-4 border-red-500">
+        <div class="bg-white dark:bg-gray-900 rounded-lg shadow p-4 border border-gray-200 dark:border-gray-700 border-l-4 border-l-red-500">
             <div class="text-sm text-gray-500 dark:text-gray-400">Failing</div>
-            <div class="text-3xl font-bold text-red-600">{{ failing_count }}</div>
-            <div class="text-sm text-red-500">{{ failing_pct }}%</div>
+            <div class="text-3xl font-bold text-red-600 dark:text-red-400">{{ failing_count|default:"0" }}</div>
+            <div class="text-sm text-red-600 dark:text-red-400">{{ failing_pct|default:"0" }}%</div>
         </div>
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-l-4 border-yellow-500">
+        <div class="bg-white dark:bg-gray-900 rounded-lg shadow p-4 border border-gray-200 dark:border-gray-700 border-l-4 border-l-yellow-500">
             <div class="text-sm text-gray-500 dark:text-gray-400">Untested</div>
-            <div class="text-3xl font-bold text-yellow-600">{{ untested_count }}</div>
-            <div class="text-sm text-yellow-500">{{ untested_pct }}%</div>
+            <div class="text-3xl font-bold text-yellow-600 dark:text-yellow-400">{{ untested_count|default:"0" }}</div>
+            <div class="text-sm text-yellow-600 dark:text-yellow-400">{{ untested_pct|default:"0" }}%</div>
         </div>
     </div>
 
     <!-- Requirements Tree -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+    <div class="bg-white dark:bg-gray-900 rounded-lg shadow border border-gray-200 dark:border-gray-700">
         <div class="p-4 border-b border-gray-200 dark:border-gray-700">
             <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Requirements</h2>
         </div>
@@ -71,11 +71,11 @@
     <!-- Quick Actions -->
     <div class="mt-6 flex gap-4">
         <a href="{% url 'admin:requirements_requirement_changelist' %}"
-           class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+           class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
             View All Requirements
         </a>
         <a href="{% url 'admin:requirements_testrun_changelist' %}"
-           class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
+           class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg transition-colors">
             View Test Runs
         </a>
     </div>
