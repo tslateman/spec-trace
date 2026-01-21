@@ -12,7 +12,7 @@ SpecTrace delivers requirements traceability in four phases: first establishing 
 
 - [x] **Phase 1: Foundation** - Data model and spec parsing from markdown files
 - [x] **Phase 2: Test Integration** - pytest plugin for linking tests to requirements
-- [ ] **Phase 3: Verification & Core Dashboard** - Status computation and essential views
+- [x] **Phase 3: Verification & Core Dashboard** - Status computation and essential views
 - [ ] **Phase 4: Dashboard Features & Navigation** - Traceability matrix, search, and bidirectional navigation
 
 ## Phase Details
@@ -60,8 +60,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 03-01-PLAN.md — JUnit XML import, TestRun/TestResult models, verification status computation
-- [ ] 03-02-PLAN.md — Django-unfold dashboard with hierarchical tree view, metrics banner, coverage highlighting
+- [x] 03-01-PLAN.md — JUnit XML import, TestRun/TestResult models, verification status computation
+- [x] 03-02-PLAN.md — Django-unfold dashboard with hierarchical tree view, metrics banner, coverage highlighting
 
 ### Phase 4: Dashboard Features & Navigation
 **Goal**: Users can explore traceability with matrix view, search, and bidirectional navigation
@@ -89,7 +89,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 |-------|----------------|--------|-----------|
 | 1. Foundation | 2/2 | Complete | 2026-01-19 |
 | 2. Test Integration | 1/1 | Complete | 2026-01-20 |
-| 3. Verification & Core Dashboard | 0/2 | Planned | - |
+| 3. Verification & Core Dashboard | 2/2 | Complete | 2026-01-20 |
 | 4. Dashboard Features & Navigation | 0/2 | Not started | - |
 
 ---
@@ -100,3 +100,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 *Phase 2 planned: 2026-01-20*
 *Phase 2 completed: 2026-01-20*
 *Phase 3 planned: 2026-01-20*
+*Phase 3 completed: 2026-01-20*
