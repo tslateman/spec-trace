@@ -9,11 +9,11 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Spec Management
 
-- [ ] **SPEC-01**: System parses markdown files from specs/ directory to extract requirements
-- [ ] **SPEC-02**: Each requirement has a unique ID (REQ-XXX format) defined in markdown
-- [ ] **SPEC-03**: Requirements support parent/child hierarchy via nested markdown structure
-- [ ] **SPEC-04**: Requirements can be tagged with categories (feature area, priority)
-- [ ] **SPEC-05**: Spec changes are tracked via git history (no separate versioning system)
+- [x] **SPEC-01**: System parses markdown files from specs/ directory to extract requirements
+- [x] **SPEC-02**: Each requirement has a unique ID (REQ-XXX format) defined in markdown
+- [x] **SPEC-03**: Requirements support parent/child hierarchy via nested markdown structure
+- [x] **SPEC-04**: Requirements can be tagged with categories (feature area, priority)
+- [x] **SPEC-05**: Spec changes are tracked via git history (no separate versioning system)
 
 ### Test Linking
 
@@ -88,11 +88,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SPEC-01 | Phase 1 | Pending |
-| SPEC-02 | Phase 1 | Pending |
-| SPEC-03 | Phase 1 | Pending |
-| SPEC-04 | Phase 1 | Pending |
-| SPEC-05 | Phase 1 | Pending |
+| SPEC-01 | Phase 1 | Complete |
+| SPEC-02 | Phase 1 | Complete |
+| SPEC-03 | Phase 1 | Complete |
+| SPEC-04 | Phase 1 | Complete |
+| SPEC-05 | Phase 1 | Complete |
 | LINK-01 | Phase 2 | Pending |
 | LINK-02 | Phase 2 | Pending |
 | LINK-03 | Phase 2 | Pending |
@@ -117,4 +117,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-01-19*
-*Last updated: 2026-01-19 after roadmap creation*
+*Last updated: 2026-01-19 after Phase 1 completion*

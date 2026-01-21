@@ -10,7 +10,7 @@ SpecTrace delivers requirements traceability in four phases: first establishing 
 - Integer phases (1, 2, 3, 4): Planned milestone work
 - Decimal phases (e.g., 2.1): Urgent insertions (marked with INSERTED)
 
-- [ ] **Phase 1: Foundation** - Data model and spec parsing from markdown files
+- [x] **Phase 1: Foundation** - Data model and spec parsing from markdown files
 - [ ] **Phase 2: Test Integration** - pytest plugin for linking tests to requirements
 - [ ] **Phase 3: Verification & Core Dashboard** - Status computation and essential views
 - [ ] **Phase 4: Dashboard Features & Navigation** - Traceability matrix, search, and bidirectional navigation
@@ -30,8 +30,8 @@ SpecTrace delivers requirements traceability in four phases: first establishing 
 **Plans**: 2 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — Django project setup, database schema, requirement model with treebeard hierarchy
-- [ ] 01-02-PLAN.md — Spec parser (python-frontmatter + markdown) and CLI import command
+- [x] 01-01-PLAN.md — Django project setup, database schema, requirement model with treebeard hierarchy
+- [x] 01-02-PLAN.md — Spec parser (python-frontmatter + markdown) and CLI import command
 
 ### Phase 2: Test Integration
 **Goal**: Tests can be annotated with requirement IDs and the system extracts these links
@@ -87,7 +87,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 0/2 | Planned | - |
+| 1. Foundation | 2/2 | Complete | 2026-01-19 |
 | 2. Test Integration | 0/1 | Not started | - |
 | 3. Verification & Core Dashboard | 0/2 | Not started | - |
 | 4. Dashboard Features & Navigation | 0/2 | Not started | - |
@@ -96,3 +96,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 *Roadmap created: 2026-01-19*
 *Phase 1 planned: 2026-01-19*
 *Depth: quick (4 phases, 7 plans total)*
+*Phase 1 completed: 2026-01-19*
