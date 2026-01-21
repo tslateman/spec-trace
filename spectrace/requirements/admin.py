@@ -4,7 +4,15 @@ from django.urls import reverse
 from django.utils.html import format_html
 from unfold.admin import ModelAdmin
 
-from .models import Requirement, TestRun, TestResult
+from .models import (
+    InAppValidation,
+    InAppValidationResult,
+    InAppValidationRun,
+    Requirement,
+    SLO,
+    TestResult,
+    TestRun,
+)
 
 
 STATUS_BADGE_COLORS = {
@@ -91,3 +99,62 @@ class TestResultAdmin(ModelAdmin):
         return format_html(''.join(str(link) for link in links))
 
     linked_requirements.short_description = "Linked Requirements"
+
+
+# In-App Validation Admin
+
+INAPP_STATUS_COLORS = {
+    'success': '#22c55e',
+    'failure': '#ef4444',
+    'unknown': '#6b7280',
+    'not_run': '#6b7280',
+}
+
+
+@admin.register(InAppValidation)
+class InAppValidationAdmin(ModelAdmin):
+    """Admin interface for InAppValidation."""
+
+    list_display = ['name', 'requirement', 'status', 'endpoint', 'last_checked']
+    list_filter = ['status']
+    search_fields = ['name', 'endpoint', 'requirement__external_id']
+    readonly_fields = ['last_checked']
+
+
+@admin.register(InAppValidationRun)
+class InAppValidationRunAdmin(ModelAdmin):
+    """Admin interface for InAppValidationRun."""
+
+    list_display = ['source', 'imported_at', 'total_validations', 'successful', 'failed']
+    readonly_fields = ['imported_at']
+    ordering = ['-imported_at']
+
+
+@admin.register(InAppValidationResult)
+class InAppValidationResultAdmin(ModelAdmin):
+    """Admin interface for InAppValidationResult."""
+
+    list_display = ['validation', 'status', 'validation_run', 'checked_at']
+    list_filter = ['status', 'validation_run']
+    search_fields = ['validation__name', 'message']
+
+
+# SLO Admin
+
+SLO_STATUS_COLORS = {
+    'met': '#22c55e',
+    'at_risk': '#f97316',
+    'breached': '#ef4444',
+    'not_linked': '#6b7280',
+}
+
+
+@admin.register(SLO)
+class SLOAdmin(ModelAdmin):
+    """Admin interface for SLO."""
+
+    list_display = ['name', 'display_name', 'status', 'target', 'current_value', 'error_budget_remaining']
+    list_filter = ['status']
+    search_fields = ['name', 'display_name', 'description']
+    readonly_fields = ['last_updated', 'created_at', 'updated_at']
+    filter_horizontal = ['requirements']
