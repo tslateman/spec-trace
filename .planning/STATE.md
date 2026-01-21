@@ -2,33 +2,35 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-01-19)
+See: .planning/PROJECT.md (updated 2026-01-21 after v1 milestone)
 
 **Core value:** PMs can see, at any moment, which requirements are verified by passing tests
-**Current focus:** Phase 4 - Advanced Features (Phase 3 complete)
+**Current focus:** Planning next milestone (v1 shipped)
 
 ## Current Position
 
-Phase: 4 of 4 (Dashboard Features & Navigation)
-Plan: All phases complete
-Status: **MILESTONE COMPLETE** - All 4 phases done, extended features added
-Last activity: 2026-01-21 - Added REST API endpoints for external systems
+Phase: — (milestone complete)
+Plan: —
+Status: **v1 SHIPPED** — Ready for next milestone
+Last activity: 2026-01-21 — v1 milestone complete
 
-Progress: [##########] 100% (all phases complete + extended features)
+Progress: [##########] v1 complete
 
-### Extended Features (beyond original roadmap)
-- Link validation command for CI drift detection
-- In-app validation system (models, import, API)
-- SLO integration with OpenSLO YAML support
-- Verification method field (test/inapp/both)
-- REST API endpoints for external system integration
+## Milestone History
+
+| Milestone | Shipped | Phases | Plans | Summary |
+|-----------|---------|--------|-------|---------|
+| v1 MVP | 2026-01-21 | 1-4 | 6 | Spec parsing, test linking, verification dashboard |
+
+See: .planning/MILESTONES.md
 
 ## Performance Metrics
 
-**Velocity:**
-- Total plans completed: 5
-- Average duration: 3.4 min
-- Total execution time: 17 min
+**v1 Velocity:**
+- Total plans completed: 6
+- Average duration: 3.3 min
+- Total execution time: ~20 min
+- Timeline: 3 days (2026-01-19 → 2026-01-21)
 
 **By Phase:**
 
@@ -37,43 +39,15 @@ Progress: [##########] 100% (all phases complete + extended features)
 | 01-foundation | 2 | 6 min | 3 min |
 | 02-test-integration | 1 | 5 min | 5 min |
 | 03-verification-dashboard | 2 | 6 min | 3 min |
-
-**Recent Trend:**
-- Last 5 plans: 01-01 (4 min), 01-02 (2 min), 02-01 (5 min), 03-01 (3 min), 03-02 (3 min)
-- Trend: Stable
-
-*Updated after each plan completion*
+| 04-dashboard-features | 1 | 3 min | 3 min |
 
 ## Accumulated Context
 
-### Decisions
+### Key Decisions (v1)
 
-Decisions are logged in PROJECT.md Key Decisions table.
-Recent decisions affecting current work:
+See: PROJECT.md Key Decisions table
 
-| Decision | Phase | Rationale |
-|----------|-------|-----------|
-| django-treebeard MP_Node for hierarchy | 01-01 | Efficient ancestor/descendant queries without recursive SQL |
-| SQLite for development | 01-01 | Simple setup, sufficient for local development |
-| external_id as unique requirement key | 01-01 | IDs from spec frontmatter must be unique across all specs |
-| JSONField for tags | 01-01 | Flexible list storage without separate table |
-| Explicit parent references in frontmatter | 01-02 | Child requirements specify parent: REQ-XXX rather than folder structure |
-| Graceful missing parent handling | 01-02 | Missing parent refs create root nodes with warning, not failure |
-| Verification as computed, not stateful | context | Status derived from test results, not FSM (from workflow research) |
-| Dual marker registration (conftest + pyproject) | 02-01 | Ensures marker works in both programmatic and IDE contexts |
-| Disable pytest-django during collection | 02-01 | Avoids DB blocking when extracting test-requirement links |
-| Unknown requirement IDs produce warnings | 02-01 | Non-blocking validation - allows tests to run before specs exist |
-| Denormalized verification_status on Requirement | 03-01 | Fast dashboard queries, recomputed on import |
-| ManyToMany for test-requirement links | 03-01 | One test can verify multiple requirements and vice versa |
-| unfold.admin.ModelAdmin for all admin classes | 03-02 | Consistent modern styling over TreeAdmin |
-| Dashboard callback for custom metrics | 03-02 | Inject context variables to admin index template |
-| Yellow background for untested requirements | 03-02 | Makes coverage gaps visible at a glance |
-| validate_links command for CI | 04 | Catches drift early - unknown reqs are errors, missing coverage is warning |
-| InAppValidation model | 04 | Support requirements verified by product UI buttons |
-| SLO model linked to requirements | 04 | Track which requirements are backed by observability SLOs |
-| verification_method field | 04 | Explicit classification: test, inapp, or both |
-| REST API endpoints | 04 | Enable real-time status updates from external systems |
-| OpenSLO YAML parser | 04 | Standard format for SLO definitions from observability platforms |
+All v1 decisions marked "✓ Good" — no revisions needed.
 
 ### External Context
 
@@ -81,36 +55,28 @@ Research from Canary Better Specs initiative integrated 2026-01-20:
 - `research/BETTER_SPECS_CONTEXT.md` - Traceability pipeline, drift detection patterns
 - `research/WORKFLOW_PATTERNS.md` - FSM library evaluation (conclusion: not needed)
 
-### Pending Todos
+### Tech Debt (from v1)
 
-None yet.
+- UAT not fully completed (9/10 tests pending user verification)
+- 2 requirements deferred: DASH-03 (traceability matrix), NAV-03 (impact analysis)
 
 ### Blockers/Concerns
 
-None yet.
+None.
 
 ## Session Continuity
 
 Last session: 2026-01-21
-Stopped at: Completed REST API endpoints and milestone
+Stopped at: v1 milestone complete
 Resume file: None
 
-### Recent Commits (this session)
-- b6a5e9e: docs: update test count to 61
-- 6e3cc61: test: add comprehensive tests for Linear integration
-- 2a826d7: docs: update AGENTS.md project status
-- 58b1c8f: docs: expand README with extended features documentation
-- 13188b2: docs: update STATE.md - milestone complete with 50 tests
-- 25e19db: docs: mark Phase 4 complete, document extended features
-- d351efb: feat: add REST API endpoints for external system integration
+### Archive Files Created
 
-### Session Summary
-This Ralph loop session completed the milestone and added extended features:
+- `.planning/milestones/v1-ROADMAP.md` — Full roadmap archive
+- `.planning/milestones/v1-REQUIREMENTS.md` — Full requirements archive
+- `.planning/milestones/v1-MILESTONE-AUDIT.md` — Audit report
+- `.planning/MILESTONES.md` — Summary entry
 
-1. **Link Validation** - `validate_links` command to detect drift in CI
-2. **In-App Validation** - Models, import command, and API for product UI verification
-3. **SLO Integration** - Full OpenSLO YAML support with status tracking
-4. **Unified Status Computation** - Considers verification_method to combine test, inapp, and SLO status
-5. **REST API** - Endpoints for external systems to push status updates
+### Next Steps
 
-Test coverage: 61 tests passing
+1. `/gsd:new-milestone` — Start v2 planning (questioning → research → requirements → roadmap)

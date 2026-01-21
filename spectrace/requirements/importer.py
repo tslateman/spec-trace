@@ -80,6 +80,36 @@ def import_junit_xml(file_path: str) -> TestRun:
     return test_run
 
 
+def _normalize_nodeid(nodeid: str) -> str:
+    """Normalize a test nodeid to a canonical format.
+
+    JUnit XML uses dotted class paths (spectrace.tests.test_example::test_func)
+    while extract_links uses file paths (spectrace/tests/test_example.py::test_func).
+
+    This normalizes to the file path format.
+
+    Args:
+        nodeid: Test nodeid in either format.
+
+    Returns:
+        Normalized nodeid in file path format.
+    """
+    if '::' in nodeid:
+        path_part, test_part = nodeid.split('::', 1)
+    else:
+        path_part = nodeid
+        test_part = ''
+
+    # If path part has dots and no slashes, convert to file path
+    if '.' in path_part and '/' not in path_part and not path_part.endswith('.py'):
+        # Convert dotted path to file path: spectrace.tests.test_example -> spectrace/tests/test_example.py
+        path_part = path_part.replace('.', '/') + '.py'
+
+    if test_part:
+        return f"{path_part}::{test_part}"
+    return path_part
+
+
 def link_results_to_requirements(test_run: TestRun, links_json_path: str) -> dict:
     """Link test results to requirements using extract_links JSON output.
 
@@ -98,10 +128,10 @@ def link_results_to_requirements(test_run: TestRun, links_json_path: str) -> dic
     with open(links_json_path) as f:
         data = json.load(f)
 
-    # Build nodeid -> requirement_ids lookup
+    # Build normalized nodeid -> requirement_ids lookup
     nodeid_to_reqs = {}
     for link in data.get('links', []):
-        nodeid = link['test_nodeid']
+        nodeid = _normalize_nodeid(link['test_nodeid'])
         req_id = link['requirement_id']
         if nodeid not in nodeid_to_reqs:
             nodeid_to_reqs[nodeid] = []
@@ -111,7 +141,9 @@ def link_results_to_requirements(test_run: TestRun, links_json_path: str) -> dic
     unlinked_tests = []
 
     for result in test_run.results.all():
-        req_ids = nodeid_to_reqs.get(result.test_nodeid, [])
+        # Normalize the result nodeid for comparison
+        normalized_nodeid = _normalize_nodeid(result.test_nodeid)
+        req_ids = nodeid_to_reqs.get(normalized_nodeid, [])
         if req_ids:
             requirements = Requirement.objects.filter(external_id__in=req_ids)
             result.requirements.set(requirements)
