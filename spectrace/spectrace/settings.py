@@ -29,6 +29,9 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    # django-unfold must be before django.contrib.admin
+    "unfold",
+    "unfold.contrib.filters",
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -40,6 +43,13 @@ INSTALLED_APPS = [
     # Local apps
     'requirements',
 ]
+
+# django-unfold configuration
+UNFOLD = {
+    "SITE_TITLE": "SpecTrace",
+    "SITE_HEADER": "SpecTrace Dashboard",
+    "DASHBOARD_CALLBACK": "requirements.dashboard.dashboard_callback",
+}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -56,7 +66,7 @@ ROOT_URLCONF = 'spectrace.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / "templates"],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
