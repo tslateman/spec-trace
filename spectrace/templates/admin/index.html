@@ -52,9 +52,9 @@
                         </a>
                         <!-- Status badge -->
                         <span class="text-xs px-2 py-1 rounded font-medium
-                            {% if node.verification_status == 'passing' %}bg-green-100 text-green-800 dark:bg-[#021a0d] dark:text-green-400
-                            {% elif node.verification_status == 'failing' %}bg-red-100 text-red-800 dark:bg-[#2a0505] dark:text-red-400
-                            {% else %}bg-yellow-100 text-yellow-800 dark:bg-[#271503] dark:text-yellow-400{% endif %}">
+                            {% if node.verification_status == 'passing' %}bg-green-100 text-green-800 dark:bg-[#010d06] dark:text-green-400
+                            {% elif node.verification_status == 'failing' %}bg-red-100 text-red-800 dark:bg-[#150202] dark:text-red-400
+                            {% else %}bg-yellow-100 text-yellow-800 dark:bg-[#140a01] dark:text-yellow-400{% endif %}">
                             {{ node.verification_status|title }}
                         </span>
                     </div>
