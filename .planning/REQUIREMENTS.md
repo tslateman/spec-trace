@@ -17,10 +17,10 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Test Linking
 
-- [ ] **LINK-01**: Tests can be annotated with requirement IDs via pytest decorator
-- [ ] **LINK-02**: Multiple tests can link to the same requirement
-- [ ] **LINK-03**: One test can link to multiple requirements
-- [ ] **LINK-04**: System extracts requirement annotations from test files
+- [x] **LINK-01**: Tests can be annotated with requirement IDs via pytest decorator
+- [x] **LINK-02**: Multiple tests can link to the same requirement
+- [x] **LINK-03**: One test can link to multiple requirements
+- [x] **LINK-04**: System extracts requirement annotations from test files
 
 ### Verification
 
@@ -93,10 +93,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SPEC-03 | Phase 1 | Complete |
 | SPEC-04 | Phase 1 | Complete |
 | SPEC-05 | Phase 1 | Complete |
-| LINK-01 | Phase 2 | Pending |
-| LINK-02 | Phase 2 | Pending |
-| LINK-03 | Phase 2 | Pending |
-| LINK-04 | Phase 2 | Pending |
+| LINK-01 | Phase 2 | Complete |
+| LINK-02 | Phase 2 | Complete |
+| LINK-03 | Phase 2 | Complete |
+| LINK-04 | Phase 2 | Complete |
 | VERIFY-01 | Phase 3 | Pending |
 | VERIFY-02 | Phase 3 | Pending |
 | VERIFY-03 | Phase 3 | Pending |
@@ -117,4 +117,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-01-19*
-*Last updated: 2026-01-19 after Phase 1 completion*
+*Last updated: 2026-01-20 after Phase 2 completion*

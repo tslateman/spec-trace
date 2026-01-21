@@ -11,7 +11,7 @@ SpecTrace delivers requirements traceability in four phases: first establishing 
 - Decimal phases (e.g., 2.1): Urgent insertions (marked with INSERTED)
 
 - [x] **Phase 1: Foundation** - Data model and spec parsing from markdown files
-- [ ] **Phase 2: Test Integration** - pytest plugin for linking tests to requirements
+- [x] **Phase 2: Test Integration** - pytest plugin for linking tests to requirements
 - [ ] **Phase 3: Verification & Core Dashboard** - Status computation and essential views
 - [ ] **Phase 4: Dashboard Features & Navigation** - Traceability matrix, search, and bidirectional navigation
 
@@ -45,7 +45,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 02-01-PLAN.md — pytest marker registration, extract_links CLI command, example tests
+- [x] 02-01-PLAN.md — pytest marker registration, extract_links CLI command, example tests
 
 ### Phase 3: Verification & Core Dashboard
 **Goal**: System computes verification status and displays requirements with pass/fail/untested indicators
@@ -88,7 +88,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 2/2 | Complete | 2026-01-19 |
-| 2. Test Integration | 0/1 | Planned | - |
+| 2. Test Integration | 1/1 | Complete | 2026-01-20 |
 | 3. Verification & Core Dashboard | 0/2 | Not started | - |
 | 4. Dashboard Features & Navigation | 0/2 | Not started | - |
 
@@ -98,3 +98,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 *Depth: quick (4 phases, 7 plans total)*
 *Phase 1 completed: 2026-01-19*
 *Phase 2 planned: 2026-01-20*
+*Phase 2 completed: 2026-01-20*
