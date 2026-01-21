@@ -17,6 +17,13 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 
+from requirements import api
+
 urlpatterns = [
     path('admin/', admin.site.urls),
+
+    # API endpoints for external systems
+    path('api/slo/status/', api.update_slo_status, name='api-slo-status'),
+    path('api/validation/result/', api.submit_validation_result, name='api-validation-result'),
+    path('api/requirement/<str:external_id>/status/', api.get_requirement_status, name='api-requirement-status'),
 ]
