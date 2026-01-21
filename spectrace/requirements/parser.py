@@ -8,6 +8,103 @@ import frontmatter
 from requirements.models import Requirement
 
 
+def import_requirements_to_database(
+    requirements: list[dict[str, Any]],
+    clear_existing: bool = False,
+    source_prefix: str | None = None
+) -> int:
+    """Import requirement dicts to database.
+
+    Used by SpecParser and external importers (e.g., LinearClient).
+    Uses treebeard's add_root and add_child methods for proper hierarchy.
+
+    Args:
+        requirements: List of requirement dicts with keys:
+            - external_id (required)
+            - title, description, tags, priority, status, source_file
+            - parent_id (optional, references external_id of parent)
+        clear_existing: If True, delete requirements before import.
+            If source_prefix is set, only deletes requirements with matching source_file.
+        source_prefix: If set, only clear requirements whose source_file starts with this.
+            Useful for clearing only Linear-sourced requirements.
+
+    Returns:
+        Number of requirements created (not updated)
+    """
+    if clear_existing:
+        if source_prefix:
+            Requirement.objects.filter(source_file__startswith=source_prefix).delete()
+        else:
+            Requirement.objects.all().delete()
+
+    # Build lookup of existing requirements by external_id
+    existing = {req.external_id: req for req in Requirement.objects.all()}
+
+    # Separate root requirements (no parent) and children
+    roots = [r for r in requirements if r.get('parent_id') is None]
+    children = [r for r in requirements if r.get('parent_id') is not None]
+
+    created_count = 0
+
+    # First pass: create all root requirements
+    for req_data in roots:
+        external_id = req_data['external_id']
+        fields = {
+            'title': req_data.get('title', ''),
+            'description': req_data.get('description', ''),
+            'tags': req_data.get('tags', []),
+            'priority': req_data.get('priority', ''),
+            'status': req_data.get('status', 'draft'),
+            'source_file': req_data.get('source_file', ''),
+        }
+
+        if external_id in existing:
+            # Update existing
+            req = existing[external_id]
+            for field, value in fields.items():
+                setattr(req, field, value)
+            req.save()
+        else:
+            # Create new root
+            req = Requirement.add_root(external_id=external_id, **fields)
+            existing[external_id] = req
+            created_count += 1
+
+    # Second pass: create children with parent references
+    for req_data in children:
+        external_id = req_data['external_id']
+        parent_id = req_data['parent_id']
+        fields = {
+            'title': req_data.get('title', ''),
+            'description': req_data.get('description', ''),
+            'tags': req_data.get('tags', []),
+            'priority': req_data.get('priority', ''),
+            'status': req_data.get('status', 'draft'),
+            'source_file': req_data.get('source_file', ''),
+        }
+
+        if external_id in existing:
+            # Update existing
+            req = existing[external_id]
+            for field, value in fields.items():
+                setattr(req, field, value)
+            req.save()
+        else:
+            # Find parent
+            parent = existing.get(parent_id)
+            if parent is None:
+                # Parent not found, create as root with warning
+                print(f"Warning: Parent {parent_id} not found for {external_id}, creating as root")
+                req = Requirement.add_root(external_id=external_id, **fields)
+            else:
+                # Create as child of parent
+                req = parent.add_child(external_id=external_id, **fields)
+            existing[external_id] = req
+            created_count += 1
+
+    return created_count
+
+
 class SpecParser:
     """Parses markdown spec files with YAML frontmatter into Requirement objects.
 
@@ -163,81 +260,5 @@ class SpecParser:
         Returns:
             Number of requirements created
         """
-        if clear_existing:
-            Requirement.objects.all().delete()
-
         requirements = self.parse_directory(specs_dir)
-
-        # Build lookup of existing requirements by external_id
-        existing = {req.external_id: req for req in Requirement.objects.all()}
-
-        # Separate root requirements (no parent) and children
-        roots = [r for r in requirements if r['parent_id'] is None]
-        children = [r for r in requirements if r['parent_id'] is not None]
-
-        created_count = 0
-
-        # First pass: create all root requirements
-        for req_data in roots:
-            external_id = req_data['external_id']
-            if external_id in existing:
-                # Update existing
-                req = existing[external_id]
-                for field in ['title', 'description', 'tags', 'priority', 'status', 'source_file']:
-                    setattr(req, field, req_data[field])
-                req.save()
-            else:
-                # Create new root
-                req = Requirement.add_root(
-                    external_id=external_id,
-                    title=req_data['title'],
-                    description=req_data['description'],
-                    tags=req_data['tags'],
-                    priority=req_data['priority'],
-                    status=req_data['status'],
-                    source_file=req_data['source_file'],
-                )
-                existing[external_id] = req
-                created_count += 1
-
-        # Second pass: create children with parent references
-        for req_data in children:
-            external_id = req_data['external_id']
-            parent_id = req_data['parent_id']
-
-            if external_id in existing:
-                # Update existing
-                req = existing[external_id]
-                for field in ['title', 'description', 'tags', 'priority', 'status', 'source_file']:
-                    setattr(req, field, req_data[field])
-                req.save()
-            else:
-                # Find parent
-                parent = existing.get(parent_id)
-                if parent is None:
-                    # Parent not found, create as root with warning
-                    print(f"Warning: Parent {parent_id} not found for {external_id}, creating as root")
-                    req = Requirement.add_root(
-                        external_id=external_id,
-                        title=req_data['title'],
-                        description=req_data['description'],
-                        tags=req_data['tags'],
-                        priority=req_data['priority'],
-                        status=req_data['status'],
-                        source_file=req_data['source_file'],
-                    )
-                else:
-                    # Create as child of parent
-                    req = parent.add_child(
-                        external_id=external_id,
-                        title=req_data['title'],
-                        description=req_data['description'],
-                        tags=req_data['tags'],
-                        priority=req_data['priority'],
-                        status=req_data['status'],
-                        source_file=req_data['source_file'],
-                    )
-                existing[external_id] = req
-                created_count += 1
-
-        return created_count
+        return import_requirements_to_database(requirements, clear_existing=clear_existing)
