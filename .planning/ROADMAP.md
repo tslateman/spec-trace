@@ -68,17 +68,20 @@ Plans:
 **Depends on**: Phase 3
 **Requirements**: DASH-03, DASH-05, DASH-06, NAV-01, NAV-02, NAV-03
 **Success Criteria** (what must be TRUE):
-  1. User can view traceability matrix (requirements vs. tests grid)
-  2. User can search requirements by ID, text, status, or tag
-  3. User can filter requirements by category/tag
-  4. Clicking a requirement shows all linked tests and their status
-  5. Clicking a test shows all linked requirements
-  6. When a spec file changes, system shows which tests are affected (impact analysis)
-**Plans**: TBD
+  1. ~~User can view traceability matrix (requirements vs. tests grid)~~ DEFERRED
+  2. User can search requirements by ID, text, status, or tag ✅ (Django admin search)
+  3. User can filter requirements by category/tag ✅ (Django admin filters)
+  4. Clicking a requirement shows all linked tests and their status ✅
+  5. Clicking a test shows all linked requirements ✅
+  6. ~~When a spec file changes, system shows which tests are affected~~ DEFERRED
+**Plans**: Core navigation complete, extended with verification features
 
 Plans:
-- [ ] 04-01: Traceability matrix view and search/filter functionality
-- [ ] 04-02: Bidirectional navigation and impact analysis
+- [x] Bidirectional navigation (linked_tests, linked_requirements in admin)
+- [x] Link validation command (`validate_links` for CI)
+- [x] In-app validation system (models, import command, API)
+- [x] SLO integration (OpenSLO parser, import, status tracking)
+- [x] REST API endpoints for external systems
 
 ## Progress
 
@@ -90,7 +93,17 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 | 1. Foundation | 2/2 | Complete | 2026-01-19 |
 | 2. Test Integration | 1/1 | Complete | 2026-01-20 |
 | 3. Verification & Core Dashboard | 2/2 | Complete | 2026-01-20 |
-| 4. Dashboard Features & Navigation | 0/2 | Not started | - |
+| 4. Dashboard Features & Navigation | 5/5 | Complete | 2026-01-21 |
+
+## Extended Features (Beyond Original Roadmap)
+
+Added 2026-01-21 to support broader verification scenarios:
+
+- **Link Validation** - CI command to detect drift between tests and requirements
+- **In-App Validation** - Support for requirements verified via product UI
+- **SLO Integration** - OpenSLO YAML import and observability status tracking
+- **Unified Verification** - verification_method field (test/inapp/both)
+- **REST API** - Endpoints for external systems to push status updates
 
 ---
 *Roadmap created: 2026-01-19*
