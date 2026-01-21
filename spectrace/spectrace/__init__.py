@@ -1,0 +1,1 @@
+"""SpecTrace Django project."""
