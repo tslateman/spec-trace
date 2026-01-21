@@ -114,4 +114,4 @@ This Ralph loop session completed the milestone and added extended features:
 4. **Unified Status Computation** - Considers verification_method to combine test, inapp, and SLO status
 5. **REST API** - Endpoints for external systems to push status updates
 
-Test coverage: 50 tests passing
+Test coverage: 61 tests passing
