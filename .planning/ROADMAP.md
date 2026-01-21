@@ -42,10 +42,10 @@ Plans:
   2. Multiple tests can link to the same requirement (many-to-one)
   3. One test can link to multiple requirements (one-to-many)
   4. Developer can run a command that extracts all requirement annotations from test files
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 02-01: pytest plugin with custom marker, test collection, and CLI extract command
+- [ ] 02-01-PLAN.md — pytest marker registration, extract_links CLI command, example tests
 
 ### Phase 3: Verification & Core Dashboard
 **Goal**: System computes verification status and displays requirements with pass/fail/untested indicators
@@ -88,7 +88,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 2/2 | Complete | 2026-01-19 |
-| 2. Test Integration | 0/1 | Not started | - |
+| 2. Test Integration | 0/1 | Planned | - |
 | 3. Verification & Core Dashboard | 0/2 | Not started | - |
 | 4. Dashboard Features & Navigation | 0/2 | Not started | - |
 
@@ -97,3 +97,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 *Phase 1 planned: 2026-01-19*
 *Depth: quick (4 phases, 7 plans total)*
 *Phase 1 completed: 2026-01-19*
+*Phase 2 planned: 2026-01-20*
