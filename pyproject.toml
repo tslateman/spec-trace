@@ -34,3 +34,6 @@ include = ["spectrace*", "requirements*"]
 DJANGO_SETTINGS_MODULE = "spectrace.settings"
 python_files = ["test_*.py", "*_test.py"]
 pythonpath = ["spectrace"]
+markers = [
+    "requirement(*req_ids, reason=None): link test to requirement IDs",
+]
