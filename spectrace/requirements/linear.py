@@ -1,6 +1,8 @@
 """Linear API client for fetching issues as requirements."""
 import requests
 
+from requirements.models import VerificationMethod
+
 
 class LinearClient:
     """Client for Linear GraphQL API.
@@ -27,6 +29,14 @@ class LinearClient:
         'started': 'active',
         'completed': 'active',
         'canceled': 'deprecated',
+    }
+
+    # Map Linear labels to verification method
+    # Labels like "verify:test", "verify:inapp", "verify:both"
+    VERIFICATION_METHOD_MAP = {
+        'verify:test': VerificationMethod.TEST,
+        'verify:inapp': VerificationMethod.INAPP,
+        'verify:both': VerificationMethod.BOTH,
     }
 
     def __init__(self, api_key: str):
@@ -143,9 +153,22 @@ class LinearClient:
         Returns:
             Requirement dict compatible with import_requirements_to_database()
         """
-        # Extract labels, excluding the filter label
+        # Extract labels, excluding the filter label and verify:* labels
         labels = issue.get('labels', {}).get('nodes', [])
-        tags = [lbl['name'] for lbl in labels if lbl['name'] != filter_label]
+        label_names = [lbl['name'] for lbl in labels]
+
+        # Determine verification method from labels
+        verification_method = VerificationMethod.UNSPECIFIED
+        for label in label_names:
+            if label in self.VERIFICATION_METHOD_MAP:
+                verification_method = self.VERIFICATION_METHOD_MAP[label]
+                break
+
+        # Build tags excluding filter label and verify:* labels
+        tags = [
+            lbl for lbl in label_names
+            if lbl != filter_label and not lbl.startswith('verify:')
+        ]
 
         # Map priority
         priority_num = issue.get('priority') or 0
@@ -174,4 +197,5 @@ class LinearClient:
             'status': status,
             'parent_id': parent_id,
             'source_file': source_file,
+            'verification_method': verification_method,
         }

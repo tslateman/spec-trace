@@ -5,7 +5,7 @@ from typing import Any
 
 import frontmatter
 
-from requirements.models import Requirement
+from requirements.models import Requirement, VerificationMethod
 
 
 def import_requirements_to_database(
@@ -49,6 +49,10 @@ def import_requirements_to_database(
     # First pass: create all root requirements
     for req_data in roots:
         external_id = req_data['external_id']
+        # Validate verification_method
+        verification_method = req_data.get('verification_method', VerificationMethod.UNSPECIFIED)
+        if verification_method not in VerificationMethod.values:
+            verification_method = VerificationMethod.UNSPECIFIED
         fields = {
             'title': req_data.get('title', ''),
             'description': req_data.get('description', ''),
@@ -56,6 +60,7 @@ def import_requirements_to_database(
             'priority': req_data.get('priority', ''),
             'status': req_data.get('status', 'draft'),
             'source_file': req_data.get('source_file', ''),
+            'verification_method': verification_method,
         }
 
         if external_id in existing:
@@ -74,6 +79,10 @@ def import_requirements_to_database(
     for req_data in children:
         external_id = req_data['external_id']
         parent_id = req_data['parent_id']
+        # Validate verification_method
+        verification_method = req_data.get('verification_method', VerificationMethod.UNSPECIFIED)
+        if verification_method not in VerificationMethod.values:
+            verification_method = VerificationMethod.UNSPECIFIED
         fields = {
             'title': req_data.get('title', ''),
             'description': req_data.get('description', ''),
@@ -81,6 +90,7 @@ def import_requirements_to_database(
             'priority': req_data.get('priority', ''),
             'status': req_data.get('status', 'draft'),
             'source_file': req_data.get('source_file', ''),
+            'verification_method': verification_method,
         }
 
         if external_id in existing:
@@ -166,6 +176,7 @@ class SpecParser:
             'status': post.metadata.get('status', 'draft'),
             'parent_id': post.metadata.get('parent'),
             'source_file': str(file_path),
+            'verification_method': post.metadata.get('verification_method', VerificationMethod.UNSPECIFIED),
         }
 
     def _parse_multi(self, post: frontmatter.Post, file_path: Path) -> list[dict[str, Any]]:
@@ -195,6 +206,7 @@ class SpecParser:
         shared_tags = post.metadata.get('tags', [])
         shared_priority = post.metadata.get('priority', '')
         shared_status = post.metadata.get('status', 'draft')
+        shared_verification_method = post.metadata.get('verification_method', VerificationMethod.UNSPECIFIED)
 
         # Track the first requirement as root for implicit hierarchy
         first_req_id = None
@@ -225,6 +237,7 @@ class SpecParser:
                 'status': shared_status,
                 'parent_id': parent_id,
                 'source_file': str(file_path),
+                'verification_method': shared_verification_method,
             })
 
         return requirements

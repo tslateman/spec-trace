@@ -10,6 +10,22 @@ class VerificationStatus(models.TextChoices):
     UNTESTED = 'untested', 'Untested'
 
 
+class VerificationMethod(models.TextChoices):
+    """How a requirement should be verified."""
+    TEST = 'test', 'Test Automation'
+    INAPP = 'inapp', 'In-App Validation'
+    BOTH = 'both', 'Both Methods'
+    UNSPECIFIED = 'unspecified', 'Unspecified'
+
+
+class SLOStatus(models.TextChoices):
+    """Status of SLO compliance for a requirement."""
+    MET = 'met', 'Met'
+    AT_RISK = 'at_risk', 'At Risk'
+    BREACHED = 'breached', 'Breached'
+    NOT_LINKED = 'not_linked', 'Not Linked'
+
+
 class Requirement(MP_Node):
     """A requirement parsed from a spec markdown file.
 
@@ -52,6 +68,15 @@ class Requirement(MP_Node):
         help_text="Requirement status (draft, active, deprecated)"
     )
 
+    # Verification method (how this requirement should be verified)
+    verification_method = models.CharField(
+        max_length=20,
+        choices=VerificationMethod.choices,
+        default=VerificationMethod.UNSPECIFIED,
+        db_index=True,
+        help_text="How this requirement should be verified"
+    )
+
     # Verification status (computed from test results)
     verification_status = models.CharField(
         max_length=20,
@@ -59,6 +84,15 @@ class Requirement(MP_Node):
         default=VerificationStatus.UNTESTED,
         db_index=True,
         help_text="Verification status based on linked test results"
+    )
+
+    # SLO status (computed from linked SLOs)
+    slo_status = models.CharField(
+        max_length=20,
+        choices=SLOStatus.choices,
+        default=SLOStatus.NOT_LINKED,
+        db_index=True,
+        help_text="SLO compliance status for this requirement"
     )
 
     # Source tracking
@@ -163,3 +197,222 @@ class TestResult(models.Model):
 
     def __str__(self):
         return f"{self.test_nodeid} ({self.status})"
+
+
+class InAppValidationStatus(models.TextChoices):
+    """Status of an in-app validation check."""
+    SUCCESS = 'success', 'Success'
+    FAILURE = 'failure', 'Failure'
+    UNKNOWN = 'unknown', 'Unknown'
+    NOT_RUN = 'not_run', 'Not Run'
+
+
+class InAppValidation(models.Model):
+    """An in-app validation point that verifies a requirement.
+
+    Represents a validation button or endpoint in the product UI that
+    can be triggered to verify a requirement is working correctly.
+    """
+    requirement = models.ForeignKey(
+        Requirement,
+        on_delete=models.CASCADE,
+        related_name='inapp_validations',
+        help_text="The requirement this validation verifies"
+    )
+    name = models.CharField(
+        max_length=200,
+        help_text="Human-readable validation name (e.g., 'Verify Mobile Key Connection')"
+    )
+    endpoint = models.CharField(
+        max_length=500,
+        blank=True,
+        help_text="API endpoint or identifier for this validation (e.g., '/api/mobile-key/verify')"
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=InAppValidationStatus.choices,
+        default=InAppValidationStatus.NOT_RUN,
+        db_index=True,
+        help_text="Current validation status"
+    )
+    last_checked = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When this validation was last run"
+    )
+    message = models.TextField(
+        blank=True,
+        help_text="Status message from last validation run"
+    )
+
+    class Meta:
+        verbose_name = "In-App Validation"
+        verbose_name_plural = "In-App Validations"
+        ordering = ['requirement', 'name']
+
+    def __str__(self):
+        return f"{self.name} ({self.status})"
+
+
+class InAppValidationRun(models.Model):
+    """A batch import of in-app validation results."""
+    imported_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="When the validation results were imported"
+    )
+    source = models.CharField(
+        max_length=500,
+        help_text="Source file or system that provided the results"
+    )
+    total_validations = models.IntegerField(default=0)
+    successful = models.IntegerField(default=0)
+    failed = models.IntegerField(default=0)
+
+    class Meta:
+        ordering = ['-imported_at']
+        verbose_name = "In-App Validation Run"
+        verbose_name_plural = "In-App Validation Runs"
+
+    def __str__(self):
+        return f"ValidationRun {self.id} ({self.source}) - {self.imported_at}"
+
+
+class InAppValidationResult(models.Model):
+    """Individual result from an in-app validation run."""
+    validation_run = models.ForeignKey(
+        InAppValidationRun,
+        on_delete=models.CASCADE,
+        related_name='results'
+    )
+    validation = models.ForeignKey(
+        InAppValidation,
+        on_delete=models.CASCADE,
+        related_name='results'
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=InAppValidationStatus.choices,
+        help_text="Result status"
+    )
+    message = models.TextField(
+        blank=True,
+        help_text="Status message or error details"
+    )
+    checked_at = models.DateTimeField(
+        help_text="When this validation was executed"
+    )
+
+    class Meta:
+        ordering = ['-checked_at']
+        verbose_name = "In-App Validation Result"
+        verbose_name_plural = "In-App Validation Results"
+
+    def __str__(self):
+        return f"{self.validation.name} ({self.status}) at {self.checked_at}"
+
+
+class SLO(models.Model):
+    """Service Level Objective linked to requirements.
+
+    Imported from OpenSLO YAML files. Tracks SLO status from
+    observability platforms.
+    """
+    # Identity
+    name = models.CharField(
+        max_length=200,
+        unique=True,
+        db_index=True,
+        help_text="OpenSLO metadata.name (unique identifier)"
+    )
+    display_name = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Human-readable display name"
+    )
+    description = models.TextField(
+        blank=True,
+        help_text="SLO description"
+    )
+
+    # Link to requirements
+    requirements = models.ManyToManyField(
+        Requirement,
+        related_name='slos',
+        blank=True,
+        help_text="Requirements this SLO helps verify"
+    )
+
+    # OpenSLO spec fields
+    service = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Service name from OpenSLO spec"
+    )
+    target = models.DecimalField(
+        max_digits=6,
+        decimal_places=4,
+        null=True,
+        blank=True,
+        help_text="Target SLO percentage (e.g., 0.999 for 99.9%)"
+    )
+    time_window = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Time window for SLO (e.g., '30d', '7d')"
+    )
+    budgeting_method = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Budgeting method (occurrences, timeslices)"
+    )
+
+    # Status from observability platform
+    status = models.CharField(
+        max_length=20,
+        choices=SLOStatus.choices,
+        default=SLOStatus.NOT_LINKED,
+        db_index=True,
+        help_text="Current SLO compliance status"
+    )
+    current_value = models.DecimalField(
+        max_digits=6,
+        decimal_places=4,
+        null=True,
+        blank=True,
+        help_text="Current SLO value from observability platform"
+    )
+    error_budget_remaining = models.DecimalField(
+        max_digits=6,
+        decimal_places=4,
+        null=True,
+        blank=True,
+        help_text="Remaining error budget as decimal (e.g., 0.5 = 50%)"
+    )
+    last_updated = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When status was last updated from observability platform"
+    )
+
+    # Source tracking
+    source_file = models.CharField(
+        max_length=500,
+        blank=True,
+        help_text="Path to OpenSLO YAML source file"
+    )
+    raw_yaml = models.TextField(
+        blank=True,
+        help_text="Original OpenSLO YAML content"
+    )
+
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "SLO"
+        verbose_name_plural = "SLOs"
+        ordering = ['name']
+
+    def __str__(self):
+        return f"{self.name} ({self.status})"
