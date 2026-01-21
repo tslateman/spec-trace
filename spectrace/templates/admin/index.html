@@ -1,0 +1,83 @@
+{% extends "unfold/layouts/base.html" %}
+{% load i18n %}
+
+{% block content %}
+<div class="p-6">
+    <!-- Metrics Banner -->
+    <div class="mb-8 grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+            <div class="text-sm text-gray-500 dark:text-gray-400">Total Requirements</div>
+            <div class="text-3xl font-bold text-gray-900 dark:text-white">{{ total_requirements }}</div>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-l-4 border-green-500">
+            <div class="text-sm text-gray-500 dark:text-gray-400">Passing</div>
+            <div class="text-3xl font-bold text-green-600">{{ passing_count }}</div>
+            <div class="text-sm text-green-500">{{ passing_pct }}%</div>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-l-4 border-red-500">
+            <div class="text-sm text-gray-500 dark:text-gray-400">Failing</div>
+            <div class="text-3xl font-bold text-red-600">{{ failing_count }}</div>
+            <div class="text-sm text-red-500">{{ failing_pct }}%</div>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-l-4 border-yellow-500">
+            <div class="text-sm text-gray-500 dark:text-gray-400">Untested</div>
+            <div class="text-3xl font-bold text-yellow-600">{{ untested_count }}</div>
+            <div class="text-sm text-yellow-500">{{ untested_pct }}%</div>
+        </div>
+    </div>
+
+    <!-- Requirements Tree -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+        <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Requirements</h2>
+        </div>
+        <div class="p-4">
+            {% if requirements_tree %}
+            <ul class="space-y-1">
+                {% for node, info in requirements_tree %}
+                {% if info.open %}
+                <li style="margin-left: {{ info.level|add:info.level }}rem;">
+                    <div class="flex items-center p-2 rounded-lg {% if node.verification_status == 'untested' %}bg-yellow-50 dark:bg-yellow-900/20{% endif %}">
+                        <!-- Status dot -->
+                        <span class="w-3 h-3 rounded-full mr-3
+                            {% if node.verification_status == 'passing' %}bg-green-500
+                            {% elif node.verification_status == 'failing' %}bg-red-500
+                            {% else %}bg-gray-400{% endif %}">
+                        </span>
+                        <!-- Requirement info -->
+                        <a href="{% url 'admin:requirements_requirement_change' node.pk %}"
+                           class="flex-1 hover:underline">
+                            <span class="font-mono text-sm text-gray-600 dark:text-gray-400">{{ node.external_id }}</span>
+                            <span class="ml-2 text-gray-900 dark:text-white">{{ node.title }}</span>
+                        </a>
+                        <!-- Status badge -->
+                        <span class="text-xs px-2 py-1 rounded
+                            {% if node.verification_status == 'passing' %}bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
+                            {% elif node.verification_status == 'failing' %}bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200
+                            {% else %}bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200{% endif %}">
+                            {{ node.verification_status|title }}
+                        </span>
+                    </div>
+                {% endif %}
+                {% for close in info.close %}</li>{% endfor %}
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="text-gray-500 dark:text-gray-400">No requirements found. Run <code>python manage.py parse_specs</code> to import specs.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="mt-6 flex gap-4">
+        <a href="{% url 'admin:requirements_requirement_changelist' %}"
+           class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+            View All Requirements
+        </a>
+        <a href="{% url 'admin:requirements_testrun_changelist' %}"
+           class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
+            View Test Runs
+        </a>
+    </div>
+</div>
+{% endblock %}
