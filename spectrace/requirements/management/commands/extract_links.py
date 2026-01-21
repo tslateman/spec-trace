@@ -1,4 +1,5 @@
 """Django management command for extracting test-requirement links."""
+import io
 import json
 import sys
 from pathlib import Path
@@ -70,22 +71,25 @@ class Command(BaseCommand):
         collector = RequirementCollector()
 
         # Build pytest args for collection-only mode
+        # Note: -q flag causes issues in some contexts, so we omit it
+        # and rely on no:terminal plugin to suppress output
+        # Disable pytest-django plugin to avoid DB blocking issues
         pytest_args = [
             "--collect-only",
             "-p", "no:terminal",
-            "-q",
+            "-p", "no:django",
             options["path"],
         ]
 
         # Run pytest with our collector plugin
-        # Suppress output by redirecting stdout/stderr
+        # Suppress pytest output by redirecting to StringIO
         old_stdout = sys.stdout
         old_stderr = sys.stderr
         try:
-            sys.stdout = sys.stderr = open('/dev/null', 'w')
+            sys.stdout = io.StringIO()
+            sys.stderr = io.StringIO()
             pytest.main(pytest_args, plugins=[collector])
         finally:
-            sys.stdout.close()
             sys.stdout = old_stdout
             sys.stderr = old_stderr
 
