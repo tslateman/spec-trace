@@ -9,12 +9,18 @@ See: .planning/PROJECT.md (updated 2026-01-19)
 
 ## Current Position
 
-Phase: 3 of 4 (Verification & Core Dashboard)
-Plan: 2 of 2 in current phase
-Status: Phase complete
-Last activity: 2026-01-21 - Completed 03-02-PLAN.md (Django dashboard)
+Phase: 4 of 4 (Dashboard Features & Navigation)
+Plan: Bidirectional navigation implemented
+Status: Core milestone complete, extending with verification features
+Last activity: 2026-01-21 - Added in-app validation and SLO tracking models
 
-Progress: [######----] 62% (5/8 plans)
+Progress: [########--] 80% (core features complete)
+
+### Recent Additions (beyond original roadmap)
+- Link validation command for CI drift detection
+- In-app validation models for product UI verification
+- SLO tracking models for observability integration
+- Verification method field (test/inapp/both)
 
 ## Performance Metrics
 
@@ -61,6 +67,10 @@ Recent decisions affecting current work:
 | unfold.admin.ModelAdmin for all admin classes | 03-02 | Consistent modern styling over TreeAdmin |
 | Dashboard callback for custom metrics | 03-02 | Inject context variables to admin index template |
 | Yellow background for untested requirements | 03-02 | Makes coverage gaps visible at a glance |
+| validate_links command for CI | 04 | Catches drift early - unknown reqs are errors, missing coverage is warning |
+| InAppValidation model | 04 | Support requirements verified by product UI buttons |
+| SLO model linked to requirements | 04 | Track which requirements are backed by observability SLOs |
+| verification_method field | 04 | Explicit classification: test, inapp, or both |
 
 ### External Context
 
@@ -79,5 +89,9 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-01-21
-Stopped at: Completed 03-02-PLAN.md (Django dashboard)
+Stopped at: Committed in-app validation and SLO tracking models
 Resume file: None
+
+### Recent Commits
+- d0ba512: test: add unit and integration tests for link validation
+- 33d05e0: feat: add in-app validation and SLO tracking models
