@@ -16,6 +16,8 @@ dependencies = [
     "Markdown>=3.7,<4.0",
     "junitparser>=4.0,<5.0",
     "django-unfold>=0.76,<1.0",
+    "PyYAML>=6.0,<7.0",
+    "requests>=2.32,<3.0",
 ]
 
 [project.optional-dependencies]
