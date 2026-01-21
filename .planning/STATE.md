@@ -50,6 +50,13 @@ Recent decisions affecting current work:
 | JSONField for tags | 01-01 | Flexible list storage without separate table |
 | Explicit parent references in frontmatter | 01-02 | Child requirements specify parent: REQ-XXX rather than folder structure |
 | Graceful missing parent handling | 01-02 | Missing parent refs create root nodes with warning, not failure |
+| Verification as computed, not stateful | context | Status derived from test results, not FSM (from workflow research) |
+
+### External Context
+
+Research from Canary Better Specs initiative integrated 2026-01-20:
+- `research/BETTER_SPECS_CONTEXT.md` - Traceability pipeline, drift detection patterns
+- `research/WORKFLOW_PATTERNS.md` - FSM library evaluation (conclusion: not needed)
 
 ### Pending Todos
 
@@ -61,6 +68,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-01-21
-Stopped at: Completed 01-02-PLAN.md (Phase 1 Foundation complete)
+Last session: 2026-01-20
+Stopped at: Added Better Specs context from Canary research
 Resume file: None
