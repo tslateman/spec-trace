@@ -51,10 +51,10 @@
                             <span class="ml-2 text-base-900 dark:text-white">{{ node.title }}</span>
                         </a>
                         <!-- Status badge -->
-                        <span class="text-xs px-2 py-1 rounded
-                            {% if node.verification_status == 'passing' %}bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
-                            {% elif node.verification_status == 'failing' %}bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200
-                            {% else %}bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200{% endif %}">
+                        <span class="text-xs px-2 py-1 rounded font-medium
+                            {% if node.verification_status == 'passing' %}bg-green-100 text-green-800 dark:bg-green-600 dark:text-white
+                            {% elif node.verification_status == 'failing' %}bg-red-100 text-red-800 dark:bg-red-600 dark:text-white
+                            {% else %}bg-yellow-100 text-yellow-800 dark:bg-yellow-600 dark:text-white{% endif %}">
                             {{ node.verification_status|title }}
                         </span>
                     </div>
