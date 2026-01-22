@@ -2,31 +2,76 @@
 
 Requirements traceability for Python projects. Connect specs to tests, see what's verified.
 
+## Prerequisites
+
+SpecTrace uses [uv](https://github.com/astral-sh/uv) for fast, reliable package management:
+
+```bash
+# Install uv (if not already installed)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+# or: pip install uv
+```
+
 ## Quick Start
 
 ```bash
-# Install
-pip install -e .
+# Install with uv (recommended)
+make install
+# or: uv pip install -e .
 
 # Setup database
-cd spectrace
-python manage.py migrate
-python manage.py createsuperuser
+make migrate
+
+# Create admin user
+make setup
 
 # Import your specs
-python manage.py parse_specs ../specs/
+python spectrace/manage.py parse_specs specs/
 
-# Run tests with JUnit output
-pytest tests/ --junitxml=test_results.xml
+# Run development server
+make run
 
-# Extract test-requirement links
-python manage.py extract_links --output links.json
+# Open http://localhost:8000/admin/
+```
 
-# Import results and compute status
-python manage.py import_results test_results.xml --links links.json
+## Development Commands
 
-# View dashboard
-python manage.py runserver
+SpecTrace includes a Makefile for common development tasks (uses `uv` for package management):
+
+| Command | Description |
+|---------|-------------|
+| `make help` | Show all available commands |
+| `make install` | Install package in editable mode (uses `uv pip install`) |
+| `make install-dev` | Install with dev dependencies (uses `uv pip install`) |
+| `make test` | Run tests with pytest |
+| `make migrate` | Run Django migrations |
+| `make makemigrations` | Create new migrations |
+| `make shell` | Open Django shell |
+| `make run` | Start development server |
+| `make clean` | Remove caches and build artifacts |
+| `make setup` | Create admin user (admin/admin) |
+| `make demo` | Run the SpecTrace demo |
+
+**Note:** If you don't have `uv` installed, the Makefile commands will fail. Install it first: `pip install uv`
+
+## Workflow Example
+
+```bash
+# 1. Import requirements from specs
+python spectrace/manage.py parse_specs specs/
+
+# 2. Run tests with JUnit output
+make test
+# or: pytest --junitxml=test_results.xml
+
+# 3. Extract test-requirement links
+python spectrace/manage.py extract_links --output links.json
+
+# 4. Import results and compute status
+python spectrace/manage.py import_results test_results.xml --links links.json
+
+# 5. View dashboard
+make run
 # Open http://localhost:8000/admin/
 ```
 
@@ -43,7 +88,8 @@ See the **[Document Pipeline Example](examples/document-pipeline/)** for a compr
 
 Run the demo:
 ```bash
-python scripts/demo_pipeline.py
+make demo
+# or: python scripts/demo_pipeline.py
 ```
 
 ## Writing Specs
@@ -80,7 +126,9 @@ def test_login_creates_session():
     pass
 ```
 
-## Commands
+## Management Commands
+
+SpecTrace provides Django management commands for various operations:
 
 | Command | Description |
 |---------|-------------|
@@ -91,6 +139,8 @@ def test_login_creates_session():
 | `import_slos <dir>` | Import SLOs from OpenSLO YAML files |
 | `update_slo_status --from-json <file>` | Update SLO status from observability data |
 | `import_inapp_validations <json>` | Import in-app validation results |
+
+All commands are run via: `python spectrace/manage.py <command>`
 
 ## Verification Status
 
@@ -125,7 +175,7 @@ spec:
         duration: 30d
 ```
 
-Import with: `python manage.py import_slos slos/`
+Import with: `python spectrace/manage.py import_slos slos/`
 
 ## REST API
 
@@ -167,11 +217,23 @@ curl -X POST http://localhost:8000/api/validation/result/ \
 Validate test-requirement links in CI to catch drift:
 
 ```bash
-python manage.py validate_links links.json --strict
+python spectrace/manage.py validate_links links.json --strict
 ```
 
 - `--strict` - Exit with error on warnings (missing coverage)
 - `--format json` - Output JSON for programmatic parsing
+
+Example in CI pipeline:
+```yaml
+# .github/workflows/test.yml
+- name: Run tests
+  run: make test
+
+- name: Validate requirements coverage
+  run: |
+    python spectrace/manage.py extract_links --output links.json
+    python spectrace/manage.py validate_links links.json --strict
+```
 
 ## License
 

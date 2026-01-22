@@ -230,15 +230,19 @@ python spectrace/manage.py parse_specs specs/ --dry-run  # Validate without savi
 
 ### Installation
 ```bash
-# Install package in editable mode
+# Install package in editable mode (uses uv - recommended)
 make install
 # or
-pip install -e .
+uv pip install -e .
 
 # Install with dev dependencies
 make install-dev
 # or
-pip install -e ".[dev]"
+uv pip install -e ".[dev]"
+
+# Note: If uv is not installed, install it first:
+# curl -LsSf https://astral.sh/uv/install.sh | sh
+# or: pip install uv
 ```
 
 ### Cleanup
