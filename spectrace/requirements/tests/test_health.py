@@ -1,6 +1,6 @@
 """Tests for health check utilities and domain objects."""
 import time
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import requests
 
@@ -11,6 +11,7 @@ from requirements.health import (
     check_authentication,
     check_configuration,
     check_permissions,
+    test_linear_connection,
 )
 
 
@@ -532,3 +533,141 @@ class TestCheckPermissions:
         assert result.timestamp is not None
         assert result.timestamp.endswith('Z')
         assert 'T' in result.timestamp
+
+
+class TestLinearConnection:
+    """Tests for test_linear_connection aggregator."""
+
+    def test_all_checks_pass(self):
+        """All valid config and mocked API returns success=True."""
+        with patch('requirements.linear.LinearClient') as MockClient:
+            mock_client = Mock()
+            # Auth succeeds, then permissions succeeds
+            mock_client._execute_query.side_effect = [
+                {'viewer': {'id': '1', 'name': 'Test', 'email': 'test@test.com'}},
+                {'issues': {'nodes': []}}
+            ]
+            MockClient.return_value = mock_client
+
+            result = test_linear_connection(
+                api_key='lin_api_test123',
+                workspace='my-workspace',
+                team='engineering'
+            )
+
+            assert result.success is True
+            assert result.message == "All checks passed"
+            assert len(result.checks) == 3
+            assert all(c.passed for c in result.checks)
+
+    def test_config_failure_short_circuits(self):
+        """Invalid config returns immediately without API calls."""
+        with patch('requirements.linear.LinearClient') as MockClient:
+            result = test_linear_connection(
+                api_key='',  # Invalid - missing
+                workspace='my-workspace',
+                team='engineering'
+            )
+
+            assert result.success is False
+            assert 'Configuration' in result.message
+            assert len(result.checks) == 1
+            assert result.checks[0].name == "Configuration"
+            # No API calls should be made
+            MockClient.assert_not_called()
+
+    def test_auth_failure_short_circuits(self):
+        """Failed auth skips permissions check."""
+        with patch('requirements.linear.LinearClient') as MockClient:
+            mock_client = Mock()
+            mock_response = Mock()
+            mock_response.status_code = 401
+            mock_response.text = '{"error": "Unauthorized"}'
+            http_error = requests.HTTPError()
+            http_error.response = mock_response
+            mock_client._execute_query.side_effect = http_error
+            MockClient.return_value = mock_client
+
+            result = test_linear_connection(
+                api_key='lin_api_test123',
+                workspace='my-workspace',
+                team='engineering'
+            )
+
+            assert result.success is False
+            assert 'Authentication' in result.message
+            assert len(result.checks) == 2  # Config passed, Auth failed, Perm skipped
+            assert result.checks[0].passed is True  # Config
+            assert result.checks[1].passed is False  # Auth
+
+    def test_permission_failure(self):
+        """All checks run but permissions fails."""
+        with patch('requirements.linear.LinearClient') as MockClient:
+            mock_client = Mock()
+            mock_response = Mock()
+            mock_response.status_code = 403
+            mock_response.text = '{"error": "Forbidden"}'
+            http_error = requests.HTTPError()
+            http_error.response = mock_response
+
+            # Auth succeeds, permissions fails
+            def side_effect(query):
+                if 'viewer' in query:
+                    return {'viewer': {'id': '1', 'name': 'Test', 'email': 'test@test.com'}}
+                else:
+                    raise http_error
+
+            mock_client._execute_query.side_effect = side_effect
+            MockClient.return_value = mock_client
+
+            result = test_linear_connection(
+                api_key='lin_api_test123',
+                workspace='my-workspace',
+                team='engineering'
+            )
+
+            assert result.success is False
+            assert 'Permission' in result.message
+            assert len(result.checks) == 3
+            assert result.checks[0].passed is True  # Config
+            assert result.checks[1].passed is True  # Auth
+            assert result.checks[2].passed is False  # Permissions
+
+    def test_checks_in_correct_order(self):
+        """Checks are ordered: Configuration, Authentication, Permissions."""
+        with patch('requirements.linear.LinearClient') as MockClient:
+            mock_client = Mock()
+            mock_client._execute_query.side_effect = [
+                {'viewer': {'id': '1', 'name': 'Test', 'email': 'test@test.com'}},
+                {'issues': {'nodes': []}}
+            ]
+            MockClient.return_value = mock_client
+
+            result = test_linear_connection(
+                api_key='lin_api_test123',
+                workspace='my-workspace',
+                team='engineering'
+            )
+
+            check_names = [c.name for c in result.checks]
+            assert check_names == ["Configuration", "Authentication", "Permissions"]
+
+    def test_all_checks_have_timestamps(self):
+        """Every check in result has a timestamp."""
+        with patch('requirements.linear.LinearClient') as MockClient:
+            mock_client = Mock()
+            mock_client._execute_query.side_effect = [
+                {'viewer': {'id': '1', 'name': 'Test', 'email': 'test@test.com'}},
+                {'issues': {'nodes': []}}
+            ]
+            MockClient.return_value = mock_client
+
+            result = test_linear_connection(
+                api_key='lin_api_test123',
+                workspace='my-workspace',
+                team='engineering'
+            )
+
+            for check in result.checks:
+                assert check.timestamp is not None
+                assert check.timestamp.endswith('Z')
