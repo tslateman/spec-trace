@@ -8,6 +8,7 @@ from requirements.health import (
     TestConnectionResult,
     VerificationCheck,
     _sanitize_response,
+    check_authentication,
     check_configuration,
     check_permissions,
 )
@@ -314,6 +315,122 @@ class TestCheckConfiguration:
             workspace="my-workspace",
             team="my-team"
         )
+
+        assert result.timestamp is not None
+        assert result.timestamp.endswith('Z')
+        assert 'T' in result.timestamp
+
+
+class TestCheckAuthentication:
+    """Tests for check_authentication function."""
+
+    def test_successful_authentication(self):
+        """Valid viewer query returns passed=True with user info."""
+        mock_client = Mock()
+        mock_client._execute_query.return_value = {
+            'viewer': {
+                'id': 'user-123',
+                'name': 'Test User',
+                'email': 'test@example.com'
+            }
+        }
+
+        result = check_authentication(mock_client)
+
+        assert result.passed is True
+        assert result.name == "Authentication"
+        assert result.response_status == 200
+        assert "Authenticated as Test User" in result.details
+        assert "test@example.com" in result.details
+        assert result.error_message is None
+
+    def test_http_401_unauthorized(self):
+        """HTTP 401 returns failed check with sanitized response."""
+        mock_client = Mock()
+        mock_response = Mock()
+        mock_response.status_code = 401
+        mock_response.text = '{"error": "Unauthorized", "key": "lin_api_secret123"}'
+        http_error = requests.HTTPError(response=mock_response)
+        mock_client._execute_query.side_effect = http_error
+
+        result = check_authentication(mock_client)
+
+        assert result.passed is False
+        assert result.name == "Authentication"
+        assert result.response_status == 401
+        assert "HTTP 401" in result.error_message
+        assert "Authentication failed" in result.error_message
+        # Verify sanitization
+        assert result.response_body is not None
+        assert 'lin_api_secret123' not in result.response_body
+        assert '[REDACTED]' in result.response_body
+
+    def test_http_403_forbidden(self):
+        """HTTP 403 returns failed check with status code."""
+        mock_client = Mock()
+        mock_response = Mock()
+        mock_response.status_code = 403
+        mock_response.text = '{"error": "Forbidden"}'
+        http_error = requests.HTTPError(response=mock_response)
+        mock_client._execute_query.side_effect = http_error
+
+        result = check_authentication(mock_client)
+
+        assert result.passed is False
+        assert result.name == "Authentication"
+        assert result.response_status == 403
+        assert "HTTP 403" in result.error_message
+
+    def test_graphql_error(self):
+        """GraphQL error (ValueError) returns failed check."""
+        mock_client = Mock()
+        mock_client._execute_query.side_effect = ValueError(
+            "GraphQL errors: [{'message': 'Invalid token'}]"
+        )
+
+        result = check_authentication(mock_client)
+
+        assert result.passed is False
+        assert result.name == "Authentication"
+        assert "GraphQL error" in result.error_message
+        assert "Invalid token" in result.error_message
+        assert result.response_status is None
+
+    def test_network_error(self):
+        """Network error (ConnectionError) returns failed check."""
+        mock_client = Mock()
+        mock_client._execute_query.side_effect = ConnectionError(
+            "Failed to establish connection"
+        )
+
+        result = check_authentication(mock_client)
+
+        assert result.passed is False
+        assert result.name == "Authentication"
+        assert "Request failed" in result.error_message
+        assert "ConnectionError" in result.error_message
+        assert "Failed to establish connection" in result.error_message
+
+    def test_timeout_error(self):
+        """Timeout error returns failed check."""
+        mock_client = Mock()
+        mock_client._execute_query.side_effect = TimeoutError("Request timed out")
+
+        result = check_authentication(mock_client)
+
+        assert result.passed is False
+        assert result.name == "Authentication"
+        assert "Request failed" in result.error_message
+        assert "TimeoutError" in result.error_message
+
+    def test_check_has_timestamp(self):
+        """Authentication check result includes auto-generated timestamp."""
+        mock_client = Mock()
+        mock_client._execute_query.return_value = {
+            'viewer': {'id': 'user-123', 'name': 'Test', 'email': 'test@example.com'}
+        }
+
+        result = check_authentication(mock_client)
 
         assert result.timestamp is not None
         assert result.timestamp.endswith('Z')
