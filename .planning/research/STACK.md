@@ -1,7 +1,7 @@
 # Technology Stack for SpecTrace
 
 **Project:** SpecTrace - Requirements Traceability System
-**Researched:** 2026-01-19
+**Researched:** 2026-01-19 (Updated 2026-01-21 for Integration Health Checks)
 **Overall Confidence:** HIGH (verified with official documentation and PyPI)
 
 ---
@@ -9,6 +9,8 @@
 ## Executive Summary
 
 SpecTrace should use a Django 5.2 LTS stack with pytest 9.x for the testing framework. The architecture leverages Django's mature admin ecosystem (enhanced with Unfold) for the dashboard, pytest custom markers for requirement linking, and python-frontmatter for spec parsing. This is a well-trodden path with excellent documentation and battle-tested components.
+
+**NEW (v3):** Integration health checks require minimal additions - only `django-health-check` framework. Use standard library dataclasses for result objects and the existing `requests` library for connection testing.
 
 ---
 
@@ -168,7 +170,115 @@ Users must be able to log in with email and password...
 - Writes: Moderate (only update descendants, not whole table)
 - Perfect for specs (read-heavy, occasional restructuring)
 
-**Source:** [django-treebeard PyPI](https://pypi.org/project/django-treebeard/), [django-mptt PyPI](https://pypi.org/project/django-mptt/)
+**Source:** [django-treebeard PyPI](https://pypi.org/project/django-treebeard/), [django-mptt PyPI](https://pypi.org/project/django-mppt/)
+
+---
+
+### Integration Health Monitoring (NEW in v3)
+
+| Technology | Version | Purpose | Rationale | Confidence |
+|------------|---------|---------|-----------|------------|
+| **django-health-check** | 3.20.8 | Health check framework | Pluggable health check backend system, `/ht/` endpoint with HTML/JSON, actively maintained (Dec 2025). | HIGH |
+| **requests** | 2.32.5 | HTTP/GraphQL testing | Already in stack. Handles both REST and GraphQL (Linear API). Built-in retry via HTTPAdapter. | HIGH |
+| **dataclasses** | stdlib 3.12+ | Result objects | Frozen dataclasses for immutable health check results. No validation library needed for internal results. | HIGH |
+
+**Why django-health-check:**
+- Official Django health check library with 2.7k GitHub stars
+- Pluggable backend system - extend `BaseHealthCheckBackend` for each integration
+- Built-in checks for database, cache, storage
+- `/ht/` endpoint returns HTTP 200 (healthy) or 500 (unhealthy)
+- JSON and HTML response formats
+- Integrates with monitoring tools (Prometheus, Datadog, New Relic)
+
+**Why NOT Pydantic for health check results:**
+- Health check results are internal (not API boundaries)
+- No runtime validation needed - health checks are trusted internal code
+- Adds 8+ dependencies unnecessarily
+- Frozen dataclasses are faster and sufficient
+
+**Why synchronous health checks (not async):**
+- Health checks are simple I/O operations (API calls, DB queries)
+- No concurrent operations to benefit from async
+- Django transactions don't work in async mode (need atomic result updates)
+- Async adds ~1ms context-switch overhead without benefit
+- Most health checks complete in <100ms
+
+**Connection testing pattern:**
+```python
+# Use requests with retry strategy
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+
+session = requests.Session()
+retry_strategy = Retry(
+    total=3,
+    status_forcelist=[429, 500, 502, 503, 504],
+    backoff_factor=1,  # 1s, 2s, 4s
+)
+session.mount("https://", HTTPAdapter(max_retries=retry_strategy))
+
+# Timeout tuple: (connect_timeout, read_timeout)
+# 3.05s = slightly > TCP retransmission window (3s)
+response = session.post(url, json=payload, timeout=(3.05, 27))
+```
+
+**GraphQL health check pattern (Linear API):**
+```python
+# Use introspection query - all GraphQL servers support __typename
+query = """
+query HealthCheck {
+    __typename
+}
+"""
+response = session.post(
+    "https://api.linear.app/graphql",
+    json={"query": query},
+    headers={"Authorization": api_key},
+    timeout=(3.05, 27),
+)
+```
+
+**Health check result dataclass:**
+```python
+from dataclasses import dataclass
+from typing import Literal
+
+@dataclass(frozen=True)
+class HealthCheckResult:
+    """Immutable health check result."""
+    status: Literal["healthy", "degraded", "error"]
+    message: str
+    response_time_ms: float | None = None
+    details: dict | None = None
+```
+
+**Custom health check backend:**
+```python
+from health_check.backends import BaseHealthCheckBackend
+from health_check.exceptions import HealthCheckException
+
+class LinearHealthCheckBackend(BaseHealthCheckBackend):
+    critical_service = True  # HTTP 500 if this fails
+
+    def check_status(self):
+        result = test_linear_connection(...)
+        if result.status != "healthy":
+            self.add_error(HealthCheckException(result.message))
+
+    def identifier(self):
+        return "Linear API"
+```
+
+**Sources:**
+- [django-health-check 3.20.8 (PyPI)](https://pypi.org/project/django-health-check/)
+- [django-health-check docs](https://django-health-check.readthedocs.io/en/latest/)
+- [requests 2.32.5 (PyPI)](https://pypi.org/project/requests/)
+- [Python Requests Timeout Best Practices](https://oxylabs.io/blog/python-requests-timeout)
+- [Python Requests Retry Best Practices](https://www.zenrows.com/blog/python-requests-retry)
+- [Frozen Dataclasses Best Practices](https://testdriven.io/tips/671b59e7-ba72-4201-82d4-473c8e594c55/)
+- [Django Async Support (When NOT to use async)](https://docs.djangoproject.com/en/6.0/topics/async/)
+- [Linear GraphQL API](https://linear.app/developers/graphql)
+- [Apollo GraphQL Health Checks](https://www.apollographql.com/docs/apollo-server/monitoring/health-checks)
 
 ---
 
@@ -246,24 +356,43 @@ pip install pytest==9.0.2
 pip install pytest-django==4.11.1
 pip install pytest-json-report==1.5.0
 
+# Integration health checks (NEW)
+pip install django-health-check==3.20.8
+pip install requests==2.32.5  # Already installed for Linear client
+
 # Optional: Background tasks
 # pip install huey==2.5.0
 # pip install redis==5.0.0
 ```
 
-### requirements.txt
+### requirements.txt / pyproject.toml
 
+```toml
+dependencies = [
+    "Django>=5.2,<5.3",
+    "psycopg[binary]>=3.1",
+    "django-unfold>=0.76,<1.0",
+    "django-htmx>=1.27,<2.0",
+    "django-treebeard>=4.8,<5.0",
+    "python-frontmatter>=1.1,<2.0",
+    "Markdown>=3.10,<4.0",
+    "pytest>=9.0,<10.0",
+    "pytest-django>=4.11,<5.0",
+    "pytest-json-report>=1.5,<2.0",
+    "django-health-check>=3.20.8,<4.0",  # NEW
+    "requests>=2.32,<3.0",  # NEW (for health checks + Linear client)
+]
 ```
-Django>=5.2,<5.3
-psycopg[binary]>=3.1
-django-unfold>=0.76,<1.0
-django-htmx>=1.27,<2.0
-django-treebeard>=4.8,<5.0
-python-frontmatter>=1.1,<2.0
-Markdown>=3.10,<4.0
-pytest>=9.0,<10.0
-pytest-django>=4.11,<5.0
-pytest-json-report>=1.5,<2.0
+
+### INSTALLED_APPS additions for health checks
+
+```python
+INSTALLED_APPS = [
+    # ... existing apps ...
+    'health_check',  # NEW
+    'health_check.db',  # NEW - database health check
+    'health_check.cache',  # NEW - cache health check (if using cache)
+]
 ```
 
 ---
@@ -279,6 +408,10 @@ pytest-json-report>=1.5,<2.0
 | **Django Ninja** | Less mature, smaller community, worse error handling than DRF. If you need API, use DRF. |
 | **Custom admin from scratch** | Months of work. Unfold + django.contrib.admin is 90% there. |
 | **MongoDB / NoSQL** | Hierarchical data is well-served by PostgreSQL. JSONB handles flexible metadata. |
+| **Pydantic** (for health checks) | Unnecessary for internal health check results. Use frozen dataclasses. |
+| **httpx / aiohttp** (for health checks) | Async not beneficial for simple health checks. Use requests with retry strategy. |
+| **gql / graphene-python** | GraphQL is just JSON POST with requests. No library needed. |
+| **APScheduler / django-cron** | Use management commands + system cron if periodic health checks needed. |
 
 ---
 
@@ -293,12 +426,15 @@ pytest-json-report>=1.5,<2.0
 | Test linking | pytest markers | Idiomatic, validated at collection time |
 | Spec format | YAML frontmatter + Markdown | Human-readable, git-friendly |
 | Background tasks | None initially (Huey when needed) | YAGNI - add complexity when proven need |
+| Health checks | django-health-check + requests | Pluggable backends, minimal dependencies |
+| Health check results | Frozen dataclasses | Immutable, fast, no validation overhead |
+| Health check execution | Synchronous | Simple I/O operations, no async benefit |
 
 ---
 
 ## Version Verification Sources
 
-All versions verified from official sources on 2026-01-19:
+All versions verified from official sources on 2026-01-19 (health check additions verified 2026-01-21):
 
 | Package | Version | Source |
 |---------|---------|--------|
@@ -311,3 +447,5 @@ All versions verified from official sources on 2026-01-19:
 | python-frontmatter | 1.1.0 | [PyPI](https://pypi.org/project/python-frontmatter/) |
 | Python-Markdown | 3.10 | [PyPI](https://pypi.org/project/Markdown/) |
 | pytest-json-report | 1.5.0 | [PyPI](https://pypi.org/project/pytest-json-report/) |
+| **django-health-check** | **3.20.8** | **[PyPI](https://pypi.org/project/django-health-check/)** (Dec 2025) |
+| **requests** | **2.32.5** | **[PyPI](https://pypi.org/project/requests/)** (Aug 2025) |

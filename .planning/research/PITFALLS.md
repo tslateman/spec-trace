@@ -1,468 +1,510 @@
-# Domain Pitfalls: Requirements Traceability Systems
+# Domain Pitfalls: Integration Health Checks
 
-**Project:** SpecTrace
-**Domain:** Requirements traceability with markdown specs, pytest decorators, Django dashboard
-**Researched:** 2026-01-19
-**Confidence:** HIGH (multiple sources, domain-specific patterns verified)
+**Domain:** Adding health check features to existing Django application
+**Context:** SpecTrace integration health monitoring (Linear GraphQL, SLO REST APIs, CI/CD webhooks)
+**Researched:** 2026-01-21
+**Confidence:** HIGH (verified with official sources and current 2025-2026 documentation)
+
+## Executive Summary
+
+Adding integration health checks to an existing Django application introduces specific failure modes that differ from greenfield health check implementations. The primary risks cluster around: **rate limiting external APIs**, **Django async/timeout deadlocks**, **stale cached results**, **database connection pool exhaustion**, **security exposure**, and **cascading failures**. Many of these issues are invisible until production load or external API behavior changes trigger them.
 
 ---
 
 ## Critical Pitfalls
 
-Mistakes that cause rewrites, project failure, or fundamental trust erosion.
+Mistakes that cause rewrites, system outages, or major architectural changes.
 
----
+### Pitfall 1: Polling Third-Party APIs Without Rate Limit Awareness
 
-### Pitfall 1: Hierarchical ID Fragility (The Renumber Cascade)
-
-**What goes wrong:** Using outline-style hierarchical requirement IDs (REQ-1.2.3) that embed position in the hierarchy. When requirements are reordered, moved, or deleted, all downstream IDs shift, breaking every test decorator reference and dashboard link.
-
-**Why it happens:** Outline numbering feels natural from Word/Google Docs. Teams assume "REQ-1.2.3" is stable. They don't realize position-based IDs are fundamentally unstable in evolving specifications.
-
-**Consequences:**
-- Mass broken references after any spec restructure
-- Engineers lose trust in the system
-- Manual ID fixup becomes a recurring maintenance burden
-- History becomes meaningless ("REQ-1.2" used to mean something different)
-
-**Warning signs:**
-- Spec authors want to "reorganize" or "clean up" the hierarchy
-- Tests reference IDs like `@spec("REQ-1.2.3")` with positional meaning
-- Discussions about "what happened to REQ-4.x?"
-
-**Prevention:**
-- Use **immutable, sequential IDs** that never change: `SPEC-0042`
-- Hierarchy lives in folder/file structure and metadata, NOT in the ID
-- Generate IDs automatically on creation, never manually assigned
-- Consider GUIDs for internal references, human IDs for display only
-
-**Detection:**
-- Grep for positional-looking IDs in decorators: `@spec(".*\.\d+\.\d+.*")`
-- Count ID references that 404 in the dashboard
-
-**Phase to address:** Phase 1 (Core Schema). This is foundational - get it wrong and you rebuild everything.
-
-**Sources:**
-- [Sparx Systems: Requirements Naming and Numbering](https://sparxsystems.com/enterprise_architect_user_guide/15.2/model_domains/requirements_naming_and_numbering.html)
-- [Digital Solution Architecture: A frequent mistake when naming ID references](https://www.digital-solution-architecture.com/blog/2021-07-13/A-frequent-mistake-when-naming-ID-references.php)
-
----
-
-### Pitfall 2: Specification Drift (The Lying Docs Problem)
-
-**What goes wrong:** Markdown specs in the codebase become out of sync with actual system behavior. Tests pass, dashboard shows green, but the specs describe a system that no longer exists.
+**What goes wrong:**
+Health checks that poll external APIs (Linear, SLO platforms) can exhaust rate limits, causing the integration to fail for real user requests. Linear's GraphQL API has strict limits: 5,000 requests/hour with API key, 250,000 complexity points/hour, and 10,000 point max per query. Health checks that run every 30 seconds would consume 60 requests/hour per check endpoint—multiplied by development, staging, and production environments, this quickly exhausts quotas.
 
 **Why it happens:**
-- Specs and code live together but evolve separately
-- "Update docs" checkbox in PRs gets checked reflexively without actual updates
-- Engineers change behavior but not specs; PMs write specs but don't validate against code
-- No automated validation that specs match implementation
+Health check literature recommends frequent checks (30-60 second intervals), but this advice assumes unlimited API access. Teams implement naive polling without considering third-party rate limits or cost implications (some APIs charge per call).
 
 **Consequences:**
-- PMs make decisions based on outdated specs
-- New engineers implement against stale requirements
-- Compliance/audit failures when specs don't match reality
-- Trust erosion: "Nobody reads the specs anyway"
-
-**Warning signs:**
-- Specs reference features that were never built or were deprecated
-- PR reviews don't include spec reviewers
-- Engineers say "I didn't know that spec existed"
-- Specs haven't been modified in months while code changed weekly
+- Real user operations fail with rate limit errors while health checks report "healthy"
+- Integration becomes unusable during business hours when usage peaks
+- Emergency debugging under time pressure to add rate limiting retroactively
+- Potential API key suspension for repeated violations
 
 **Prevention:**
-- **Bi-directional traceability enforcement:** Every test must link to a spec; every spec should have linked tests
-- **Orphan detection:** Dashboard surfaces untested specs AND unlinked tests
-- **Spec modification triggers:** Changes to related code should prompt spec review
-- **Include spec owners in code review** for relevant paths
-- **Version spec+code together:** Spec changes and code changes in same PR when related
+1. **Cache health check results** with TTL (5-15 minutes) instead of live polling
+2. **Use webhook push model** where possible—Linear explicitly recommends webhooks over polling
+3. **Implement request budgeting**: Track remaining quota from API response headers (Linear returns `X-RateLimit-Remaining`, `X-RateLimit-Limit`, `X-RateLimit-Reset`)
+4. **Separate "connection test" from "status monitoring"**: Connection test (lightweight introspection query) runs frequently, full status checks run infrequently
+5. **Monitor rate limit consumption** as a health metric itself
 
-**Detection:**
-- Last-modified dates: specs unchanged while code paths changed
-- Coverage gaps: specs with zero linked tests
-- Orphan tests: tests that don't reference any valid spec ID
+**Detection warning signs:**
+- `RATELIMITED` error codes in API responses (Linear uses 400 status with error code)
+- Health checks pass but integration features fail
+- Time-of-day correlation with failures (peaks during business hours)
+- Multiple environments sharing same API key hitting limits faster
 
-**Phase to address:** Phase 2 (Parsing/Linking) for detection; ongoing enforcement in CI/CD
+**Phase to address:** Phase 1 (Architecture)—must be designed in from the start, difficult to retrofit
 
 **Sources:**
-- [DocsAlot: Documentation Rots. Here's How to Stop It](https://docsalot.dev/blog/documentation-rots-heres-how-to-stop-it)
-- [Gaudion: What is Documentation Drift and How to Avoid It?](https://gaudion.dev/blog/documentation-drift)
+- [Linear API Rate Limiting](https://developers.linear.app/docs/graphql/working-with-the-graphql-api/rate-limiting) - LINEAR_HIGH
+- [Rate Limiting Best Practices](https://api7.ai/blog/tips-for-health-check-best-practices) - MEDIUM
+- [Third-party API Rate Limiting](https://www.zigpoll.com/content/what-are-the-best-practices-for-handling-api-rate-limiting-when-integrating-thirdparty-services-in-a-web-application) - MEDIUM
 
 ---
 
-### Pitfall 3: False Confidence from Green Dashboards
+### Pitfall 2: Django Async/Timeout Deadlocks in Health Check Endpoints
 
-**What goes wrong:** Dashboard shows "85% requirements verified" but this metric is meaningless or misleading. Tests exist and pass but don't actually verify the requirement's behavior.
+**What goes wrong:**
+Django 4.2+ with asgiref 3.8+ experiences main thread deadlocks when HTTP requests timeout (60s nginx timeout is common). If a health check endpoint uses `async_to_sync()` or `sync_to_async()` and the external API call times out, the entire Django/Daphne process can deadlock, blocking ALL subsequent requests—not just the timed-out health check. This turns a single slow API response into a complete system outage.
 
 **Why it happens:**
-- Teams optimize for metrics, not quality (Goodhart's Law)
-- A test that mentions a requirement ID isn't the same as a test that verifies it
-- Assertion-free tests still "pass" and link to requirements
-- Shallow tests cover the happy path but miss edge cases and failure modes
+Django's async bridge (`asgiref`) changed thread management in 3.8.0+, introducing deadlock conditions when timeouts interact with thread-sensitive contexts. Health checks often trigger this by wrapping synchronous API calls (Linear GraphQL, REST SLO platforms) with async wrappers to avoid blocking.
 
 **Consequences:**
-- PMs believe features are verified when they're not
-- Defects slip to production because coverage numbers lied
-- Teams become cynical about traceability ("it's just compliance theater")
-- Auditors get suspicious when "verified" requirements have production bugs
-
-**Warning signs:**
-- High coverage percentage but production bugs in "verified" requirements
-- Tests that touch requirement code but assert nothing meaningful
-- All tests pass in seconds (suspiciously fast for claimed coverage)
-- Coverage jumps dramatically after "add traceability" sprint
+- Complete system unresponsiveness requiring process restart
+- Cascading failures as load balancers detect unhealthy instances and route more traffic to fewer nodes
+- Health checks themselves become the primary cause of downtime
+- 10-15 second delay between timeout and deadlock makes debugging difficult (symptoms appear unrelated)
 
 **Prevention:**
-- **Distinguish "linked" from "verified":** A test is linked (references the spec); verification is a human judgment that the test adequately covers the requirement
-- **Require manual verification sign-off** for high-risk requirements
-- **Surface test quality signals:** Test duration, assertion count, mutation score if available
-- **Track requirement-to-bug correlation:** If "verified" requirements have bugs, surface this
-- **Don't make coverage percentage the KPI;** make it a diagnostic tool
+1. **Set aggressive connection timeouts** on ALL external API calls (2-5 seconds max for health checks)
+2. **Avoid `async_to_sync()` in views** that call external APIs—use httpx/aiohttp with native async instead of requests
+3. **Use circuit breaker pattern**: After N consecutive failures, stop calling external API for cooldown period
+4. **Test timeout behavior explicitly**: `pytest-timeout` with forced delays to verify graceful handling
+5. **Monitor thread pool exhaustion**: Track active threads and queue depth
 
-**Detection:**
-- Audit sample of "verified" requirements: do the tests actually test the requirement?
-- Compare coverage claims to production defect rate
-- Check for tests with zero or trivial assertions
+**Example vulnerable code pattern (current SpecTrace code):**
+```python
+# requirements/linear.py - uses requests.Session (synchronous)
+response = self.session.post(self.API_URL, json=payload)
+# If this times out in an async context → deadlock risk
+```
 
-**Phase to address:** Phase 3 (Dashboard) for display; establish norms early that coverage != verification
+**Detection warning signs:**
+- Complete system hang after 60+ seconds of slow API responses
+- `sync_to_async` or `async_to_sync` in stack traces before hang
+- Health check timeout correlation with system-wide unresponsiveness
+- Django debug toolbar showing deadlock when concurrent async operations run
+
+**Phase to address:** Phase 1 (Architecture)—must choose async-native HTTP client from start
 
 **Sources:**
-- [HackerNoon: Misleading Test Coverage and How to Avoid False Confidence](https://hackernoon.com/misleading-test-coverage-and-how-to-avoid-false-confidence)
-- [Qt: Why Code Coverage Metrics Can Be Misleading](https://www.qt.io/quality-assurance/blog/why-code-coverage-metrics-can-be-misleading-and-how-coco-code-coverage-tool-makes-them-meaningful)
-- [ThinkingLabs: The Fallacy of the 100% Code Coverage](https://thinkinglabs.io/articles/2022/03/19/the-fallacy-of-the-100-code-coverage.html)
+- [Django Async Deadlock Issues](https://forum.djangoproject.com/t/django-4-2-16-daphne-4-1-2-http-requests-timeout-result-main-thread-deadlock/38835) - HIGH (2025)
+- [sync_to_async Deadlocks](https://github.com/django/asgiref/issues/348) - HIGH
+- [Django Async Best Practices](https://docs.djangoproject.com/en/5.0/_modules/asgiref/sync/) - HIGH
 
 ---
 
-### Pitfall 4: Test Result Sync Race Conditions
+### Pitfall 3: Health Check Endpoint Exposing Sensitive Integration Details
 
-**What goes wrong:** Dashboard shows stale or incorrect test results. A test passes in CI but dashboard shows failure (or vice versa). Results from different CI runs get interleaved incorrectly.
+**What goes wrong:**
+Health check responses that include API keys, internal URLs, database connection strings, error messages with stack traces, or detailed integration configuration become reconnaissance tools for attackers. Even seemingly innocent details like "Linear API: team=ACME, workspace_id=abc123" leak organizational structure.
 
 **Why it happens:**
-- Django database transactions and Celery tasks race
-- CI pushes results before transaction commits
-- Multiple CI runs (different branches, reruns) write to same requirement status
-- Database replicas serve stale reads
+Developers prioritize debuggability and include rich error context in health check responses. Default Django error pages (when DEBUG=True) expose full tracebacks. API endpoints at `/api/health` or `/status` are often exempt from authentication because monitoring systems need unauthenticated access.
 
 **Consequences:**
-- PMs lose trust: "The dashboard said it passed but CI failed"
-- Engineers dismiss dashboard as unreliable
-- Debugging becomes harder (which result is real?)
-- Audit trail becomes unreliable
-
-**Warning signs:**
-- Dashboard status doesn't match recent CI run
-- "Refresh the page and it changes" reports
-- Status flapping between pass/fail without code changes
-- Results from old CI runs appearing after new runs
+- Information disclosure enables targeted attacks
+- Compliance violations (SOC2, HIPAA) if PII/PHI in error messages
+- Attackers map internal architecture and identify vulnerable components
+- API keys leaked in logs/monitoring systems that store health check responses
 
 **Prevention:**
-- **Use `transaction.on_commit()`** for any task that writes test results
-- **Idempotent result updates:** Include CI run ID, timestamp; only update if newer
-- **Optimistic locking:** Detect and reject stale writes
-- **Event sourcing for results:** Store all results, derive current status
-- **Reconciliation job:** Periodically validate dashboard matches source of truth (CI)
+1. **Return minimal response structure**: `{"status": "healthy/degraded/unhealthy", "timestamp": "..."}` only
+2. **Separate internal vs. external health endpoints**: `/health` (public, minimal) vs. `/admin/health/detailed` (authenticated, verbose)
+3. **Never include in responses**: API keys, tokens, passwords, internal IPs, database names, user counts, exact version numbers
+4. **Sanitize error messages**: Generic "integration error" not "LinearClient auth failed: invalid token lin_api_xyz"
+5. **Use authentication even for basic health checks** or restrict by IP allowlist
+6. **HTTPS only**, no exceptions—health checks over HTTP expose sensitive headers
 
-**Detection:**
-- Compare dashboard status to CI API for same commit
-- Log write timestamps and detect out-of-order writes
-- Alert on results that flip without corresponding CI activity
+**Example vulnerable pattern:**
+```python
+# DON'T DO THIS
+return JsonResponse({
+    "linear": {
+        "status": "failed",
+        "error": str(e),  # Exposes "Authorization failed for key lin_api_..."
+        "api_url": LINEAR_API_URL,
+        "last_query": query_string
+    }
+})
+```
 
-**Phase to address:** Phase 3 (Dashboard/CI Integration). Design the result ingestion carefully from the start.
+**Detection warning signs:**
+- Health check endpoints return different status codes based on auth state (leaks valid usernames)
+- Error messages in responses contain tokens, keys, or internal paths
+- Monitoring dashboards display API keys in health check history
+- No authentication required to access health status
+
+**Phase to address:** Phase 2 (Implementation)—design response format in Phase 1, enforce sanitization in Phase 2
 
 **Sources:**
-- [Adam Johnson: Common Celery Issues on Django Projects](https://adamj.eu/tech/2020/02/03/common-celery-issues-on-django-projects/)
-- [TestDriven: Working with Celery and Django Database Transactions](https://testdriven.io/blog/celery-database-transactions/)
-- [Vinta Software: Advanced Celery for Django](https://www.vintasoftware.com/blog/guide-django-celery-tasks)
+- [Azure Health Endpoint Security](https://learn.microsoft.com/en-us/azure/architecture/patterns/health-endpoint-monitoring) - HIGH
+- [Spring Boot Endpoint Security](https://docs.spring.io/spring-boot/reference/actuator/endpoints.html) - HIGH
+- [API Health Check Security](https://api7.ai/blog/tips-for-health-check-best-practices) - MEDIUM
+
+---
+
+### Pitfall 4: Database Connection Pool Exhaustion from Health Checks
+
+**What goes wrong:**
+Health check endpoints query the database to verify connectivity, but under load or during incidents, these checks can exhaust the connection pool, preventing real application queries from executing. A paradox: the health check trying to detect database issues *causes* database issues by consuming the last available connections.
+
+**Why it happens:**
+Each health check request opens a database connection (Django ORM requires a connection for any query). With frequent checks (30-60s), multiple monitoring sources (load balancer, APM, external monitors), and multiple application instances, connection consumption adds up. During incidents (slow queries, connection leaks), health checks compete with real traffic for scarce connections.
+
+**Consequences:**
+- Application reports 500 errors while health check reports "database healthy"
+- Cascading failures as health check itself becomes a DDoS attack on the database
+- False positives: health check has dedicated connection that succeeds while application pool exhausted
+- Emergency mitigation requires disabling health checks, leaving system blind during incident
+
+**Prevention:**
+1. **Use connection pooling with reserve capacity**: If max pool = 100, reserve 10 for health checks via separate pool
+2. **Don't run DB queries in health checks** unless absolutely necessary—check `/health` without DB, `/health/detailed` with DB (less frequent)
+3. **Implement health check connection timeout** (2-5 seconds max, not default 30s)
+4. **Use Django connection health check**: `connection.ensure_connection()` instead of full query
+5. **Monitor connection pool metrics**: Active, idle, waiting queue depth—alert before exhaustion
+6. **Fail fast**: Circuit breaker after 3 consecutive DB check failures, stop trying for 60s
+
+**Current SpecTrace risk:**
+```python
+# api.py line 277 - get_requirement_status runs queries
+requirement = Requirement.objects.get(external_id=external_id)
+test_count = requirement.test_results.count()  # Multiple DB queries
+# If load balancer polls this frequently → connection pressure
+```
+
+**Detection warning signs:**
+- Application 500 errors with "connection pool exhausted" while health returns 200
+- Health check response time increases during high traffic
+- Database connection count spikes correlate with health check intervals
+- Connection timeout errors only during peak load, not off-hours
+
+**Phase to address:** Phase 1 (Architecture)—connection pooling strategy must be designed upfront
+
+**Sources:**
+- [Connection Pool Exhaustion](https://howtech.substack.com/p/connection-pool-exhaustion-the-silent) - HIGH (2025)
+- [Health Check Connection Leaks](https://github.com/rundeck/rundeck/issues/2347) - HIGH
+- [Database Health Check Issues](https://medium.com/@shahharsh172/database-connection-pool-optimization-from-500-errors-to-99-9-uptime-9deb985f5164) - MEDIUM
 
 ---
 
 ## Moderate Pitfalls
 
-Mistakes that cause delays, technical debt, or user friction.
+Mistakes that cause delays, technical debt, or require significant rework.
+
+### Pitfall 5: Cascading Failures from Checking Downstream Health
+
+**What goes wrong:**
+Health check endpoint that queries the health of downstream integrations (Linear, SLO platform) marks the entire application as unhealthy when a single integration fails, even if that integration isn't critical. Load balancers remove healthy instances from rotation, compounding the problem. A temporary Linear API slowdown triggers a full SpecTrace outage.
+
+**Why it happens:**
+Simplistic health check design: "if any dependency fails, return 503." This follows the principle "fail if something is broken," but ignores that different dependencies have different criticality. Linear sync being down shouldn't make the entire dashboard inaccessible.
+
+**Prevention:**
+1. **Separate liveness vs. readiness checks**: Liveness = process alive, readiness = critical dependencies ready
+2. **Tiered health status**: `healthy` (all good), `degraded` (non-critical failure), `unhealthy` (critical failure)
+3. **Don't check downstream health in liveness probe**—only check process health (e.g., can we respond to HTTP?)
+4. **Cache last successful state**: If Linear fails, show last-known-good data for 15 minutes before marking degraded
+5. **Circuit breaker pattern**: After N failures, stop checking dependency for cooldown period, return cached state
+
+**Response format example:**
+```json
+{
+  "status": "degraded",
+  "components": {
+    "database": {"status": "healthy", "latency_ms": 5},
+    "linear_api": {"status": "degraded", "error": "rate limit exceeded", "cached_until": "2026-01-21T10:45:00Z"},
+    "slo_platform": {"status": "healthy", "latency_ms": 120}
+  }
+}
+```
+
+**Detection warning signs:**
+- All application instances marked unhealthy simultaneously when external API slows
+- Health check returns 503 but application features still work
+- Outages correlate with third-party service status pages
+
+**Phase to address:** Phase 2 (Implementation)—requires careful status aggregation logic
+
+**Sources:**
+- [Cascading Health Check Failures](https://thinhdanggroup.github.io/health-check-api/) - MEDIUM
+- [Health Check Anti-patterns](https://microservices.io/patterns/observability/health-check-api.html) - MEDIUM
 
 ---
 
-### Pitfall 5: Manual Traceability Becomes a Burden
+### Pitfall 6: GraphQL Introspection Query Performance Impact
 
-**What goes wrong:** Developers must manually add `@spec("SPEC-XXX")` decorators to every test. This becomes tedious, error-prone, and gets skipped. Traceability degrades over time as new tests are added without decorators.
+**What goes wrong:**
+Using GraphQL introspection queries (e.g., `query { __typename }`) as a "lightweight" health check actually performs full schema traversal, consuming significant CPU and memory. Under high frequency (every 30s from multiple sources), this creates noticeable performance impact and can trigger rate limit complexity penalties.
 
 **Why it happens:**
-- Extra step in test-writing workflow
-- No enforcement mechanism
-- Developers don't know which spec ID to use
-- Copy-paste of wrong spec IDs
-
-**Consequences:**
-- Incomplete traceability (many tests unlinked)
-- Wrong spec IDs (test claims to verify requirement it doesn't)
-- Developer resentment ("busywork")
-- Coverage numbers meaningless if half the tests aren't linked
-
-**Warning signs:**
-- New tests consistently missing decorators
-- Decorators added in bulk "traceability cleanup" sprints
-- Same spec ID used everywhere (copy-paste)
-- Developers asking "what spec ID should I use?"
+Common recommendation for GraphQL health checks is introspection query because it's "guaranteed to work." But introspection requires the server to traverse the entire schema and gather metadata—far from lightweight. Linear's complexity-based rate limiting counts introspection queries against the 250,000 point/hour limit.
 
 **Prevention:**
-- **Pre-commit hook or CI check:** Fail if test lacks spec decorator
-- **Autocomplete/IDE integration:** Help developers find the right spec
-- **Spec suggestion:** Analyze test name/path to suggest likely specs
-- **Make it required from day one;** retrofitting is harder
-- **Keep spec IDs visible:** In PR template, linked from code
+1. **Use a minimal query instead**: `query { viewer { id } }` (just fetch authenticated user ID, not full schema)
+2. **Don't use introspection in production** (often disabled for security anyway)
+3. **Cache introspection results locally** if schema validation is needed, re-fetch only on deployment
+4. **Consider HTTP HEAD request** to GraphQL endpoint instead—verifies connectivity without query execution
+5. **Monitor query complexity**: Track points consumed per health check, ensure it's under 10 points
 
-**Detection:**
-- Count tests without decorators over time (should be zero or trending down)
-- Audit decorator accuracy: does the test actually relate to the spec?
+**Example lightweight alternative:**
+```graphql
+# Instead of introspection (expensive)
+query HealthCheck {
+  __typename
+}
 
-**Phase to address:** Phase 2 (pytest integration). Make the decorator ergonomic and enforced.
+# Use minimal authenticated query (cheap)
+query HealthCheck {
+  viewer {
+    id
+  }
+}
+```
+
+**Detection warning signs:**
+- GraphQL server CPU spikes correlate with health check intervals
+- Rate limit errors during normal operations
+- Slow response times from health checks that "should be instant"
+
+**Phase to address:** Phase 2 (Implementation)—query design choice
 
 **Sources:**
-- [Springer: Requirements Traceability Literature Review](https://link.springer.com/article/10.1007/s00766-023-00412-z) - "inadequate maintenance of trace information"
-- [Sodius Willert: Requirements Traceability](https://www.sodiuswillert.com/en/blog/implementing-requirements-traceability-in-systems-software-engineering)
+- [GraphQL Introspection Performance](https://graphql.org/learn/introspection/) - HIGH
+- [GraphQL Health Checks](https://www.apollographql.com/docs/apollo-server/monitoring/health-checks) - HIGH
+- [Introspection Security Tradeoffs](https://escape.tech/blog/should-i-disable-introspection-in-graphql/) - MEDIUM
 
 ---
 
-### Pitfall 6: PM-Engineer Workflow Mismatch
+### Pitfall 7: Stale Cached Health Status Misleading Users
 
-**What goes wrong:** PMs write specs in a format engineers can't use; engineers annotate tests in a way PMs can't understand. The system becomes two disconnected worlds with a dashboard in between.
+**What goes wrong:**
+Caching health check results (to avoid rate limits) without clear cache expiry indication causes users to trust stale status. "Linear integration: Healthy (last checked 3 hours ago)" is dangerously misleading—it could have failed 2 hours 59 minutes ago.
 
 **Why it happens:**
-- PMs think in features and user stories; engineers think in functions and modules
-- Spec granularity doesn't match test granularity
-- PMs don't review test-spec links; engineers don't review spec changes
-- Tool doesn't bridge the vocabulary gap
-
-**Consequences:**
-- Specs too high-level to trace meaningfully
-- Tests too low-level to map to business requirements
-- Dashboard shows links but nobody trusts them
-- "We have traceability" but no real communication
-
-**Warning signs:**
-- PMs never look at the dashboard
-- Engineers add decorators without reading the spec
-- Spec IDs are "just for compliance"
-- Disconnect: PM says "feature X is incomplete" but dashboard shows 100%
+Caching is necessary to prevent rate limiting (see Pitfall 1), but teams forget to communicate cache freshness. UI shows cached status as if it were current. Debugging sessions waste time because displayed status doesn't reflect reality.
 
 **Prevention:**
-- **Collaborative spec writing:** Engineers and PMs write/review specs together
-- **Match granularity:** Specs should be testable; tests should map to business value
-- **Spec templates:** Guide PMs to write at the right level
-- **Dashboard shows context both roles understand:** Not just IDs but feature names, descriptions
-- **Regular calibration:** PM and engineer review a few links together monthly
+1. **Always show last checked timestamp** in UI: "Healthy (checked 2 minutes ago)"
+2. **Visual indicator for stale data**: Yellow badge after 5 minutes, red after 15 minutes
+3. **Explicit "Refresh" button** to force immediate health check (with rate limit warning)
+4. **Include cache metadata in API responses**:
+   ```json
+   {
+     "status": "healthy",
+     "checked_at": "2026-01-21T10:30:00Z",
+     "cached": true,
+     "cache_expires_at": "2026-01-21T10:35:00Z"
+   }
+   ```
+5. **Asynchronous refresh**: Background job runs health checks on schedule, updates cache, UI polls cache (never triggers direct check)
 
-**Detection:**
-- Survey: Do PMs use the dashboard? Do they trust it?
-- Check: Can an engineer explain what a random spec ID means?
-- Measure: Correlation between PM satisfaction and coverage numbers
+**Detection warning signs:**
+- Users report integration failures but dashboard shows healthy
+- Time gap between failure reports and status change
+- Debugging based on stale status wastes time
 
-**Phase to address:** Phase 1 (Schema/Format design) and Phase 4 (Collaborative workflow)
+**Phase to address:** Phase 3 (Dashboard)—UI design and cache transparency
 
 **Sources:**
-- [Atlassian: Are your project management tools causing friction?](https://www.atlassian.com/blog/jira/are-your-project-management-tools-causing-friction)
-- [Aha: PM and Engineers Collaboration](https://www.aha.io/roadmapping/guide/product-management/work-with-engineers)
+- [Cache Invalidation Best Practices](https://redis.io/glossary/cache-invalidation/) - MEDIUM
+- [Health Check Caching](https://github.com/dotnet-architecture/HealthChecks/issues/12) - MEDIUM
+- [Stale Data Prevention](https://www.fastly.com/documentation/guides/concepts/healthcheck/) - MEDIUM
 
 ---
 
-### Pitfall 7: Merge Conflict Hell with Markdown Specs
+### Pitfall 8: Webhook Endpoint Missing Authentication
 
-**What goes wrong:** Multiple people edit specs simultaneously. Git merge conflicts in markdown become frequent and messy. Spec editing becomes a bottleneck.
-
-**Why it happens:**
-- PMs not familiar with Git conflict resolution
-- Large monolithic spec files (one file = many conflicts)
-- No branching workflow for spec changes
-- Simultaneous editing without coordination
-
-**Consequences:**
-- Corrupted specs from bad merge resolution
-- Spec editing becomes PM-blocking (needs engineer to resolve conflicts)
-- People avoid updating specs to avoid conflicts
-- Specs diverge across branches
-
-**Warning signs:**
-- Spec files with merge conflict markers committed
-- PMs asking engineers to "fix the spec merge"
-- Long-lived spec branches that can't be merged
-- One person becomes the "spec gatekeeper"
-
-**Prevention:**
-- **Granular spec files:** One requirement per file, or small coherent groups
-- **Clear ownership:** Assign spec sections to specific authors
-- **Branching workflow:** Spec changes go through PRs with review
-- **Edit coordination:** Use GitHub/GitLab assignment to signal "I'm editing this"
-- **User-friendly conflict resolution:** Consider tooling that helps PMs resolve conflicts
-- **Web-based editing option:** Dashboard allows editing with auto-commit (for simple changes)
-
-**Detection:**
-- Git history: frequency of merge commits in spec files
-- Search for conflict markers in committed files
-- Count spec PRs that needed force-push or rebase
-
-**Phase to address:** Phase 1 (File structure) and Phase 4 (Collaborative workflow)
-
-**Sources:**
-- [Atlassian: Git Merge Conflicts](https://www.atlassian.com/git/tutorials/using-branches/merge-conflicts)
-- [Markdown Best Practices](https://www.markdownlang.com/advanced/best-practices.html)
-
----
-
-### Pitfall 8: Dashboard Performance Degradation
-
-**What goes wrong:** Dashboard becomes slow as test history accumulates. Page loads take seconds, then tens of seconds. Users stop using it.
+**What goes wrong:**
+CI/CD webhook endpoints (`@csrf_exempt` required) accept test results from any source, enabling attackers to inject false "all tests passing" results or pollute the database with garbage data. Current SpecTrace code has `@csrf_exempt` on `/api/slo/status/` and `/api/validation/result/` without authentication.
 
 **Why it happens:**
-- COUNT(*) queries for pagination with millions of test results
-- Loading full history when only recent results needed
-- No caching strategy
-- ORM generates inefficient queries (N+1 problems)
+Webhook receivers must disable CSRF protection (webhooks don't have CSRF tokens), leading developers to skip authentication entirely. Pressure to "just make it work" during integration testing means auth is deferred and forgotten.
 
 **Consequences:**
-- Users abandon the dashboard
-- Traceability system becomes "that slow thing nobody uses"
-- Server costs spike
-- Reports timeout during critical demos
-
-**Warning signs:**
-- Page load time increasing week over week
-- Database CPU spikes when dashboard accessed
-- Users report "it worked yesterday but now it's slow"
-- Queries in slow query log
+- False positive: Dashboard shows "all tests passing" when they're failing (injected fake results)
+- Data pollution requiring manual cleanup
+- Compliance violations: Audit trails compromised by unauthenticated writes
+- Reputation damage if security audit discovers public write endpoints
 
 **Prevention:**
-- **Cursor-based pagination** (not offset-based) for large result sets
-- **Denormalize current status:** Store latest result separately from history
-- **Aggressive caching:** Cache requirement status, invalidate on new results
-- **Query optimization:** Use `select_related`, `prefetch_related`, raw SQL where needed
-- **Archival strategy:** Move old results to cold storage, keep recent results hot
-- **Load testing:** Test with 10x expected data volume before launch
+1. **HMAC signature verification**: Webhook sender signs payload with shared secret, receiver verifies
+   ```python
+   import hmac
+   def verify_webhook(request, secret):
+       signature = request.headers.get('X-Webhook-Signature')
+       payload = request.body
+       expected = hmac.new(secret.encode(), payload, hashlib.sha256).hexdigest()
+       return hmac.compare_digest(signature, expected)
+   ```
+2. **API key in header**: `Authorization: Bearer <token>` required for all webhook endpoints
+3. **IP allowlist**: Only accept webhooks from known CI/CD runner IPs (less reliable, IPs change)
+4. **Timestamp validation**: Reject requests with timestamps >5 minutes old (prevents replay attacks)
+5. **Rate limiting**: Per-source rate limits prevent abuse even if auth compromised
 
-**Detection:**
-- Monitor page load times (p50, p95, p99)
-- Alert on query duration > threshold
-- Track database size growth rate
+**Current SpecTrace vulnerable pattern:**
+```python
+# api.py lines 22-23, 122-123
+@csrf_exempt
+@require_http_methods(["POST"])
+def update_slo_status(request):  # No authentication check
+```
 
-**Phase to address:** Phase 3 (Dashboard). Design for scale from the start; hard to retrofit.
+**Detection warning signs:**
+- Unexpected data appearing in database
+- Status changes not correlating with known events
+- Security scanning tools flag unauthenticated write endpoints
+
+**Phase to address:** Phase 2 (Implementation)—add before public deployment
 
 **Sources:**
-- [Haki Benita: Optimizing the Django Admin Paginator](https://hakibenita.com/optimizing-the-django-admin-paginator)
-- [LoadForge: Django Performance Best Practices](https://loadforge.com/guides/the-ultimate-guide-to-django-performance-best-practices-for-scaling-and-optimization)
+- [Django Webhook Security](https://anymail.dev/en/stable/tips/securing_webhooks/) - HIGH
+- [Webhook Authentication Strategies](https://www.hooklistener.com/learn/webhook-authentication-strategies) - MEDIUM (2025)
+- [HMAC Webhook Verification](https://dev.to/aakas/webhooks-in-django-a-comprehensive-guide-44jp) - MEDIUM
 
 ---
 
 ## Minor Pitfalls
 
-Mistakes that cause annoyance but are fixable with moderate effort.
+Mistakes that cause annoyance or require iteration, but are relatively easy to fix.
 
----
-
-### Pitfall 9: Markdown Flavor Inconsistency
-
-**What goes wrong:** Specs use different markdown flavors or features. Some render correctly in GitHub, some in VS Code, some break in the dashboard. Tables, code blocks, and links behave differently.
-
-**Prevention:**
-- Standardize on **GitHub Flavored Markdown (GFM)**
-- Use markdownlint in CI to enforce consistency
-- Document which features are supported
-- Test rendering in all target environments
-
-**Phase to address:** Phase 1 (Spec format definition)
-
----
-
-### Pitfall 10: Pytest Fixture Magic Interferes with Decorators
-
-**What goes wrong:** Pytest's fixture injection doesn't play well with custom decorators. IDE can't navigate from decorator to spec. Type checkers complain. Refactoring breaks links.
-
-**Prevention:**
-- Use `pytest.mark` for spec linkage (native, well-supported)
-- Provide IDE plugin or stubs for autocomplete
-- Document the pattern clearly
-- Test decorator behavior in CI
-
-**Phase to address:** Phase 2 (pytest integration)
-
-**Sources:**
-- [pytest documentation: Working with custom markers](https://docs.pytest.org/en/7.1.x/example/markers.html)
-- [GitHub Discussion: Why doesn't pytest use decorators?](https://github.com/pytest-dev/pytest/discussions/10783)
-
----
-
-### Pitfall 11: Orphan Specs and Tests
-
-**What goes wrong:** Requirements get deleted but tests still reference them. Tests get deleted but specs still expect them. Dashboard shows 404s or "no tests" for valid specs.
-
-**Prevention:**
-- **Bi-directional link validation in CI:** Fail build if test references nonexistent spec
-- **Dashboard surfaces orphans:** Show specs with no tests, tests with invalid specs
-- **Archive, don't delete:** Mark specs as deprecated rather than removing
-
-**Phase to address:** Phase 2 (Link validation), Phase 3 (Dashboard orphan view)
-
----
-
-### Pitfall 12: Over-Granular or Under-Granular Specs
+### Pitfall 9: False Positive Alerts from Overly Sensitive Thresholds
 
 **What goes wrong:**
-- Over-granular: 500 specs for a simple feature. Every test links to something but it's meaningless.
-- Under-granular: 10 specs total. Every test links to "REQ-MAIN" which covers everything.
+Health checks configured with hair-trigger sensitivity (e.g., "fail if response time >100ms" or "alert after 1 failed check") flood on-call engineers with false positive alerts, leading to alert fatigue and ignored genuine incidents.
 
 **Prevention:**
-- Define granularity guidelines: "A spec should be verifiable by 1-5 tests"
-- Review spec structure periodically
-- Dashboard metrics on tests-per-spec distribution (flag outliers)
+1. **Baseline normal behavior first**: Measure typical response times before setting thresholds
+2. **Use consecutive failure counts**: Alert after 3-5 consecutive failures, not 1
+3. **Percentage-based thresholds**: Alert if >10% of checks fail in 5-minute window
+4. **Different thresholds for different times**: Higher tolerance during known maintenance windows
+5. **Gradual escalation**: Warning after 2 failures, page after 5 failures
 
-**Phase to address:** Phase 1 (Spec writing guidelines), ongoing governance
+**Phase to address:** Phase 4 (Monitoring)—after initial deployment, tune based on operational data
+
+**Sources:**
+- [False Positive Prevention](https://panther.com/blog/identifying-and-mitigating-false-positive-alerts) - MEDIUM
+- [Alert Threshold Tuning](https://betterstack.com/community/guides/monitoring/health-checks/) - MEDIUM
+
+---
+
+### Pitfall 10: Mixing Configuration Scopes (ALLOWED_HOSTS for Health Checks)
+
+**What goes wrong:**
+Load balancer health checks from private IPs fail because Django's `ALLOWED_HOSTS` doesn't include them. Adding private IPs to `ALLOWED_HOSTS` works until instance reboot changes the IP, breaking health checks again.
+
+**Prevention:**
+1. **Use DNS names in ALLOWED_HOSTS** instead of IPs: `['spectrace.internal', '*.compute.amazonaws.com']`
+2. **Health check endpoint bypass**: Middleware that skips `ALLOWED_HOSTS` check for `/health` path only
+3. **Environment variable for dynamic IPs**: `ALLOWED_HOSTS = ['localhost'] + os.environ.get('HEALTH_CHECK_IPS', '').split(',')`
+4. **Container orchestration health checks**: Use HTTP from within cluster, not external load balancer
+
+**Phase to address:** Phase 2 (Implementation)—deployment configuration
+
+**Sources:**
+- [Django ALLOWED_HOSTS for Health Checks](https://www.ianlewis.org/en/kubernetes-health-checks-django) - MEDIUM
+- [Health Check Configuration Issues](http://chongkim.org/programming/2018/04/05/health-check-on-a-django-server.html) - LOW
 
 ---
 
 ## Phase-Specific Warnings
 
-| Phase | Primary Pitfall Risk | Mitigation |
-|-------|---------------------|------------|
-| Phase 1: Schema & Format | Hierarchical ID fragility, Markdown flavor inconsistency, Granularity mismatch | Design immutable IDs, standardize on GFM, define granularity guidelines |
-| Phase 2: Parsing & Linking | Manual traceability burden, Orphan detection gaps | Enforce decorators in CI, build bidirectional validation |
-| Phase 3: Dashboard & CI | False confidence metrics, Race conditions, Performance degradation | Design for honest reporting, use transaction.on_commit, plan for scale |
-| Phase 4: Collaboration | PM-Engineer mismatch, Merge conflicts | Enable web editing, granular files, collaborative spec review |
-| Ongoing Operations | Specification drift | Automated drift detection, regular calibration reviews |
+| Phase Topic | Likely Pitfall | Mitigation Strategy | Priority |
+|-------------|---------------|---------------------|----------|
+| **Phase 1: Architecture** | Rate limiting external APIs (P1) | Design caching and request budgeting into VerificationCheck pattern | CRITICAL |
+| | Async/timeout deadlocks (P2) | Choose async-native HTTP client (httpx), avoid requests + async_to_sync | CRITICAL |
+| | Database connection exhaustion (P4) | Plan separate connection pool or connection-less health checks | HIGH |
+| **Phase 2: API Endpoints** | Security exposure (P3) | Design minimal response format, sanitize errors | CRITICAL |
+| | Webhook authentication (P8) | Implement HMAC or API key auth before public deployment | HIGH |
+| | GraphQL query design (P6) | Use minimal queries, not introspection | MEDIUM |
+| **Phase 3: Dashboard** | Stale cache indication (P7) | Show timestamps, cache expiry, refresh button | MEDIUM |
+| | Cascading failure presentation (P5) | Implement degraded status tier, show component breakdown | MEDIUM |
+| **Phase 4: Monitoring** | False positive alerts (P9) | Use consecutive failure thresholds, baseline before alerting | LOW |
 
 ---
 
-## Pre-Implementation Checklist
+## Testing Checklist
 
-Before building, validate these decisions:
+Before shipping integration health checks, validate these scenarios:
 
-- [ ] **ID scheme:** Are IDs immutable and position-independent?
-- [ ] **Granularity:** Are specs at a testable level?
-- [ ] **File structure:** Are specs granular enough to avoid merge conflicts?
-- [ ] **Enforcement:** Will CI fail on missing/invalid decorators?
-- [ ] **Dashboard honesty:** Will metrics distinguish "linked" from "verified"?
-- [ ] **Scale plan:** How will dashboard perform with 100K test results?
-- [ ] **Sync reliability:** How will race conditions be prevented?
-- [ ] **Drift detection:** How will spec-code drift be surfaced?
+**Rate Limiting:**
+- [ ] Health check respects API rate limits (Linear 5,000/hour, complexity 250,000/hour)
+- [ ] Cached results served when quota exhausted
+- [ ] Rate limit errors logged but don't crash health check
+
+**Timeout Handling:**
+- [ ] External API timeout (force 60s delay) doesn't deadlock Django process
+- [ ] Health check returns error state, not hangs indefinitely
+- [ ] Concurrent health checks don't block each other
+
+**Security:**
+- [ ] Health check response contains no API keys, tokens, or internal URLs
+- [ ] Error messages sanitized (generic messages, not full tracebacks)
+- [ ] Webhook endpoints require authentication (HMAC or API key)
+- [ ] All health endpoints use HTTPS only
+
+**Database:**
+- [ ] Health check under simulated load doesn't exhaust connection pool
+- [ ] Connection timeout set (2-5 seconds)
+- [ ] Health check failure doesn't prevent application queries
+
+**Cascading Failures:**
+- [ ] Single integration failure doesn't mark entire app unhealthy
+- [ ] Degraded status tier supported
+- [ ] Liveness probe independent of integration health
+
+**Cache Transparency:**
+- [ ] UI shows "last checked" timestamp
+- [ ] Stale cache indicated visually
+- [ ] Manual refresh available with rate limit warning
 
 ---
 
-## Sources Summary
+## Confidence Assessment
 
-**Requirements Traceability:**
-- [Springer: Requirements Traceability Literature Review](https://link.springer.com/article/10.1007/s00766-023-00412-z)
-- [Sodius Willert: Requirements Traceability](https://www.sodiuswillert.com/en/blog/implementing-requirements-traceability-in-systems-software-engineering)
-- [Perforce: Requirements Traceability Matrix](https://www.perforce.com/resources/alm/requirements-traceability-matrix)
+| Pitfall | Confidence | Reasoning |
+|---------|-----------|-----------|
+| P1: Rate limiting | HIGH | Linear official docs, multiple 2025-2026 sources confirm limits |
+| P2: Async deadlocks | HIGH | Django forum reports from 2025 with specific version numbers |
+| P3: Security exposure | HIGH | Microsoft Azure, Spring Boot official security guidance |
+| P4: Connection exhaustion | HIGH | Multiple case studies, GitHub issues with examples |
+| P5: Cascading failures | MEDIUM | Best practices from multiple sources, not SpecTrace-specific |
+| P6: GraphQL introspection | MEDIUM | Official GraphQL docs, Apollo guidance |
+| P7: Stale cache | MEDIUM | Fastly official docs, general caching principles |
+| P8: Webhook auth | HIGH | Django webhook security guides, 2025 best practices |
+| P9: False positives | MEDIUM | General monitoring best practices, multiple sources agree |
+| P10: ALLOWED_HOSTS | LOW | Django-specific but well-documented, older issue |
 
-**Documentation and Drift:**
-- [DocsAlot: Documentation Rots](https://docsalot.dev/blog/documentation-rots-heres-how-to-stop-it)
-- [Gaudion: Documentation Drift](https://gaudion.dev/blog/documentation-drift)
+---
 
-**Testing Metrics:**
-- [HackerNoon: Misleading Test Coverage](https://hackernoon.com/misleading-test-coverage-and-how-to-avoid-false-confidence)
-- [ThinkingLabs: Fallacy of 100% Coverage](https://thinkinglabs.io/articles/2022/03/19/the-fallacy-of-the-100-code-coverage.html)
+## Research Methodology
 
-**Django Performance:**
-- [Haki Benita: Django Admin Paginator](https://hakibenita.com/optimizing-the-django-admin-paginator)
-- [Adam Johnson: Common Celery Issues](https://adamj.eu/tech/2020/02/03/common-celery-issues-on-django-projects/)
+**Sources Used:**
+- **Context7:** Not available for Django health check libraries
+- **Official Documentation:** Django 5.2, Linear API, Microsoft Azure, Spring Boot
+- **WebSearch:** 2025-2026 articles, blog posts, GitHub issues, forum discussions
+- **Verification:** Cross-referenced multiple sources for critical claims (P1-P4, P8)
 
-**Collaboration:**
-- [Atlassian: Git Merge Conflicts](https://www.atlassian.com/git/tutorials/using-branches/merge-conflicts)
-- [Aha: PM-Engineer Collaboration](https://www.aha.io/roadmapping/guide/product-management/work-with-engineers)
+**Verification Status:**
+- Critical pitfalls (P1-P4): Verified with official docs or recent (2025) issue reports
+- Moderate pitfalls (P5-P8): Verified with multiple credible sources
+- Minor pitfalls (P9-P10): Standard best practices, widely documented
+
+**What wasn't found:**
+- SpecTrace-specific prior art (new application, no existing community)
+- Long-term production experience (recent tech stack: Django 5.2, 2026 deployment)
+- Comprehensive integration health check framework for Django (most solutions are generic health checks)
+
+---
+
+## Recommended Reading Order for Roadmap Planning
+
+1. **Start with P1 (rate limiting)** - Most likely to cause immediate production issues
+2. **Then P2 (async deadlocks)** - Can cause complete system outage
+3. **Then P8 (webhook auth)** - Security vulnerability, must fix before public deployment
+4. **Then P3 (security exposure)** - Related to P8, similar security concerns
+5. **Then P4 (connection pool)** - Performance/scalability issue
+6. **Others as needed** - P5-P7 improve UX/reliability, P9-P10 operational quality
+
+This ordering prioritizes issues that: 1) cause outages, 2) create security vulnerabilities, 3) affect performance, 4) impact user experience.

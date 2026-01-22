@@ -1,551 +1,958 @@
-# Architecture Patterns: SpecTrace
+# Architecture Patterns: Integration Health Checks
 
-**Domain:** Requirements Traceability System (Spec-to-Test)
-**Researched:** 2026-01-19
+**Domain:** Requirements Traceability System - Integration Health Monitoring
+**Research Focus:** Health check architecture for existing SpecTrace milestone
+**Researched:** 2026-01-21
 **Confidence:** HIGH
 
-## Recommended Architecture
+## Executive Summary
 
-SpecTrace follows a **pipeline architecture** with distinct processing stages feeding into a central data store, surfaced through a web dashboard. This pattern is standard for traceability systems that aggregate data from multiple sources (specs, tests, CI).
+Integration health checks extend the existing SpecTrace architecture with a verification layer that tests external integration health (Linear API, SLO platforms, etc.). The recommended pattern uses dataclass-based domain objects for check results with Django model persistence for historical tracking, following the Repository pattern to separate health check logic from persistence.
 
-```
-                                    +------------------+
-                                    |   Django Web     |
-                                    |   Dashboard      |
-                                    |   (Read-Only)    |
-                                    +--------+---------+
-                                             |
-                                             | reads
-                                             v
-+----------------+    +-----------------+    +------------------+
-| Spec Parser    |--->|                 |<---| CI Results       |
-| (Markdown)     |    |  PostgreSQL DB  |    | Aggregator       |
-+----------------+    |  (Central Store)|    +------------------+
-                      |                 |           ^
-+----------------+    +-----------------+           |
-| Test Collector |----------^                      |
-| (Pytest Plugin)|                          webhooks/polling
-+----------------+                                 |
-                                            +------+------+
-                                            | CI Systems  |
-                                            | (GitHub/GL) |
-                                            +-------------+
-```
+The existing architecture already demonstrates this separation pattern with `status.py` containing computation logic and `models.py` containing persistence, making health checks a natural extension.
 
-### Data Flow Summary
+## Existing Architecture Analysis
 
-1. **Spec Parsing:** Markdown files in `specs/` are parsed to extract requirement IDs and metadata
-2. **Test Collection:** Pytest collects tests and extracts `@pytest.mark.requirement()` markers
-3. **CI Integration:** Test results from CI runs are aggregated and linked to requirement IDs
-4. **Dashboard:** Surfaces the traceability matrix showing requirement -> test -> result status
+### Current Component Structure
 
-## Component Boundaries
+| Component | Responsibility | Location |
+|-----------|---------------|----------|
+| Models Layer | Data persistence, ORM definitions | `requirements/models.py` |
+| Status Computation | Verification logic, aggregation rules | `requirements/status.py` |
+| API Layer | External push endpoints for status updates | `requirements/api.py` |
+| Admin Layer | Django-unfold display, status badges | `requirements/admin.py` |
+| Dashboard | Metrics aggregation for admin index | `requirements/dashboard.py` |
+| Integration Client | LinearClient for external API | `requirements/linear.py` |
 
-| Component | Responsibility | Inputs | Outputs | Communicates With |
-|-----------|---------------|--------|---------|-------------------|
-| **Spec Parser** | Parse markdown specs into structured requirements | `.md` files in `specs/` | Requirement records in DB | PostgreSQL (write) |
-| **Test Collector** | Extract requirement markers from tests | Python test files | Test-to-requirement mappings in DB | PostgreSQL (write), Pytest hooks |
-| **CI Aggregator** | Ingest test results from CI systems | Webhooks, JUnit XML | Test result records in DB | PostgreSQL (write), CI APIs |
-| **Traceability Engine** | Compute coverage status per requirement | DB queries | Coverage status, gap analysis | PostgreSQL (read) |
-| **Django Dashboard** | Display traceability matrix to PMs | User requests | HTML views, JSON API | PostgreSQL (read), Traceability Engine |
-| **CLI Tool** | Developer interface for local operations | Command line | Console output, DB writes | All components |
+### Key Architecture Patterns Already in Use
 
-### Component Details
+**1. Separation of Computation from Persistence**
+- `status.py` computes verification status without touching the API
+- `api.py` handles external updates and triggers recomputation
+- Models store the computed results
 
-#### 1. Spec Parser
+**2. Multi-Check Aggregation**
+- `compute_unified_verification_status()` aggregates test + inapp + SLO
+- Verification method determines aggregation logic (TEST, INAPP, BOTH, UNSPECIFIED)
+- Worst-case-wins for failures (any breach = failing)
 
-**Purpose:** Convert hierarchical markdown specs into database records.
+**3. Django-Unfold Dashboard Integration**
+- `dashboard_callback()` provides metrics via context injection
+- No separate views needed, pure data computation
+- Template rendering handled by unfold
 
-**Key Design Decisions:**
-- Use [mistletoe](https://github.com/miyuchina/mistletoe) for CommonMark-compliant AST parsing
-- Extract requirement IDs from heading structure (e.g., `# Feature / ## REQ-001: Requirement Name`)
-- Support frontmatter YAML for requirement metadata (status, priority, owner)
-- Watch for file changes to trigger re-parsing (inotify or polling)
+**4. REST API Pattern**
+- POST endpoints for external systems to push updates
+- GET endpoints for status queries
+- JSON responses with structured error handling
 
-**Input Format Example:**
-```markdown
----
-feature: user-authentication
-status: draft
----
+## Integration Health Check Architecture
 
-# User Authentication
+### Recommended Pattern: Domain Objects + Repository
 
-## REQ-AUTH-001: Login with Email
+Following Architecture Patterns with Python (Cosmic Python) and current Django best practices, use dataclasses for domain objects with Django models for persistence.
 
-Users must be able to log in with email and password.
+#### Why This Pattern
 
-### Acceptance Criteria
-- AC1: Valid credentials grant access
-- AC2: Invalid credentials show error message
-```
+**Separation of Concerns:**
+- Health check logic independent of Django ORM
+- Easy to test without database
+- Can execute checks without persisting results
 
-**Output:** Requirement records with ID, title, description, hierarchy path, metadata.
+**Consistency with Existing Code:**
+- `status.py` already separates computation from persistence
+- `LinearClient` already demonstrates external integration pattern
+- Natural extension of existing architecture
 
-#### 2. Test Collector (Pytest Plugin)
+**Framework Independence:**
+- Health check classes don't depend on Django
+- Could reuse in CLI tools, background jobs, or different frameworks
+- Domain logic stays pure Python
 
-**Purpose:** Extract requirement linkages from pytest test markers.
+### Component Design
 
-**Key Design Decisions:**
-- Implement as pytest plugin using `pytest_collection_finish` hook
-- Custom marker: `@pytest.mark.requirement("REQ-AUTH-001")`
-- Support multiple requirements per test: `@pytest.mark.requirement("REQ-001", "REQ-002")`
-- Register marker in `pytest.ini` to avoid warnings
-- Store mappings: test_id (file::class::function) -> requirement_ids
+#### 1. Domain Objects (New: `requirements/health_checks/domain.py`)
 
-**Implementation Pattern:**
 ```python
-# conftest.py (or pytest plugin)
-def pytest_configure(config):
-    config.addinivalue_line(
-        "markers", "requirement(id): Link test to requirement ID(s)"
+from dataclasses import dataclass, field
+from datetime import datetime
+from enum import Enum
+from typing import Optional
+
+
+class CheckStatus(Enum):
+    """Status of a health check execution."""
+    SUCCESS = "success"
+    WARNING = "warning"
+    FAILURE = "failure"
+    UNKNOWN = "unknown"
+
+
+@dataclass
+class VerificationCheck:
+    """Result of a single health check execution.
+
+    Pure domain object, no Django dependencies.
+    """
+    check_name: str
+    status: CheckStatus
+    message: str
+    checked_at: datetime
+    details: dict = field(default_factory=dict)
+    error: Optional[str] = None
+
+    @property
+    def is_healthy(self) -> bool:
+        """Check passed without failures."""
+        return self.status in (CheckStatus.SUCCESS, CheckStatus.WARNING)
+
+    @property
+    def is_critical_failure(self) -> bool:
+        """Check failed critically."""
+        return self.status == CheckStatus.FAILURE
+
+
+@dataclass
+class TestConnectionResult:
+    """Result of testing an integration connection.
+
+    Aggregates multiple verification checks.
+    """
+    integration_name: str
+    overall_status: CheckStatus
+    checks: list[VerificationCheck]
+    tested_at: datetime
+
+    @property
+    def is_healthy(self) -> bool:
+        """All checks passed."""
+        return all(check.is_healthy for check in self.checks)
+
+    @property
+    def critical_failures(self) -> list[VerificationCheck]:
+        """Checks that failed critically."""
+        return [c for c in self.checks if c.is_critical_failure]
+```
+
+#### 2. Health Checker Classes (New: `requirements/health_checks/checkers.py`)
+
+```python
+from abc import ABC, abstractmethod
+from datetime import datetime
+from typing import Protocol
+
+from .domain import CheckStatus, TestConnectionResult, VerificationCheck
+
+
+class HealthChecker(ABC):
+    """Base class for integration health checkers."""
+
+    @property
+    @abstractmethod
+    def integration_name(self) -> str:
+        """Name of the integration being checked."""
+        pass
+
+    @abstractmethod
+    def test_connection(self) -> TestConnectionResult:
+        """Execute all health checks for this integration."""
+        pass
+
+
+class LinearHealthChecker(HealthChecker):
+    """Health checker for Linear API integration."""
+
+    def __init__(self, api_key: str):
+        self.api_key = api_key
+        self.client = LinearClient(api_key)
+
+    @property
+    def integration_name(self) -> str:
+        return "Linear"
+
+    def test_connection(self) -> TestConnectionResult:
+        """Test Linear API connection and permissions."""
+        checks = [
+            self._check_authentication(),
+            self._check_api_reachability(),
+            self._check_query_permissions(),
+        ]
+
+        # Aggregate status: worst case wins
+        if any(c.status == CheckStatus.FAILURE for c in checks):
+            overall = CheckStatus.FAILURE
+        elif any(c.status == CheckStatus.WARNING for c in checks):
+            overall = CheckStatus.WARNING
+        elif any(c.status == CheckStatus.UNKNOWN for c in checks):
+            overall = CheckStatus.UNKNOWN
+        else:
+            overall = CheckStatus.SUCCESS
+
+        return TestConnectionResult(
+            integration_name=self.integration_name,
+            overall_status=overall,
+            checks=checks,
+            tested_at=datetime.now(),
+        )
+
+    def _check_authentication(self) -> VerificationCheck:
+        """Verify API key is valid."""
+        try:
+            # Simple viewer query to test auth
+            query = "query { viewer { id name } }"
+            result = self.client._execute_query(query)
+
+            if 'viewer' in result and result['viewer']:
+                return VerificationCheck(
+                    check_name="authentication",
+                    status=CheckStatus.SUCCESS,
+                    message=f"Authenticated as {result['viewer']['name']}",
+                    checked_at=datetime.now(),
+                    details={"viewer_id": result['viewer']['id']},
+                )
+            else:
+                return VerificationCheck(
+                    check_name="authentication",
+                    status=CheckStatus.FAILURE,
+                    message="Authentication failed: Invalid response",
+                    checked_at=datetime.now(),
+                )
+        except Exception as e:
+            return VerificationCheck(
+                check_name="authentication",
+                status=CheckStatus.FAILURE,
+                message="Authentication failed",
+                checked_at=datetime.now(),
+                error=str(e),
+            )
+
+    def _check_api_reachability(self) -> VerificationCheck:
+        """Verify Linear API endpoint is reachable."""
+        # Implementation similar to above
+        ...
+
+    def _check_query_permissions(self) -> VerificationCheck:
+        """Verify API key has required query permissions."""
+        # Implementation similar to above
+        ...
+
+
+class SLOHealthChecker(HealthChecker):
+    """Health checker for SLO platform integration."""
+
+    @property
+    def integration_name(self) -> str:
+        return "SLO Platform"
+
+    def test_connection(self) -> TestConnectionResult:
+        """Test SLO platform connectivity."""
+        # Implementation depends on SLO platform (Datadog, New Relic, etc.)
+        ...
+```
+
+#### 3. Persistence Layer (New: `requirements/models.py` additions)
+
+```python
+class IntegrationHealth(models.Model):
+    """Historical record of integration health check results."""
+
+    integration_name = models.CharField(
+        max_length=100,
+        db_index=True,
+        help_text="Name of integration (Linear, SLO Platform, etc.)"
+    )
+    overall_status = models.CharField(
+        max_length=20,
+        choices=[
+            ('success', 'Success'),
+            ('warning', 'Warning'),
+            ('failure', 'Failure'),
+            ('unknown', 'Unknown'),
+        ],
+        help_text="Overall health status"
+    )
+    checked_at = models.DateTimeField(
+        auto_now_add=True,
+        db_index=True,
+        help_text="When health check was performed"
     )
 
-def pytest_collection_finish(session):
-    """Extract requirement markers after collection."""
-    mappings = []
-    for item in session.items:
-        req_markers = list(item.iter_markers(name="requirement"))
-        for marker in req_markers:
-            for req_id in marker.args:
-                mappings.append({
-                    "test_id": item.nodeid,
-                    "requirement_id": req_id,
-                    "test_file": str(item.fspath),
-                    "test_name": item.name
-                })
-    # Write to DB or export as JSON
-```
+    class Meta:
+        ordering = ['-checked_at']
+        verbose_name = "Integration Health Check"
+        verbose_name_plural = "Integration Health Checks"
 
-**Sources:**
-- [pytest markers documentation](https://docs.pytest.org/en/stable/how-to/mark.html)
-- [pytest hooks documentation](https://docs.pytest.org/en/stable/how-to/writing_hook_functions.html)
 
-#### 3. CI Results Aggregator
+class IntegrationHealthCheck(models.Model):
+    """Individual check result within a health check run."""
 
-**Purpose:** Ingest test results from CI systems and link to requirements.
-
-**Key Design Decisions:**
-- **Primary:** Webhook-based for real-time updates (CI posts to SpecTrace)
-- **Fallback:** Polling as backup for missed webhooks (learned from [Harness CI architecture](https://www.harness.io/blog/architecting-harness-ci-for-scale))
-- Parse JUnit XML format (standard CI output)
-- Use [junitparser](https://pypi.org/project/junitparser/) library for XML parsing
-- Idempotent processing: track event IDs to handle duplicate webhooks
-
-**Data Flow:**
-```
-CI Run Completes
-      |
-      v
-+-----+-----+
-| Webhook   |  (POST /api/ci/results/)
-+-----------+
-      |
-      v
-Parse JUnit XML
-      |
-      v
-Match test_id to existing test-requirement mappings
-      |
-      v
-Create TestResult records (passed/failed/skipped, timestamp, CI run ID)
-      |
-      v
-Update Requirement.verification_status (computed)
-```
-
-**Webhook Payload Structure:**
-```json
-{
-  "event_id": "unique-event-id",
-  "ci_system": "github-actions",
-  "repository": "org/repo",
-  "branch": "main",
-  "commit_sha": "abc123",
-  "junit_xml_url": "https://...",  // or inline
-  "junit_xml": "<testsuite>...</testsuite>"
-}
-```
-
-#### 4. Traceability Engine
-
-**Purpose:** Compute coverage metrics and gap analysis.
-
-**Key Design Decisions:**
-- Query-based computation (not materialized) for simplicity initially
-- Support forward traceability (requirement -> tests -> results)
-- Support backward traceability (test -> requirements)
-- Compute coverage percentages and identify gaps
-
-**Core Queries:**
-- Requirements without linked tests (coverage gaps)
-- Tests without passing results (verification failures)
-- Requirements fully verified (all linked tests passing)
-- Orphaned tests (tests not linked to any requirement)
-
-**Coverage Status States:**
-| Status | Definition |
-|--------|------------|
-| `NOT_COVERED` | No tests linked to requirement |
-| `PARTIALLY_COVERED` | Some tests linked, but not all passing |
-| `VERIFIED` | At least one test linked and all linked tests passing |
-| `FAILING` | Tests linked but latest results show failures |
-
-#### 5. Django Dashboard
-
-**Purpose:** Web interface for PMs to view traceability status.
-
-**Key Design Decisions:**
-- Read-only dashboard (no write operations through UI initially)
-- Server-side rendering for simplicity (Django templates + HTMX for interactivity)
-- Optional: Django Channels for real-time updates when CI results arrive
-- Filter by: feature, status, date range, verification state
-
-**Key Views:**
-| View | Purpose | URL Pattern |
-|------|---------|-------------|
-| Traceability Matrix | Grid showing requirements vs tests | `/matrix/` |
-| Requirement Detail | Single requirement with linked tests and history | `/requirements/<id>/` |
-| Coverage Dashboard | High-level metrics and charts | `/dashboard/` |
-| Gap Analysis | Requirements missing test coverage | `/gaps/` |
-| Test Results Timeline | Recent CI results chronologically | `/results/` |
-
-**Sources:**
-- [Building dashboards with Django and D3](https://dreisbach.us/articles/building-dashboards-with-django-and-d3/)
-- [Real-time data processing in Django](https://medium.com/@sachinlokesh97/real-time-data-processing-in-django-building-a-live-dashboard-with-django-channels-and-celery-25281bc128d6)
-
-#### 6. CLI Tool
-
-**Purpose:** Developer interface for local operations.
-
-**Commands:**
-```bash
-spectrace parse          # Parse all specs, update DB
-spectrace collect        # Run pytest collection, extract markers, update DB
-spectrace status         # Show coverage summary
-spectrace status REQ-001 # Show specific requirement status
-spectrace sync           # Full sync: parse + collect + fetch latest CI results
-spectrace serve          # Start Django dashboard locally
-```
-
-## Database Schema
-
-**Design Principle:** Normalize for flexibility, denormalize computed fields for query performance.
-
-### Core Models
-
-```
-+------------------+       +-------------------+       +------------------+
-|   Requirement    |       | TestRequirement   |       |      Test        |
-+------------------+       +-------------------+       +------------------+
-| id (PK)          |<----->| requirement_id FK |<----->| id (PK)          |
-| external_id      |       | test_id FK        |       | node_id (unique) |
-| title            |       | created_at        |       | file_path        |
-| description      |       +-------------------+       | function_name    |
-| hierarchy_path   |                                   | class_name       |
-| feature          |                                   | last_collected   |
-| status           |                                   +------------------+
-| priority         |                                           |
-| metadata (JSON)  |                                           |
-| created_at       |                                           v
-| updated_at       |                                   +------------------+
-+------------------+                                   |   TestResult     |
-        |                                              +------------------+
-        |                                              | id (PK)          |
-        v                                              | test_id FK       |
-+------------------+                                   | ci_run_id FK     |
-|     Feature      |                                   | status (enum)    |
-+------------------+                                   | duration_ms      |
-| id (PK)          |                                   | error_message    |
-| name (unique)    |                                   | created_at       |
-| path             |                                   +------------------+
-| parent_id FK     |                                           |
-+------------------+                                           v
-                                                       +------------------+
-                                                       |     CIRun        |
-                                                       +------------------+
-                                                       | id (PK)          |
-                                                       | event_id (unique)|
-                                                       | ci_system        |
-                                                       | repository       |
-                                                       | branch           |
-                                                       | commit_sha       |
-                                                       | started_at       |
-                                                       | completed_at     |
-                                                       +------------------+
-```
-
-### Relationships
-
-| Relationship | Type | Notes |
-|--------------|------|-------|
-| Requirement <-> Test | Many-to-Many | Via `TestRequirement` junction table |
-| Test -> TestResult | One-to-Many | One test has many results over time |
-| TestResult -> CIRun | Many-to-One | Each result belongs to one CI run |
-| Requirement -> Feature | Many-to-One | Requirements grouped by feature |
-| Feature -> Feature | Self-referential | Hierarchical feature tree |
-
-### Computed/Cached Fields
-
-Consider adding these as cached fields updated on write:
-
-```python
-class Requirement(models.Model):
-    # ... core fields ...
-
-    # Cached computed fields (updated by signals/triggers)
-    test_count = models.IntegerField(default=0)
-    passing_test_count = models.IntegerField(default=0)
-    verification_status = models.CharField(max_length=20)  # computed
-    last_verified_at = models.DateTimeField(null=True)
-```
-
-**Sources:**
-- [Requirements Traceability Matrix](https://www.softwaretestinghelp.com/requirements-traceability-matrix/)
-- [Django many-to-many relationships](https://codesignal.com/learn/courses/advanced-database-schema-design-in-django/lessons/many-to-many-relationship-basics)
-
-## Patterns to Follow
-
-### Pattern 1: Event Sourcing for CI Results
-
-**What:** Store all CI results as immutable events, compute current status from history.
-
-**When:** You need audit trails and historical analysis of verification status.
-
-**Why:** Traceability systems need to answer "when was this requirement last verified?" and "what broke between CI runs?"
-
-**Example:**
-```python
-class TestResult(models.Model):
-    """Immutable record of a single test execution."""
-    test = models.ForeignKey(Test, on_delete=models.CASCADE, related_name='results')
-    ci_run = models.ForeignKey(CIRun, on_delete=models.CASCADE)
-    status = models.CharField(choices=[('passed', 'Passed'), ('failed', 'Failed'), ('skipped', 'Skipped')])
-    # Never update, only create new records
+    health_run = models.ForeignKey(
+        IntegrationHealth,
+        on_delete=models.CASCADE,
+        related_name='checks'
+    )
+    check_name = models.CharField(
+        max_length=100,
+        help_text="Name of specific check (authentication, reachability, etc.)"
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=[
+            ('success', 'Success'),
+            ('warning', 'Warning'),
+            ('failure', 'Failure'),
+            ('unknown', 'Unknown'),
+        ],
+    )
+    message = models.TextField(
+        help_text="Check result message"
+    )
+    error = models.TextField(
+        blank=True,
+        help_text="Error details if check failed"
+    )
+    details = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Additional check details"
+    )
 
     class Meta:
-        # Allow only one result per test per CI run
-        unique_together = ['test', 'ci_run']
+        ordering = ['check_name']
 ```
 
-### Pattern 2: Idempotent Webhook Processing
-
-**What:** Use unique event IDs to ensure webhooks are processed exactly once.
-
-**When:** Always, for any webhook-based ingestion.
-
-**Why:** Network issues and retries can deliver the same webhook multiple times.
-
-**Example:**
-```python
-@transaction.atomic
-def process_ci_webhook(payload):
-    event_id = payload['event_id']
-
-    # Idempotency check
-    if CIRun.objects.filter(event_id=event_id).exists():
-        return {"status": "already_processed"}
-
-    # Process webhook...
-    ci_run = CIRun.objects.create(event_id=event_id, ...)
-    # ...
-```
-
-**Source:** [ByteByteGo: Polling vs Webhooks](https://blog.bytebytego.com/p/ep100-polling-vs-webhooks)
-
-### Pattern 3: Hierarchical Requirement IDs
-
-**What:** Use structured IDs that encode hierarchy (e.g., `REQ-AUTH-001`).
-
-**When:** Requirements have natural feature groupings.
-
-**Why:** Enables filtering, grouping, and navigation without additional metadata.
-
-**Convention:**
-```
-REQ-{FEATURE}-{NUMBER}
-
-Examples:
-REQ-AUTH-001   (Authentication feature, requirement 1)
-REQ-AUTH-002   (Authentication feature, requirement 2)
-REQ-PAY-001    (Payments feature, requirement 1)
-```
-
-### Pattern 4: Separate Collection from Execution
-
-**What:** Test collection (discovering tests and markers) is separate from test execution (running tests).
-
-**When:** You need requirement mappings without running tests.
-
-**Why:** Collection is fast and safe; execution is slow and has side effects.
-
-**Implementation:**
-```bash
-# Collection only (no test execution)
-pytest --collect-only -q
-
-# In pytest plugin, use pytest_collection_finish hook
-# NOT pytest_runtest_* hooks
-```
-
-## Anti-Patterns to Avoid
-
-### Anti-Pattern 1: Storing Computed Status Only
-
-**What:** Storing only the current verification status without the underlying results.
-
-**Why bad:** Loses audit trail, can't debug why status changed, can't recover from bugs.
-
-**Instead:** Store all test results as events, compute status on read or cache with triggers.
-
-### Anti-Pattern 2: Inline Test-to-Requirement Mapping
-
-**What:** Storing requirement IDs directly in test files as comments parsed at runtime.
-
-**Why bad:** Comments are fragile, not type-checked, easily broken by refactoring.
-
-**Instead:** Use pytest markers which are:
-- Explicitly registered
-- Type-checkable with mypy
-- Accessible via pytest's API
-- Won't break if test code is refactored
+#### 4. Repository Pattern (New: `requirements/health_checks/repository.py`)
 
 ```python
-# BAD: Comment-based
-def test_login():
-    # requirement: REQ-AUTH-001
-    ...
+from requirements.models import IntegrationHealth, IntegrationHealthCheck
+from .domain import TestConnectionResult
 
-# GOOD: Marker-based
-@pytest.mark.requirement("REQ-AUTH-001")
-def test_login():
-    ...
+
+class HealthCheckRepository:
+    """Repository for persisting health check results."""
+
+    @staticmethod
+    def save_result(result: TestConnectionResult) -> IntegrationHealth:
+        """Persist a TestConnectionResult to database.
+
+        Args:
+            result: Domain object containing health check results
+
+        Returns:
+            Created IntegrationHealth model instance
+        """
+        health_run = IntegrationHealth.objects.create(
+            integration_name=result.integration_name,
+            overall_status=result.overall_status.value,
+            checked_at=result.tested_at,
+        )
+
+        for check in result.checks:
+            IntegrationHealthCheck.objects.create(
+                health_run=health_run,
+                check_name=check.check_name,
+                status=check.status.value,
+                message=check.message,
+                error=check.error or '',
+                details=check.details,
+            )
+
+        return health_run
+
+    @staticmethod
+    def get_latest_result(integration_name: str) -> IntegrationHealth | None:
+        """Get most recent health check for an integration."""
+        return IntegrationHealth.objects.filter(
+            integration_name=integration_name
+        ).first()
+
+    @staticmethod
+    def get_health_history(integration_name: str, limit: int = 10):
+        """Get recent health check history."""
+        return IntegrationHealth.objects.filter(
+            integration_name=integration_name
+        ).prefetch_related('checks')[:limit]
 ```
 
-### Anti-Pattern 3: Synchronous CI Result Processing
-
-**What:** Processing CI webhooks synchronously in the web request.
-
-**Why bad:** Large test suites = large JUnit XML = slow parsing = webhook timeout.
-
-**Instead:** Accept webhook immediately, queue processing via Celery.
+#### 5. API Endpoints (Extend: `requirements/api.py`)
 
 ```python
-# BAD: Synchronous
-@api_view(['POST'])
-def ci_webhook(request):
-    parse_junit_xml(request.data['junit_xml'])  # Slow!
-    return Response({'status': 'ok'})
+from requirements.health_checks.checkers import LinearHealthChecker, SLOHealthChecker
+from requirements.health_checks.repository import HealthCheckRepository
 
-# GOOD: Async with Celery
-@api_view(['POST'])
-def ci_webhook(request):
-    process_ci_results.delay(request.data)  # Queue it
-    return Response({'status': 'accepted'})
+
+@require_http_methods(["POST"])
+def test_linear_connection(request):
+    """Test Linear integration health.
+
+    POST /api/integrations/linear/test/
+
+    Request body:
+    {
+        "api_key": "lin_api_xxx"
+    }
+
+    Response:
+    {
+        "success": true,
+        "integration": "Linear",
+        "overall_status": "success",
+        "checks": [
+            {
+                "name": "authentication",
+                "status": "success",
+                "message": "Authenticated as User Name"
+            },
+            ...
+        ],
+        "tested_at": "2026-01-21T10:30:00Z"
+    }
+    """
+    try:
+        data = json.loads(request.body)
+        api_key = data.get('api_key')
+
+        if not api_key:
+            return JsonResponse({
+                'success': False,
+                'error': 'api_key required'
+            }, status=400)
+
+        # Execute health checks
+        checker = LinearHealthChecker(api_key)
+        result = checker.test_connection()
+
+        # Optionally persist results
+        if data.get('save_result', False):
+            HealthCheckRepository.save_result(result)
+
+        return JsonResponse({
+            'success': True,
+            'integration': result.integration_name,
+            'overall_status': result.overall_status.value,
+            'checks': [
+                {
+                    'name': check.check_name,
+                    'status': check.status.value,
+                    'message': check.message,
+                    'error': check.error,
+                    'details': check.details,
+                }
+                for check in result.checks
+            ],
+            'tested_at': result.tested_at.isoformat(),
+        })
+
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@require_http_methods(["GET"])
+def get_integration_health(request, integration_name):
+    """Get latest health status for an integration.
+
+    GET /api/integrations/{integration_name}/health/
+
+    Response:
+    {
+        "integration": "Linear",
+        "latest_status": "success",
+        "last_checked": "2026-01-21T10:30:00Z",
+        "checks": [...]
+    }
+    """
+    latest = HealthCheckRepository.get_latest_result(integration_name)
+
+    if not latest:
+        return JsonResponse({
+            'integration': integration_name,
+            'latest_status': 'unknown',
+            'message': 'No health checks recorded'
+        })
+
+    return JsonResponse({
+        'integration': integration_name,
+        'latest_status': latest.overall_status,
+        'last_checked': latest.checked_at.isoformat(),
+        'checks': [
+            {
+                'name': check.check_name,
+                'status': check.status,
+                'message': check.message,
+            }
+            for check in latest.checks.all()
+        ]
+    })
 ```
 
-### Anti-Pattern 4: Bidirectional Coupling Between Parser and Dashboard
+#### 6. Dashboard Integration (Extend: `requirements/dashboard.py`)
 
-**What:** Spec parser imports Django models directly.
+```python
+from requirements.health_checks.repository import HealthCheckRepository
 
-**Why bad:** Can't run parser outside Django context, testing is harder, circular dependencies.
 
-**Instead:** Parser writes to DB via well-defined interface (repository pattern) or produces JSON that a separate importer consumes.
+def dashboard_callback(request, context):
+    """Extend existing dashboard with integration health metrics."""
 
-## Suggested Build Order
+    # ... existing metrics code ...
 
-Based on component dependencies, build in this order:
+    # Integration health status
+    linear_health = HealthCheckRepository.get_latest_result("Linear")
+    slo_health = HealthCheckRepository.get_latest_result("SLO Platform")
 
-```
-Phase 1: Foundation
-+------------------+
-|  Database Schema |  (Django models)
-+------------------+
-|  Spec Parser     |  (Can work standalone)
-+------------------+
+    context.update({
+        'linear_health_status': linear_health.overall_status if linear_health else 'unknown',
+        'linear_last_checked': linear_health.checked_at if linear_health else None,
+        'slo_health_status': slo_health.overall_status if slo_health else 'unknown',
+        'slo_last_checked': slo_health.checked_at if slo_health else None,
+    })
 
-Phase 2: Test Integration
-+------------------+
-|  Test Collector  |  (Pytest plugin)
-+------------------+
-|  CLI Tool        |  (parse + collect commands)
-+------------------+
-
-Phase 3: Dashboard
-+------------------+
-|  Traceability    |  (Query logic)
-|  Engine          |
-+------------------+
-|  Django Views    |  (Read-only dashboard)
-+------------------+
-
-Phase 4: CI Integration
-+------------------+
-|  CI Aggregator   |  (Webhooks + polling)
-+------------------+
-|  Real-time       |  (Django Channels, optional)
-+------------------+
+    return context
 ```
 
-### Build Order Rationale
+#### 7. Admin Display (Extend: `requirements/admin.py`)
 
-1. **Database Schema First:** Everything depends on the data model. Get this right early.
+```python
+from .models import IntegrationHealth, IntegrationHealthCheck
 
-2. **Spec Parser Before Tests:** Requirements must exist before tests can link to them. Parser is also simpler (fewer dependencies).
 
-3. **Test Collector Before Dashboard:** Need test-requirement mappings to show anything meaningful on dashboard.
+HEALTH_STATUS_COLORS = {
+    'success': '#22c55e',
+    'warning': '#f97316',
+    'failure': '#ef4444',
+    'unknown': '#6b7280',
+}
 
-4. **Dashboard Before CI:** You can demo the system with manual "test ran and passed" entries before CI automation.
 
-5. **CI Integration Last:** Most complex (webhooks, external systems, async processing). Also most optional for MVP.
+@admin.register(IntegrationHealth)
+class IntegrationHealthAdmin(ModelAdmin):
+    """Admin interface for integration health checks."""
 
-### MVP Scope
+    list_display = ['integration_name', 'overall_status_badge', 'checked_at']
+    list_filter = ['integration_name', 'overall_status', 'checked_at']
+    readonly_fields = ['checked_at', 'check_details']
 
-For a working MVP, you need:
-- Database schema (all core models)
-- Spec parser (basic markdown -> requirements)
-- Test collector (pytest plugin with marker extraction)
-- CLI (parse + collect + status commands)
-- Dashboard (read-only traceability matrix)
+    def overall_status_badge(self, obj):
+        color = HEALTH_STATUS_COLORS.get(obj.overall_status, '#6b7280')
+        return format_html(
+            '<span style="display: inline-block; padding: 4px 12px; '
+            'border-radius: 4px; color: white; background-color: {}; '
+            'font-weight: 500;">{}</span>',
+            color, obj.overall_status.upper()
+        )
+    overall_status_badge.short_description = "Status"
 
-Defer to post-MVP:
-- CI integration (can manually import results initially)
-- Real-time updates (polling/refresh is fine for MVP)
-- Advanced features (gap analysis views, historical trends)
+    def check_details(self, obj):
+        """Display individual check results."""
+        checks = obj.checks.all()
+        if not checks:
+            return "No checks recorded"
+
+        html_parts = []
+        for check in checks:
+            color = HEALTH_STATUS_COLORS.get(check.status, '#6b7280')
+            html_parts.append(format_html(
+                '<div style="margin-bottom: 8px;">'
+                '<span style="display: inline-block; padding: 2px 8px; '
+                'border-radius: 4px; color: white; background-color: {}; '
+                'font-size: 11px; margin-right: 8px;">{}</span>'
+                '<strong>{}</strong>: {}'
+                '</div>',
+                color, check.status.upper(), check.check_name, check.message
+            ))
+
+        return format_html(''.join(str(p) for p in html_parts))
+    check_details.short_description = "Check Results"
+```
+
+## Multi-Check Aggregation Pattern
+
+### Aggregation Strategy
+
+The architecture uses a three-level aggregation hierarchy:
+
+**Level 1: Individual Checks**
+- Each `VerificationCheck` has its own status (SUCCESS, WARNING, FAILURE, UNKNOWN)
+- Captures specific aspect (auth, connectivity, permissions, etc.)
+
+**Level 2: Integration Health**
+- `TestConnectionResult` aggregates multiple checks
+- Overall status uses "worst case wins" logic:
+  - Any FAILURE → Overall FAILURE
+  - Any WARNING (no failures) → Overall WARNING
+  - Any UNKNOWN (no failures/warnings) → Overall UNKNOWN
+  - All SUCCESS → Overall SUCCESS
+
+**Level 3: System-Wide Health**
+- Dashboard aggregates all integrations
+- Could add meta-aggregation for "all integrations healthy" indicator
+
+### Comparison with Existing Pattern
+
+This mirrors the existing verification status aggregation in `status.py`:
+
+| Existing (Verification) | New (Health Checks) |
+|------------------------|---------------------|
+| `compute_verification_status()` | `VerificationCheck` individual result |
+| `compute_unified_verification_status()` | `TestConnectionResult` aggregation |
+| `update_all_unified_statuses()` | Dashboard-level aggregation |
+
+**Key Difference:** Health checks are stateless (executed on-demand, optionally persisted), while verification status is persistent-first (computed from stored test/SLO data).
+
+## Data Flow
+
+### Health Check Execution Flow
+
+```
+User Action (Admin or API)
+    ↓
+API Endpoint (/api/integrations/{name}/test/)
+    ↓
+Health Checker Class (LinearHealthChecker, SLOHealthChecker)
+    ↓
+Execute Individual Checks (_check_authentication, _check_reachability, etc.)
+    ↓
+Return VerificationCheck Domain Objects
+    ↓
+Aggregate into TestConnectionResult
+    ↓
+[Optional] Repository.save_result()
+    ↓
+Persist to IntegrationHealth + IntegrationHealthCheck models
+    ↓
+Return JSON Response
+```
+
+### Dashboard Display Flow
+
+```
+User Loads Admin Dashboard
+    ↓
+dashboard_callback() invoked
+    ↓
+Repository.get_latest_result() for each integration
+    ↓
+Add integration_health_status to context
+    ↓
+Django-Unfold renders dashboard template
+    ↓
+Status badges displayed with colors
+```
+
+### Comparison with Existing Flows
+
+**SLO Update Flow (existing):**
+```
+External Platform → POST /api/slo/status/ → Update SLO models →
+update_all_slo_statuses() → Update Requirement.slo_status
+```
+
+**Health Check Flow (new):**
+```
+Admin/API Request → POST /api/integrations/linear/test/ →
+Execute checks → Return results → [Optional] Persist to IntegrationHealth
+```
+
+**Key Difference:** Health checks are pull-based (SpecTrace initiates), while SLO/validation updates are push-based (external systems initiate).
+
+## Integration Points with Existing Components
+
+### 1. Models Layer (`requirements/models.py`)
+
+**Add:**
+- `IntegrationHealth` model (new table)
+- `IntegrationHealthCheck` model (new table)
+
+**No Changes To:**
+- Existing `Requirement`, `SLO`, `InAppValidation` models
+- Health checks are independent, no foreign keys to existing models
+
+### 2. API Layer (`requirements/api.py`)
+
+**Add:**
+- `test_linear_connection(request)` endpoint
+- `test_slo_connection(request)` endpoint
+- `get_integration_health(request, integration_name)` endpoint
+
+**Pattern Consistency:**
+- Same JSON response format as existing endpoints
+- Same error handling pattern
+- Same `@require_http_methods` decorators
+
+### 3. Dashboard (`requirements/dashboard.py`)
+
+**Modify:**
+- Extend `dashboard_callback()` to add integration health context variables
+- Follow existing pattern of `context.update({...})`
+
+**Display Variables Added:**
+- `linear_health_status`, `linear_last_checked`
+- `slo_health_status`, `slo_last_checked`
+- Dashboard template can render status badges
+
+### 4. Admin (`requirements/admin.py`)
+
+**Add:**
+- `IntegrationHealthAdmin` class
+- Register with `@admin.register(IntegrationHealth)`
+
+**Pattern Consistency:**
+- Use `ModelAdmin` from `unfold.admin`
+- Use same status badge pattern as existing admins
+- Use same color scheme (`HEALTH_STATUS_COLORS`)
+
+### 5. URLs (`spectrace/urls.py`)
+
+**Add:**
+```python
+path('api/integrations/<str:integration_name>/test/',
+     api.test_integration_connection,
+     name='api-test-integration'),
+path('api/integrations/<str:integration_name>/health/',
+     api.get_integration_health,
+     name='api-integration-health'),
+```
+
+### 6. Integration Client (`requirements/linear.py`)
+
+**No Changes Needed:**
+- `LinearClient` used as-is by `LinearHealthChecker`
+- Health checker wraps client, doesn't modify it
+
+**Potential Enhancement:**
+- Add `test_connection()` method to `LinearClient` for reuse
+- Not required for initial implementation
+
+## Dependency Graph
+
+```
+New Components                      Existing Components
+─────────────                      ──────────────────
+
+domain.py
+(VerificationCheck,
+ TestConnectionResult)
+         ↓
+checkers.py ─────────────────────→ linear.py (LinearClient)
+(LinearHealthChecker,
+ SLOHealthChecker)
+         ↓
+repository.py ───────────────────→ models.py (NEW: IntegrationHealth)
+(save_result,
+ get_latest_result)
+         ↓
+api.py extensions ───────────────→ api.py (existing patterns)
+(test_*_connection,
+ get_integration_health)
+         ↓
+dashboard.py extensions ─────────→ dashboard.py (dashboard_callback)
+(integration health context)
+         ↓
+admin.py extensions ──────────────→ admin.py (ModelAdmin pattern)
+(IntegrationHealthAdmin)
+```
+
+## Build Order Recommendation
+
+Based on dependencies and existing architecture:
+
+### Phase 1: Foundation (No UI, Core Logic)
+
+**1.1 Domain Objects**
+- Create `requirements/health_checks/` package
+- Write `domain.py` with `VerificationCheck`, `TestConnectionResult` dataclasses
+- REASON: Pure Python, no dependencies, enables testing
+
+**1.2 Health Checker Base**
+- Write `checkers.py` with `HealthChecker` base class
+- REASON: Establishes pattern before implementing specific checkers
+
+**1.3 Linear Health Checker**
+- Implement `LinearHealthChecker` in `checkers.py`
+- REASON: Reuses existing `LinearClient`, validates pattern with real integration
+
+**Testing Checkpoint:** Unit tests for domain objects and Linear health checker (no database needed)
+
+### Phase 2: Persistence (Database, No UI)
+
+**2.1 Models**
+- Add `IntegrationHealth`, `IntegrationHealthCheck` to `models.py`
+- Create and run migration
+- REASON: Enables historical tracking
+
+**2.2 Repository**
+- Write `repository.py` with `save_result()`, `get_latest_result()`
+- REASON: Abstracts persistence, enables testing with fake repository
+
+**Testing Checkpoint:** Integration tests with database, verify persistence round-trip
+
+### Phase 3: API Endpoints (Testable Interface)
+
+**3.1 Test Connection Endpoint**
+- Add `test_linear_connection()` to `api.py`
+- Add URL route to `urls.py`
+- REASON: Provides HTTP interface for testing health checks
+
+**3.2 Get Health Status Endpoint**
+- Add `get_integration_health()` to `api.py`
+- Add URL route
+- REASON: Allows querying latest health status
+
+**Testing Checkpoint:** API tests, verify JSON responses, error handling
+
+### Phase 4: Dashboard Integration (UI)
+
+**4.1 Dashboard Context**
+- Extend `dashboard_callback()` to add health status
+- REASON: Provides data to dashboard template
+
+**4.2 Dashboard Template**
+- Add health status display to dashboard template (if custom template needed)
+- OR: Document variables for future template customization
+- REASON: Unfold may handle display automatically via context
+
+**Testing Checkpoint:** Manual test in admin dashboard, verify status badges
+
+### Phase 5: Admin Interface (Management UI)
+
+**5.1 Health Check Admin**
+- Add `IntegrationHealthAdmin` to `admin.py`
+- REASON: Allows viewing health check history
+
+**Testing Checkpoint:** Manual test admin pages, verify badge display
+
+### Phase 6: Additional Integrations (Expansion)
+
+**6.1 SLO Health Checker**
+- Implement `SLOHealthChecker` in `checkers.py`
+- Add corresponding API endpoint
+- REASON: Repeats pattern established with Linear
+
+**6.2 Additional Checkers**
+- Database health, cache health, etc. (if needed)
+- REASON: Reuses established patterns
+
+## Alternative Patterns Considered
+
+### Alternative 1: Django-Health-Check Library
+
+**What:** Use `django-health-check` package with custom backends
+
+**Pros:**
+- Industry-standard package, well-maintained
+- Pluggable architecture via `BaseHealthCheckBackend`
+- Automatic `/ht/` endpoint with JSON/HTML responses
+- HTTP 200/500 aggregation built-in
+
+**Cons:**
+- Designed for infrastructure health (DB, cache, Celery)
+- Not designed for historical tracking (no persistence)
+- Custom backends for integrations would need adaptation
+- Doesn't fit domain object pattern used in SpecTrace
+
+**Why Not Recommended:**
+SpecTrace needs historical health check tracking and integration-specific checks (Linear API, SLO platforms), which aren't the primary use case for django-health-check. The library is optimized for monitoring infrastructure health for load balancers/orchestrators, not for building an integration dashboard.
+
+**When to Reconsider:**
+If SpecTrace needs standard infrastructure health checks (database, cache) in addition to integration checks, use django-health-check for infrastructure and the recommended pattern for integrations.
+
+### Alternative 2: Persistent-First Pattern
+
+**What:** Store health checks in models directly, no domain objects
+
+**Pros:**
+- Simpler, fewer layers
+- No dataclass/repository separation
+- Direct Django ORM usage
+
+**Cons:**
+- Couples health check logic to Django ORM
+- Hard to test without database
+- Doesn't match existing `status.py` pattern
+- Can't execute checks without persisting results
+
+**Why Not Recommended:**
+Breaks separation of concerns established by `status.py`. Health checks should be executable independently of persistence decision (e.g., test connection without saving history).
+
+### Alternative 3: Async Background Jobs
+
+**What:** Run health checks via Celery/background jobs on schedule
+
+**Pros:**
+- Automatic periodic health monitoring
+- No manual trigger needed
+- Could alert on failures
+
+**Cons:**
+- Requires Celery/Redis infrastructure
+- Adds complexity
+- Doesn't provide on-demand testing (needed for admin UI)
+
+**Why Not Recommended:**
+SpecTrace doesn't currently use Celery. The milestone focuses on "test connection" functionality for admin configuration, not automated monitoring. On-demand checks are sufficient.
+
+**When to Reconsider:**
+Future milestone could add scheduled health checks, building on the foundation established here.
 
 ## Scalability Considerations
 
-| Concern | At 100 requirements | At 10K requirements | At 100K requirements |
-|---------|---------------------|---------------------|----------------------|
-| **Spec Parsing** | In-memory, instant | Incremental (changed files only) | Parallel parsing, file watching |
-| **Test Collection** | < 1 second | 5-10 seconds | Consider caching collection results |
-| **Dashboard Queries** | No optimization needed | Add indexes, pagination | Materialized views, search index |
-| **CI Result Storage** | Single table | Partition by date | Archive old results, summary tables |
-| **Traceability Matrix** | Render full grid | Virtual scrolling, lazy load | Pre-computed summaries, drill-down |
+### At Current Scale (< 100 integrations)
 
-### Performance Notes
+**No concerns:**
+- Health checks executed on-demand, not on every request
+- Dataclass overhead negligible
+- Repository pattern adds minimal abstraction cost
 
-- **Postgres is sufficient** for most SpecTrace deployments (even at 100K requirements)
-- **Indexes needed:** `Requirement.external_id`, `Test.node_id`, `CIRun.event_id`, `TestResult(test_id, ci_run_id)`
-- **Consider:** Full-text search on requirement descriptions (Postgres built-in or Elasticsearch for large deployments)
+**Storage:**
+- `IntegrationHealth` table: ~10 records/integration/day = ~1000 records/day
+- With 100 integrations = 36,500 records/year (trivial for SQLite)
+
+### At Medium Scale (100-1000 integrations)
+
+**Considerations:**
+- Add index on `IntegrationHealth.integration_name + checked_at`
+- Add database cleanup (delete old health checks after 30/90 days)
+- Consider caching latest health status in dashboard
+
+**Query Optimization:**
+```python
+# Dashboard query with prefetch
+latest_health = IntegrationHealth.objects.filter(
+    integration_name="Linear"
+).select_related().prefetch_related('checks').first()
+```
+
+### At Large Scale (> 1000 integrations)
+
+**Considerations:**
+- Move health check execution to background jobs (Celery)
+- Cache health status in Redis
+- Add dedicated health check service (microservice pattern)
+- Use time-series database for health metrics (Prometheus, InfluxDB)
+
+**Current architecture supports migration:**
+- Domain objects are framework-agnostic
+- Health checkers can be called from anywhere (view, Celery task, CLI)
+- Repository abstracts persistence (could swap to time-series DB)
 
 ## Sources
 
-**Official Documentation:**
-- [pytest markers documentation](https://docs.pytest.org/en/stable/how-to/mark.html)
-- [pytest hooks documentation](https://docs.pytest.org/en/stable/how-to/writing_hook_functions.html)
-- [pytest API reference](https://docs.pytest.org/en/stable/reference/reference.html)
-- [junitparser documentation](https://junitparser.readthedocs.io/)
-- [mistletoe markdown parser](https://github.com/miyuchina/mistletoe)
+Research based on current Django and Python architectural best practices:
 
-**Architecture Patterns:**
-- [ByteByteGo: Polling vs Webhooks](https://blog.bytebytego.com/p/ep100-polling-vs-webhooks)
-- [Harness CI Architecture](https://www.harness.io/blog/architecting-harness-ci-for-scale)
-- [Building dashboards with Django and D3](https://dreisbach.us/articles/building-dashboards-with-django-and-d3/)
-- [Real-time data processing in Django](https://medium.com/@sachinlokesh97/real-time-data-processing-in-django-building-a-live-dashboard-with-django-channels-and-celery-25281bc128d6)
+- [Django Health Check Package](https://github.com/revsys/django-health-check) - Industry-standard health check patterns
+- [Django Health Check Documentation](https://django-health-check.readthedocs.io/en/latest/) - Custom backend architecture
+- [Medium: Production-Grade Health Check in Django](https://medium.com/@iman.rameshni/django-health-check-89fb6ad39b0c) - Best practices
+- [Microservices Health Check API Pattern](https://microservices.io/patterns/observability/health-check-api.html) - Aggregation patterns
+- [Baeldung: REST API Error Handling](https://www.baeldung.com/rest-api-error-handling-best-practices) - Response format patterns
+- [Unfold Admin Theme](https://unfoldadmin.com/) - Dashboard integration patterns
+- [Cosmic Python: Domain Modeling](https://www.cosmicpython.com/book/chapter_01_domain_model.html) - Dataclass pattern
+- [Cosmic Python: Repository Pattern with Django](https://www.cosmicpython.com/book/appendix_django.html) - Repository implementation
+- [O'Reilly: Architecture Patterns with Python](https://www.oreilly.com/library/view/architecture-patterns-with/9781492052197/ch01.html) - Domain objects vs models
+- [Plain English: DTO in Django](https://plainenglish.io/blog/data-transfer-object-in-django-drf) - DTO pattern
+- [Azure: Health Endpoint Monitoring Pattern](https://learn.microsoft.com/en-us/azure/architecture/patterns/health-endpoint-monitoring) - Health check design patterns
+- [Pydantic Dataclasses](https://docs.pydantic.dev/latest/concepts/dataclasses/) - Validation patterns
 
-**Traceability Concepts:**
-- [Requirements Traceability - Wikipedia](https://en.wikipedia.org/wiki/Requirements_traceability)
-- [Requirements Traceability Matrix](https://www.softwaretestinghelp.com/requirements-traceability-matrix/)
-- [Traceability Matrix Types](https://aqua-cloud.io/traceability-matrix/)
-- [GeeksforGeeks RTM Guide](https://www.geeksforgeeks.org/software-testing/requirement-traceability-matrix/)
+All sources verified as current for 2026 best practices.
