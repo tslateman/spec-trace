@@ -118,11 +118,11 @@ def vendor_coverage_view(request):
     - Per-vendor pass/fail rates
     - Recent regressions per vendor
     """
-    # Group validations by vendor
+    # Group validations by vendor (prefetch results to avoid N+1 queries)
     vendors = {}
     all_flags = set()
     
-    for validation in InAppValidation.objects.exclude(vendor=''):
+    for validation in InAppValidation.objects.exclude(vendor='').prefetch_related('results'):
         vendor = validation.vendor
         if vendor not in vendors:
             vendors[vendor] = {
@@ -164,10 +164,7 @@ def vendor_coverage_view(request):
     # Calculate pass rates
     for vendor_data in vendors.values():
         total = vendor_data['total']
-        if total > 0:
-            vendor_data['pass_rate'] = round((vendor_data['passing'] / total) * 100, 1)
-        else:
-            vendor_data['pass_rate'] = 0
+        vendor_data['pass_rate'] = round((vendor_data['passing'] / total) * 100, 1)
     
     context = {
         'title': 'Vendor Coverage',

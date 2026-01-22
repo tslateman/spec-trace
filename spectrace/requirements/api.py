@@ -191,11 +191,11 @@ def submit_validation_result(request):
             skipped += 1
             continue
 
-        # Get or create InAppValidation
+        # Get or create InAppValidation (lookup by requirement only to avoid duplicates)
         validation, created = InAppValidation.objects.get_or_create(
             requirement=requirement,
-            name=v.get('name', f'Validation for {requirement_id}'),
             defaults={
+                'name': v.get('name', f'Validation for {requirement_id}'),
                 'endpoint': v.get('endpoint', ''),
                 'vendor': v.get('context', {}).get('vendor', ''),
                 'feature_flags': v.get('context', {}).get('feature_flags', {}),
@@ -204,12 +204,15 @@ def submit_validation_result(request):
         if created:
             created_validations += 1
         else:
-            # Update vendor and feature_flags if provided
+            # Update name, vendor, and feature_flags if provided
+            new_name = v.get('name')
+            if new_name:
+                validation.name = new_name
             context = v.get('context', {})
             if context.get('vendor'):
                 validation.vendor = context['vendor']
-            if context.get('feature_flags'):
-                validation.feature_flags = context['feature_flags']
+            if context.get('feature_flags') is not None:
+                validation.feature_flags = context['feature_flags'] or {}
             validation.save()
 
         # Parse status
@@ -221,7 +224,9 @@ def submit_validation_result(request):
             status = InAppValidationStatus.FAILURE
             failed += 1
         elif status_str == 'degraded':
-            status = InAppValidationStatus.FAILURE  # Map degraded to failure for now
+            # SDK sends 'degraded' for partial failures, but InAppValidationStatus
+            # doesn't have DEGRADED choice yet, so we map to FAILURE
+            status = InAppValidationStatus.FAILURE
             failed += 1
         else:
             status = InAppValidationStatus.UNKNOWN

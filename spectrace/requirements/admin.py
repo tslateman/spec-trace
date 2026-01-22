@@ -1,4 +1,6 @@
 """Admin configuration for Requirement, TestRun, and TestResult models."""
+import json
+
 from django.contrib import admin
 from django.urls import reverse
 from django.utils.html import format_html
