@@ -100,3 +100,56 @@ class TestConnectionResult:
     message: str
     checks: list[VerificationCheck] | None = None
     error_details: str | None = None
+
+
+def check_configuration(api_key: str, workspace: str, team: str) -> VerificationCheck:
+    """Validate Linear configuration presence and format.
+
+    Checks:
+    1. API key is present (not empty)
+    2. API key matches expected format (lin_api_* prefix)
+    3. Workspace identifier is present
+    4. Team identifier is present
+
+    Args:
+        api_key: Linear API key (should start with 'lin_api_')
+        workspace: Workspace identifier
+        team: Team identifier
+
+    Returns:
+        VerificationCheck with passed=True if all config valid,
+        or passed=False with specific error_message
+    """
+    if not api_key:
+        return VerificationCheck(
+            name="Configuration",
+            passed=False,
+            error_message="LINEAR_API_KEY not configured"
+        )
+
+    if not api_key.startswith('lin_api_'):
+        return VerificationCheck(
+            name="Configuration",
+            passed=False,
+            error_message="LINEAR_API_KEY does not match expected format (should start with 'lin_api_')"
+        )
+
+    if not workspace:
+        return VerificationCheck(
+            name="Configuration",
+            passed=False,
+            error_message="LINEAR_WORKSPACE not configured"
+        )
+
+    if not team:
+        return VerificationCheck(
+            name="Configuration",
+            passed=False,
+            error_message="LINEAR_TEAM not configured"
+        )
+
+    return VerificationCheck(
+        name="Configuration",
+        passed=True,
+        details=f"API key present, workspace: {workspace}, team: {team}"
+    )
