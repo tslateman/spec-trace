@@ -11,11 +11,11 @@ See: .planning/PROJECT.md (updated 2026-01-21)
 
 Milestone: v3 Integration Health Checks
 Phase: 5 of 7 (Health Check Foundation)
-Plan: 5 of 6 complete (Wave 1: 01, 02; Wave 2: 03, 04, 05)
-Status: **IN PROGRESS** — Executing Phase 5
-Last activity: 2026-01-22 — Completed 05-05-PLAN.md
+Plan: 6 of 6 complete (Wave 1: 01, 02; Wave 2: 03, 04, 05; Wave 3: 06)
+Status: **PHASE COMPLETE** — Phase 5 finished
+Last activity: 2026-01-22 — Completed 05-06-PLAN.md
 
-Progress: [####      ] 42% (5/12 total plans)
+Progress: [#####     ] 50% (6/12 total plans)
 
 ## Milestone History
 
@@ -57,6 +57,8 @@ See: .planning/MILESTONES.md
 | Falsy check for missing config | Treat both empty strings and None as missing configuration |
 | Empty issues result is success | Permission check validates access, not data existence |
 | Viewer query for auth check | Gets user name/email in one request for both validation and display |
+| Rename test_linear_connection to verify_linear_connection | Avoid pytest collection conflict (test_ prefix triggers collection) |
+| Inline LinearClient import | Avoid circular imports between health.py and linear.py |
 
 Full history: .planning/PROJECT.md Key Decisions table
 
@@ -66,11 +68,11 @@ None.
 
 ### Next Steps
 
-1. `/gsd:execute-phase 5` — Execute Phase 5 plans (6 plans, 3 waves)
-2. Plan and execute Phases 6-7
+1. Plan Phase 6: Health Check API (expose verify_linear_connection via HTTP endpoint)
+2. Plan and execute Phase 7
 
 ## Session Continuity
 
 Last session: 2026-01-22
-Stopped at: Completed 05-04-PLAN.md (Authentication Check)
+Stopped at: Completed 05-06-PLAN.md (Connection Test Aggregator) - Phase 5 complete
 Resume file: None
