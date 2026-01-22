@@ -318,3 +318,100 @@ class TestCheckConfiguration:
         assert result.timestamp is not None
         assert result.timestamp.endswith('Z')
         assert 'T' in result.timestamp
+
+
+class TestCheckPermissions:
+    """Tests for check_permissions function."""
+
+    def test_successful_permissions_with_issues(self):
+        """Successful query with issues returns passed=True."""
+        mock_client = Mock()
+        mock_client._execute_query.return_value = {
+            'issues': {
+                'nodes': [{'id': 'issue-123'}]
+            }
+        }
+
+        result = check_permissions(mock_client)
+
+        assert result.passed is True
+        assert result.name == "Permissions"
+        assert result.response_status == 200
+        assert "Read access" in result.details
+        assert result.error_message is None
+
+    def test_successful_permissions_no_issues(self):
+        """Empty issues result (no issues exist) is still success."""
+        mock_client = Mock()
+        mock_client._execute_query.return_value = {
+            'issues': {
+                'nodes': []
+            }
+        }
+
+        result = check_permissions(mock_client)
+
+        assert result.passed is True
+        assert result.name == "Permissions"
+        assert result.response_status == 200
+        assert "Read access" in result.details
+
+    def test_http_403_forbidden(self):
+        """HTTP 403 returns failed check with status code."""
+        mock_client = Mock()
+        mock_response = Mock()
+        mock_response.status_code = 403
+        mock_response.text = '{"error": "Forbidden"}'
+        http_error = requests.HTTPError(response=mock_response)
+        mock_client._execute_query.side_effect = http_error
+
+        result = check_permissions(mock_client)
+
+        assert result.passed is False
+        assert result.name == "Permissions"
+        assert result.response_status == 403
+        assert "HTTP 403" in result.error_message
+        assert "Insufficient permissions" in result.error_message
+
+    def test_graphql_permission_error(self):
+        """GraphQL permission error (ValueError) returns failed check."""
+        mock_client = Mock()
+        mock_client._execute_query.side_effect = ValueError(
+            "GraphQL errors: [{'message': 'Not authorized'}]"
+        )
+
+        result = check_permissions(mock_client)
+
+        assert result.passed is False
+        assert result.name == "Permissions"
+        assert "GraphQL error" in result.error_message
+        assert "Not authorized" in result.error_message
+
+    def test_sanitized_response_on_error(self):
+        """Error responses have credentials sanitized."""
+        mock_client = Mock()
+        mock_response = Mock()
+        mock_response.status_code = 403
+        mock_response.text = '{"error": "Invalid key: lin_api_secret123"}'
+        http_error = requests.HTTPError(response=mock_response)
+        mock_client._execute_query.side_effect = http_error
+
+        result = check_permissions(mock_client)
+
+        assert result.passed is False
+        assert result.response_body is not None
+        assert 'lin_api_secret123' not in result.response_body
+        assert '[REDACTED]' in result.response_body
+
+    def test_check_has_timestamp(self):
+        """Permissions check result includes auto-generated timestamp."""
+        mock_client = Mock()
+        mock_client._execute_query.return_value = {
+            'issues': {'nodes': []}
+        }
+
+        result = check_permissions(mock_client)
+
+        assert result.timestamp is not None
+        assert result.timestamp.endswith('Z')
+        assert 'T' in result.timestamp
