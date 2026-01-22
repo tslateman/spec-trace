@@ -270,7 +270,7 @@ def check_permissions(client) -> VerificationCheck:
         )
 
 
-def test_linear_connection(api_key: str, workspace: str, team: str) -> TestConnectionResult:
+def verify_linear_connection(api_key: str, workspace: str, team: str) -> TestConnectionResult:
     """Test Linear API connection with granular diagnostics.
 
     Runs three checks in sequence:

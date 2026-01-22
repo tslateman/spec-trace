@@ -11,7 +11,7 @@ from requirements.health import (
     check_authentication,
     check_configuration,
     check_permissions,
-    test_linear_connection,
+    verify_linear_connection,
 )
 
 
@@ -535,8 +535,8 @@ class TestCheckPermissions:
         assert 'T' in result.timestamp
 
 
-class TestLinearConnection:
-    """Tests for test_linear_connection aggregator."""
+class TestVerifyLinearConnection:
+    """Tests for verify_linear_connection aggregator."""
 
     def test_all_checks_pass(self):
         """All valid config and mocked API returns success=True."""
@@ -549,7 +549,7 @@ class TestLinearConnection:
             ]
             MockClient.return_value = mock_client
 
-            result = test_linear_connection(
+            result = verify_linear_connection(
                 api_key='lin_api_test123',
                 workspace='my-workspace',
                 team='engineering'
@@ -563,7 +563,7 @@ class TestLinearConnection:
     def test_config_failure_short_circuits(self):
         """Invalid config returns immediately without API calls."""
         with patch('requirements.linear.LinearClient') as MockClient:
-            result = test_linear_connection(
+            result = verify_linear_connection(
                 api_key='',  # Invalid - missing
                 workspace='my-workspace',
                 team='engineering'
@@ -588,7 +588,7 @@ class TestLinearConnection:
             mock_client._execute_query.side_effect = http_error
             MockClient.return_value = mock_client
 
-            result = test_linear_connection(
+            result = verify_linear_connection(
                 api_key='lin_api_test123',
                 workspace='my-workspace',
                 team='engineering'
@@ -620,7 +620,7 @@ class TestLinearConnection:
             mock_client._execute_query.side_effect = side_effect
             MockClient.return_value = mock_client
 
-            result = test_linear_connection(
+            result = verify_linear_connection(
                 api_key='lin_api_test123',
                 workspace='my-workspace',
                 team='engineering'
@@ -643,7 +643,7 @@ class TestLinearConnection:
             ]
             MockClient.return_value = mock_client
 
-            result = test_linear_connection(
+            result = verify_linear_connection(
                 api_key='lin_api_test123',
                 workspace='my-workspace',
                 team='engineering'
@@ -662,7 +662,7 @@ class TestLinearConnection:
             ]
             MockClient.return_value = mock_client
 
-            result = test_linear_connection(
+            result = verify_linear_connection(
                 api_key='lin_api_test123',
                 workspace='my-workspace',
                 team='engineering'
