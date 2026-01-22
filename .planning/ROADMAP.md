@@ -65,7 +65,10 @@ Plans:
   4. "Test Connection" button visible on integrations page
   5. Button triggers health check and updates UI with results
   6. Loading state shown during check execution
-**Plans:** TBD
+**Plans:** 1 plan in 1 wave
+
+Plans:
+- [ ] 07-01-PLAN.md — Integrations card with health badge, timestamp, and Test Connection button
 
 ## Progress
 
@@ -76,7 +79,7 @@ Phases execute in numeric order: 5 → 6 → 7
 |-------|----------------|--------|-----------|
 | 5. Health Check Foundation | 6/6 | Complete | 2026-01-22 |
 | 6. API Endpoints | 1/1 | Complete | 2026-01-22 |
-| 7. Dashboard Integration | 0/TBD | Not started | - |
+| 7. Dashboard Integration | 0/1 | Not started | - |
 
 ---
 *Roadmap created: 2026-01-21*
