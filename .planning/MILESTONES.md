@@ -1,5 +1,33 @@
 # Project Milestones: SpecTrace
 
+## v4 SDK (Shipped: 2026-01-21)
+
+**Delivered:** Production-ready validation SDK with vendor tracking, feature flag correlation, regression detection, examples, and documentation.
+
+**Phases completed:** 8-11 (4 plans total)
+
+**Key accomplishments:**
+
+- ValidationRun context manager with best-effort submission
+- Multi-step validation with pass/fail per step (steps, context fields)
+- Vendor tracking and feature flag correlation on InAppValidation
+- Regression detection (success → failure transitions)
+- PMS examples (Opera, Mews) and Mobile Key examples (Ambiance, OpenKey, Vostio)
+- Comprehensive SDK docs: README, Integration Guide, Troubleshooting
+
+**Stats:**
+
+- 19 SDK files created
+- 12,203 lines of Python (total project)
+- 4 phases, 4 plans
+- 1 day (2026-01-21)
+
+**Git range:** `dff21cc` → HEAD
+
+**What's next:** v5 — Historical tracking, scheduled validation, alerting
+
+---
+
 ## v3 Integration Health Checks (Shipped: 2026-01-22)
 
 **Delivered:** Integration health monitoring with granular diagnostic checks for Linear, REST API endpoints, and dashboard UI showing real-time connection status.
@@ -80,37 +108,5 @@
 **Git range:** `3608c1e` (feat: django setup) → `72310b2` (docs: state update)
 
 **What's next:** v2 — Traceability matrix, impact analysis, CI webhooks
-
----
-
-## v2 Traceability Matrix (Current)
-
-**Goal:** Visual grid view showing which tests verify which requirements — enabling at-a-glance understanding of test coverage distribution and gaps.
-
-**Phases:**
-
-| Phase | Name | Status |
-|-------|------|--------|
-| 1 | Matrix Data Layer | Not Started |
-| 2 | Matrix View | Not Started |
-| 3 | Filtering & Navigation | Not Started |
-| 4 | Export & Polish | Not Started |
-
-**Key requirements:**
-- MATRIX-01: Paginated grid (requirements × tests)
-- MATRIX-02: Color-coded cells (pass/fail/untested/unlinked)
-- MATRIX-03: Filtering by status, tags, hierarchy
-- MATRIX-04: Dashboard tab integration
-- MATRIX-05: Cell drill-down with details
-- MATRIX-06: CSV export
-
-**Technical approach:**
-- Paginated grid (25-50 requirements per page)
-- Horizontal scroll for test columns
-- Dashboard tab in django-unfold admin
-
-**Files:**
-- `.planning/milestones/v2-REQUIREMENTS.md`
-- `.planning/milestones/v2-ROADMAP.md`
 
 ---

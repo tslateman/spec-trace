@@ -10,6 +10,16 @@ PMs can see, at any moment, which requirements are verified by passing tests —
 
 ## What's Shipped
 
+### v4 SDK (Shipped: 2026-01-22)
+
+- **SDK Core:** ValidationRun context manager, ValidationStep, ValidationStatus
+- **Vendor tracking:** Group validations by integration vendor (Opera, Mews, etc.)
+- **Feature flags:** Auto-extract from Django settings, env vars, model fields
+- **Step reporting:** Granular pass/fail per validation step
+- **Regression detection:** Automatic detection of passing → failing transitions
+- **Examples:** PMS (Opera, Mews), Mobile Key (Ambiance, OpenKey, Vostio)
+- **Documentation:** README, Integration Guide, Troubleshooting Guide
+
 ### v3 Integration Health Checks (Shipped: 2026-01-22)
 
 - **Health diagnostics:** VerificationCheck and TestConnectionResult dataclasses
@@ -70,6 +80,19 @@ PMs can see, at any moment, which requirements are verified by passing tests —
 - ✓ DASH-07: Dashboard shows Linear integration health status — v3
 - ✓ DASH-08: Dashboard shows last-checked timestamp — v3
 - ✓ DASH-09: User can trigger health check from dashboard — v3
+- ✓ SDK-01: ValidationRun context manager with best-effort submission — v4
+- ✓ SDK-02: Multi-step validation with pass/fail per step — v4
+- ✓ SDK-03: Vendor tracking on InAppValidation model — v4
+- ✓ SDK-04: Feature flag extraction from Django/env/model — v4
+- ✓ SDK-05: Regression detection (success → failure) — v4
+- ✓ SDK-06: Vendor coverage dashboard with pass rates — v4
+- ✓ SDK-07: PMS validation examples (Opera, Mews) — v4
+- ✓ SDK-08: Mobile key validation examples (Ambiance, OpenKey, Vostio) — v4
+- ✓ SDK-09: Django admin action factory — v4
+- ✓ SDK-10: REST API endpoint examples — v4
+- ✓ SDK-11: SDK README with API reference — v4
+- ✓ SDK-12: Integration guide with checklists — v4
+- ✓ SDK-13: Troubleshooting guide — v4
 
 ### Active
 
@@ -121,6 +144,11 @@ PMs can see, at any moment, which requirements are verified by passing tests —
 | 60s cache TTL | Balance between rate limiting and freshness | ✓ Good |
 | Response sanitization | Prevent API key exposure in error diagnostics | ✓ Good |
 | Alpine.js for dashboard widget | Bundled with django-unfold, no extra dependencies | ✓ Good |
+| Bundled SDK (spectrace_client) | No separate package, always in sync with SpecTrace | ✓ Good |
+| Context manager pattern | Clean resource management, automatic submission | ✓ Good |
+| Best-effort submission | Never break user code if SpecTrace down | ✓ Good |
+| Multi-source flag extraction | Support Django settings, env vars, model fields | ✓ Good |
+| 5-step PMS / 3-step mobile key | Consistent validation granularity | ✓ Good |
 
 ---
-*Last updated: 2026-01-22 after v3 milestone complete*
+*Last updated: 2026-01-22 after v4 SDK complete*
