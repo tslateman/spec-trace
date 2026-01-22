@@ -153,3 +153,58 @@ def check_configuration(api_key: str, workspace: str, team: str) -> Verification
         passed=True,
         details=f"API key present, workspace: {workspace}, team: {team}"
     )
+
+
+def check_permissions(client) -> VerificationCheck:
+    """Verify read access to Linear issues endpoint.
+
+    Makes a minimal GraphQL query to fetch one issue, validating
+    that the API token has read permissions for issues.
+
+    Args:
+        client: LinearClient instance (from requirements.linear)
+
+    Returns:
+        VerificationCheck with passed=True if read access confirmed,
+        or passed=False with error details
+    """
+    import requests
+
+    try:
+        client._execute_query("""
+            query TestIssueAccess {
+                issues(first: 1) {
+                    nodes {
+                        id
+                    }
+                }
+            }
+        """)
+
+        return VerificationCheck(
+            name="Permissions",
+            passed=True,
+            details="Read access to issues endpoint confirmed",
+            response_status=200
+        )
+
+    except requests.HTTPError as e:
+        return VerificationCheck(
+            name="Permissions",
+            passed=False,
+            error_message=f"HTTP {e.response.status_code}: Insufficient permissions for issues",
+            response_status=e.response.status_code,
+            response_body=_sanitize_response(e.response.text)
+        )
+    except ValueError as e:
+        return VerificationCheck(
+            name="Permissions",
+            passed=False,
+            error_message=f"GraphQL error: {str(e)}"
+        )
+    except Exception as e:
+        return VerificationCheck(
+            name="Permissions",
+            passed=False,
+            error_message=f"Request failed: {type(e).__name__}: {str(e)}"
+        )
