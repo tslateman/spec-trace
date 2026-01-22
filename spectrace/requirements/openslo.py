@@ -1,5 +1,4 @@
 """OpenSLO YAML parser for importing SLOs."""
-import re
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
@@ -37,9 +36,6 @@ class OpenSLOParser:
                 duration: 30d
           budgetingMethod: Occurrences
     """
-
-    # Regex to parse time window durations like "30d", "7d", "1w"
-    TIME_WINDOW_PATTERN = re.compile(r'^(\d+)([dwmh])$', re.IGNORECASE)
 
     def parse_file(self, file_path: Path) -> dict[str, Any] | None:
         """Parse a single OpenSLO YAML file.
@@ -287,13 +283,8 @@ def update_slo_status_from_json(json_data: dict[str, Any]) -> dict[str, int]:
             continue
 
         # Map status
-        status_str = slo_data.get('status', 'unknown').lower()
-        status_map = {
-            'met': SLOStatus.MET,
-            'at_risk': SLOStatus.AT_RISK,
-            'breached': SLOStatus.BREACHED,
-        }
-        slo.status = status_map.get(status_str, SLOStatus.NOT_LINKED)
+        status_str = slo_data.get('status', 'unknown')
+        slo.status = SLOStatus.from_string(status_str)
 
         # Update values
         current_value = slo_data.get('current_value')

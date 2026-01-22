@@ -7,6 +7,7 @@ from django.conf import settings
 from django.core.cache import cache
 from django.http import JsonResponse
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
@@ -20,7 +21,12 @@ from .models import (
     SLO,
     SLOStatus,
 )
-from .status import update_all_slo_statuses, update_all_unified_statuses
+from .status import (
+    compute_inapp_validation_status,
+    compute_verification_status,
+    update_all_slo_statuses,
+    update_all_unified_statuses,
+)
 
 
 def parse_decimal_safe(value) -> Decimal | None:
@@ -78,12 +84,6 @@ def update_slo_status(request):
     updated = 0
     not_found = 0
 
-    status_map = {
-        'met': SLOStatus.MET,
-        'at_risk': SLOStatus.AT_RISK,
-        'breached': SLOStatus.BREACHED,
-    }
-
     for slo_data in slos_data:
         name = slo_data.get('name')
         if not name:
@@ -96,8 +96,8 @@ def update_slo_status(request):
             continue
 
         # Map status
-        status_str = slo_data.get('status', 'unknown').lower()
-        slo.status = status_map.get(status_str, SLOStatus.NOT_LINKED)
+        status_str = slo_data.get('status', 'unknown')
+        slo.status = SLOStatus.from_string(status_str)
 
         # Update values
         current_value = parse_decimal_safe(slo_data.get('current_value'))
@@ -215,15 +215,8 @@ def submit_validation_result(request):
 
         # Parse checked_at
         checked_at_str = v.get('checked_at')
-        if checked_at_str:
-            try:
-                from django.utils.dateparse import parse_datetime
-                checked_at = parse_datetime(checked_at_str)
-                if checked_at is None:
-                    checked_at = timezone.now()
-            except (ValueError, TypeError):
-                checked_at = timezone.now()
-        else:
+        checked_at = parse_datetime(checked_at_str) if checked_at_str else None
+        if checked_at is None:
             checked_at = timezone.now()
 
         # Create result (status/last_checked/message are computed from latest result)
@@ -280,7 +273,6 @@ def get_requirement_status(request, external_id):
     validation_count = requirement.inapp_validations.count()
 
     # Compute individual statuses
-    from .status import compute_inapp_validation_status, compute_verification_status
     test_status = compute_verification_status(requirement)
     inapp_status = compute_inapp_validation_status(requirement)
 

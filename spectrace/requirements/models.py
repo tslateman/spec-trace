@@ -27,6 +27,23 @@ class SLOStatus(models.TextChoices):
     BREACHED = 'breached', 'Breached'
     NOT_LINKED = 'not_linked', 'Not Linked'
 
+    @classmethod
+    def from_string(cls, value: str) -> 'SLOStatus':
+        """Convert lowercase string to SLOStatus.
+
+        Args:
+            value: Status string (met, at_risk, breached)
+
+        Returns:
+            Corresponding SLOStatus, or NOT_LINKED for unknown values.
+        """
+        mapping = {
+            'met': cls.MET,
+            'at_risk': cls.AT_RISK,
+            'breached': cls.BREACHED,
+        }
+        return mapping.get(value.lower(), cls.NOT_LINKED)
+
 
 class Requirement(MP_Node):
     """A requirement parsed from a spec markdown file.

@@ -332,16 +332,8 @@ def verify_linear_connection(api_key: str, workspace: str, team: str) -> TestCon
 
     # Determine overall result
     all_passed = all(c.passed for c in checks)
-
-    if all_passed:
-        return TestConnectionResult(
-            success=True,
-            message="All checks passed",
-            checks=checks
-        )
-    else:
-        return TestConnectionResult(
-            success=False,
-            message="Permission check failed",
-            checks=checks
-        )
+    return TestConnectionResult(
+        success=all_passed,
+        message="All checks passed" if all_passed else "Permission check failed",
+        checks=checks,
+    )

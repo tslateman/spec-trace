@@ -1,11 +1,27 @@
 """Spec file parser for importing markdown requirements into the database."""
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, TypedDict
 
 import frontmatter
 
 from requirements.models import Requirement, VerificationMethod
+
+
+class RequirementData(TypedDict, total=False):
+    """Type definition for requirement data dictionaries.
+
+    Used by SpecParser and importers like LinearClient.
+    """
+    external_id: str  # required
+    title: str
+    description: str
+    tags: list[str]
+    priority: str
+    status: str
+    parent_id: str | None
+    source_file: str
+    verification_method: str
 
 
 def normalize_verification_method(value: str | None) -> str:
@@ -20,6 +36,26 @@ def normalize_verification_method(value: str | None) -> str:
     if value is None or value not in VerificationMethod.values:
         return VerificationMethod.UNSPECIFIED
     return value
+
+
+def _extract_requirement_fields(req_data: dict[str, Any]) -> dict[str, Any]:
+    """Extract database fields from requirement data dict.
+
+    Args:
+        req_data: Raw requirement data dictionary
+
+    Returns:
+        Dictionary of fields ready for Requirement model
+    """
+    return {
+        'title': req_data.get('title', ''),
+        'description': req_data.get('description', ''),
+        'tags': req_data.get('tags', []),
+        'priority': req_data.get('priority', ''),
+        'status': req_data.get('status', 'draft'),
+        'source_file': req_data.get('source_file', ''),
+        'verification_method': normalize_verification_method(req_data.get('verification_method')),
+    }
 
 
 def import_requirements_to_database(
@@ -63,15 +99,7 @@ def import_requirements_to_database(
     # First pass: create all root requirements
     for req_data in roots:
         external_id = req_data['external_id']
-        fields = {
-            'title': req_data.get('title', ''),
-            'description': req_data.get('description', ''),
-            'tags': req_data.get('tags', []),
-            'priority': req_data.get('priority', ''),
-            'status': req_data.get('status', 'draft'),
-            'source_file': req_data.get('source_file', ''),
-            'verification_method': normalize_verification_method(req_data.get('verification_method')),
-        }
+        fields = _extract_requirement_fields(req_data)
 
         if external_id in existing:
             # Update existing
@@ -89,15 +117,7 @@ def import_requirements_to_database(
     for req_data in children:
         external_id = req_data['external_id']
         parent_id = req_data['parent_id']
-        fields = {
-            'title': req_data.get('title', ''),
-            'description': req_data.get('description', ''),
-            'tags': req_data.get('tags', []),
-            'priority': req_data.get('priority', ''),
-            'status': req_data.get('status', 'draft'),
-            'source_file': req_data.get('source_file', ''),
-            'verification_method': normalize_verification_method(req_data.get('verification_method')),
-        }
+        fields = _extract_requirement_fields(req_data)
 
         if external_id in existing:
             # Update existing
