@@ -1,10 +1,15 @@
 """Tests for health check utilities and domain objects."""
 import time
+from unittest.mock import Mock
+
+import requests
 
 from requirements.health import (
     TestConnectionResult,
     VerificationCheck,
     _sanitize_response,
+    check_configuration,
+    check_permissions,
 )
 
 
@@ -204,3 +209,112 @@ class TestTestConnectionResult:
         assert result.success is True
         assert result.checks is not None
         assert len(result.checks) == 0
+
+
+class TestCheckConfiguration:
+    """Tests for check_configuration function."""
+
+    def test_valid_configuration(self):
+        """Valid configuration returns passed=True with details."""
+        result = check_configuration(
+            api_key="lin_api_abc123",
+            workspace="my-workspace",
+            team="my-team"
+        )
+
+        assert result.passed is True
+        assert result.name == "Configuration"
+        assert result.error_message is None
+        assert "API key present" in result.details
+        assert "my-workspace" in result.details
+        assert "my-team" in result.details
+
+    def test_missing_api_key(self):
+        """Empty API key returns specific error message."""
+        result = check_configuration(
+            api_key="",
+            workspace="my-workspace",
+            team="my-team"
+        )
+
+        assert result.passed is False
+        assert result.name == "Configuration"
+        assert result.error_message == "LINEAR_API_KEY not configured"
+
+    def test_invalid_api_key_format(self):
+        """API key without lin_api_ prefix returns format error."""
+        result = check_configuration(
+            api_key="invalid_key_format",
+            workspace="my-workspace",
+            team="my-team"
+        )
+
+        assert result.passed is False
+        assert result.name == "Configuration"
+        assert "does not match expected format" in result.error_message
+        assert "lin_api_" in result.error_message
+
+    def test_missing_workspace(self):
+        """Empty workspace returns specific error message."""
+        result = check_configuration(
+            api_key="lin_api_abc123",
+            workspace="",
+            team="my-team"
+        )
+
+        assert result.passed is False
+        assert result.name == "Configuration"
+        assert result.error_message == "LINEAR_WORKSPACE not configured"
+
+    def test_missing_team(self):
+        """Empty team returns specific error message."""
+        result = check_configuration(
+            api_key="lin_api_abc123",
+            workspace="my-workspace",
+            team=""
+        )
+
+        assert result.passed is False
+        assert result.name == "Configuration"
+        assert result.error_message == "LINEAR_TEAM not configured"
+
+    def test_none_values_treated_as_missing(self):
+        """None values are treated as missing (falsy check)."""
+        # None api_key
+        result = check_configuration(
+            api_key=None,
+            workspace="my-workspace",
+            team="my-team"
+        )
+        assert result.passed is False
+        assert "LINEAR_API_KEY not configured" in result.error_message
+
+        # None workspace (with valid api_key)
+        result = check_configuration(
+            api_key="lin_api_abc123",
+            workspace=None,
+            team="my-team"
+        )
+        assert result.passed is False
+        assert "LINEAR_WORKSPACE not configured" in result.error_message
+
+        # None team (with valid api_key and workspace)
+        result = check_configuration(
+            api_key="lin_api_abc123",
+            workspace="my-workspace",
+            team=None
+        )
+        assert result.passed is False
+        assert "LINEAR_TEAM not configured" in result.error_message
+
+    def test_check_has_timestamp(self):
+        """Configuration check result includes auto-generated timestamp."""
+        result = check_configuration(
+            api_key="lin_api_abc123",
+            workspace="my-workspace",
+            team="my-team"
+        )
+
+        assert result.timestamp is not None
+        assert result.timestamp.endswith('Z')
+        assert 'T' in result.timestamp
