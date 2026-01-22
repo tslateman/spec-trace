@@ -56,6 +56,7 @@ See: .planning/MILESTONES.md
 | Early return on validation failure | Clear error messages for first failed check rather than collecting all errors |
 | Falsy check for missing config | Treat both empty strings and None as missing configuration |
 | Empty issues result is success | Permission check validates access, not data existence |
+| Viewer query for auth check | Gets user name/email in one request for both validation and display |
 
 Full history: .planning/PROJECT.md Key Decisions table
 
@@ -71,5 +72,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-01-22
-Stopped at: Completed 05-05-PLAN.md (Permissions Check)
+Stopped at: Completed 05-04-PLAN.md (Authentication Check)
 Resume file: None
