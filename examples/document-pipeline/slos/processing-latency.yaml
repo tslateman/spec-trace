@@ -1,0 +1,38 @@
+apiVersion: openslo/v1
+kind: SLO
+metadata:
+  name: document-processing-latency
+  displayName: Document Processing Latency
+  labels:
+    requirements: DOC-001, DOC-TRF-001
+    team: platform
+    service: document-pipeline
+spec:
+  service: document-pipeline-processor
+  description: >
+    Document processing should complete within acceptable latency bounds.
+    The p99 processing time should be under 5 seconds for standard
+    documents to ensure responsive user experience.
+  objectives:
+    - target: 0.99
+      displayName: P99 Latency Under 5s
+      timeWindow:
+        duration: 7d
+        isRolling: true
+  budgetingMethod: Timeslices
+  indicator:
+    metadata:
+      name: processing-latency-p99
+    spec:
+      ratioMetric:
+        counter: false
+        good:
+          metricSource:
+            type: prometheus
+            spec:
+              query: histogram_quantile(0.99, rate(document_processing_duration_seconds_bucket[5m])) < 5
+        total:
+          metricSource:
+            type: prometheus
+            spec:
+              query: rate(document_processing_duration_seconds_count[5m]) > 0

@@ -1,0 +1,38 @@
+apiVersion: openslo/v1
+kind: SLO
+metadata:
+  name: document-pipeline-availability
+  displayName: Document Pipeline API Availability
+  labels:
+    requirement: DOC-001
+    team: platform
+    service: document-pipeline
+spec:
+  service: document-pipeline-api
+  description: >
+    The document pipeline API should maintain 99.9% availability during
+    business hours, ensuring users can reliably upload, process, and
+    retrieve documents.
+  objectives:
+    - target: 0.999
+      displayName: Monthly Availability Target
+      timeWindow:
+        duration: 30d
+        isRolling: true
+  budgetingMethod: Occurrences
+  indicator:
+    metadata:
+      name: api-availability-ratio
+    spec:
+      ratioMetric:
+        counter: true
+        good:
+          metricSource:
+            type: prometheus
+            spec:
+              query: sum(rate(http_requests_total{service="document-pipeline",status!~"5.."}[5m]))
+        total:
+          metricSource:
+            type: prometheus
+            spec:
+              query: sum(rate(http_requests_total{service="document-pipeline"}[5m]))

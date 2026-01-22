@@ -30,6 +30,22 @@ python manage.py runserver
 # Open http://localhost:8000/admin/
 ```
 
+## Examples
+
+See the **[Document Pipeline Example](examples/document-pipeline/)** for a comprehensive demonstration of spec-trace features:
+
+- Nested requirement hierarchy (3 levels)
+- Multiple verification methods (test, inapp, both)
+- Passing, failing, and skipped tests
+- SLO integration with OpenSLO YAML
+- Various pytest patterns (parametrized, async, class-based, xfail)
+- CI/CD workflow example
+
+Run the demo:
+```bash
+python scripts/demo_pipeline.py
+```
+
 ## Writing Specs
 
 Create markdown files in `specs/` with frontmatter:

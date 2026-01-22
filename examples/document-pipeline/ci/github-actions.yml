@@ -1,0 +1,149 @@
+# Example GitHub Actions workflow for spec-trace integration
+#
+# This workflow demonstrates how to integrate spec-trace into your CI/CD pipeline
+# to automatically verify requirements traceability on every pull request.
+
+name: Requirements Traceability
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main]
+
+env:
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  # Run tests and generate JUnit XML output for spec-trace
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    outputs:
+      test-result: ${{ steps.test.outcome }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio
+
+      - name: Run tests with JUnit output
+        id: test
+        continue-on-error: true
+        run: |
+          pytest examples/document-pipeline/tests/ \
+            --junitxml=test-results.xml \
+            -v
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-results.xml
+
+  # Update spec-trace with test results
+  traceability:
+    name: Update Requirements Traceability
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install spec-trace
+        run: |
+          pip install -r requirements.txt
+          cd spectrace && python manage.py migrate
+
+      - name: Download test results
+        uses: actions/download-artifact@v4
+        with:
+          name: test-results
+
+      - name: Import specifications
+        run: |
+          cd spectrace
+          python manage.py import_specs ../examples/document-pipeline/specs/
+
+      - name: Import SLOs
+        run: |
+          cd spectrace
+          python manage.py import_slos ../examples/document-pipeline/slos/
+
+      - name: Import test results
+        run: |
+          cd spectrace
+          python manage.py import_tests ../test-results.xml
+
+      - name: Generate traceability report
+        id: report
+        run: |
+          cd spectrace
+          python manage.py trace_report --format=markdown > ../traceability-report.md
+          echo "## Requirements Traceability Report" >> $GITHUB_STEP_SUMMARY
+          cat ../traceability-report.md >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload traceability report
+        uses: actions/upload-artifact@v4
+        with:
+          name: traceability-report
+          path: traceability-report.md
+
+  # Check for untested or failing requirements
+  quality-gate:
+    name: Requirements Quality Gate
+    runs-on: ubuntu-latest
+    needs: traceability
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install spec-trace
+        run: |
+          pip install -r requirements.txt
+          cd spectrace && python manage.py migrate
+
+      - name: Check for failing requirements
+        run: |
+          cd spectrace
+          # This command would check if any high-priority requirements are failing
+          # Customize this based on your quality gates
+          python manage.py check_requirements --priority=high --status=failing && exit 1 || true
+
+      - name: Check for untested requirements
+        run: |
+          cd spectrace
+          # Warn about untested requirements (don't fail the build)
+          python manage.py check_requirements --status=untested || true
+
+# Example: Scheduled SLO health check
+# Uncomment to enable periodic SLO verification
+#
+# slo-check:
+#   name: SLO Health Check
+#   runs-on: ubuntu-latest
+#   schedule:
+#     - cron: '0 */6 * * *'  # Every 6 hours
+#   steps:
+#     - uses: actions/checkout@v4
+#     - name: Check SLO status
+#       run: |
+#         # Fetch current SLO metrics from observability platform
+#         # Update spec-trace with current SLO values
+#         # Alert if any SLOs are at risk or breached
+#         echo "SLO health check would run here"
