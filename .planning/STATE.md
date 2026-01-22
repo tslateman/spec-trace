@@ -11,11 +11,11 @@ See: .planning/PROJECT.md (updated 2026-01-21)
 
 Milestone: v3 Integration Health Checks
 Phase: 5 of 7 (Health Check Foundation)
-Plan: 2 of 6 complete (Wave 1: 01, 02)
+Plan: 3 of 6 complete (Wave 1: 01, 02; Wave 2: 03)
 Status: **IN PROGRESS** — Executing Phase 5
-Last activity: 2026-01-22 — Completed 05-01-PLAN.md
+Last activity: 2026-01-22 — Completed 05-03-PLAN.md
 
-Progress: [##        ] 17% (2/12 total plans)
+Progress: [##        ] 25% (3/12 total plans)
 
 ## Milestone History
 
@@ -53,6 +53,8 @@ See: .planning/MILESTONES.md
 | Truncate-then-sanitize pattern | Limit regex processing on long responses |
 | Inline re import | Keep health.py module imports minimal |
 | Use datetime.now(UTC) | Avoid deprecated utcnow() for Python 3.12+ compatibility |
+| Early return on validation failure | Clear error messages for first failed check rather than collecting all errors |
+| Falsy check for missing config | Treat both empty strings and None as missing configuration |
 
 Full history: .planning/PROJECT.md Key Decisions table
 
@@ -68,5 +70,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-01-22
-Stopped at: Completed 05-01-PLAN.md (Health Check Dataclasses)
+Stopped at: Completed 05-03-PLAN.md (Configuration Check)
 Resume file: None
