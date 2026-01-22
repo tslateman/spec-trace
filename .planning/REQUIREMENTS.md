@@ -64,21 +64,26 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| HEALTH-01 | TBD | Pending |
-| HEALTH-02 | TBD | Pending |
-| HEALTH-03 | TBD | Pending |
-| HEALTH-04 | TBD | Pending |
-| HEALTH-05 | TBD | Pending |
-| HEALTH-06 | TBD | Pending |
-| DASH-07 | TBD | Pending |
-| DASH-08 | TBD | Pending |
-| DASH-09 | TBD | Pending |
+| HEALTH-01 | Phase 6 | Pending |
+| HEALTH-02 | Phase 5 | Pending |
+| HEALTH-03 | Phase 5 | Pending |
+| HEALTH-04 | Phase 5 | Pending |
+| HEALTH-05 | Phase 6 | Pending |
+| HEALTH-06 | Phase 6 | Pending |
+| DASH-07 | Phase 7 | Pending |
+| DASH-08 | Phase 7 | Pending |
+| DASH-09 | Phase 7 | Pending |
 
 **Coverage:**
 - v3 requirements: 9 total
-- Mapped to phases: 0
-- Unmapped: 9 ⚠️
+- Mapped to phases: 9
+- Unmapped: 0 ✓
+
+**Phase Summary:**
+- Phase 5 (Health Check Foundation): 3 requirements (HEALTH-02, HEALTH-03, HEALTH-04)
+- Phase 6 (API Endpoints): 3 requirements (HEALTH-01, HEALTH-05, HEALTH-06)
+- Phase 7 (Dashboard Integration): 3 requirements (DASH-07, DASH-08, DASH-09)
 
 ---
 *Requirements defined: 2026-01-21*
-*Last updated: 2026-01-21 after initial definition*
+*Last updated: 2026-01-21 after v3 roadmap creation*
