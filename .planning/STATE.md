@@ -11,11 +11,11 @@ See: .planning/PROJECT.md (updated 2026-01-21)
 
 Milestone: v3 Integration Health Checks
 Phase: 5 of 7 (Health Check Foundation)
-Plan: Not started (roadmap created, ready for planning)
-Status: **ROADMAP DEFINED** — Ready to plan Phase 5
-Last activity: 2026-01-21 — Created v3 roadmap with 3 phases
+Plan: 6 plans in 3 waves (0/6 complete)
+Status: **PLANNED** — Ready to execute Phase 5
+Last activity: 2026-01-21 — Created 6 plans for Phase 5
 
-Progress: [          ] 0% (ready for Phase 5 planning)
+Progress: [          ] 0% (ready for execution)
 
 ## Milestone History
 
@@ -59,12 +59,11 @@ None.
 
 ### Next Steps
 
-1. `/gsd:plan-phase 5` — Plan Phase 5 (Health Check Foundation)
-2. Execute Phase 5 plans
-3. Plan and execute Phases 6-7
+1. `/gsd:execute-phase 5` — Execute Phase 5 plans (6 plans, 3 waves)
+2. Plan and execute Phases 6-7
 
 ## Session Continuity
 
 Last session: 2026-01-21
-Stopped at: v3 roadmap created, ready for Phase 5 planning
+Stopped at: Phase 5 planned, ready for execution
 Resume file: None

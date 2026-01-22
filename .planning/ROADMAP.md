@@ -28,7 +28,15 @@ v3 adds integration health monitoring with granular diagnostic checks for Linear
   4. Authentication check makes actual API request to verify token validity
   5. Permissions check verifies read access to issues endpoint
   6. Failed checks include error_message and sanitized response details
-**Plans:** TBD
+**Plans:** 6 plans in 3 waves
+
+Plans:
+- [ ] PLAN-01 — VerificationCheck and TestConnectionResult dataclasses
+- [ ] PLAN-02 — Response sanitization function
+- [ ] PLAN-03 — Configuration check function
+- [ ] PLAN-04 — Authentication check function
+- [ ] PLAN-05 — Permissions check function
+- [ ] PLAN-06 — test_linear_connection aggregator
 
 ### Phase 6: API Endpoints
 **Goal:** REST endpoints for triggering health checks and retrieving cached status
@@ -63,7 +71,7 @@ Phases execute in numeric order: 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 5. Health Check Foundation | 0/TBD | Not started | - |
+| 5. Health Check Foundation | 0/6 | Planned | - |
 | 6. API Endpoints | 0/TBD | Not started | - |
 | 7. Dashboard Integration | 0/TBD | Not started | - |
 
