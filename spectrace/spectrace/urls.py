@@ -18,8 +18,11 @@ from django.contrib import admin
 from django.urls import path
 
 from requirements import api
+from requirements.views import matrix_view
 
 urlpatterns = [
+    # Matrix view must come before admin to avoid being caught by admin prefix
+    path('admin/matrix/', matrix_view, name='admin-matrix'),
     path('admin/', admin.site.urls),
 
     # API endpoints for external systems

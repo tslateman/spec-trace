@@ -95,9 +95,13 @@
     </div>
 
     <!-- Quick Actions -->
-    <div class="mt-6 flex gap-4">
-        <a href="{% url 'admin:requirements_requirement_changelist' %}"
+    <div class="mt-6 flex flex-wrap gap-4">
+        <a href="{% url 'admin-matrix' %}"
            class="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors">
+            View Traceability Matrix
+        </a>
+        <a href="{% url 'admin:requirements_requirement_changelist' %}"
+           class="px-4 py-2 bg-base-200 dark:bg-base-700 text-base-800 dark:text-base-200 hover:bg-base-300 dark:hover:bg-base-600 rounded-lg transition-colors">
             View All Requirements
         </a>
         <a href="{% url 'admin:requirements_testrun_changelist' %}"
