@@ -1,0 +1,69 @@
+{
+  "source": "document-pipeline-app",
+  "validations": [
+    {
+      "requirement_id": "DOC-ING-002",
+      "name": "Verify PDF Upload",
+      "endpoint": "/api/documents/upload/verify",
+      "status": "success",
+      "message": "PDF file validation passed - accepted MIME type application/pdf",
+      "checked_at": "2026-01-21T15:30:00Z"
+    },
+    {
+      "requirement_id": "DOC-ING-002",
+      "name": "Verify Rejected File Type",
+      "endpoint": "/api/documents/upload/verify",
+      "status": "success",
+      "message": "Correctly rejected .exe file with error 'Unsupported file type'",
+      "checked_at": "2026-01-21T15:31:00Z"
+    },
+    {
+      "requirement_id": "DOC-ING-003",
+      "name": "Verify Virus Scan Integration",
+      "endpoint": "/api/documents/scan/health",
+      "status": "success",
+      "message": "ClamAV service responding, scan queue healthy (0 pending)",
+      "checked_at": "2026-01-21T15:32:00Z"
+    },
+    {
+      "requirement_id": "DOC-STR-002",
+      "name": "Verify Encryption at Rest",
+      "endpoint": "/api/storage/encryption/verify",
+      "status": "success",
+      "message": "AES-256 encryption verified on stored documents",
+      "checked_at": "2026-01-21T15:33:00Z"
+    },
+    {
+      "requirement_id": "DOC-DEL-002",
+      "name": "Verify CDN Health",
+      "endpoint": "/api/cdn/health",
+      "status": "failure",
+      "message": "CDN edge node us-west-2 unreachable (timeout after 5s)",
+      "checked_at": "2026-01-21T15:34:00Z"
+    },
+    {
+      "requirement_id": "DOC-TRF-002",
+      "name": "Verify PDF Conversion",
+      "endpoint": "/api/transform/pdf/verify",
+      "status": "success",
+      "message": "DOCX to PDF conversion completed in 1.2s",
+      "checked_at": "2026-01-21T15:35:00Z"
+    },
+    {
+      "requirement_id": "DOC-ING-004",
+      "name": "Verify Metadata Extraction",
+      "endpoint": "/api/documents/metadata/verify",
+      "status": "success",
+      "message": "Extracted 12 metadata fields from test document",
+      "checked_at": "2026-01-21T15:36:00Z"
+    },
+    {
+      "requirement_id": "DOC-DEL-001",
+      "name": "Verify Document Delivery",
+      "endpoint": "/api/delivery/health",
+      "status": "success",
+      "message": "Delivery queue processing normally (avg latency 45ms)",
+      "checked_at": "2026-01-21T15:37:00Z"
+    }
+  ]
+}
