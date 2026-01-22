@@ -48,9 +48,6 @@ def sample_data(db):
     # Create test run and results
     test_run = TestRun.objects.create(
         source_file="results.xml",
-        total_tests=2,
-        passed=1,
-        failed=1,
     )
 
     result1 = TestResult.objects.create(

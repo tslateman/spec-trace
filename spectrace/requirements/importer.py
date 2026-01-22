@@ -1,6 +1,5 @@
 """JUnit XML import logic for test results."""
 import json
-from pathlib import Path
 
 from junitparser import JUnitXml, Failure, Error, Skipped
 
@@ -23,11 +22,6 @@ def import_junit_xml(file_path: str) -> TestRun:
 
     test_run = TestRun.objects.create(
         source_file=str(file_path),
-        total_tests=0,
-        passed=0,
-        failed=0,
-        errors=0,
-        skipped=0,
     )
 
     for suite in xml:
@@ -65,18 +59,6 @@ def import_junit_xml(file_path: str) -> TestRun:
                 message=message,
             )
 
-            # Update run counters
-            test_run.total_tests += 1
-            if status == 'passed':
-                test_run.passed += 1
-            elif status == 'failed':
-                test_run.failed += 1
-            elif status == 'error':
-                test_run.errors += 1
-            elif status == 'skipped':
-                test_run.skipped += 1
-
-    test_run.save()
     return test_run
 
 

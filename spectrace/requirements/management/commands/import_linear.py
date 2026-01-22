@@ -1,19 +1,22 @@
 """Django management command for importing requirements from Linear."""
 import os
 
-from django.core.management.base import BaseCommand, CommandError
+from django.core.management.base import CommandError
 
 from requirements.linear import LinearClient
 from requirements.parser import import_requirements_to_database
 
+from .base import BaseImportCommand
 
-class Command(BaseCommand):
+
+class Command(BaseImportCommand):
     """Import requirements from Linear issues with a specific label."""
 
     help = 'Import requirements from Linear issues with a specific label'
+    path_must_be_dir = False  # Linear doesn't use a path
 
     def add_arguments(self, parser):
-        """Define command arguments."""
+        """Override to add Linear-specific arguments (no path needed)."""
         parser.add_argument(
             '--label',
             default='requirement',
@@ -35,9 +38,9 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        """Execute the command."""
+        """Execute the command (overrides base to skip path validation)."""
         # Get API key from argument or environment
-        api_key = options['api_key'] or os.environ.get('LINEAR_API_KEY')
+        api_key = options.get('api_key') or os.environ.get('LINEAR_API_KEY')
         if not api_key:
             raise CommandError(
                 "Linear API key required. Provide --api-key or set LINEAR_API_KEY env var"

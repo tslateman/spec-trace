@@ -18,9 +18,6 @@ def test_run(db):
     """Create a test run for test results."""
     return TestRun.objects.create(
         source_file="results.xml",
-        total_tests=3,
-        passed=2,
-        failed=1,
     )
 
 

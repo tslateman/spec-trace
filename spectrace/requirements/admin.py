@@ -15,6 +15,7 @@ from .models import (
 )
 
 
+# Color dictionaries for status badges
 STATUS_BADGE_COLORS = {
     'passed': '#22c55e',
     'failed': '#ef4444',
@@ -25,13 +26,48 @@ STATUS_BADGE_COLORS = {
     'untested': '#6b7280',
 }
 
-
-SLO_STATUS_BADGE_COLORS = {
+SLO_STATUS_COLORS = {
     'met': '#22c55e',
     'at_risk': '#f97316',
     'breached': '#ef4444',
     'not_linked': '#6b7280',
 }
+
+INAPP_STATUS_COLORS = {
+    'success': '#22c55e',
+    'failure': '#ef4444',
+    'unknown': '#6b7280',
+    'not_run': '#6b7280',
+}
+
+
+def _render_badge_link(color: str, status: str, url: str, label: str, suffix: str = '') -> str:
+    """Render a single badge with link for admin displays."""
+    return format_html(
+        '<div style="margin-bottom: 4px;">'
+        '<span style="display: inline-block; padding: 2px 8px; border-radius: 4px; '
+        'font-size: 11px; font-weight: 500; color: white; background-color: {}; '
+        'margin-right: 8px;">{}</span>'
+        '<a href="{}">{}</a>{}'
+        '</div>',
+        color, status.upper(), url, label, suffix
+    )
+
+
+def _render_badge_list(items, color_dict, get_status, get_url, get_label, empty_message, get_suffix=None):
+    """Render a list of items as badge links."""
+    if not items.exists():
+        return format_html('<span style="color: #6b7280;">{}</span>', empty_message)
+
+    links = []
+    for item in items:
+        status = get_status(item)
+        color = color_dict.get(status, '#6b7280')
+        url = get_url(item)
+        label = get_label(item)
+        suffix = get_suffix(item) if get_suffix else ''
+        links.append(_render_badge_link(color, status, url, label, suffix))
+    return format_html(''.join(str(link) for link in links))
 
 
 @admin.register(Requirement)
@@ -68,70 +104,40 @@ class RequirementAdmin(ModelAdmin):
     def linked_tests(self, obj):
         """Display linked test results with status badges and clickable links."""
         tests = obj.test_results.select_related('test_run').order_by('-test_run__imported_at')
-        if not tests.exists():
-            return format_html('<span style="color: #6b7280;">No linked tests</span>')
-
-        links = []
-        for test in tests:
-            url = reverse('admin:requirements_testresult_change', args=[test.pk])
-            color = STATUS_BADGE_COLORS.get(test.status, '#6b7280')
-            links.append(format_html(
-                '<div style="margin-bottom: 4px;">'
-                '<span style="display: inline-block; padding: 2px 8px; border-radius: 4px; '
-                'font-size: 11px; font-weight: 500; color: white; background-color: {}; '
-                'margin-right: 8px;">{}</span>'
-                '<a href="{}">{}</a>'
-                '</div>',
-                color, test.status.upper(), url, test.test_nodeid
-            ))
-        return format_html(''.join(str(link) for link in links))
+        return _render_badge_list(
+            tests, STATUS_BADGE_COLORS,
+            get_status=lambda t: t.status,
+            get_url=lambda t: reverse('admin:requirements_testresult_change', args=[t.pk]),
+            get_label=lambda t: t.test_nodeid,
+            empty_message='No linked tests'
+        )
 
     linked_tests.short_description = "Linked Tests"
 
     def linked_slos(self, obj):
         """Display linked SLOs with status badges and clickable links."""
         slos = obj.slos.all().order_by('name')
-        if not slos.exists():
-            return format_html('<span style="color: #6b7280;">No linked SLOs</span>')
-
-        links = []
-        for slo in slos:
-            url = reverse('admin:requirements_slo_change', args=[slo.pk])
-            color = SLO_STATUS_BADGE_COLORS.get(slo.status, '#6b7280')
-            target_str = f"{float(slo.target) * 100:.2f}%" if slo.target else 'N/A'
-            links.append(format_html(
-                '<div style="margin-bottom: 4px;">'
-                '<span style="display: inline-block; padding: 2px 8px; border-radius: 4px; '
-                'font-size: 11px; font-weight: 500; color: white; background-color: {}; '
-                'margin-right: 8px;">{}</span>'
-                '<a href="{}">{}</a> (target: {})'
-                '</div>',
-                color, slo.status.upper(), url, slo.display_name or slo.name, target_str
-            ))
-        return format_html(''.join(str(link) for link in links))
+        return _render_badge_list(
+            slos, SLO_STATUS_COLORS,
+            get_status=lambda s: s.status,
+            get_url=lambda s: reverse('admin:requirements_slo_change', args=[s.pk]),
+            get_label=lambda s: s.display_name or s.name,
+            empty_message='No linked SLOs',
+            get_suffix=lambda s: f" (target: {float(s.target) * 100:.2f}%)" if s.target else " (target: N/A)"
+        )
 
     linked_slos.short_description = "Linked SLOs"
 
     def linked_inapp_validations(self, obj):
         """Display linked in-app validations with status badges."""
         validations = obj.inapp_validations.all().order_by('name')
-        if not validations.exists():
-            return format_html('<span style="color: #6b7280;">No in-app validations</span>')
-
-        links = []
-        for val in validations:
-            url = reverse('admin:requirements_inappvalidation_change', args=[val.pk])
-            color = INAPP_STATUS_COLORS.get(val.status, '#6b7280')
-            links.append(format_html(
-                '<div style="margin-bottom: 4px;">'
-                '<span style="display: inline-block; padding: 2px 8px; border-radius: 4px; '
-                'font-size: 11px; font-weight: 500; color: white; background-color: {}; '
-                'margin-right: 8px;">{}</span>'
-                '<a href="{}">{}</a>'
-                '</div>',
-                color, val.status.upper(), url, val.name
-            ))
-        return format_html(''.join(str(link) for link in links))
+        return _render_badge_list(
+            validations, INAPP_STATUS_COLORS,
+            get_status=lambda v: v.status,
+            get_url=lambda v: reverse('admin:requirements_inappvalidation_change', args=[v.pk]),
+            get_label=lambda v: v.name,
+            empty_message='No in-app validations'
+        )
 
     linked_inapp_validations.short_description = "In-App Validations"
 
@@ -157,35 +163,15 @@ class TestResultAdmin(ModelAdmin):
     def linked_requirements(self, obj):
         """Display linked requirements with verification status badges and clickable links."""
         requirements = obj.requirements.all().order_by('external_id')
-        if not requirements.exists():
-            return format_html('<span style="color: #6b7280;">No linked requirements</span>')
-
-        links = []
-        for req in requirements:
-            url = reverse('admin:requirements_requirement_change', args=[req.pk])
-            color = STATUS_BADGE_COLORS.get(req.verification_status, '#6b7280')
-            links.append(format_html(
-                '<div style="margin-bottom: 4px;">'
-                '<span style="display: inline-block; padding: 2px 8px; border-radius: 4px; '
-                'font-size: 11px; font-weight: 500; color: white; background-color: {}; '
-                'margin-right: 8px;">{}</span>'
-                '<a href="{}">{}: {}</a>'
-                '</div>',
-                color, req.verification_status.upper(), url, req.external_id, req.title
-            ))
-        return format_html(''.join(str(link) for link in links))
+        return _render_badge_list(
+            requirements, STATUS_BADGE_COLORS,
+            get_status=lambda r: r.verification_status,
+            get_url=lambda r: reverse('admin:requirements_requirement_change', args=[r.pk]),
+            get_label=lambda r: f"{r.external_id}: {r.title}",
+            empty_message='No linked requirements'
+        )
 
     linked_requirements.short_description = "Linked Requirements"
-
-
-# In-App Validation Admin
-
-INAPP_STATUS_COLORS = {
-    'success': '#22c55e',
-    'failure': '#ef4444',
-    'unknown': '#6b7280',
-    'not_run': '#6b7280',
-}
 
 
 @admin.register(InAppValidation)
@@ -193,9 +179,9 @@ class InAppValidationAdmin(ModelAdmin):
     """Admin interface for InAppValidation."""
 
     list_display = ['name', 'requirement', 'status', 'endpoint', 'last_checked']
-    list_filter = ['status']
+    list_filter = ['requirement']
     search_fields = ['name', 'endpoint', 'requirement__external_id']
-    readonly_fields = ['last_checked']
+    readonly_fields = ['status', 'last_checked', 'message']
 
 
 @admin.register(InAppValidationRun)
@@ -214,16 +200,6 @@ class InAppValidationResultAdmin(ModelAdmin):
     list_display = ['validation', 'status', 'validation_run', 'checked_at']
     list_filter = ['status', 'validation_run']
     search_fields = ['validation__name', 'message']
-
-
-# SLO Admin
-
-SLO_STATUS_COLORS = {
-    'met': '#22c55e',
-    'at_risk': '#f97316',
-    'breached': '#ef4444',
-    'not_linked': '#6b7280',
-}
 
 
 @admin.register(SLO)
@@ -250,7 +226,7 @@ class SLOAdmin(ModelAdmin):
             'fields': ('requirements', 'linked_requirements_display')
         }),
         ('Source', {
-            'fields': ('source_file', 'raw_yaml'),
+            'fields': ('source_file',),
             'classes': ('collapse',)
         }),
         ('Timestamps', {
@@ -262,22 +238,12 @@ class SLOAdmin(ModelAdmin):
     def linked_requirements_display(self, obj):
         """Display linked requirements with verification status badges."""
         requirements = obj.requirements.all().order_by('external_id')
-        if not requirements.exists():
-            return format_html('<span style="color: #6b7280;">No linked requirements</span>')
-
-        links = []
-        for req in requirements:
-            url = reverse('admin:requirements_requirement_change', args=[req.pk])
-            color = STATUS_BADGE_COLORS.get(req.verification_status, '#6b7280')
-            links.append(format_html(
-                '<div style="margin-bottom: 4px;">'
-                '<span style="display: inline-block; padding: 2px 8px; border-radius: 4px; '
-                'font-size: 11px; font-weight: 500; color: white; background-color: {}; '
-                'margin-right: 8px;">{}</span>'
-                '<a href="{}">{}: {}</a>'
-                '</div>',
-                color, req.verification_status.upper(), url, req.external_id, req.title
-            ))
-        return format_html(''.join(str(link) for link in links))
+        return _render_badge_list(
+            requirements, STATUS_BADGE_COLORS,
+            get_status=lambda r: r.verification_status,
+            get_url=lambda r: reverse('admin:requirements_requirement_change', args=[r.pk]),
+            get_label=lambda r: f"{r.external_id}: {r.title}",
+            empty_message='No linked requirements'
+        )
 
     linked_requirements_display.short_description = "Linked Requirements (Current Status)"

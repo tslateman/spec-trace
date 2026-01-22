@@ -126,11 +126,6 @@ class TestRun(models.Model):
         max_length=500,
         help_text="Path to JUnit XML file"
     )
-    total_tests = models.IntegerField(default=0)
-    passed = models.IntegerField(default=0)
-    failed = models.IntegerField(default=0)
-    errors = models.IntegerField(default=0)
-    skipped = models.IntegerField(default=0)
 
     class Meta:
         ordering = ['-imported_at']
@@ -139,6 +134,31 @@ class TestRun(models.Model):
 
     def __str__(self):
         return f"TestRun {self.id} ({self.source_file}) - {self.imported_at}"
+
+    @property
+    def total_tests(self) -> int:
+        """Total number of test results in this run."""
+        return self.results.count()
+
+    @property
+    def passed(self) -> int:
+        """Number of passed tests."""
+        return self.results.filter(status='passed').count()
+
+    @property
+    def failed(self) -> int:
+        """Number of failed tests."""
+        return self.results.filter(status='failed').count()
+
+    @property
+    def errors(self) -> int:
+        """Number of tests with errors."""
+        return self.results.filter(status='error').count()
+
+    @property
+    def skipped(self) -> int:
+        """Number of skipped tests."""
+        return self.results.filter(status='skipped').count()
 
 
 class TestResult(models.Model):
@@ -228,22 +248,6 @@ class InAppValidation(models.Model):
         blank=True,
         help_text="API endpoint or identifier for this validation (e.g., '/api/mobile-key/verify')"
     )
-    status = models.CharField(
-        max_length=20,
-        choices=InAppValidationStatus.choices,
-        default=InAppValidationStatus.NOT_RUN,
-        db_index=True,
-        help_text="Current validation status"
-    )
-    last_checked = models.DateTimeField(
-        null=True,
-        blank=True,
-        help_text="When this validation was last run"
-    )
-    message = models.TextField(
-        blank=True,
-        help_text="Status message from last validation run"
-    )
 
     class Meta:
         verbose_name = "In-App Validation"
@@ -252,6 +256,29 @@ class InAppValidation(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.status})"
+
+    @property
+    def latest_result(self):
+        """Get the most recent validation result."""
+        return self.results.order_by('-checked_at').first()
+
+    @property
+    def status(self) -> str:
+        """Current validation status from latest result."""
+        result = self.latest_result
+        return result.status if result else InAppValidationStatus.NOT_RUN
+
+    @property
+    def last_checked(self):
+        """When this validation was last run."""
+        result = self.latest_result
+        return result.checked_at if result else None
+
+    @property
+    def message(self) -> str:
+        """Status message from last validation run."""
+        result = self.latest_result
+        return result.message if result else ''
 
 
 class InAppValidationRun(models.Model):
@@ -264,9 +291,6 @@ class InAppValidationRun(models.Model):
         max_length=500,
         help_text="Source file or system that provided the results"
     )
-    total_validations = models.IntegerField(default=0)
-    successful = models.IntegerField(default=0)
-    failed = models.IntegerField(default=0)
 
     class Meta:
         ordering = ['-imported_at']
@@ -275,6 +299,21 @@ class InAppValidationRun(models.Model):
 
     def __str__(self):
         return f"ValidationRun {self.id} ({self.source}) - {self.imported_at}"
+
+    @property
+    def total_validations(self) -> int:
+        """Total number of validation results in this run."""
+        return self.results.count()
+
+    @property
+    def successful(self) -> int:
+        """Number of successful validations."""
+        return self.results.filter(status=InAppValidationStatus.SUCCESS).count()
+
+    @property
+    def failed(self) -> int:
+        """Number of failed validations."""
+        return self.results.filter(status=InAppValidationStatus.FAILURE).count()
 
 
 class InAppValidationResult(models.Model):
@@ -399,10 +438,6 @@ class SLO(models.Model):
         max_length=500,
         blank=True,
         help_text="Path to OpenSLO YAML source file"
-    )
-    raw_yaml = models.TextField(
-        blank=True,
-        help_text="Original OpenSLO YAML content"
     )
 
     # Timestamps

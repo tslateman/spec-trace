@@ -26,11 +26,6 @@ class Command(BaseCommand):
             type=str,
             help='Path to validations JSON file'
         )
-        parser.add_argument(
-            '--no-status-update',
-            action='store_true',
-            help='Skip updating InAppValidation status from results'
-        )
 
     def handle(self, *args, **options):
         """Execute the import workflow.
@@ -72,7 +67,6 @@ class Command(BaseCommand):
         # Create validation run
         validation_run = InAppValidationRun.objects.create(
             source=source,
-            total_validations=len(validations_data),
         )
 
         # Track statistics
@@ -135,7 +129,7 @@ class Command(BaseCommand):
             else:
                 checked_at = timezone.now()
 
-            # Create result
+            # Create result (status/last_checked/message are computed from latest result)
             InAppValidationResult.objects.create(
                 validation_run=validation_run,
                 validation=validation,
@@ -143,18 +137,6 @@ class Command(BaseCommand):
                 message=v.get('message', ''),
                 checked_at=checked_at,
             )
-
-            # Update validation status if requested
-            if not options['no_status_update']:
-                validation.status = status
-                validation.last_checked = checked_at
-                validation.message = v.get('message', '')
-                validation.save()
-
-        # Update run statistics
-        validation_run.successful = successful
-        validation_run.failed = failed
-        validation_run.save()
 
         self.stdout.write(self.style.SUCCESS(
             f"Imported {len(validations_data) - skipped} validations "

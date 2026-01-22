@@ -8,6 +8,20 @@ import frontmatter
 from requirements.models import Requirement, VerificationMethod
 
 
+def normalize_verification_method(value: str | None) -> str:
+    """Normalize verification method to valid enum value.
+
+    Args:
+        value: Raw verification method value from input
+
+    Returns:
+        Valid VerificationMethod value, defaulting to UNSPECIFIED
+    """
+    if value is None or value not in VerificationMethod.values:
+        return VerificationMethod.UNSPECIFIED
+    return value
+
+
 def import_requirements_to_database(
     requirements: list[dict[str, Any]],
     clear_existing: bool = False,
@@ -49,10 +63,6 @@ def import_requirements_to_database(
     # First pass: create all root requirements
     for req_data in roots:
         external_id = req_data['external_id']
-        # Validate verification_method
-        verification_method = req_data.get('verification_method', VerificationMethod.UNSPECIFIED)
-        if verification_method not in VerificationMethod.values:
-            verification_method = VerificationMethod.UNSPECIFIED
         fields = {
             'title': req_data.get('title', ''),
             'description': req_data.get('description', ''),
@@ -60,7 +70,7 @@ def import_requirements_to_database(
             'priority': req_data.get('priority', ''),
             'status': req_data.get('status', 'draft'),
             'source_file': req_data.get('source_file', ''),
-            'verification_method': verification_method,
+            'verification_method': normalize_verification_method(req_data.get('verification_method')),
         }
 
         if external_id in existing:
@@ -79,10 +89,6 @@ def import_requirements_to_database(
     for req_data in children:
         external_id = req_data['external_id']
         parent_id = req_data['parent_id']
-        # Validate verification_method
-        verification_method = req_data.get('verification_method', VerificationMethod.UNSPECIFIED)
-        if verification_method not in VerificationMethod.values:
-            verification_method = VerificationMethod.UNSPECIFIED
         fields = {
             'title': req_data.get('title', ''),
             'description': req_data.get('description', ''),
@@ -90,7 +96,7 @@ def import_requirements_to_database(
             'priority': req_data.get('priority', ''),
             'status': req_data.get('status', 'draft'),
             'source_file': req_data.get('source_file', ''),
-            'verification_method': verification_method,
+            'verification_method': normalize_verification_method(req_data.get('verification_method')),
         }
 
         if external_id in existing:

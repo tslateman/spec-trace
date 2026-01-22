@@ -19,6 +19,16 @@ from .models import (
 from .status import update_all_slo_statuses, update_all_unified_statuses
 
 
+def parse_decimal_safe(value) -> Decimal | None:
+    """Safely parse a value to Decimal, returning None on failure."""
+    if value is None:
+        return None
+    try:
+        return Decimal(str(value))
+    except (InvalidOperation, ValueError):
+        return None
+
+
 @csrf_exempt
 @require_http_methods(["POST"])
 def update_slo_status(request):
@@ -86,19 +96,13 @@ def update_slo_status(request):
         slo.status = status_map.get(status_str, SLOStatus.NOT_LINKED)
 
         # Update values
-        current_value = slo_data.get('current_value')
+        current_value = parse_decimal_safe(slo_data.get('current_value'))
         if current_value is not None:
-            try:
-                slo.current_value = Decimal(str(current_value))
-            except (InvalidOperation, ValueError):
-                pass
+            slo.current_value = current_value
 
-        error_budget = slo_data.get('error_budget_remaining')
+        error_budget = parse_decimal_safe(slo_data.get('error_budget_remaining'))
         if error_budget is not None:
-            try:
-                slo.error_budget_remaining = Decimal(str(error_budget))
-            except (InvalidOperation, ValueError):
-                pass
+            slo.error_budget_remaining = error_budget
 
         slo.last_updated = timezone.now()
         slo.save()
@@ -164,7 +168,6 @@ def submit_validation_result(request):
     # Create validation run
     validation_run = InAppValidationRun.objects.create(
         source=source,
-        total_validations=len(validations_data),
     )
 
     successful = 0
@@ -219,7 +222,7 @@ def submit_validation_result(request):
         else:
             checked_at = timezone.now()
 
-        # Create result
+        # Create result (status/last_checked/message are computed from latest result)
         InAppValidationResult.objects.create(
             validation_run=validation_run,
             validation=validation,
@@ -227,17 +230,6 @@ def submit_validation_result(request):
             message=v.get('message', ''),
             checked_at=checked_at,
         )
-
-        # Update validation status
-        validation.status = status
-        validation.last_checked = checked_at
-        validation.message = v.get('message', '')
-        validation.save()
-
-    # Update run statistics
-    validation_run.successful = successful
-    validation_run.failed = failed
-    validation_run.save()
 
     # Optionally update unified verification status
     if data.get('update_verification_status', False):

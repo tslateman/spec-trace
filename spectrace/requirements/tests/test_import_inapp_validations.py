@@ -172,41 +172,6 @@ class TestImportInAppValidations:
         assert "not found" in str(exc_info.value).lower()
 
     @pytest.mark.django_db
-    def test_no_status_update_flag(self, valid_validations_json):
-        """--no-status-update flag prevents updating InAppValidation status."""
-        # First import creates the validation
-        call_command("import_inapp_validations", str(valid_validations_json))
-
-        # Manually change validation status
-        validation = InAppValidation.objects.first()
-        validation.status = InAppValidationStatus.NOT_RUN
-        validation.save()
-
-        # Create a new failed validation JSON
-        data = {
-            "source": "test-app",
-            "validations": [
-                {
-                    "requirement_id": "REQ-TEST-001",
-                    "name": "Verify Test Flow",
-                    "status": "failure",
-                }
-            ],
-        }
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False
-        ) as f:
-            json.dump(data, f)
-            json_path = Path(f.name)
-
-        # Import with --no-status-update
-        call_command("import_inapp_validations", str(json_path), "--no-status-update")
-
-        # Validation status should not have changed
-        validation.refresh_from_db()
-        assert validation.status == InAppValidationStatus.NOT_RUN
-
-    @pytest.mark.django_db
     def test_multiple_validations(self, sample_requirement):
         """Multiple validations for same requirement are imported."""
         # Create second requirement

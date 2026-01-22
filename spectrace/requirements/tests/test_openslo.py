@@ -159,7 +159,6 @@ class TestImportSLOs:
                 "budgeting_method": "Occurrences",
                 "requirement_ids": ["REQ-API-001"],
                 "source_file": "slos/api.yaml",
-                "raw_yaml": "...",
             }
         ]
 

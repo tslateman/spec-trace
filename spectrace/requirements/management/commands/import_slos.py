@@ -1,46 +1,24 @@
 """Django management command for importing OpenSLO YAML files."""
 from pathlib import Path
 
-from django.core.management.base import BaseCommand, CommandError
-
 from requirements.openslo import OpenSLOParser, import_slos_to_database
 
+from .base import BaseImportCommand
 
-class Command(BaseCommand):
+
+class Command(BaseImportCommand):
     """Import SLOs from OpenSLO YAML files."""
 
     help = 'Import SLOs from OpenSLO YAML files'
+    path_argument_name = 'slos_dir'
+    path_argument_help = 'Path to directory containing OpenSLO YAML files'
 
-    def add_arguments(self, parser):
-        """Define command arguments."""
-        parser.add_argument(
-            'slos_dir',
-            type=str,
-            help='Path to directory containing OpenSLO YAML files'
-        )
-        parser.add_argument(
-            '--clear',
-            action='store_true',
-            help='Clear existing SLOs before import'
-        )
-        parser.add_argument(
-            '--dry-run',
-            action='store_true',
-            help='Parse files but do not import to database'
-        )
-
-    def handle(self, *args, **options):
+    def do_import(self, path: Path, options: dict):
         """Execute the import workflow."""
-        slos_dir = Path(options['slos_dir'])
-        if not slos_dir.exists():
-            raise CommandError(f"Directory not found: {slos_dir}")
-        if not slos_dir.is_dir():
-            raise CommandError(f"Not a directory: {slos_dir}")
-
-        self.stdout.write(f"Parsing OpenSLO files from {slos_dir}...")
+        self.stdout.write(f"Parsing OpenSLO files from {path}...")
 
         parser = OpenSLOParser()
-        slos = parser.parse_directory(slos_dir)
+        slos = parser.parse_directory(path)
 
         if not slos:
             self.stdout.write(self.style.WARNING("No OpenSLO files found"))

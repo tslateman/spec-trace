@@ -51,10 +51,10 @@ class OpenSLOParser:
             SLO dict ready for database import, or None if not an SLO
         """
         with open(file_path) as f:
-            raw_yaml = f.read()
+            content = f.read()
 
         try:
-            doc = yaml.safe_load(raw_yaml)
+            doc = yaml.safe_load(content)
         except yaml.YAMLError as e:
             print(f"Warning: Failed to parse YAML {file_path}: {e}")
             return None
@@ -69,17 +69,16 @@ class OpenSLOParser:
         if not api_version.startswith('openslo/') or kind != 'SLO':
             return None
 
-        return self._parse_slo_doc(doc, file_path, raw_yaml)
+        return self._parse_slo_doc(doc, file_path)
 
     def _parse_slo_doc(
-        self, doc: dict[str, Any], file_path: Path, raw_yaml: str
+        self, doc: dict[str, Any], file_path: Path
     ) -> dict[str, Any]:
         """Parse an OpenSLO SLO document into a dict.
 
         Args:
             doc: Parsed YAML document
             file_path: Source file path
-            raw_yaml: Raw YAML content for storage
 
         Returns:
             SLO dict for database import
@@ -126,7 +125,6 @@ class OpenSLOParser:
             'budgeting_method': spec.get('budgetingMethod', ''),
             'requirement_ids': requirement_ids,
             'source_file': str(file_path),
-            'raw_yaml': raw_yaml,
         }
 
     def _extract_requirement_ids(
@@ -170,6 +168,9 @@ class OpenSLOParser:
 
         return requirement_ids
 
+    # File patterns for YAML files
+    FILE_PATTERNS = ('**/*.yaml', '**/*.yml')
+
     def parse_directory(self, slos_dir: Path) -> list[dict[str, Any]]:
         """Parse all YAML files in directory recursively.
 
@@ -180,23 +181,14 @@ class OpenSLOParser:
             List of SLO dicts from all files
         """
         slos = []
-        for yaml_file in sorted(slos_dir.glob('**/*.yaml')):
-            try:
-                slo = self.parse_file(yaml_file)
-                if slo:
-                    slos.append(slo)
-            except Exception as e:
-                print(f"Warning: Failed to parse {yaml_file}: {e}")
-
-        # Also check .yml files
-        for yaml_file in sorted(slos_dir.glob('**/*.yml')):
-            try:
-                slo = self.parse_file(yaml_file)
-                if slo:
-                    slos.append(slo)
-            except Exception as e:
-                print(f"Warning: Failed to parse {yaml_file}: {e}")
-
+        for pattern in self.FILE_PATTERNS:
+            for yaml_file in sorted(slos_dir.glob(pattern)):
+                try:
+                    slo = self.parse_file(yaml_file)
+                    if slo:
+                        slos.append(slo)
+                except Exception as e:
+                    print(f"Warning: Failed to parse {yaml_file}: {e}")
         return slos
 
 
@@ -233,7 +225,6 @@ def import_slos_to_database(
                 'time_window': slo_data.get('time_window', ''),
                 'budgeting_method': slo_data.get('budgeting_method', ''),
                 'source_file': slo_data.get('source_file', ''),
-                'raw_yaml': slo_data.get('raw_yaml', ''),
             }
         )
 
