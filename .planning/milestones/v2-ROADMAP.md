@@ -11,7 +11,7 @@ v2 delivers a traceability matrix view — a paginated grid showing requirements
 - Decimal phases (e.g., 1.1): Urgent insertions (marked with INSERTED)
 
 - [x] **Phase 1: Matrix Data Layer** - Query optimization and data structure for grid rendering
-- [ ] **Phase 2: Matrix View** - Grid template with paginated requirements and scrollable tests
+- [x] **Phase 2: Matrix View** - Grid template with paginated requirements and scrollable tests
 - [ ] **Phase 3: Filtering & Navigation** - Status/tag filters, cell drill-down, URL state
 - [ ] **Phase 4: Export & Polish** - CSV export, responsive design, performance tuning
 
@@ -73,7 +73,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Matrix Data Layer | 1/1 | Complete | 2026-01-21 |
-| 2. Matrix View | 0/? | Not Started | - |
+| 2. Matrix View | 1/1 | Complete | 2026-01-21 |
 | 3. Filtering & Navigation | 0/? | Not Started | - |
 | 4. Export & Polish | 0/? | Not Started | - |
 
