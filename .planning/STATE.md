@@ -2,19 +2,39 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-01-21 after v1 milestone)
+See: .planning/PROJECT.md (updated 2026-01-21)
 
 **Core value:** PMs can see, at any moment, which requirements are verified by passing tests
-**Current focus:** Planning next milestone (v1 shipped)
+**Current focus:** v2 Traceability Matrix
 
 ## Current Position
 
-Phase: — (milestone complete)
-Plan: —
-Status: **v1 SHIPPED** — Ready for next milestone
-Last activity: 2026-01-21 — v1 milestone complete
+Milestone: v2 Traceability Matrix
+Phase: 1 of 4 (Matrix Data Layer)
+Plan: Not started
+Status: **PLANNING COMPLETE** — Ready to execute Phase 1
+Last activity: 2026-01-21 — Created v2 requirements and roadmap
 
-Progress: [##########] v1 complete
+Progress: [          ] 0% (4 phases remaining)
+
+## v2 Milestone Summary
+
+**Goal:** Visual grid view showing which tests verify which requirements
+
+**Phases:**
+1. Matrix Data Layer — Query optimization for grid rendering
+2. Matrix View — Paginated grid in dashboard tab
+3. Filtering & Navigation — Status filters, cell drill-down
+4. Export & Polish — CSV export, responsive design
+
+**Key decisions:**
+- Paginated grid (25-50 requirements per page)
+- Dashboard tab in django-unfold admin
+- Color-coded cells: green/red/yellow/gray
+
+**Files:**
+- `.planning/milestones/v2-REQUIREMENTS.md`
+- `.planning/milestones/v2-ROADMAP.md`
 
 ## Milestone History
 
@@ -32,33 +52,20 @@ See: .planning/MILESTONES.md
 - Total execution time: ~20 min
 - Timeline: 3 days (2026-01-19 → 2026-01-21)
 
-**By Phase:**
-
-| Phase | Plans | Total | Avg/Plan |
-|-------|-------|-------|----------|
-| 01-foundation | 2 | 6 min | 3 min |
-| 02-test-integration | 1 | 5 min | 5 min |
-| 03-verification-dashboard | 2 | 6 min | 3 min |
-| 04-dashboard-features | 1 | 3 min | 3 min |
-
 ## Accumulated Context
 
-### Key Decisions (v1)
+### Key Decisions (v2)
 
-See: PROJECT.md Key Decisions table
-
-All v1 decisions marked "✓ Good" — no revisions needed.
-
-### External Context
-
-Research from Canary Better Specs initiative integrated 2026-01-20:
-- `research/BETTER_SPECS_CONTEXT.md` - Traceability pipeline, drift detection patterns
-- `research/WORKFLOW_PATTERNS.md` - FSM library evaluation (conclusion: not needed)
+| Decision | Rationale |
+|----------|-----------|
+| Paginated grid | Handle large requirement sets without performance issues |
+| Dashboard tab | Consistent with existing UI, no separate auth |
+| Horizontal scroll for tests | Tests may exceed screen width |
 
 ### Tech Debt (from v1)
 
-- UAT not fully completed (9/10 tests pending user verification)
-- 2 requirements deferred: DASH-03 (traceability matrix), NAV-03 (impact analysis)
+- DASH-03 (traceability matrix) — being addressed in v2
+- NAV-03 (impact analysis) — deferred to v3
 
 ### Blockers/Concerns
 
@@ -67,16 +74,10 @@ None.
 ## Session Continuity
 
 Last session: 2026-01-21
-Stopped at: v1 milestone complete
+Stopped at: v2 planning complete, ready for Phase 1
 Resume file: None
-
-### Archive Files Created
-
-- `.planning/milestones/v1-ROADMAP.md` — Full roadmap archive
-- `.planning/milestones/v1-REQUIREMENTS.md` — Full requirements archive
-- `.planning/milestones/v1-MILESTONE-AUDIT.md` — Audit report
-- `.planning/MILESTONES.md` — Summary entry
 
 ### Next Steps
 
-1. `/gsd:new-milestone` — Start v2 planning (questioning → research → requirements → roadmap)
+1. `/gsd:plan-phase 1` — Plan Phase 1 (Matrix Data Layer)
+2. Execute Phase 1
