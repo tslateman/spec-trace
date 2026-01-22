@@ -6,7 +6,7 @@ from django.http import HttpResponse
 from django.shortcuts import render
 
 from .matrix import get_matrix_data, get_cell_color
-from .models import Requirement
+from .models import Requirement, InAppValidation, InAppValidationStatus
 
 
 def _build_matrix_filters(request) -> dict:
@@ -107,3 +107,75 @@ def matrix_export(request):
         writer.writerow(row)
 
     return response
+
+
+@staff_member_required
+def vendor_coverage_view(request):
+    """Dashboard showing validation coverage by vendor.
+    
+    Shows:
+    - Vendor list with validation counts
+    - Per-vendor pass/fail rates
+    - Recent regressions per vendor
+    """
+    # Group validations by vendor
+    vendors = {}
+    all_flags = set()
+    
+    for validation in InAppValidation.objects.exclude(vendor=''):
+        vendor = validation.vendor
+        if vendor not in vendors:
+            vendors[vendor] = {
+                'name': vendor,
+                'total': 0,
+                'passing': 0,
+                'failing': 0,
+                'degraded': 0,
+                'not_run': 0,
+                'regressions': [],
+                'common_flags': {},
+            }
+        
+        vendors[vendor]['total'] += 1
+        status = validation.status
+        if status == InAppValidationStatus.SUCCESS:
+            vendors[vendor]['passing'] += 1
+        elif status == InAppValidationStatus.FAILURE:
+            vendors[vendor]['failing'] += 1
+        elif status == InAppValidationStatus.NOT_RUN:
+            vendors[vendor]['not_run'] += 1
+        
+        # Check for regression
+        regression = validation.detect_regression()
+        if regression['is_regression']:
+            vendors[vendor]['regressions'].append({
+                'name': validation.name,
+                'regressed_at': regression['regressed_at'],
+            })
+        
+        # Collect feature flags
+        if validation.feature_flags:
+            all_flags.update(validation.feature_flags.keys())
+            for flag, value in validation.feature_flags.items():
+                if flag not in vendors[vendor]['common_flags']:
+                    vendors[vendor]['common_flags'][flag] = 0
+                vendors[vendor]['common_flags'][flag] += 1
+    
+    # Calculate pass rates
+    for vendor_data in vendors.values():
+        total = vendor_data['total']
+        if total > 0:
+            vendor_data['pass_rate'] = round((vendor_data['passing'] / total) * 100, 1)
+        else:
+            vendor_data['pass_rate'] = 0
+    
+    context = {
+        'title': 'Vendor Coverage',
+        'vendors': sorted(vendors.values(), key=lambda v: v['name']),
+        'all_flags': sorted(all_flags),
+        'total_vendors': len(vendors),
+        'total_validations': sum(v['total'] for v in vendors.values()),
+    }
+    
+    return render(request, 'admin/requirements/vendor_coverage.html', context)
+

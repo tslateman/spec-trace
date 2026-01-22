@@ -18,12 +18,13 @@ from django.contrib import admin
 from django.urls import path
 
 from requirements import api
-from requirements.views import matrix_view, matrix_export
+from requirements.views import matrix_view, matrix_export, vendor_coverage_view
 
 urlpatterns = [
     # Matrix views must come before admin to avoid being caught by admin prefix
     path('admin/matrix/', matrix_view, name='admin-matrix'),
     path('admin/matrix/export/', matrix_export, name='admin-matrix-export'),
+    path('admin/vendor-coverage/', vendor_coverage_view, name='admin-vendor-coverage'),
     path('admin/', admin.site.urls),
 
     # API endpoints for external systems

@@ -178,9 +178,9 @@ class TestResultAdmin(ModelAdmin):
 class InAppValidationAdmin(ModelAdmin):
     """Admin interface for InAppValidation."""
 
-    list_display = ['name', 'requirement', 'status', 'endpoint', 'last_checked']
-    list_filter = ['requirement']
-    search_fields = ['name', 'endpoint', 'requirement__external_id']
+    list_display = ['name', 'requirement', 'vendor', 'status', 'endpoint', 'last_checked']
+    list_filter = ['vendor', 'requirement']
+    search_fields = ['name', 'endpoint', 'vendor', 'requirement__external_id']
     readonly_fields = ['status', 'last_checked', 'message']
 
 
@@ -197,9 +197,37 @@ class InAppValidationRunAdmin(ModelAdmin):
 class InAppValidationResultAdmin(ModelAdmin):
     """Admin interface for InAppValidationResult."""
 
-    list_display = ['validation', 'status', 'validation_run', 'checked_at']
+    list_display = ['validation', 'status', 'validation_run', 'checked_at', 'step_summary']
     list_filter = ['status', 'validation_run']
     search_fields = ['validation__name', 'message']
+    readonly_fields = ['steps_display', 'context_display']
+    
+    def step_summary(self, obj):
+        """Show step pass/fail counts."""
+        if not obj.steps:
+            return "—"
+        passed = sum(1 for s in obj.steps if s.get('passed'))
+        total = len(obj.steps)
+        return f"{passed}/{total} passed"
+    step_summary.short_description = 'Steps'  # type: ignore[attr-defined]
+    
+    def steps_display(self, obj):
+        """Pretty-print steps JSON."""
+        import json
+        if not obj.steps:
+            return "No steps"
+        return format_html('<pre style="max-width: 600px; overflow-x: auto;">{}</pre>', 
+                          json.dumps(obj.steps, indent=2))
+    steps_display.short_description = 'Steps Detail'  # type: ignore[attr-defined]
+    
+    def context_display(self, obj):
+        """Pretty-print context JSON."""
+        import json
+        if not obj.context:
+            return "No context"
+        return format_html('<pre style="max-width: 600px; overflow-x: auto;">{}</pre>', 
+                          json.dumps(obj.context, indent=2))
+    context_display.short_description = 'Context Detail'  # type: ignore[attr-defined]
 
 
 @admin.register(SLO)

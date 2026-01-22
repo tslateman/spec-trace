@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'treebeard',
     # Local apps
     'requirements',
+    'spectrace_client',
 ]
 
 # django-unfold configuration

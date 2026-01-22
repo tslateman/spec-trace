@@ -267,6 +267,16 @@ class InAppValidation(models.Model):
         blank=True,
         help_text="API endpoint or identifier for this validation (e.g., '/api/mobile-key/verify')"
     )
+    vendor = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Integration vendor (e.g., 'Opera', 'Mews', 'Ambiance', 'OpenKey')"
+    )
+    feature_flags = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Feature flags active during validation (e.g., {'use_new_auth': True})"
+    )
 
     class Meta:
         verbose_name = "In-App Validation"
@@ -298,6 +308,52 @@ class InAppValidation(models.Model):
         """Status message from last validation run."""
         result = self.latest_result
         return result.message if result else ''
+    
+    def detect_regression(self) -> dict:
+        """Detect if validation regressed from passing to failing.
+        
+        Returns:
+            {
+                'is_regression': bool,
+                'previous_status': str,
+                'current_status': str,
+                'regressed_at': datetime,
+            }
+        """
+        # Get last 2 results
+        results = list(self.results.order_by('-checked_at')[:2])
+        if len(results) < 2:
+            return {'is_regression': False}
+        
+        current, previous = results[0], results[1]
+        
+        # Regression = was SUCCESS, now FAILURE
+        is_regression = (
+            previous.status == InAppValidationStatus.SUCCESS and
+            current.status == InAppValidationStatus.FAILURE
+        )
+        
+        return {
+            'is_regression': is_regression,
+            'previous_status': previous.status,
+            'current_status': current.status,
+            'regressed_at': current.checked_at if is_regression else None,
+        }
+
+
+def detect_validation_regressions():
+    """Find all validations that recently regressed.
+    
+    Returns:
+        List of InAppValidation objects with regression info
+    """
+    regressions = []
+    for validation in InAppValidation.objects.all():
+        regression = validation.detect_regression()
+        if regression['is_regression']:
+            validation._regression_info = regression  # type: ignore[attr-defined]
+            regressions.append(validation)
+    return regressions
 
 
 class InAppValidationRun(models.Model):
@@ -358,6 +414,16 @@ class InAppValidationResult(models.Model):
     )
     checked_at = models.DateTimeField(
         help_text="When this validation was executed"
+    )
+    steps = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="List of validation steps with pass/fail/details"
+    )
+    context = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Debugging context (hotel_id, vendor, config version, etc.)"
     )
 
     class Meta:

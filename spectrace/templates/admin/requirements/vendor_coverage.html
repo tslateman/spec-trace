@@ -1,0 +1,192 @@
+{% extends "unfold/layouts/base.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} | SpecTrace{% endblock %}
+
+{% block content %}
+<style>
+    .vendor-card {
+        background: white;
+        border-radius: 8px;
+        padding: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        margin-bottom: 1rem;
+    }
+    .dark .vendor-card {
+        background: #1f2937;
+    }
+    .stat-row {
+        display: flex;
+        gap: 2rem;
+        margin: 1rem 0;
+    }
+    .stat {
+        flex: 1;
+    }
+    .stat-label {
+        font-size: 0.875rem;
+        color: #6b7280;
+        margin-bottom: 0.25rem;
+    }
+    .dark .stat-label {
+        color: #9ca3af;
+    }
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #111827;
+    }
+    .dark .stat-value {
+        color: #f9fafb;
+    }
+    .pass-rate {
+        font-size: 2rem;
+        font-weight: bold;
+    }
+    .pass-rate.good { color: #22c55e; }
+    .pass-rate.warning { color: #eab308; }
+    .pass-rate.danger { color: #ef4444; }
+    .badge {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        background: #e5e7eb;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        margin-right: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+    .dark .badge {
+        background: #374151;
+    }
+    .regression-list {
+        background: #fef2f2;
+        border-left: 4px solid #ef4444;
+        padding: 1rem;
+        margin-top: 1rem;
+        border-radius: 4px;
+    }
+    .dark .regression-list {
+        background: #1f1917;
+    }
+    .regression-item {
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    .dark .regression-item {
+        border-bottom-color: #374151;
+    }
+    .regression-item:last-child {
+        border-bottom: none;
+    }
+</style>
+
+<div class="p-6">
+    <!-- Header -->
+    <div class="mb-6 flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-base-900 dark:text-white">{{ title }}</h1>
+            <p class="text-base-500 dark:text-base-400 mt-1">
+                Validation coverage by integration vendor
+            </p>
+        </div>
+        <div class="flex gap-2">
+            <a href="{% url 'admin:index' %}" 
+               class="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600">
+                ← Back to Admin
+            </a>
+        </div>
+    </div>
+
+    <!-- Summary Stats -->
+    <div class="vendor-card mb-6">
+        <h2 class="text-lg font-semibold mb-4">Summary</h2>
+        <div class="stat-row">
+            <div class="stat">
+                <div class="stat-label">Total Vendors</div>
+                <div class="stat-value">{{ total_vendors }}</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Total Validations</div>
+                <div class="stat-value">{{ total_validations }}</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Feature Flags Tracked</div>
+                <div class="stat-value">{{ all_flags|length }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Vendor Cards -->
+    {% for vendor in vendors %}
+    <div class="vendor-card">
+        <div class="flex justify-between items-start">
+            <div class="flex-1">
+                <h2 class="text-xl font-bold mb-2">{{ vendor.name }}</h2>
+                
+                <!-- Pass Rate -->
+                <div class="mb-4">
+                    <span class="pass-rate {% if vendor.pass_rate >= 90 %}good{% elif vendor.pass_rate >= 70 %}warning{% else %}danger{% endif %}">
+                        {{ vendor.pass_rate }}%
+                    </span>
+                    <span class="text-sm text-gray-500 ml-2">pass rate</span>
+                </div>
+                
+                <!-- Stats -->
+                <div class="stat-row">
+                    <div class="stat">
+                        <div class="stat-label">Total</div>
+                        <div class="stat-value text-lg">{{ vendor.total }}</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-label">Passing</div>
+                        <div class="stat-value text-lg" style="color: #22c55e;">{{ vendor.passing }}</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-label">Failing</div>
+                        <div class="stat-value text-lg" style="color: #ef4444;">{{ vendor.failing }}</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-label">Not Run</div>
+                        <div class="stat-value text-lg" style="color: #9ca3af;">{{ vendor.not_run }}</div>
+                    </div>
+                </div>
+                
+                <!-- Feature Flags -->
+                {% if vendor.common_flags %}
+                <div class="mt-4">
+                    <div class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Common Feature Flags:</div>
+                    <div>
+                        {% for flag, count in vendor.common_flags.items %}
+                        <span class="badge">{{ flag }} ({{ count }})</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Regressions -->
+                {% if vendor.regressions %}
+                <div class="regression-list">
+                    <div class="text-sm font-bold text-red-700 dark:text-red-400 mb-2">
+                        ⚠️ Recent Regressions ({{ vendor.regressions|length }})
+                    </div>
+                    {% for regression in vendor.regressions %}
+                    <div class="regression-item">
+                        <div class="font-medium">{{ regression.name }}</div>
+                        <div class="text-xs text-gray-500">
+                            Regressed at: {{ regression.regressed_at|date:"Y-m-d H:i" }}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="vendor-card text-center text-gray-500">
+        <p>No vendors with validations yet.</p>
+        <p class="text-sm mt-2">Vendors will appear here once validation results are submitted via the SDK.</p>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

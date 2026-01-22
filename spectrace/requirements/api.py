@@ -197,10 +197,20 @@ def submit_validation_result(request):
             name=v.get('name', f'Validation for {requirement_id}'),
             defaults={
                 'endpoint': v.get('endpoint', ''),
+                'vendor': v.get('context', {}).get('vendor', ''),
+                'feature_flags': v.get('context', {}).get('feature_flags', {}),
             }
         )
         if created:
             created_validations += 1
+        else:
+            # Update vendor and feature_flags if provided
+            context = v.get('context', {})
+            if context.get('vendor'):
+                validation.vendor = context['vendor']
+            if context.get('feature_flags'):
+                validation.feature_flags = context['feature_flags']
+            validation.save()
 
         # Parse status
         status_str = v.get('status', 'unknown').lower()
@@ -209,6 +219,9 @@ def submit_validation_result(request):
             successful += 1
         elif status_str == 'failure':
             status = InAppValidationStatus.FAILURE
+            failed += 1
+        elif status_str == 'degraded':
+            status = InAppValidationStatus.FAILURE  # Map degraded to failure for now
             failed += 1
         else:
             status = InAppValidationStatus.UNKNOWN
@@ -219,13 +232,15 @@ def submit_validation_result(request):
         if checked_at is None:
             checked_at = timezone.now()
 
-        # Create result (status/last_checked/message are computed from latest result)
+        # Create result with steps and context
         InAppValidationResult.objects.create(
             validation_run=validation_run,
             validation=validation,
             status=status,
             message=v.get('message', ''),
             checked_at=checked_at,
+            steps=v.get('steps', []),
+            context=v.get('context', {}),
         )
 
     # Optionally update unified verification status
