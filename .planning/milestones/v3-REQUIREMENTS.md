@@ -1,3 +1,13 @@
+# Requirements Archive: v3 Integration Health Checks
+
+**Archived:** 2026-01-22
+**Status:** SHIPPED
+
+This is the archived requirements specification for v3.
+For current requirements, see `.planning/REQUIREMENTS.md` (created for next milestone).
+
+---
+
 # Requirements: SpecTrace
 
 **Defined:** 2026-01-21
@@ -77,7 +87,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 **Coverage:**
 - v3 requirements: 9 total
 - Mapped to phases: 9
-- Unmapped: 0 ✓
+- Unmapped: 0
 
 **Phase Summary:**
 - Phase 5 (Health Check Foundation): 3 requirements (HEALTH-02, HEALTH-03, HEALTH-04)
@@ -85,5 +95,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 - Phase 7 (Dashboard Integration): 3 requirements (DASH-07, DASH-08, DASH-09)
 
 ---
-*Requirements defined: 2026-01-21*
-*Last updated: 2026-01-22 after Phase 7 completion — v3 milestone complete*
+
+## Milestone Summary
+
+**Shipped:** 9 of 9 v3 requirements
+**Adjusted:** None — all requirements implemented as specified
+**Dropped:** None
+
+---
+*Archived: 2026-01-22 as part of v3 milestone completion*

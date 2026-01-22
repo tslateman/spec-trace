@@ -8,17 +8,15 @@ A requirements traceability system that connects product specs to verified code.
 
 PMs can see, at any moment, which requirements are verified by passing tests — eliminating the gap between "what we think we built" and "what we actually built."
 
-## Current Milestone: v3 Integration Health Checks
-
-**Goal:** Monitor external integration health with granular diagnostic checks — enabling proactive detection of connectivity issues with Linear, SLO platforms, and CI/CD systems.
-
-**Target features:**
-- Connection testing endpoints for each integration
-- Granular diagnostic checks (auth, reachability, permissions)
-- Dashboard health status display with timestamps
-- Historical health tracking for debugging
-
 ## What's Shipped
+
+### v3 Integration Health Checks (Shipped: 2026-01-22)
+
+- **Health diagnostics:** VerificationCheck and TestConnectionResult dataclasses
+- **Granular checks:** Configuration, authentication, permissions for Linear
+- **REST API:** POST test-connection, GET health with 60s caching
+- **Dashboard:** Alpine.js widget with color-coded badges and Test Connection button
+- **Security:** Response sanitization to prevent API key exposure
 
 ### v2 Traceability Matrix (Shipped: 2026-01-21)
 
@@ -63,13 +61,19 @@ PMs can see, at any moment, which requirements are verified by passing tests —
 - ✓ DASH-06: Filter by category/tag — v1
 - ✓ NAV-01: Requirement → linked tests — v1
 - ✓ NAV-02: Test → linked requirements — v1
+- ✓ HEALTH-01: Connection testing endpoints for integrations — v3
+- ✓ HEALTH-02: Granular diagnostic checks (config, auth, permissions) — v3
+- ✓ HEALTH-03: Each check includes name, passed, details, timestamp — v3
+- ✓ HEALTH-04: Failed checks include error_message and response details — v3
+- ✓ HEALTH-05: Individual checks aggregate into overall status — v3
+- ✓ HEALTH-06: GET endpoint returns cached status without triggering check — v3
+- ✓ DASH-07: Dashboard shows Linear integration health status — v3
+- ✓ DASH-08: Dashboard shows last-checked timestamp — v3
+- ✓ DASH-09: User can trigger health check from dashboard — v3
 
-### Active (v3)
+### Active
 
-- [ ] HEALTH-01: Connection testing endpoints for integrations
-- [ ] HEALTH-02: Granular diagnostic checks (auth, reachability, permissions)
-- [ ] HEALTH-03: Dashboard health status display
-- [ ] HEALTH-04: Historical health tracking
+(No active requirements — define with `/gsd:new-milestone`)
 
 ### Future (v4+)
 
@@ -111,9 +115,12 @@ PMs can see, at any moment, which requirements are verified by passing tests —
 | django-treebeard for hierarchy | Efficient tree queries, no recursive SQL | ✓ Good |
 | Denormalized verification_status | Fast dashboard reads, recompute on import | ✓ Good |
 | Deferred traceability matrix | Bidirectional navigation sufficient for v1 | ✓ Shipped in v2 |
-| Dataclasses for health checks | Separate domain logic from persistence (Repository pattern) | — Pending (v3) |
-| Synchronous health checks | Avoid Django async/timeout deadlocks | — Pending (v3) |
-| Cached health results | Respect Linear API rate limits (5K req/hr) | — Pending (v3) |
+| Dataclasses for health checks | Separate domain logic from persistence (Repository pattern) | ✓ Good |
+| Synchronous health checks | Avoid Django async/timeout deadlocks | ✓ Good |
+| Cached health results | Respect Linear API rate limits (5K req/hr) | ✓ Good |
+| 60s cache TTL | Balance between rate limiting and freshness | ✓ Good |
+| Response sanitization | Prevent API key exposure in error diagnostics | ✓ Good |
+| Alpine.js for dashboard widget | Bundled with django-unfold, no extra dependencies | ✓ Good |
 
 ---
-*Last updated: 2026-01-21 after v3 milestone start*
+*Last updated: 2026-01-22 after v3 milestone complete*
