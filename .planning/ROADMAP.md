@@ -13,7 +13,7 @@ v3 adds integration health monitoring with granular diagnostic checks for Linear
 
 - [x] **Phase 5: Health Check Foundation** - Domain objects and diagnostic check implementations
 - [x] **Phase 6: API Endpoints** - Test connection endpoints with status aggregation
-- [ ] **Phase 7: Dashboard Integration** - Health status display and manual testing UI
+- [x] **Phase 7: Dashboard Integration** - Health status display and manual testing UI
 
 ## Phase Details
 
@@ -68,7 +68,7 @@ Plans:
 **Plans:** 1 plan in 1 wave
 
 Plans:
-- [ ] 07-01-PLAN.md — Integrations card with health badge, timestamp, and Test Connection button
+- [x] PLAN-01 — Integrations card with health badge, timestamp, and Test Connection button
 
 ## Progress
 
@@ -79,7 +79,7 @@ Phases execute in numeric order: 5 → 6 → 7
 |-------|----------------|--------|-----------|
 | 5. Health Check Foundation | 6/6 | Complete | 2026-01-22 |
 | 6. API Endpoints | 1/1 | Complete | 2026-01-22 |
-| 7. Dashboard Integration | 0/1 | Not started | - |
+| 7. Dashboard Integration | 1/1 | Complete | 2026-01-22 |
 
 ---
 *Roadmap created: 2026-01-21*

@@ -16,9 +16,9 @@ Requirements for Integration Health Checks milestone.
 
 ### Dashboard Integration
 
-- [ ] **DASH-07**: Dashboard shows Linear integration health status (healthy/degraded/unhealthy)
-- [ ] **DASH-08**: Dashboard shows last-checked timestamp for integration health
-- [ ] **DASH-09**: User can trigger health check from dashboard with "Test Connection" button
+- [x] **DASH-07**: Dashboard shows Linear integration health status (healthy/degraded/unhealthy)
+- [x] **DASH-08**: Dashboard shows last-checked timestamp for integration health
+- [x] **DASH-09**: User can trigger health check from dashboard with "Test Connection" button
 
 ### Aggregation
 
@@ -70,9 +70,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | HEALTH-04 | Phase 5 | Complete |
 | HEALTH-05 | Phase 6 | Complete |
 | HEALTH-06 | Phase 6 | Complete |
-| DASH-07 | Phase 7 | Pending |
-| DASH-08 | Phase 7 | Pending |
-| DASH-09 | Phase 7 | Pending |
+| DASH-07 | Phase 7 | Complete |
+| DASH-08 | Phase 7 | Complete |
+| DASH-09 | Phase 7 | Complete |
 
 **Coverage:**
 - v3 requirements: 9 total
@@ -86,4 +86,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-01-21*
-*Last updated: 2026-01-22 after Phase 6 completion*
+*Last updated: 2026-01-22 after Phase 7 completion — v3 milestone complete*
