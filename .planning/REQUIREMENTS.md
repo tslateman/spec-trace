@@ -9,10 +9,10 @@ Requirements for Integration Health Checks milestone.
 
 ### Health Check Core
 
-- [ ] **HEALTH-01**: User can trigger connection test for Linear integration via API endpoint
-- [ ] **HEALTH-02**: Connection test returns granular diagnostic checks (config, auth, permissions)
-- [ ] **HEALTH-03**: Each check includes name, passed status, details, and timestamp
-- [ ] **HEALTH-04**: Failed checks include error_message and response details for debugging
+- [x] **HEALTH-01**: User can trigger connection test for Linear integration via API endpoint
+- [x] **HEALTH-02**: Connection test returns granular diagnostic checks (config, auth, permissions)
+- [x] **HEALTH-03**: Each check includes name, passed status, details, and timestamp
+- [x] **HEALTH-04**: Failed checks include error_message and response details for debugging
 
 ### Dashboard Integration
 
@@ -22,8 +22,8 @@ Requirements for Integration Health Checks milestone.
 
 ### Aggregation
 
-- [ ] **HEALTH-05**: Individual checks aggregate into overall integration status (worst case wins)
-- [ ] **HEALTH-06**: GET endpoint returns current health status without triggering new check
+- [x] **HEALTH-05**: Individual checks aggregate into overall integration status (worst case wins)
+- [x] **HEALTH-06**: GET endpoint returns current health status without triggering new check
 
 ## Future Requirements
 
@@ -64,12 +64,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| HEALTH-01 | Phase 6 | Pending |
+| HEALTH-01 | Phase 6 | Complete |
 | HEALTH-02 | Phase 5 | Complete |
 | HEALTH-03 | Phase 5 | Complete |
 | HEALTH-04 | Phase 5 | Complete |
-| HEALTH-05 | Phase 6 | Pending |
-| HEALTH-06 | Phase 6 | Pending |
+| HEALTH-05 | Phase 6 | Complete |
+| HEALTH-06 | Phase 6 | Complete |
 | DASH-07 | Phase 7 | Pending |
 | DASH-08 | Phase 7 | Pending |
 | DASH-09 | Phase 7 | Pending |
@@ -86,4 +86,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-01-21*
-*Last updated: 2026-01-22 after Phase 5 completion*
+*Last updated: 2026-01-22 after Phase 6 completion*
