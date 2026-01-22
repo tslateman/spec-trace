@@ -87,18 +87,25 @@ def dashboard_callback(request, context):
         })
 
     # In-App Validation metrics
+    # Note: status is a computed property (from latest result), so we must count manually
     total_validations = InAppValidation.objects.count()
     if total_validations > 0:
-        validation_metrics = InAppValidation.objects.aggregate(
-            success=Count('id', filter=Q(status='success')),
-            failure=Count('id', filter=Q(status='failure')),
-            not_run=Count('id', filter=Q(status='not_run')),
-        )
+        success_count = 0
+        failure_count = 0
+        not_run_count = 0
+        for validation in InAppValidation.objects.prefetch_related('results'):
+            status = validation.status
+            if status == 'success':
+                success_count += 1
+            elif status == 'failure':
+                failure_count += 1
+            else:  # not_run or unknown
+                not_run_count += 1
         context.update({
             'total_inapp_validations': total_validations,
-            'inapp_success_count': validation_metrics['success'],
-            'inapp_failure_count': validation_metrics['failure'],
-            'inapp_not_run_count': validation_metrics['not_run'],
+            'inapp_success_count': success_count,
+            'inapp_failure_count': failure_count,
+            'inapp_not_run_count': not_run_count,
         })
     else:
         context.update({
