@@ -71,6 +71,19 @@
                        placeholder="tag1, tag2"
                        class="rounded-lg border-base-300 dark:border-base-600 dark:bg-base-800 dark:text-white text-sm w-48">
             </div>
+            {% if parent_requirements %}
+            <div>
+                <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Parent</label>
+                <select name="parent_id" class="rounded-lg border-base-300 dark:border-base-600 dark:bg-base-800 dark:text-white text-sm">
+                    <option value="">All</option>
+                    {% for parent in parent_requirements %}
+                    <option value="{{ parent.external_id }}" {% if current_filters.parent_id == parent.external_id %}selected{% endif %}>
+                        {{ parent.external_id }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
             <div>
                 <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Per Page</label>
                 <select name="per_page" class="rounded-lg border-base-300 dark:border-base-600 dark:bg-base-800 dark:text-white text-sm">
@@ -82,6 +95,11 @@
             <button type="submit" class="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm">
                 Apply Filters
             </button>
+            {% if current_filters.status or current_filters.tags or current_filters.parent_id %}
+            <a href="?" class="px-4 py-2 text-base-600 dark:text-base-400 hover:text-base-900 dark:hover:text-white text-sm">
+                Clear All
+            </a>
+            {% endif %}
         </form>
     </div>
 
@@ -159,13 +177,13 @@
             </div>
             <div class="flex gap-2">
                 {% if pagination.has_prev %}
-                <a href="?page={{ pagination.page|add:'-1' }}&status={{ current_filters.status }}&tags={{ current_filters.tags }}&per_page={{ current_filters.per_page }}"
+                <a href="?page={{ pagination.page|add:'-1' }}&status={{ current_filters.status }}&tags={{ current_filters.tags }}&parent_id={{ current_filters.parent_id }}&per_page={{ current_filters.per_page }}"
                    class="px-3 py-1 bg-base-200 dark:bg-base-700 text-base-800 dark:text-base-200 hover:bg-base-300 dark:hover:bg-base-600 rounded text-sm">
                     ← Previous
                 </a>
                 {% endif %}
                 {% if pagination.has_next %}
-                <a href="?page={{ pagination.page|add:'1' }}&status={{ current_filters.status }}&tags={{ current_filters.tags }}&per_page={{ current_filters.per_page }}"
+                <a href="?page={{ pagination.page|add:'1' }}&status={{ current_filters.status }}&tags={{ current_filters.tags }}&parent_id={{ current_filters.parent_id }}&per_page={{ current_filters.per_page }}"
                    class="px-3 py-1 bg-base-200 dark:bg-base-700 text-base-800 dark:text-base-200 hover:bg-base-300 dark:hover:bg-base-600 rounded text-sm">
                     Next →
                 </a>

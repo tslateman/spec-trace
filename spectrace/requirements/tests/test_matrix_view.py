@@ -135,8 +135,10 @@ class TestMatrixViewFilters:
         response = admin_client.get('/admin/matrix/?status=passing')
         content = response.content.decode()
 
-        assert 'REQ-001' in content
-        assert 'REQ-002' not in content
+        # REQ-001 (passing) should be in the matrix table
+        assert 'Login Feature' in content
+        # REQ-002 (failing) should NOT be in the matrix table (only 1 requirement showing)
+        assert 'Showing 1 of' in content
 
     @pytest.mark.django_db
     def test_filter_by_tags(self, admin_client, sample_data):
@@ -144,8 +146,10 @@ class TestMatrixViewFilters:
         response = admin_client.get('/admin/matrix/?tags=ui')
         content = response.content.decode()
 
-        assert 'REQ-002' in content
-        assert 'REQ-001' not in content
+        # REQ-002 has 'ui' tag
+        assert 'Dashboard Feature' in content
+        # Only 1 requirement should show
+        assert 'Showing 1 of' in content
 
 
 class TestMatrixViewPagination:
