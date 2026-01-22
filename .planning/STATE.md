@@ -10,12 +10,12 @@ See: .planning/PROJECT.md (updated 2026-01-21)
 ## Current Position
 
 Milestone: v3 Integration Health Checks
-Phase: 5 of 7 (Health Check Foundation)
-Plan: 6 of 6 complete (Wave 1: 01, 02; Wave 2: 03, 04, 05; Wave 3: 06)
-Status: **PHASE COMPLETE** — Phase 5 finished
-Last activity: 2026-01-22 — Completed 05-06-PLAN.md
+Phase: 6 of 7 (API Endpoints)
+Plan: 1 of 1 complete (Wave 1: 01)
+Status: **PHASE COMPLETE** — Phase 6 finished
+Last activity: 2026-01-22 — Completed 06-01-PLAN.md
 
-Progress: [#####     ] 50% (6/12 total plans)
+Progress: [#######   ] 70% (7/10 total plans across phases 5-7)
 
 ## Milestone History
 
@@ -28,6 +28,11 @@ See: .planning/MILESTONES.md
 
 ## Performance Metrics
 
+**v3 Velocity (in progress):**
+- Phase 5: 6 plans completed
+- Phase 6: 1 plan completed (already implemented during Phase 5)
+- Total: 7 plans
+
 **v2 Velocity:**
 - Total plans completed: 4
 - Average duration: ~15 min
@@ -38,7 +43,7 @@ See: .planning/MILESTONES.md
 - Total plans completed: 6
 - Average duration: 3.3 min
 - Total execution time: ~20 min
-- Timeline: 3 days (2026-01-19 → 2026-01-21)
+- Timeline: 3 days (2026-01-19 -> 2026-01-21)
 
 ## Accumulated Context
 
@@ -59,6 +64,9 @@ See: .planning/MILESTONES.md
 | Viewer query for auth check | Gets user name/email in one request for both validation and display |
 | Rename test_linear_connection to verify_linear_connection | Avoid pytest collection conflict (test_ prefix triggers collection) |
 | Inline LinearClient import | Avoid circular imports between health.py and linear.py |
+| 60s cache TTL | Balance between rate limiting and freshness for health endpoint |
+| Return 200 for unknown status | GET health endpoint always succeeds, status field indicates health |
+| Support request body overrides | Allow testing credentials before saving to settings |
 
 Full history: .planning/PROJECT.md Key Decisions table
 
@@ -68,11 +76,11 @@ None.
 
 ### Next Steps
 
-1. Plan Phase 6: Health Check API (expose verify_linear_connection via HTTP endpoint)
-2. Plan and execute Phase 7
+1. Plan Phase 7: Dashboard Integration (health status display and manual testing UI)
+2. Execute Phase 7
 
 ## Session Continuity
 
 Last session: 2026-01-22
-Stopped at: Completed 05-06-PLAN.md (Connection Test Aggregator) - Phase 5 complete
+Stopped at: Completed 06-01-PLAN.md (Health Check API Endpoints) - Phase 6 complete
 Resume file: None

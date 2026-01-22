@@ -12,7 +12,7 @@ v3 adds integration health monitoring with granular diagnostic checks for Linear
 - v3 continues from v2 (which ended at phase 4)
 
 - [x] **Phase 5: Health Check Foundation** - Domain objects and diagnostic check implementations
-- [ ] **Phase 6: API Endpoints** - Test connection endpoints with status aggregation
+- [x] **Phase 6: API Endpoints** - Test connection endpoints with status aggregation
 - [ ] **Phase 7: Dashboard Integration** - Health status display and manual testing UI
 
 ## Phase Details
@@ -49,7 +49,10 @@ Plans:
   4. GET /api/integrations/linear/health returns cached status without testing
   5. Results cached for rate limiting (respect Linear's 5K req/hr limit)
   6. API keys sanitized from error responses
-**Plans:** TBD
+**Plans:** 1 plan in 1 wave
+
+Plans:
+- [x] PLAN-01 — Health check API endpoints (POST test-connection, GET health)
 
 ### Phase 7: Dashboard Integration
 **Goal:** Dashboard UI showing integration health with manual test capability
@@ -71,8 +74,8 @@ Phases execute in numeric order: 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 5. Health Check Foundation | 6/6 | ✓ Complete | 2026-01-22 |
-| 6. API Endpoints | 0/TBD | Not started | - |
+| 5. Health Check Foundation | 6/6 | Complete | 2026-01-22 |
+| 6. API Endpoints | 1/1 | Complete | 2026-01-22 |
 | 7. Dashboard Integration | 0/TBD | Not started | - |
 
 ---
