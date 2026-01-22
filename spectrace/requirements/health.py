@@ -268,3 +268,80 @@ def check_permissions(client) -> VerificationCheck:
             passed=False,
             error_message=f"Request failed: {type(e).__name__}: {str(e)}"
         )
+
+
+def test_linear_connection(api_key: str, workspace: str, team: str) -> TestConnectionResult:
+    """Test Linear API connection with granular diagnostics.
+
+    Runs three checks in sequence:
+    1. Configuration: Validate settings presence and format
+    2. Authentication: Verify API key with viewer query
+    3. Permissions: Verify read access to issues
+
+    Checks short-circuit on failure - if configuration fails, no API
+    calls are made. If authentication fails, permissions check is skipped.
+
+    Args:
+        api_key: Linear API key (lin_api_...)
+        workspace: Workspace identifier
+        team: Team identifier
+
+    Returns:
+        TestConnectionResult with:
+        - success: True if all checks passed
+        - message: Human-readable summary
+        - checks: List of individual VerificationCheck results
+        - error_details: Set if catastrophic error occurs
+    """
+    checks = []
+
+    # Check 1: Configuration
+    config_check = check_configuration(api_key, workspace, team)
+    checks.append(config_check)
+    if not config_check.passed:
+        return TestConnectionResult(
+            success=False,
+            message="Configuration invalid",
+            checks=checks
+        )
+
+    # Check 2: Authentication (requires valid config)
+    from requirements.linear import LinearClient
+    try:
+        client = LinearClient(api_key)
+    except Exception as e:
+        return TestConnectionResult(
+            success=False,
+            message="Failed to create Linear client",
+            checks=checks,
+            error_details=f"{type(e).__name__}: {str(e)}"
+        )
+
+    auth_check = check_authentication(client)
+    checks.append(auth_check)
+    if not auth_check.passed:
+        return TestConnectionResult(
+            success=False,
+            message="Authentication failed",
+            checks=checks
+        )
+
+    # Check 3: Permissions (requires valid auth)
+    perm_check = check_permissions(client)
+    checks.append(perm_check)
+
+    # Determine overall result
+    all_passed = all(c.passed for c in checks)
+
+    if all_passed:
+        return TestConnectionResult(
+            success=True,
+            message="All checks passed",
+            checks=checks
+        )
+    else:
+        return TestConnectionResult(
+            success=False,
+            message="Permission check failed",
+            checks=checks
+        )
