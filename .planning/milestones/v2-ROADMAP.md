@@ -12,8 +12,8 @@ v2 delivers a traceability matrix view — a paginated grid showing requirements
 
 - [x] **Phase 1: Matrix Data Layer** - Query optimization and data structure for grid rendering
 - [x] **Phase 2: Matrix View** - Grid template with paginated requirements and scrollable tests
-- [ ] **Phase 3: Filtering & Navigation** - Status/tag filters, cell drill-down, URL state
-- [ ] **Phase 4: Export & Polish** - CSV export, responsive design, performance tuning
+- [x] **Phase 3: Filtering & Navigation** - Status/tag filters, cell drill-down, URL state
+- [x] **Phase 4: Export & Polish** - CSV export, responsive design, performance tuning
 
 ## Phase Details
 
@@ -74,8 +74,8 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Matrix Data Layer | 1/1 | Complete | 2026-01-21 |
 | 2. Matrix View | 1/1 | Complete | 2026-01-21 |
-| 3. Filtering & Navigation | 0/? | Not Started | - |
-| 4. Export & Polish | 0/? | Not Started | - |
+| 3. Filtering & Navigation | 1/1 | Complete | 2026-01-21 |
+| 4. Export & Polish | 1/1 | Complete | 2026-01-21 |
 
 ---
 *Roadmap created: 2026-01-21*
