@@ -27,6 +27,9 @@
         background-color: #422006;
         color: #facc15;
     }
+    [x-cloak] {
+        display: none !important;
+    }
 </style>
 <div class="p-6">
     <!-- Metrics Banner -->
@@ -152,5 +155,97 @@ python manage.py import_results results.xml --links links.json</code></pre>
             </div>
         </div>
     </div>
+
+    <script>
+    function linearHealthWidget() {
+        return {
+            status: 'unknown',
+            message: '',
+            lastChecked: null,
+            isLoading: false,
+            error: null,
+
+            get statusLabel() {
+                const labels = {
+                    'healthy': 'Healthy',
+                    'degraded': 'Degraded',
+                    'unhealthy': 'Unhealthy',
+                    'unknown': 'Unknown'
+                };
+                return labels[this.status] || 'Unknown';
+            },
+
+            get statusClass() {
+                const classes = {
+                    'healthy': 'status-passing',
+                    'degraded': 'status-untested',
+                    'unhealthy': 'status-failing',
+                    'unknown': 'bg-base-200 dark:bg-base-700 text-base-600 dark:text-base-400'
+                };
+                return classes[this.status] || classes['unknown'];
+            },
+
+            get lastCheckedText() {
+                if (!this.lastChecked) return '';
+                const now = new Date();
+                const checked = new Date(this.lastChecked);
+                const diffMs = now - checked;
+                const diffSec = Math.floor(diffMs / 1000);
+                const diffMin = Math.floor(diffSec / 60);
+                const diffHour = Math.floor(diffMin / 60);
+                const diffDay = Math.floor(diffHour / 24);
+
+                if (diffSec < 60) return 'Last checked just now';
+                if (diffMin < 60) return `Last checked ${diffMin} minute${diffMin !== 1 ? 's' : ''} ago`;
+                if (diffHour < 24) return `Last checked ${diffHour} hour${diffHour !== 1 ? 's' : ''} ago`;
+                return `Last checked ${diffDay} day${diffDay !== 1 ? 's' : ''} ago`;
+            },
+
+            updateFromResponse(data) {
+                this.status = data.status || 'unknown';
+                this.message = data.message || '';
+                if (data.checks && data.checks.length > 0 && data.checks[0].timestamp) {
+                    this.lastChecked = data.checks[0].timestamp;
+                } else if (data.timestamp) {
+                    this.lastChecked = data.timestamp;
+                }
+            },
+
+            async fetchHealth() {
+                try {
+                    const response = await fetch('/api/integrations/linear/health/');
+                    const data = await response.json();
+                    this.updateFromResponse(data);
+                    this.error = null;
+                } catch (err) {
+                    this.error = 'Failed to fetch health status';
+                }
+            },
+
+            async testConnection() {
+                this.isLoading = true;
+                this.error = null;
+                try {
+                    const response = await fetch('/api/integrations/linear/test-connection/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
+                        }
+                    });
+                    const data = await response.json();
+                    this.updateFromResponse(data);
+                    if (!response.ok) {
+                        this.error = data.message || 'Connection test failed';
+                    }
+                } catch (err) {
+                    this.error = 'Failed to test connection';
+                } finally {
+                    this.isLoading = false;
+                }
+            }
+        };
+    }
+    </script>
 </div>
 {% endblock %}
