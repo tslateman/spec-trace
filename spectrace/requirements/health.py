@@ -1,22 +1,36 @@
-"""Health check domain objects and utilities for integration verification.
+"""Health check utilities for integration verification.
 
-This module provides dataclasses for representing health check results.
-VerificationCheck represents a single check outcome, while TestConnectionResult
-aggregates multiple checks into an overall connection test result.
+This module provides functions for verifying Linear API connectivity,
+including configuration validation, authentication, and permissions checks.
+
+Domain objects (VerificationCheck, TestConnectionResult) are imported from
+health_types to avoid circular imports with the flows module.
 """
 
 import re
-from dataclasses import dataclass, field
-from datetime import UTC, datetime
 
+import requests
 
-def _get_timestamp() -> str:
-    """Generate ISO 8601 UTC timestamp string.
+from requirements.flows.engine import SequentialFlowEngine
+from requirements.health_types import (
+    TestConnectionResult,
+    VerificationCheck,
+    _get_timestamp,
+)
+from requirements.linear import LinearClient
+from requirements.models import VerificationFlow
 
-    Returns:
-        Timestamp string in format 'YYYY-MM-DDTHH:MM:SS.ffffffZ'
-    """
-    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
+# Re-export types for backward compatibility
+__all__ = [
+    'TestConnectionResult',
+    'VerificationCheck',
+    '_get_timestamp',
+    '_sanitize_response',
+    'check_authentication',
+    'check_configuration',
+    'check_permissions',
+    'verify_linear_connection',
+]
 
 
 def _sanitize_response(response_text: str, max_length: int = 500) -> str:
@@ -50,56 +64,6 @@ def _sanitize_response(response_text: str, max_length: int = 500) -> str:
         sanitized += '... [truncated]'
 
     return sanitized
-
-
-@dataclass
-class VerificationCheck:
-    """Result of a single verification check.
-
-    Represents the outcome of one health check operation, such as
-    configuration validation, authentication, or API connectivity.
-
-    Attributes:
-        name: Check name (e.g., "Configuration", "Authentication", "API Access").
-        passed: True if the check succeeded, False otherwise.
-        details: Human-readable success details or status message.
-        error_message: Error description when check fails (HEALTH-04).
-        response_status: HTTP status code if the check involved an API request.
-        response_body: Sanitized response content for debugging (HEALTH-04).
-            Should never contain API keys or sensitive credentials.
-        timestamp: ISO 8601 UTC timestamp when check was performed.
-            Auto-generated per instance.
-    """
-
-    name: str
-    passed: bool
-    details: str | None = None
-    error_message: str | None = None
-    response_status: int | None = None
-    response_body: str | None = None
-    timestamp: str = field(default_factory=_get_timestamp)
-
-
-@dataclass
-class TestConnectionResult:
-    """Aggregated result of a connection test with multiple checks.
-
-    Represents the overall outcome of testing a connection to an external
-    service (e.g., Linear API), combining multiple individual checks.
-
-    Attributes:
-        success: True if all checks passed, False otherwise.
-        message: Human-readable summary of the test result.
-        checks: List of individual VerificationCheck results.
-            May be None if a catastrophic error prevented checks from running.
-        error_details: Details of a catastrophic error that prevented
-            the checks from completing (e.g., network unreachable).
-    """
-
-    success: bool
-    message: str
-    checks: list[VerificationCheck] | None = None
-    error_details: str | None = None
 
 
 def check_configuration(api_key: str, workspace: str, team: str) -> VerificationCheck:
@@ -169,8 +133,6 @@ def check_authentication(client) -> VerificationCheck:
         or passed=False with error details including status code
         and sanitized response body
     """
-    import requests
-
     try:
         result = client._execute_query("""
             query Me {
@@ -228,8 +190,6 @@ def check_permissions(client) -> VerificationCheck:
         VerificationCheck with passed=True if read access confirmed,
         or passed=False with error details
     """
-    import requests
-
     try:
         client._execute_query("""
             query TestIssueAccess {
@@ -273,7 +233,7 @@ def check_permissions(client) -> VerificationCheck:
 def verify_linear_connection(api_key: str, workspace: str, team: str) -> TestConnectionResult:
     """Test Linear API connection with granular diagnostics.
 
-    Runs three checks in sequence:
+    Runs three checks in sequence via the flow engine:
     1. Configuration: Validate settings presence and format
     2. Authentication: Verify API key with viewer query
     3. Permissions: Verify read access to issues
@@ -281,32 +241,43 @@ def verify_linear_connection(api_key: str, workspace: str, team: str) -> TestCon
     Checks short-circuit on failure - if configuration fails, no API
     calls are made. If authentication fails, permissions check is skipped.
 
+    Uses the VerificationFlow system, creating a VerificationFlowRun record
+    for each execution. Falls back to direct execution if flows not synced.
+
     Args:
         api_key: Linear API key (lin_api_...)
         workspace: Workspace identifier
         team: Team identifier
 
     Returns:
-        TestConnectionResult with:
-        - success: True if all checks passed
-        - message: Human-readable summary
-        - checks: List of individual VerificationCheck results
-        - error_details: Set if catastrophic error occurs
+        TestConnectionResult with success status, message, and checks
     """
+    try:
+        flow = VerificationFlow.objects.get(name='linear-connection')
+    except VerificationFlow.DoesNotExist:
+        return _verify_linear_connection_direct(api_key, workspace, team)
+
+    engine = SequentialFlowEngine()
+    run = engine.execute(flow, {
+        'api_key': api_key,
+        'workspace': workspace,
+        'team': team,
+    })
+
+    return TestConnectionResult.from_flow_run(run)
+
+
+def _verify_linear_connection_direct(api_key: str, workspace: str, team: str) -> TestConnectionResult:
+    """Direct verification without flow engine (fallback when flows not synced)."""
     checks = []
 
     # Check 1: Configuration
     config_check = check_configuration(api_key, workspace, team)
     checks.append(config_check)
     if not config_check.passed:
-        return TestConnectionResult(
-            success=False,
-            message="Configuration invalid",
-            checks=checks
-        )
+        return TestConnectionResult(success=False, message="Configuration invalid", checks=checks)
 
-    # Check 2: Authentication (requires valid config)
-    from requirements.linear import LinearClient
+    # Check 2: Authentication
     try:
         client = LinearClient(api_key)
     except Exception as e:
@@ -314,23 +285,18 @@ def verify_linear_connection(api_key: str, workspace: str, team: str) -> TestCon
             success=False,
             message="Failed to create Linear client",
             checks=checks,
-            error_details=f"{type(e).__name__}: {str(e)}"
+            error_details=f"{type(e).__name__}: {e}"
         )
 
     auth_check = check_authentication(client)
     checks.append(auth_check)
     if not auth_check.passed:
-        return TestConnectionResult(
-            success=False,
-            message="Authentication failed",
-            checks=checks
-        )
+        return TestConnectionResult(success=False, message="Authentication failed", checks=checks)
 
-    # Check 3: Permissions (requires valid auth)
+    # Check 3: Permissions
     perm_check = check_permissions(client)
     checks.append(perm_check)
 
-    # Determine overall result
     all_passed = all(c.passed for c in checks)
     return TestConnectionResult(
         success=all_passed,

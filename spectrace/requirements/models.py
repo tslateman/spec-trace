@@ -369,6 +369,184 @@ class InAppValidationResult(models.Model):
         return f"{self.validation.name} ({self.status}) at {self.checked_at}"
 
 
+class VerificationFlowStatus(models.TextChoices):
+    """Status of a verification flow run."""
+    RUNNING = 'running', 'Running'
+    PASSED = 'passed', 'Passed'
+    FAILED = 'failed', 'Failed'
+
+
+class VerificationFlowSource(models.TextChoices):
+    """Source that triggered a verification flow run."""
+    API = 'api', 'API'
+    MANUAL = 'manual', 'Manual'
+    SCHEDULED = 'scheduled', 'Scheduled'
+
+
+class VerificationFlow(models.Model):
+    """A verification flow definition synced from code.
+
+    Flows are defined in Python code and synced to the database on startup
+    for visibility. Each flow contains ordered steps that execute sequentially.
+    """
+    name = models.CharField(
+        max_length=100,
+        unique=True,
+        db_index=True,
+        help_text="Unique identifier (e.g., 'linear-connection')"
+    )
+    display_name = models.CharField(
+        max_length=200,
+        help_text="Human-readable name"
+    )
+    description = models.TextField(
+        blank=True,
+        help_text="Flow description"
+    )
+    steps = models.JSONField(
+        default=list,
+        help_text="Ordered list of step definitions"
+    )
+    version = models.PositiveIntegerField(
+        default=1,
+        help_text="Flow version number"
+    )
+    synced_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When last synced from code"
+    )
+
+    class Meta:
+        verbose_name = "Verification Flow"
+        verbose_name_plural = "Verification Flows"
+        ordering = ['name']
+
+    def __str__(self):
+        return f"{self.display_name} (v{self.version})"
+
+
+class VerificationFlowRun(models.Model):
+    """A single execution of a verification flow.
+
+    Tracks the overall status and context of a flow execution,
+    with individual steps stored as VerificationFlowStep records.
+    """
+    flow = models.ForeignKey(
+        VerificationFlow,
+        on_delete=models.CASCADE,
+        related_name='runs',
+        help_text="The flow that was executed"
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=VerificationFlowStatus.choices,
+        default=VerificationFlowStatus.RUNNING,
+        db_index=True,
+        help_text="Current execution status"
+    )
+    context = models.JSONField(
+        default=dict,
+        help_text="Execution context and state"
+    )
+    source = models.CharField(
+        max_length=20,
+        choices=VerificationFlowSource.choices,
+        default=VerificationFlowSource.API,
+        help_text="What triggered this run"
+    )
+    started_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="When execution started"
+    )
+    completed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When execution completed"
+    )
+
+    class Meta:
+        verbose_name = "Verification Flow Run"
+        verbose_name_plural = "Verification Flow Runs"
+        ordering = ['-started_at']
+
+    def __str__(self):
+        return f"{self.flow.name} run {self.id} ({self.status})"
+
+    @property
+    def duration_ms(self) -> int | None:
+        """Duration of the run in milliseconds."""
+        if self.completed_at and self.started_at:
+            delta = self.completed_at - self.started_at
+            return int(delta.total_seconds() * 1000)
+        return None
+
+
+class VerificationFlowStep(models.Model):
+    """Individual step result from a flow run.
+
+    Stores the outcome of each verification check within a flow,
+    including timing, status, and debug information.
+    """
+    flow_run = models.ForeignKey(
+        VerificationFlowRun,
+        on_delete=models.CASCADE,
+        related_name='steps',
+        help_text="The flow run this step belongs to"
+    )
+    step_order = models.PositiveIntegerField(
+        help_text="Order of execution (0-indexed)"
+    )
+    name = models.CharField(
+        max_length=100,
+        help_text="Step name from flow definition"
+    )
+    passed = models.BooleanField(
+        help_text="Whether the step passed"
+    )
+    details = models.TextField(
+        blank=True,
+        help_text="Human-readable success details"
+    )
+    error_message = models.TextField(
+        blank=True,
+        help_text="Error description when step fails"
+    )
+    response_status = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="HTTP status code if applicable"
+    )
+    response_body = models.TextField(
+        blank=True,
+        help_text="Sanitized response content for debugging"
+    )
+    started_at = models.DateTimeField(
+        help_text="When step execution started"
+    )
+    completed_at = models.DateTimeField(
+        help_text="When step execution completed"
+    )
+
+    class Meta:
+        verbose_name = "Verification Flow Step"
+        verbose_name_plural = "Verification Flow Steps"
+        ordering = ['flow_run', 'step_order']
+        unique_together = [['flow_run', 'step_order']]
+
+    def __str__(self):
+        status = "✓" if self.passed else "✗"
+        return f"{status} {self.name} (step {self.step_order})"
+
+    @property
+    def duration_ms(self) -> int | None:
+        """Duration of the step in milliseconds."""
+        if self.completed_at and self.started_at:
+            delta = self.completed_at - self.started_at
+            return int(delta.total_seconds() * 1000)
+        return None
+
+
 class SLO(models.Model):
     """Service Level Objective linked to requirements.
 
