@@ -1,12 +1,16 @@
 """API endpoints for external systems to push status updates."""
 import json
+from dataclasses import asdict
 from decimal import Decimal, InvalidOperation
 
+from django.conf import settings
+from django.core.cache import cache
 from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
+from .health import TestConnectionResult, verify_linear_connection
 from .models import (
     InAppValidation,
     InAppValidationResult,
@@ -291,4 +295,172 @@ def get_requirement_status(request, external_id):
         'linked_tests': test_count,
         'linked_slos': slo_count,
         'linked_validations': validation_count,
+    })
+
+
+# Cache key and timeout for Linear health check results
+LINEAR_HEALTH_CACHE_KEY = 'linear_connection_health'
+LINEAR_HEALTH_CACHE_TIMEOUT = 60  # 1 minute cache to respect rate limits
+
+
+def _compute_overall_status(result: TestConnectionResult) -> str:
+    """Compute overall status from test connection result.
+
+    Returns:
+        'healthy' if all checks passed
+        'degraded' if some checks passed
+        'unhealthy' if all checks failed or error occurred
+    """
+    if result.success:
+        return 'healthy'
+
+    if result.checks:
+        passed_count = sum(1 for c in result.checks if c.passed)
+        if passed_count > 0:
+            return 'degraded'
+
+    return 'unhealthy'
+
+
+def _result_to_dict(result: TestConnectionResult) -> dict:
+    """Convert TestConnectionResult to JSON-serializable dict."""
+    checks_data = None
+    if result.checks:
+        checks_data = [asdict(check) for check in result.checks]
+
+    return {
+        'success': result.success,
+        'message': result.message,
+        'status': _compute_overall_status(result),
+        'checks': checks_data,
+        'error_details': result.error_details,
+    }
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def test_linear_connection(request):
+    """Test Linear API connection with fresh health check.
+
+    POST /api/integrations/linear/test-connection/
+
+    Request body: (optional)
+    {
+        "api_key": "lin_api_...",   // Override settings
+        "workspace": "my-workspace",
+        "team": "my-team"
+    }
+
+    If no body provided, uses Django settings:
+    - LINEAR_API_KEY
+    - LINEAR_WORKSPACE
+    - LINEAR_TEAM
+
+    Response:
+    {
+        "success": true,
+        "message": "All checks passed",
+        "status": "healthy",  // healthy, degraded, unhealthy
+        "checks": [
+            {
+                "name": "Configuration",
+                "passed": true,
+                "details": "API key present, workspace: ...",
+                "error_message": null,
+                "response_status": null,
+                "response_body": null,
+                "timestamp": "2024-01-15T10:30:00.000Z"
+            },
+            ...
+        ],
+        "error_details": null,
+        "cached": false
+    }
+    """
+    # Parse optional override from request body
+    api_key = getattr(settings, 'LINEAR_API_KEY', '')
+    workspace = getattr(settings, 'LINEAR_WORKSPACE', '')
+    team = getattr(settings, 'LINEAR_TEAM', '')
+
+    # Only try to parse JSON if content type indicates JSON and body is not empty
+    content_type = request.content_type or ''
+    if 'application/json' in content_type and request.body:
+        try:
+            data = json.loads(request.body)
+            api_key = data.get('api_key', api_key)
+            workspace = data.get('workspace', workspace)
+            team = data.get('team', team)
+        except json.JSONDecodeError:
+            return JsonResponse(
+                {'success': False, 'error': 'Invalid JSON'},
+                status=400
+            )
+
+    # Run fresh health check
+    result = verify_linear_connection(api_key, workspace, team)
+
+    # Convert to JSON response
+    response_data = _result_to_dict(result)
+    response_data['cached'] = False
+
+    # Cache the result
+    cache.set(LINEAR_HEALTH_CACHE_KEY, response_data, LINEAR_HEALTH_CACHE_TIMEOUT)
+
+    return JsonResponse(response_data)
+
+
+@require_http_methods(["GET"])
+def get_linear_health(request):
+    """Get cached Linear integration health status.
+
+    GET /api/integrations/linear/health/
+
+    Returns cached health check result without triggering a new test.
+    Use POST /api/integrations/linear/test-connection/ to refresh.
+
+    Response:
+    {
+        "success": true,
+        "message": "All checks passed",
+        "status": "healthy",  // healthy, degraded, unhealthy
+        "checks": [...],
+        "error_details": null,
+        "cached": true,
+        "cache_remaining_seconds": 45
+    }
+
+    If no cached result exists:
+    {
+        "success": false,
+        "message": "No cached health check available",
+        "status": "unknown",
+        "checks": null,
+        "error_details": null,
+        "cached": false
+    }
+    """
+    cached_result = cache.get(LINEAR_HEALTH_CACHE_KEY)
+
+    if cached_result:
+        response_data = cached_result.copy()
+        response_data['cached'] = True
+
+        # Try to get TTL if cache backend supports it
+        try:
+            ttl = cache.ttl(LINEAR_HEALTH_CACHE_KEY)
+            if ttl is not None:
+                response_data['cache_remaining_seconds'] = ttl
+        except AttributeError:
+            # Cache backend doesn't support TTL query
+            pass
+
+        return JsonResponse(response_data)
+
+    return JsonResponse({
+        'success': False,
+        'message': 'No cached health check available',
+        'status': 'unknown',
+        'checks': None,
+        'error_details': None,
+        'cached': False,
     })

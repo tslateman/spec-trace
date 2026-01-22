@@ -30,4 +30,8 @@ urlpatterns = [
     path('api/slo/status/', api.update_slo_status, name='api-slo-status'),
     path('api/validation/result/', api.submit_validation_result, name='api-validation-result'),
     path('api/requirement/<str:external_id>/status/', api.get_requirement_status, name='api-requirement-status'),
+
+    # Integration health check endpoints
+    path('api/integrations/linear/test-connection/', api.test_linear_connection, name='api-linear-test-connection'),
+    path('api/integrations/linear/health/', api.get_linear_health, name='api-linear-health'),
 ]
