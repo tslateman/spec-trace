@@ -155,6 +155,66 @@ def check_configuration(api_key: str, workspace: str, team: str) -> Verification
     )
 
 
+def check_authentication(client) -> VerificationCheck:
+    """Verify Linear API token validity with viewer query.
+
+    Makes actual API request to Linear using the GraphQL viewer query,
+    which returns the authenticated user's info.
+
+    Args:
+        client: LinearClient instance (from requirements.linear)
+
+    Returns:
+        VerificationCheck with passed=True if authenticated,
+        or passed=False with error details including status code
+        and sanitized response body
+    """
+    import requests
+
+    try:
+        result = client._execute_query("""
+            query Me {
+                viewer {
+                    id
+                    name
+                    email
+                }
+            }
+        """)
+
+        viewer = result.get('viewer', {})
+        name = viewer.get('name', 'Unknown')
+        email = viewer.get('email', 'unknown@example.com')
+
+        return VerificationCheck(
+            name="Authentication",
+            passed=True,
+            details=f"Authenticated as {name} ({email})",
+            response_status=200,
+        )
+
+    except requests.HTTPError as e:
+        return VerificationCheck(
+            name="Authentication",
+            passed=False,
+            error_message=f"HTTP {e.response.status_code}: Authentication failed",
+            response_status=e.response.status_code,
+            response_body=_sanitize_response(e.response.text),
+        )
+    except ValueError as e:
+        return VerificationCheck(
+            name="Authentication",
+            passed=False,
+            error_message=f"GraphQL error: {str(e)}",
+        )
+    except Exception as e:
+        return VerificationCheck(
+            name="Authentication",
+            passed=False,
+            error_message=f"Request failed: {type(e).__name__}: {str(e)}",
+        )
+
+
 def check_permissions(client) -> VerificationCheck:
     """Verify read access to Linear issues endpoint.
 
