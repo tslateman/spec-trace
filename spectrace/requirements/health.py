@@ -7,7 +7,7 @@ aggregates multiple checks into an overall connection test result.
 
 import re
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 
 
 def _get_timestamp() -> str:
@@ -16,7 +16,7 @@ def _get_timestamp() -> str:
     Returns:
         Timestamp string in format 'YYYY-MM-DDTHH:MM:SS.ffffffZ'
     """
-    return datetime.utcnow().isoformat() + "Z"
+    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
 
 def _sanitize_response(response_text: str, max_length: int = 500) -> str:

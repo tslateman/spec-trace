@@ -1,5 +1,11 @@
-"""Tests for health check utilities."""
-from requirements.health import _sanitize_response
+"""Tests for health check utilities and domain objects."""
+import time
+
+from requirements.health import (
+    TestConnectionResult,
+    VerificationCheck,
+    _sanitize_response,
+)
 
 
 class TestSanitizeResponse:
@@ -58,3 +64,143 @@ class TestSanitizeResponse:
         response = '{"error": "Rate limit exceeded", "status": 429}'
         result = _sanitize_response(response)
         assert result == response
+
+
+class TestVerificationCheck:
+    """Tests for VerificationCheck dataclass."""
+
+    def test_verification_check_creation(self):
+        """Basic creation with required fields works."""
+        check = VerificationCheck(name="Configuration", passed=True)
+
+        assert check.name == "Configuration"
+        assert check.passed is True
+        # Optional fields default to None
+        assert check.details is None
+        assert check.error_message is None
+        assert check.response_status is None
+        assert check.response_body is None
+        # timestamp is auto-generated
+        assert check.timestamp is not None
+
+    def test_verification_check_timestamp_auto_generated(self):
+        """Each instance gets a unique auto-generated timestamp."""
+        check1 = VerificationCheck(name="Check1", passed=True)
+        time.sleep(0.01)  # Small delay to ensure different timestamps
+        check2 = VerificationCheck(name="Check2", passed=False)
+
+        # Both have timestamps
+        assert check1.timestamp is not None
+        assert check2.timestamp is not None
+
+        # Timestamps are different (proving per-instance generation)
+        assert check1.timestamp != check2.timestamp
+
+        # Timestamp format is ISO 8601 (ends with 'Z')
+        assert check1.timestamp.endswith('Z')
+        assert check2.timestamp.endswith('Z')
+
+        # Timestamp has expected format (contains T separator)
+        assert 'T' in check1.timestamp
+
+    def test_verification_check_failure_fields(self):
+        """Error fields are set correctly for failures."""
+        check = VerificationCheck(
+            name="Authentication",
+            passed=False,
+            error_message="Invalid API key",
+            response_status=401,
+            response_body='{"error": "unauthorized"}',
+        )
+
+        assert check.name == "Authentication"
+        assert check.passed is False
+        assert check.error_message == "Invalid API key"
+        assert check.response_status == 401
+        assert check.response_body == '{"error": "unauthorized"}'
+
+    def test_verification_check_success_details(self):
+        """Details field captures success information."""
+        check = VerificationCheck(
+            name="API Access",
+            passed=True,
+            details="Successfully retrieved team information",
+            response_status=200,
+        )
+
+        assert check.passed is True
+        assert check.details == "Successfully retrieved team information"
+        assert check.response_status == 200
+
+
+class TestTestConnectionResult:
+    """Tests for TestConnectionResult dataclass."""
+
+    def test_connection_result_success(self):
+        """Successful result with checks list."""
+        checks = [
+            VerificationCheck(name="Config", passed=True, details="API key configured"),
+            VerificationCheck(name="Auth", passed=True, details="Authenticated"),
+        ]
+        result = TestConnectionResult(
+            success=True,
+            message="Connection successful",
+            checks=checks,
+        )
+
+        assert result.success is True
+        assert result.message == "Connection successful"
+        assert result.checks is not None
+        assert len(result.checks) == 2
+        assert result.checks[0].name == "Config"
+        assert result.checks[1].name == "Auth"
+        assert result.error_details is None
+
+    def test_connection_result_failure(self):
+        """Failed result with error details."""
+        checks = [
+            VerificationCheck(name="Config", passed=True),
+            VerificationCheck(
+                name="Auth",
+                passed=False,
+                error_message="API key invalid",
+            ),
+        ]
+        result = TestConnectionResult(
+            success=False,
+            message="Connection failed: Authentication error",
+            checks=checks,
+            error_details="The API key was rejected by the server",
+        )
+
+        assert result.success is False
+        assert "failed" in result.message.lower()
+        assert result.checks is not None
+        assert len(result.checks) == 2
+        assert result.error_details == "The API key was rejected by the server"
+
+    def test_connection_result_catastrophic_error(self):
+        """Catastrophic error with no checks completed."""
+        result = TestConnectionResult(
+            success=False,
+            message="Connection failed: Network unreachable",
+            checks=None,
+            error_details="Could not resolve hostname: api.linear.app",
+        )
+
+        assert result.success is False
+        assert result.checks is None
+        assert result.error_details is not None
+        assert "hostname" in result.error_details.lower()
+
+    def test_connection_result_empty_checks(self):
+        """Result with empty checks list (different from None)."""
+        result = TestConnectionResult(
+            success=True,
+            message="No checks required",
+            checks=[],
+        )
+
+        assert result.success is True
+        assert result.checks is not None
+        assert len(result.checks) == 0
