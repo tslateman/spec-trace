@@ -1,5 +1,8 @@
 """Views for requirements app."""
+import csv
+
 from django.contrib.admin.views.decorators import staff_member_required
+from django.http import HttpResponse
 from django.shortcuts import render
 
 from .matrix import get_matrix_data, get_cell_color
@@ -62,3 +65,45 @@ def matrix_view(request):
     }
 
     return render(request, 'admin/requirements/matrix.html', context)
+
+
+@staff_member_required
+def matrix_export(request):
+    """Export the traceability matrix as CSV.
+
+    Query parameters same as matrix_view, plus:
+        format: 'csv' (default)
+    """
+    # Parse query parameters (same as matrix_view)
+    filters = {}
+    if request.GET.get('status'):
+        filters['status'] = request.GET['status']
+    if request.GET.get('tags'):
+        filters['tags'] = [t.strip() for t in request.GET['tags'].split(',')]
+    if request.GET.get('parent_id'):
+        filters['parent_id'] = request.GET['parent_id']
+
+    # Get all matrix data (no pagination for export)
+    data = get_matrix_data(page=1, per_page=10000, filters=filters)
+
+    # Create CSV response
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="traceability_matrix.csv"'
+
+    writer = csv.writer(response)
+
+    # Header row: Requirement ID, Requirement Title, then test names
+    header = ['Requirement ID', 'Requirement Title', 'Status']
+    for test in data['tests']:
+        header.append(test['nodeid'])
+    writer.writerow(header)
+
+    # Data rows
+    for req in data['requirements']:
+        row = [req.external_id, req.title, req.verification_status]
+        for test in data['tests']:
+            cell = data['cells'].get((req.external_id, test['nodeid']), {})
+            row.append(cell.get('status', 'unlinked'))
+        writer.writerow(row)
+
+    return response

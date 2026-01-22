@@ -152,6 +152,56 @@ class TestMatrixViewFilters:
         assert 'Showing 1 of' in content
 
 
+class TestMatrixExport:
+    """Tests for matrix CSV export."""
+
+    @pytest.mark.django_db
+    def test_export_requires_login(self, client):
+        """Unauthenticated users are redirected."""
+        response = client.get('/admin/matrix/export/')
+        assert response.status_code == 302
+
+    @pytest.mark.django_db
+    def test_export_returns_csv(self, admin_client, sample_data):
+        """Export returns CSV file."""
+        response = admin_client.get('/admin/matrix/export/')
+        assert response.status_code == 200
+        assert response['Content-Type'] == 'text/csv'
+        assert 'attachment' in response['Content-Disposition']
+        assert 'traceability_matrix.csv' in response['Content-Disposition']
+
+    @pytest.mark.django_db
+    def test_export_contains_requirements(self, admin_client, sample_data):
+        """CSV contains requirement data."""
+        response = admin_client.get('/admin/matrix/export/')
+        content = response.content.decode()
+
+        assert 'REQ-001' in content
+        assert 'REQ-002' in content
+        assert 'Login Feature' in content
+
+    @pytest.mark.django_db
+    def test_export_contains_tests(self, admin_client, sample_data):
+        """CSV header contains test names."""
+        response = admin_client.get('/admin/matrix/export/')
+        content = response.content.decode()
+
+        assert 'test_login' in content
+        assert 'test_view' in content
+
+    @pytest.mark.django_db
+    def test_export_respects_filters(self, admin_client, sample_data):
+        """Export respects status filter."""
+        response = admin_client.get('/admin/matrix/export/?status=passing')
+        content = response.content.decode()
+
+        assert 'REQ-001' in content
+        # REQ-002 should not be in the data rows (only 1 data row)
+        lines = content.strip().split('\n')
+        # Header + 1 data row = 2 lines
+        assert len(lines) == 2
+
+
 class TestMatrixViewPagination:
     """Tests for matrix view pagination."""
 
