@@ -9,6 +9,18 @@ from .matrix import get_matrix_data, get_cell_color
 from .models import Requirement
 
 
+def _build_matrix_filters(request) -> dict:
+    """Build filter dict from request query parameters."""
+    filters = {}
+    if request.GET.get('status'):
+        filters['status'] = request.GET['status']
+    if request.GET.get('tags'):
+        filters['tags'] = [t.strip() for t in request.GET['tags'].split(',')]
+    if request.GET.get('parent_id'):
+        filters['parent_id'] = request.GET['parent_id']
+    return filters
+
+
 @staff_member_required
 def matrix_view(request):
     """Render the traceability matrix grid.
@@ -25,13 +37,7 @@ def matrix_view(request):
     per_page = int(request.GET.get('per_page', 25))
 
     # Build filters from query params
-    filters = {}
-    if request.GET.get('status'):
-        filters['status'] = request.GET['status']
-    if request.GET.get('tags'):
-        filters['tags'] = [t.strip() for t in request.GET['tags'].split(',')]
-    if request.GET.get('parent_id'):
-        filters['parent_id'] = request.GET['parent_id']
+    filters = _build_matrix_filters(request)
 
     # Get matrix data
     data = get_matrix_data(page=page, per_page=per_page, filters=filters)
@@ -75,13 +81,7 @@ def matrix_export(request):
         format: 'csv' (default)
     """
     # Parse query parameters (same as matrix_view)
-    filters = {}
-    if request.GET.get('status'):
-        filters['status'] = request.GET['status']
-    if request.GET.get('tags'):
-        filters['tags'] = [t.strip() for t in request.GET['tags'].split(',')]
-    if request.GET.get('parent_id'):
-        filters['parent_id'] = request.GET['parent_id']
+    filters = _build_matrix_filters(request)
 
     # Get all matrix data (no pagination for export)
     data = get_matrix_data(page=1, per_page=10000, filters=filters)

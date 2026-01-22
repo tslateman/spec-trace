@@ -1,4 +1,6 @@
 """Requirement model for storing parsed spec requirements."""
+from functools import cached_property
+
 from django.db import models
 from treebeard.mp_tree import MP_Node
 
@@ -257,9 +259,9 @@ class InAppValidation(models.Model):
     def __str__(self):
         return f"{self.name} ({self.status})"
 
-    @property
+    @cached_property
     def latest_result(self):
-        """Get the most recent validation result."""
+        """Get the most recent validation result (cached per instance)."""
         return self.results.order_by('-checked_at').first()
 
     @property

@@ -1,41 +1,10 @@
 """Verification status computation logic."""
-from typing import Callable
-
 from .models import (
     InAppValidationStatus,
     Requirement,
     SLOStatus,
     VerificationMethod,
 )
-
-
-def _bulk_update_status(
-    compute_fn: Callable,
-    field_name: str,
-    status_keys: list[str],
-    **compute_kwargs
-) -> dict:
-    """Generic helper to update a status field for all requirements.
-
-    Args:
-        compute_fn: Function to compute new status for a requirement
-        field_name: Model field to update (e.g., 'verification_status', 'slo_status')
-        status_keys: List of possible status values for counting
-        **compute_kwargs: Additional kwargs to pass to compute_fn
-
-    Returns:
-        Summary dict with counts by status
-    """
-    counts = {key: 0 for key in status_keys}
-
-    for req in Requirement.objects.all():
-        new_status = compute_fn(req, **compute_kwargs)
-        if getattr(req, field_name) != new_status:
-            setattr(req, field_name, new_status)
-            req.save(update_fields=[field_name])
-        counts[new_status] += 1
-
-    return counts
 
 
 def compute_verification_status(requirement: Requirement, latest_run=None) -> str:
@@ -91,12 +60,14 @@ def update_all_verification_statuses(latest_run=None) -> dict:
         - failing: Number of requirements with failing status
         - untested: Number of requirements with untested status
     """
-    return _bulk_update_status(
-        compute_verification_status,
-        'verification_status',
-        ['passing', 'failing', 'untested'],
-        latest_run=latest_run
-    )
+    counts = {'passing': 0, 'failing': 0, 'untested': 0}
+    for req in Requirement.objects.all():
+        new_status = compute_verification_status(req, latest_run)
+        if req.verification_status != new_status:
+            req.verification_status = new_status
+            req.save(update_fields=['verification_status'])
+        counts[new_status] += 1
+    return counts
 
 
 def compute_inapp_validation_status(requirement: Requirement) -> str:
@@ -227,11 +198,14 @@ def update_all_slo_statuses() -> dict:
     Returns:
         Summary dict with counts by status
     """
-    return _bulk_update_status(
-        compute_slo_status,
-        'slo_status',
-        ['met', 'at_risk', 'breached', 'not_linked']
-    )
+    counts = {'met': 0, 'at_risk': 0, 'breached': 0, 'not_linked': 0}
+    for req in Requirement.objects.all():
+        new_status = compute_slo_status(req)
+        if req.slo_status != new_status:
+            req.slo_status = new_status
+            req.save(update_fields=['slo_status'])
+        counts[new_status] += 1
+    return counts
 
 
 def update_all_unified_statuses(latest_run=None) -> dict:
@@ -246,9 +220,11 @@ def update_all_unified_statuses(latest_run=None) -> dict:
     Returns:
         Summary dict with counts by status
     """
-    return _bulk_update_status(
-        compute_unified_verification_status,
-        'verification_status',
-        ['passing', 'failing', 'untested'],
-        latest_run=latest_run
-    )
+    counts = {'passing': 0, 'failing': 0, 'untested': 0}
+    for req in Requirement.objects.all():
+        new_status = compute_unified_verification_status(req, latest_run)
+        if req.verification_status != new_status:
+            req.verification_status = new_status
+            req.save(update_fields=['verification_status'])
+        counts[new_status] += 1
+    return counts
