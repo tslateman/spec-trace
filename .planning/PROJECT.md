@@ -8,13 +8,29 @@ A requirements traceability system that connects product specs to verified code.
 
 PMs can see, at any moment, which requirements are verified by passing tests — eliminating the gap between "what we think we built" and "what we actually built."
 
-## Current State (v1 Shipped)
+## Current Milestone: v3 Integration Health Checks
 
-**Shipped:** 2026-01-21
+**Goal:** Monitor external integration health with granular diagnostic checks — enabling proactive detection of connectivity issues with Linear, SLO platforms, and CI/CD systems.
+
+**Target features:**
+- Connection testing endpoints for each integration
+- Granular diagnostic checks (auth, reachability, permissions)
+- Dashboard health status display with timestamps
+- Historical health tracking for debugging
+
+## What's Shipped
+
+### v2 Traceability Matrix (Shipped: 2026-01-21)
+
+- **Matrix view:** Paginated grid (requirements × tests) with color-coded cells
+- **Filtering:** Status, tags, parent requirement filters
+- **Export:** CSV export respecting filters
+- **Dashboard tab:** Integrated in django-unfold admin
+
+### v1 MVP (Shipped: 2026-01-21)
+
 **Lines of code:** 5,201 Python
 **Tech stack:** Django 5.2, django-treebeard, django-unfold, pytest, junitparser
-
-### What v1 Delivers
 
 - **Spec parsing:** Markdown files with YAML frontmatter → hierarchical requirements
 - **Test linking:** `@pytest.mark.requirement("REQ-XXX")` decorator → JSON links
@@ -48,9 +64,15 @@ PMs can see, at any moment, which requirements are verified by passing tests —
 - ✓ NAV-01: Requirement → linked tests — v1
 - ✓ NAV-02: Test → linked requirements — v1
 
-### Active (v2 Candidates)
+### Active (v3)
 
-- [ ] DASH-03: Traceability matrix view (requirements vs. tests grid)
+- [ ] HEALTH-01: Connection testing endpoints for integrations
+- [ ] HEALTH-02: Granular diagnostic checks (auth, reachability, permissions)
+- [ ] HEALTH-03: Dashboard health status display
+- [ ] HEALTH-04: Historical health tracking
+
+### Future (v4+)
+
 - [ ] NAV-03: Impact analysis (spec change → affected tests)
 - [ ] CI-01: Webhooks receive test results from CI pipeline
 - [ ] CI-02: Real-time dashboard updates as CI runs complete
@@ -88,7 +110,10 @@ PMs can see, at any moment, which requirements are verified by passing tests —
 | Django for dashboard | Stays in Python ecosystem, team familiarity | ✓ Good |
 | django-treebeard for hierarchy | Efficient tree queries, no recursive SQL | ✓ Good |
 | Denormalized verification_status | Fast dashboard reads, recompute on import | ✓ Good |
-| Deferred traceability matrix | Bidirectional navigation sufficient for v1 | — Pending (v2) |
+| Deferred traceability matrix | Bidirectional navigation sufficient for v1 | ✓ Shipped in v2 |
+| Dataclasses for health checks | Separate domain logic from persistence (Repository pattern) | — Pending (v3) |
+| Synchronous health checks | Avoid Django async/timeout deadlocks | — Pending (v3) |
+| Cached health results | Respect Linear API rate limits (5K req/hr) | — Pending (v3) |
 
 ---
-*Last updated: 2026-01-21 after v1 milestone*
+*Last updated: 2026-01-21 after v3 milestone start*

@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-01-21)
 
 **Core value:** PMs can see, at any moment, which requirements are verified by passing tests
-**Current focus:** v2 Traceability Matrix
+**Current focus:** v3 Integration Health Checks
 
 ## Current Position
 
-Milestone: v2 Traceability Matrix
-Phase: 4 of 4 (Export & Polish)
-Plan: Complete
-Status: **MILESTONE COMPLETE** — All 4 phases shipped
-Last activity: 2026-01-21 — Completed CSV export and polish
+Milestone: v3 Integration Health Checks
+Phase: Not started (defining requirements)
+Plan: —
+Status: **RESEARCH COMPLETE** — Ready to define requirements
+Last activity: 2026-01-21 — Researched integration health check patterns
 
-Progress: [##########] 100% (0 phases remaining)
+Progress: [          ] 0% (requirements definition)
 
 ## v2 Milestone Summary
 
@@ -79,5 +79,6 @@ Resume file: None
 
 ### Next Steps
 
-1. Consider v3 milestone planning
-2. Potential features: Impact analysis, Test coverage reports, CI/CD integration
+1. Define v3 requirements
+2. Create v3 roadmap
+3. `/gsd:plan-phase 5` — Plan Phase 5 (Health Check Foundation)
