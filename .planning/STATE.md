@@ -10,12 +10,12 @@ See: .planning/PROJECT.md (updated 2026-01-24)
 ## Current Position
 
 Milestone: v6 Impact Analysis & Validation API
-Phase: Not started (defining requirements)
+Phase: 12 (Impact Analysis Core) — not started
 Plan: —
-Status: **DEFINING REQUIREMENTS**
-Last activity: 2026-01-25 — v6 milestone started
+Status: **READY TO PLAN**
+Last activity: 2026-01-25 — v6 roadmap created
 
-Progress: [----------] 0% (requirements being defined)
+Progress: [----------] 0% (3 phases: 12, 13, 14)
 
 ## Post-v4 Work (Outside GSD)
 
