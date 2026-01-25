@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-01-25)
 
 **Core value:** PMs can see, at any moment, which requirements are verified by passing tests
-**Current focus:** Between milestones — ready for v7
+**Current focus:** v7 UI Polish & API Documentation
 
 ## Current Position
 
-Milestone: None (v6 archived)
-Phase: —
+Milestone: v7 UI Polish & API Documentation
+Phase: Not started (defining requirements)
 Plan: —
-Status: **BETWEEN MILESTONES**
-Last activity: 2026-01-25 — v6 archived
+Status: **DEFINING REQUIREMENTS**
+Last activity: 2026-01-25 — Milestone v7 started
 
-Progress: Ready for next milestone
+Progress: Defining requirements
 
 ## Milestone History
 
@@ -66,13 +66,14 @@ None.
 
 ### Next Steps
 
-Run `/gsd:new-milestone` to start v7 planning:
-- Define vision and requirements
-- Create ROADMAP.md
-- Plan first phase
+v7 milestone in progress:
+- [x] Define milestone goals
+- [ ] Define requirements (REQUIREMENTS.md)
+- [ ] Create roadmap (ROADMAP.md)
+- [ ] Plan first phase
 
 ## Session Continuity
 
 Last session: 2026-01-25
-Stopped at: v6 archived, ready for v7
+Stopped at: Defining v7 requirements
 Resume file: None

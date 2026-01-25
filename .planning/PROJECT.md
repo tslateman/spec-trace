@@ -118,9 +118,16 @@ PMs can see, at any moment, which requirements are verified by passing tests —
 - ✓ STRUCT-05: SLO auto-linking by timing field — post-v4
 - ✓ TRACE-01: Linear issue traceability and conflict detection — post-v4
 
-### Active (None — Between Milestones)
+### Active (v7 — UI Polish & API Documentation)
 
-All v6 requirements shipped. Run `/gsd:new-milestone` to start v7.
+**Goal:** Improve validation runs UX, add OpenAPI docs, fix dark mode consistency.
+
+**Target features:**
+- Validation runs filtering improvements (date range, test/requirement filters)
+- OpenAPI documentation for all public APIs
+- Dark mode consistency across custom views
+- Navigation flow improvements
+- Loading states for async operations
 
 ### Validated (v6)
 
@@ -188,4 +195,4 @@ All v6 requirements shipped. Run `/gsd:new-milestone` to start v7.
 | 5-step PMS / 3-step mobile key | Consistent validation granularity | ✓ Good |
 
 ---
-*Last updated: 2026-01-25 after v6 milestone complete*
+*Last updated: 2026-01-25 after v7 milestone start*
