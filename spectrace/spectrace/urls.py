@@ -25,6 +25,7 @@ from requirements.views import (
     impact_analysis_view,
     validation_run_list_view,
     validation_run_detail_view,
+    validation_run_steps_view,
     validation_run_compare_view,
 )
 
@@ -37,6 +38,7 @@ urlpatterns = [
     # Validation run views
     path('admin/validation-runs/', validation_run_list_view, name='admin-validation-runs'),
     path('admin/validation-runs/<int:run_id>/', validation_run_detail_view, name='admin-validation-run-detail'),
+    path('admin/validation-runs/<int:run_id>/steps/', validation_run_steps_view, name='admin-validation-run-steps'),
     path('admin/validation-runs/compare/', validation_run_compare_view, name='admin-validation-run-compare'),
     path('admin/', admin.site.urls),
 

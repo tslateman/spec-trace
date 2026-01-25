@@ -1,0 +1,153 @@
+{% extends "unfold/layouts/base.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} | SpecTrace{% endblock %}
+
+{% block content %}
+<style>
+    .step-row {
+        display: grid;
+        grid-template-columns: 24px 1fr 200px 100px 80px;
+        gap: 12px;
+        align-items: center;
+        padding: 12px 16px;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    .dark .step-row {
+        border-bottom-color: #374151;
+    }
+    .step-row:hover {
+        background: #f9fafb;
+    }
+    .dark .step-row:hover {
+        background: #1f2937;
+    }
+    .step-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+    }
+    .step-dot.passed { background: #22c55e; }
+    .step-dot.failed { background: #ef4444; }
+    .status-badge {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    .status-success {
+        background: #dcfce7;
+        color: #166534;
+    }
+    .dark .status-success {
+        background: #052e16;
+        color: #4ade80;
+    }
+    .status-failure {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+    .dark .status-failure {
+        background: #450a0a;
+        color: #f87171;
+    }
+</style>
+
+<div class="p-6">
+    <!-- Header with Navigation -->
+    <div class="mb-6 flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-base-900 dark:text-white">{{ title }}</h1>
+            <p class="text-base-500 dark:text-base-400 mt-1">
+                Source: {{ run.source }} | {{ run.imported_at|date:"Y-m-d H:i:s" }}
+            </p>
+        </div>
+        <div class="flex gap-2">
+            <a href="{% url 'admin-validation-run-detail' run.id %}"
+               class="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600">
+                View Details
+            </a>
+            <a href="{% url 'admin-validation-runs' %}"
+               class="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600">
+                Back to List
+            </a>
+        </div>
+    </div>
+
+    <!-- Summary Stats -->
+    <div class="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-white dark:bg-base-900 rounded-lg shadow p-4 border border-base-200 dark:border-base-800">
+            <div class="text-sm text-base-500 dark:text-base-400">Total Steps</div>
+            <div class="text-3xl font-bold text-base-900 dark:text-white">{{ total_steps }}</div>
+        </div>
+        <div class="bg-white dark:bg-base-900 rounded-lg shadow p-4 border border-base-200 dark:border-base-800 border-l-4 border-l-green-500">
+            <div class="text-sm text-base-500 dark:text-base-400">Passed</div>
+            <div class="text-3xl font-bold text-green-600 dark:text-green-400">{{ total_passed }}</div>
+        </div>
+        <div class="bg-white dark:bg-base-900 rounded-lg shadow p-4 border border-base-200 dark:border-base-800 border-l-4 border-l-red-500">
+            <div class="text-sm text-base-500 dark:text-base-400">Failed</div>
+            <div class="text-3xl font-bold text-red-600 dark:text-red-400">{{ total_failed }}</div>
+        </div>
+    </div>
+
+    <!-- Steps Table -->
+    <div class="bg-white dark:bg-base-900 rounded-lg shadow border border-base-200 dark:border-base-800">
+        <div class="p-4 border-b border-base-200 dark:border-base-800">
+            <h2 class="text-lg font-semibold text-base-900 dark:text-white">All Steps</h2>
+        </div>
+
+        {% if steps_data %}
+        <!-- Header -->
+        <div class="step-row bg-base-50 dark:bg-base-800 font-semibold text-sm text-base-600 dark:text-base-400">
+            <div></div>
+            <div>Step Name</div>
+            <div>Validation</div>
+            <div>Requirement</div>
+            <div>Duration</div>
+        </div>
+
+        {% for result in steps_data %}
+        {% for step in result.steps %}
+        <div class="step-row">
+            <div>
+                <div class="step-dot {% if step.passed %}passed{% else %}failed{% endif %}"></div>
+            </div>
+            <div>
+                <div class="font-medium text-base-900 dark:text-white">{{ step.name }}</div>
+                {% if step.details %}
+                <div class="text-sm text-base-500 dark:text-base-400">{{ step.details }}</div>
+                {% endif %}
+                {% if step.error_message %}
+                <div class="text-sm text-red-600 dark:text-red-400">{{ step.error_message }}</div>
+                {% endif %}
+            </div>
+            <div>
+                <div class="text-sm font-medium text-base-700 dark:text-base-300">{{ result.validation_name }}</div>
+                <div class="text-xs text-base-500 dark:text-base-400">{{ result.vendor }}</div>
+            </div>
+            <div>
+                <span class="font-mono text-sm text-base-600 dark:text-base-400">{{ result.requirement_id }}</span>
+            </div>
+            <div>
+                {% if step.duration_ms %}
+                <span class="text-sm text-base-500 dark:text-base-400">{{ step.duration_ms }}ms</span>
+                {% else %}
+                <span class="text-sm text-base-400">-</span>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+        {% endfor %}
+
+        {% else %}
+        <div class="p-8 text-center">
+            <p class="text-base-500 dark:text-base-400">No steps recorded in this validation run.</p>
+            <p class="text-sm text-base-400 dark:text-base-500 mt-2">
+                Steps are optional - they need to be included when submitting validation results.
+            </p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -357,3 +357,52 @@ def get_unique_sources() -> list:
     ).distinct()
 
     return sorted(set(sources))
+
+
+def get_run_steps_data(run: InAppValidationRun) -> list:
+    """Get all steps from a validation run with result context.
+
+    Args:
+        run: The validation run to get steps for
+
+    Returns:
+        List of dicts, each containing:
+        {
+            'result_id': int,
+            'validation_name': str,
+            'requirement_id': str,
+            'requirement_title': str,
+            'vendor': str,
+            'status': str,
+            'steps': list,
+            'steps_passed': int,
+            'steps_failed': int,
+            'context': dict,
+        }
+    """
+    results = run.results.select_related('validation__requirement').order_by(
+        'validation__vendor', 'validation__name'
+    )
+
+    steps_data = []
+    for result in results:
+        steps = result.steps or []
+        if not steps:
+            continue  # Skip results without steps
+
+        steps_passed = sum(1 for s in steps if s.get('passed', False))
+
+        steps_data.append({
+            'result_id': result.id,
+            'validation_name': result.validation.name,
+            'requirement_id': result.validation.requirement.external_id,
+            'requirement_title': result.validation.requirement.title,
+            'vendor': result.validation.vendor or 'Unassigned',
+            'status': result.status,
+            'steps': steps,
+            'steps_passed': steps_passed,
+            'steps_failed': len(steps) - steps_passed,
+            'context': result.context or {},
+        })
+
+    return steps_data

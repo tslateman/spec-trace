@@ -95,6 +95,10 @@
                 Next →
             </a>
             {% endif %}
+            <a href="{% url 'admin-validation-run-steps' run.id %}"
+               class="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors">
+                View All Steps
+            </a>
             <a href="{% url 'admin-validation-runs' %}"
                class="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600">
                 ← Back to List

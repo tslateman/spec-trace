@@ -17,6 +17,7 @@ from .validation_runs import (
     get_adjacent_runs,
     get_unique_vendors,
     get_unique_sources,
+    get_run_steps_data,
 )
 
 
@@ -304,6 +305,35 @@ def validation_run_detail_view(request, run_id: int):
     }
 
     return render(request, 'admin/requirements/validation_run_detail.html', context)
+
+
+@staff_member_required
+def validation_run_steps_view(request, run_id: int):
+    """View all steps from a validation run.
+
+    Shows a flat list of all steps across all results, with filtering.
+    """
+    run = get_object_or_404(InAppValidationRun, id=run_id)
+    steps_data = get_run_steps_data(run)
+    adjacent = get_adjacent_runs(run)
+
+    # Calculate totals
+    total_steps = sum(len(r['steps']) for r in steps_data)
+    total_passed = sum(r['steps_passed'] for r in steps_data)
+    total_failed = sum(r['steps_failed'] for r in steps_data)
+
+    context = {
+        'title': f'Validation Run #{run.id} - Steps',
+        'run': run,
+        'steps_data': steps_data,
+        'previous_run': adjacent['previous'],
+        'next_run': adjacent['next'],
+        'total_steps': total_steps,
+        'total_passed': total_passed,
+        'total_failed': total_failed,
+    }
+
+    return render(request, 'admin/requirements/validation_run_steps.html', context)
 
 
 @staff_member_required
