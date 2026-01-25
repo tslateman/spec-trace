@@ -3,7 +3,11 @@ from pathlib import Path
 
 from django.core.management.base import BaseCommand, CommandError
 
-from requirements.importer import import_junit_xml, link_results_to_requirements
+from requirements.importer import (
+    import_junit_xml,
+    link_results_to_requirements,
+    update_test_requirement_links,
+)
 from requirements.status import update_all_verification_statuses
 
 
@@ -29,6 +33,25 @@ class Command(BaseCommand):
             action='store_true',
             help='Skip updating verification status after import'
         )
+        # CI metadata arguments
+        parser.add_argument(
+            '--git-sha',
+            type=str,
+            default='',
+            help='Git commit SHA for this test run'
+        )
+        parser.add_argument(
+            '--git-branch',
+            type=str,
+            default='',
+            help='Git branch for this test run'
+        )
+        parser.add_argument(
+            '--ci-job-url',
+            type=str,
+            default='',
+            help='URL to CI job that produced this test run'
+        )
 
     def handle(self, *args, **options):
         """Execute the import workflow."""
@@ -36,14 +59,21 @@ class Command(BaseCommand):
         if not junit_path.exists():
             raise CommandError(f"JUnit XML file not found: {junit_path}")
 
-        # Import test results
+        # Import test results with CI metadata
         self.stdout.write(f"Importing test results from {junit_path}...")
-        test_run = import_junit_xml(str(junit_path))
+        ci_metadata = {
+            'git_sha': options.get('git_sha', ''),
+            'git_branch': options.get('git_branch', ''),
+            'ci_job_url': options.get('ci_job_url', ''),
+        }
+        test_run = import_junit_xml(str(junit_path), **ci_metadata)
         self.stdout.write(self.style.SUCCESS(
             f"Imported {test_run.total_tests} tests "
             f"(passed={test_run.passed}, failed={test_run.failed}, "
             f"errors={test_run.errors}, skipped={test_run.skipped})"
         ))
+        if ci_metadata.get('git_sha'):
+            self.stdout.write(f"  Git SHA: {ci_metadata['git_sha']}")
 
         # Link to requirements if links JSON provided
         links_path = options.get('links')
@@ -61,6 +91,17 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.WARNING(
                     f"  {len(summary['unlinked_tests'])} tests not linked to any requirement"
                 ))
+
+        # Update TestRequirementLink records
+        self.stdout.write("Updating TestRequirementLink records...")
+        link_summary = update_test_requirement_links(test_run)
+        self.stdout.write(self.style.SUCCESS(
+            f"Updated {link_summary['updated_count']} test-requirement links"
+        ))
+        if link_summary['status_changes']:
+            self.stdout.write(self.style.WARNING(
+                f"  {len(link_summary['status_changes'])} links changed status (flagged for review)"
+            ))
 
         # Update verification status
         if not options['no_status_update']:

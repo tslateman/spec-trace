@@ -145,6 +145,32 @@ class TestRun(models.Model):
         max_length=500,
         help_text="Path to JUnit XML file"
     )
+    # CI metadata
+    git_sha = models.CharField(
+        max_length=40,
+        blank=True,
+        help_text="Git commit SHA for this test run"
+    )
+    git_branch = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Git branch for this test run"
+    )
+    ci_job_url = models.URLField(
+        max_length=500,
+        blank=True,
+        help_text="URL to CI job that produced this test run"
+    )
+    started_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the test run started"
+    )
+    finished_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the test run finished"
+    )
 
     class Meta:
         ordering = ['-imported_at']
@@ -611,6 +637,130 @@ class VerificationFlowStep(models.Model):
             delta = self.completed_at - self.started_at
             return int(delta.total_seconds() * 1000)
         return None
+
+
+class TestRequirementLink(models.Model):
+    """Links a test nodeid to a Requirement for traceability.
+
+    This explicit link model tracks metadata about the test-requirement relationship,
+    including the last test status, when it was last run, and whether it needs review.
+
+    Unlike the TestResult.requirements M2M which tracks actual test runs, this tracks
+    the declared link from pytest markers (e.g., @pytest.mark.linear("CAN-1234")).
+    """
+    test_nodeid = models.CharField(
+        max_length=500,
+        db_index=True,
+        help_text="pytest nodeid (e.g., tests/test_auth.py::test_login)"
+    )
+    requirement = models.ForeignKey(
+        Requirement,
+        on_delete=models.CASCADE,
+        related_name='test_links',
+        help_text="The requirement this test verifies"
+    )
+    last_status = models.CharField(
+        max_length=20,
+        default='unknown',
+        help_text="Status from last test run (passed, failed, error, skipped, unknown)"
+    )
+    last_run_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When this test was last run"
+    )
+    needs_review = models.BooleanField(
+        default=False,
+        help_text="Flag for manual review needed"
+    )
+    review_reason = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Reason for review (e.g., 'flaky', 'new link', 'status changed')"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Test-Requirement Link"
+        verbose_name_plural = "Test-Requirement Links"
+        unique_together = [('test_nodeid', 'requirement')]
+        ordering = ['requirement__external_id', 'test_nodeid']
+
+    def __str__(self):
+        return f"{self.test_nodeid} → {self.requirement.external_id}"
+
+
+class ConflictPattern(models.TextChoices):
+    """Types of conflicts detected between requirements."""
+    MUTUAL_EXCLUSION = 'mutual_exclusion', 'Mutual Exclusion'
+    CODE_OVERLAP = 'code_overlap', 'Code Overlap'
+    INVERSE_CORRELATION = 'inverse_correlation', 'Inverse Correlation'
+
+
+class ConflictConfidence(models.TextChoices):
+    """Confidence level of detected conflicts."""
+    HIGH = 'high', 'High'
+    MEDIUM = 'medium', 'Medium'
+    LOW = 'low', 'Low'
+
+
+class ConflictLog(models.Model):
+    """Logged conflicts between requirements for review.
+
+    Stores detected patterns where requirements may be in conflict,
+    such as mutual exclusion (tests for both never pass together).
+    """
+    requirement_a = models.ForeignKey(
+        Requirement,
+        on_delete=models.CASCADE,
+        related_name='conflicts_as_a',
+        help_text="First requirement in the conflict"
+    )
+    requirement_b = models.ForeignKey(
+        Requirement,
+        on_delete=models.CASCADE,
+        related_name='conflicts_as_b',
+        help_text="Second requirement in the conflict"
+    )
+    pattern = models.CharField(
+        max_length=50,
+        choices=ConflictPattern.choices,
+        help_text="Type of conflict pattern detected"
+    )
+    confidence = models.CharField(
+        max_length=20,
+        choices=ConflictConfidence.choices,
+        help_text="Confidence level of the detection"
+    )
+    details = models.JSONField(
+        default=dict,
+        help_text="Additional details about the conflict (runs analyzed, test results, etc.)"
+    )
+    resolved = models.BooleanField(
+        default=False,
+        help_text="Whether this conflict has been reviewed and resolved"
+    )
+    resolved_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the conflict was marked as resolved"
+    )
+    resolution_notes = models.TextField(
+        blank=True,
+        help_text="Notes on how the conflict was resolved"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Conflict Log"
+        verbose_name_plural = "Conflict Logs"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        status = "✓ Resolved" if self.resolved else "⚠ Active"
+        return f"{self.requirement_a.external_id} ↔ {self.requirement_b.external_id} ({self.pattern}) {status}"
 
 
 class SLO(models.Model):

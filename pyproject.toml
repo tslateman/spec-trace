@@ -40,4 +40,5 @@ python_files = ["test_*.py", "*_test.py"]
 pythonpath = ["spectrace"]
 markers = [
     "requirement(*req_ids, reason=None): link test to requirement IDs",
+    "linear(*issue_ids): link test to Linear issue IDs (e.g., CAN-1234)",
 ]

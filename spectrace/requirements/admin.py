@@ -7,11 +7,13 @@ from django.utils.html import format_html
 from unfold.admin import ModelAdmin
 
 from .models import (
+    ConflictLog,
     InAppValidation,
     InAppValidationResult,
     InAppValidationRun,
     Requirement,
     SLO,
+    TestRequirementLink,
     TestResult,
     TestRun,
 )
@@ -148,9 +150,34 @@ class RequirementAdmin(ModelAdmin):
 class TestRunAdmin(ModelAdmin):
     """Admin interface for TestRun."""
 
-    list_display = ['source_file', 'imported_at', 'total_tests', 'passed', 'failed', 'errors', 'skipped']
-    readonly_fields = ['imported_at']
+    list_display = [
+        'source_file', 'imported_at', 'git_sha_short', 'git_branch',
+        'total_tests', 'passed', 'failed', 'errors', 'skipped'
+    ]
+    readonly_fields = ['imported_at', 'started_at', 'finished_at']
     ordering = ['-imported_at']
+    search_fields = ['source_file', 'git_sha', 'git_branch']
+    list_filter = ['git_branch']
+
+    fieldsets = (
+        (None, {
+            'fields': ('source_file',)
+        }),
+        ('CI Metadata', {
+            'fields': ('git_sha', 'git_branch', 'ci_job_url')
+        }),
+        ('Timestamps', {
+            'fields': ('imported_at', 'started_at', 'finished_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def git_sha_short(self, obj):
+        """Display shortened git SHA."""
+        if obj.git_sha:
+            return obj.git_sha[:8]
+        return "—"
+    git_sha_short.short_description = 'Commit'  # type: ignore[attr-defined]
 
 
 @admin.register(TestResult)
@@ -277,3 +304,148 @@ class SLOAdmin(ModelAdmin):
         )
 
     linked_requirements_display.short_description = "Linked Requirements (Current Status)"
+
+
+# Status badge colors for test-requirement links
+LINK_STATUS_COLORS = {
+    'passed': '#22c55e',
+    'failed': '#ef4444',
+    'error': '#f97316',
+    'skipped': '#6b7280',
+    'unknown': '#6b7280',
+}
+
+# Conflict confidence colors
+CONFLICT_CONFIDENCE_COLORS = {
+    'high': '#ef4444',
+    'medium': '#f97316',
+    'low': '#6b7280',
+}
+
+
+@admin.register(TestRequirementLink)
+class TestRequirementLinkAdmin(ModelAdmin):
+    """Admin interface for TestRequirementLink."""
+
+    list_display = [
+        'test_nodeid', 'requirement_link', 'last_status_badge',
+        'last_run_at', 'needs_review', 'review_reason'
+    ]
+    list_filter = ['last_status', 'needs_review', 'requirement']
+    search_fields = ['test_nodeid', 'requirement__external_id', 'review_reason']
+    readonly_fields = ['created_at', 'updated_at', 'last_run_at']
+    raw_id_fields = ['requirement']
+
+    fieldsets = (
+        (None, {
+            'fields': ('test_nodeid', 'requirement')
+        }),
+        ('Status', {
+            'fields': ('last_status', 'last_run_at')
+        }),
+        ('Review', {
+            'fields': ('needs_review', 'review_reason')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def requirement_link(self, obj):
+        """Display requirement as a clickable link."""
+        url = reverse('admin:requirements_requirement_change', args=[obj.requirement.pk])
+        return format_html(
+            '<a href="{}">{}</a>',
+            url, obj.requirement.external_id
+        )
+    requirement_link.short_description = 'Requirement'  # type: ignore[attr-defined]
+
+    def last_status_badge(self, obj):
+        """Display last_status as a colored badge."""
+        color = LINK_STATUS_COLORS.get(obj.last_status, '#6b7280')
+        return format_html(
+            '<span style="display: inline-block; padding: 2px 8px; border-radius: 4px; '
+            'font-size: 11px; font-weight: 500; color: white; background-color: {};">{}</span>',
+            color, obj.last_status.upper()
+        )
+    last_status_badge.short_description = 'Status'  # type: ignore[attr-defined]
+
+
+@admin.register(ConflictLog)
+class ConflictLogAdmin(ModelAdmin):
+    """Admin interface for ConflictLog."""
+
+    list_display = [
+        'conflict_display', 'pattern', 'confidence_badge',
+        'resolved', 'created_at'
+    ]
+    list_filter = ['pattern', 'confidence', 'resolved']
+    search_fields = [
+        'requirement_a__external_id', 'requirement_b__external_id',
+        'resolution_notes'
+    ]
+    readonly_fields = [
+        'created_at', 'updated_at', 'requirement_a_link', 'requirement_b_link',
+        'details_display'
+    ]
+    raw_id_fields = ['requirement_a', 'requirement_b']
+
+    fieldsets = (
+        (None, {
+            'fields': ('requirement_a', 'requirement_b', 'requirement_a_link', 'requirement_b_link')
+        }),
+        ('Conflict Details', {
+            'fields': ('pattern', 'confidence', 'details_display')
+        }),
+        ('Resolution', {
+            'fields': ('resolved', 'resolved_at', 'resolution_notes')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def conflict_display(self, obj):
+        """Display conflict as A ↔ B."""
+        return f"{obj.requirement_a.external_id} ↔ {obj.requirement_b.external_id}"
+    conflict_display.short_description = 'Conflict'  # type: ignore[attr-defined]
+
+    def confidence_badge(self, obj):
+        """Display confidence as a colored badge."""
+        color = CONFLICT_CONFIDENCE_COLORS.get(obj.confidence, '#6b7280')
+        return format_html(
+            '<span style="display: inline-block; padding: 2px 8px; border-radius: 4px; '
+            'font-size: 11px; font-weight: 500; color: white; background-color: {};">{}</span>',
+            color, obj.confidence.upper()
+        )
+    confidence_badge.short_description = 'Confidence'  # type: ignore[attr-defined]
+
+    def requirement_a_link(self, obj):
+        """Display requirement A as a clickable link."""
+        url = reverse('admin:requirements_requirement_change', args=[obj.requirement_a.pk])
+        return format_html(
+            '<a href="{}">{}: {}</a>',
+            url, obj.requirement_a.external_id, obj.requirement_a.title
+        )
+    requirement_a_link.short_description = 'Requirement A'  # type: ignore[attr-defined]
+
+    def requirement_b_link(self, obj):
+        """Display requirement B as a clickable link."""
+        url = reverse('admin:requirements_requirement_change', args=[obj.requirement_b.pk])
+        return format_html(
+            '<a href="{}">{}: {}</a>',
+            url, obj.requirement_b.external_id, obj.requirement_b.title
+        )
+    requirement_b_link.short_description = 'Requirement B'  # type: ignore[attr-defined]
+
+    def details_display(self, obj):
+        """Pretty-print details JSON."""
+        if not obj.details:
+            return "No details"
+        return format_html(
+            '<pre style="max-width: 600px; overflow-x: auto;">{}</pre>',
+            json.dumps(obj.details, indent=2)
+        )
+    details_display.short_description = 'Details'  # type: ignore[attr-defined]
