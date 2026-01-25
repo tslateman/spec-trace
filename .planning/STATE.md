@@ -9,13 +9,13 @@ See: .planning/PROJECT.md (updated 2026-01-24)
 
 ## Current Position
 
-Milestone: Not started (planning next milestone)
-Phase: —
+Milestone: v6 Impact Analysis & Validation API
+Phase: Not started (defining requirements)
 Plan: —
-Status: **READY FOR NEXT MILESTONE**
-Last activity: 2026-01-24 — FRET-inspired structured requirement fields shipped
+Status: **DEFINING REQUIREMENTS**
+Last activity: 2026-01-25 — v6 milestone started
 
-Progress: [----------] 0% (next milestone not yet planned)
+Progress: [----------] 0% (requirements being defined)
 
 ## Post-v4 Work (Outside GSD)
 
@@ -64,20 +64,13 @@ None.
 
 ### Next Steps
 
-Ready for next milestone planning:
-- `/gsd:new-milestone` — Start v5 (questioning → research → requirements → roadmap)
-
-Potential v5 directions:
-- Historical validation tracking (database persistence, trends)
-- Scheduled validation runs (celery tasks, cron)
-- Alerting on regressions (Slack/email notifications)
-- CI integration (webhooks, real-time updates)
-- Formal requirement grammar validation (extend FRET-inspired fields)
-- Test generation hints from structured fields
-- Component-based team ownership views
+v6 milestone in progress:
+- Define requirements for Impact Analysis + Validation API
+- Create roadmap with phases
+- `/gsd:plan-phase [N]` to start execution
 
 ## Session Continuity
 
-Last session: 2026-01-24
-Stopped at: Structured requirement fields shipped (ad-hoc, outside GSD)
+Last session: 2026-01-25
+Stopped at: v6 milestone requirements definition
 Resume file: None

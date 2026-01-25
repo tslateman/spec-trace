@@ -109,13 +109,21 @@ PMs can see, at any moment, which requirements are verified by passing tests —
 - ✓ STRUCT-05: SLO auto-linking by timing field — post-v4
 - ✓ TRACE-01: Linear issue traceability and conflict detection — post-v4
 
-### Active
+### Active (v6 Impact Analysis & Validation API)
 
-(No active requirements — define with `/gsd:new-milestone`)
+**Goal:** Enable impact analysis when specs change and expose validation data via JSON API for custom UIs.
 
-### Future (v4+)
+- [ ] IMPACT-01: Detect changed requirements from git diff
+- [ ] IMPACT-02: Show affected tests for changed requirements
+- [ ] IMPACT-03: Include hierarchy (parent change → child tests)
+- [ ] IMPACT-04: Dashboard view for impact analysis
+- [ ] IMPACT-05: CLI command for CI integration
+- [ ] API-01: JSON endpoint for InAppValidationRun detail
+- [ ] API-02: JSON endpoint for InAppValidationRun list with filtering
+- [ ] API-03: JSON endpoint for validation steps and results
 
-- [ ] NAV-03: Impact analysis (spec change → affected tests)
+### Future (v7+)
+
 - [ ] CI-01: Webhooks receive test results from CI pipeline
 - [ ] CI-02: Real-time dashboard updates as CI runs complete
 - [ ] ANLYT-01: Historical coverage trends chart
@@ -169,4 +177,4 @@ PMs can see, at any moment, which requirements are verified by passing tests —
 | 5-step PMS / 3-step mobile key | Consistent validation granularity | ✓ Good |
 
 ---
-*Last updated: 2026-01-24 after structured requirement fields*
+*Last updated: 2026-01-25 after v6 milestone start*
