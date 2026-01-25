@@ -10,6 +10,15 @@ PMs can see, at any moment, which requirements are verified by passing tests —
 
 ## What's Shipped
 
+### Post-v4 Enhancements (2026-01-24)
+
+- **Structured requirement fields:** FRET-inspired optional fields (scope, condition, component, timing, response) for formal requirement specification
+- **Enhanced conflict detection:** Condition overlap, timing conflicts, and response contradiction detection based on structured fields
+- **Linear import enrichment:** Best-effort extraction of structured fields from issue descriptions
+- **SLO auto-linking:** Auto-link SLOs to requirements based on timing field matching
+- **Structure completeness scoring:** Dashboard shows percentage of structured fields populated per requirement
+- **Linear traceability:** Test-requirement link tracking with Linear issue sync
+
 ### v4 SDK (Shipped: 2026-01-22)
 
 - **SDK Core:** ValidationRun context manager, ValidationStep, ValidationStatus
@@ -93,6 +102,12 @@ PMs can see, at any moment, which requirements are verified by passing tests —
 - ✓ SDK-11: SDK README with API reference — v4
 - ✓ SDK-12: Integration guide with checklists — v4
 - ✓ SDK-13: Troubleshooting guide — v4
+- ✓ STRUCT-01: Optional structured fields (scope, condition, component, timing, response) — post-v4
+- ✓ STRUCT-02: Structure completeness scoring with dashboard badge — post-v4
+- ✓ STRUCT-03: Condition-based conflict detection (overlap, timing, response) — post-v4
+- ✓ STRUCT-04: Linear import enrichment with pattern extraction — post-v4
+- ✓ STRUCT-05: SLO auto-linking by timing field — post-v4
+- ✓ TRACE-01: Linear issue traceability and conflict detection — post-v4
 
 ### Active
 
@@ -144,6 +159,9 @@ PMs can see, at any moment, which requirements are verified by passing tests —
 | 60s cache TTL | Balance between rate limiting and freshness | ✓ Good |
 | Response sanitization | Prevent API key exposure in error diagnostics | ✓ Good |
 | Alpine.js for dashboard widget | Bundled with django-unfold, no extra dependencies | ✓ Good |
+| FRET-inspired structured fields | NASA FRET approach without formal verification overhead | ✓ Good |
+| Optional structured fields | All new fields optional - teams adopt when valuable | ✓ Good |
+| Best-effort pattern extraction | Parse Linear descriptions without strict grammar | ✓ Good |
 | Bundled SDK (spectrace_client) | No separate package, always in sync with SpecTrace | ✓ Good |
 | Context manager pattern | Clean resource management, automatic submission | ✓ Good |
 | Best-effort submission | Never break user code if SpecTrace down | ✓ Good |
@@ -151,4 +169,4 @@ PMs can see, at any moment, which requirements are verified by passing tests —
 | 5-step PMS / 3-step mobile key | Consistent validation granularity | ✓ Good |
 
 ---
-*Last updated: 2026-01-22 after v4 SDK complete*
+*Last updated: 2026-01-24 after structured requirement fields*

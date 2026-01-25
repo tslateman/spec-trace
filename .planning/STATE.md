@@ -2,7 +2,7 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-01-21)
+See: .planning/PROJECT.md (updated 2026-01-24)
 
 **Core value:** PMs can see, at any moment, which requirements are verified by passing tests
 **Current focus:** Planning next milestone
@@ -13,9 +13,20 @@ Milestone: Not started (planning next milestone)
 Phase: —
 Plan: —
 Status: **READY FOR NEXT MILESTONE**
-Last activity: 2026-01-21 — v4 SDK shipped
+Last activity: 2026-01-24 — FRET-inspired structured requirement fields shipped
 
 Progress: [----------] 0% (next milestone not yet planned)
+
+## Post-v4 Work (Outside GSD)
+
+Two features implemented outside the GSD workflow (ad-hoc development):
+
+1. **Linear traceability** (0a47cdf): Test-requirement link tracking with Linear issue sync
+2. **Structured requirement fields** (71763a9): FRET-inspired fields (scope, condition, component, timing, response) with:
+   - Enhanced conflict detection (condition overlap, timing, response contradictions)
+   - Linear import enrichment (pattern extraction from issue descriptions)
+   - SLO auto-linking by timing field
+   - Structure completeness scoring in dashboard
 
 ## Milestone History
 
@@ -61,9 +72,12 @@ Potential v5 directions:
 - Scheduled validation runs (celery tasks, cron)
 - Alerting on regressions (Slack/email notifications)
 - CI integration (webhooks, real-time updates)
+- Formal requirement grammar validation (extend FRET-inspired fields)
+- Test generation hints from structured fields
+- Component-based team ownership views
 
 ## Session Continuity
 
-Last session: 2026-01-21
-Stopped at: v4 milestone complete and archived
+Last session: 2026-01-24
+Stopped at: Structured requirement fields shipped (ad-hoc, outside GSD)
 Resume file: None
