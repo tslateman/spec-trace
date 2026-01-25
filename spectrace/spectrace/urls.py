@@ -36,4 +36,9 @@ urlpatterns = [
     # Integration health check endpoints
     path('api/integrations/linear/test-connection/', api.test_linear_connection, name='api-linear-test-connection'),
     path('api/integrations/linear/health/', api.get_linear_health, name='api-linear-health'),
+
+    # Validation run API endpoints
+    path('api/validation-runs/', api.list_validation_runs, name='api-validation-runs'),
+    path('api/validation-runs/<int:run_id>/', api.get_validation_run, name='api-validation-run-detail'),
+    path('api/validation-runs/<int:run_id>/steps/', api.get_validation_run_steps, name='api-validation-run-steps'),
 ]

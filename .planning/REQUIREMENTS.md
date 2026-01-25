@@ -17,9 +17,9 @@ Requirements for Impact Analysis & Validation API milestone.
 
 ### Validation API
 
-- [ ] **API-01**: GET `/api/validation-runs/` — list runs with filtering (requirement, vendor, status)
-- [ ] **API-02**: GET `/api/validation-runs/<id>/` — run detail with steps and results
-- [ ] **API-03**: GET `/api/validation-runs/<id>/steps/` — step-level detail with context
+- [x] **API-01**: GET `/api/validation-runs/` — list runs with filtering (requirement, vendor, status)
+- [x] **API-02**: GET `/api/validation-runs/<id>/` — run detail with steps and results
+- [x] **API-03**: GET `/api/validation-runs/<id>/steps/` — step-level detail with context
 
 ## Future Requirements
 
@@ -46,9 +46,9 @@ Deferred to v7+:
 | IMPACT-03 | Phase 12 | Complete |
 | IMPACT-04 | Phase 13 | Complete |
 | IMPACT-05 | Phase 13 | Complete |
-| API-01 | Phase 14 | Pending |
-| API-02 | Phase 14 | Pending |
-| API-03 | Phase 14 | Pending |
+| API-01 | Phase 14 | Complete |
+| API-02 | Phase 14 | Complete |
+| API-03 | Phase 14 | Complete |
 
 **Coverage:**
 - v6 requirements: 8 total
@@ -57,4 +57,4 @@ Deferred to v7+:
 
 ---
 *Requirements defined: 2026-01-25*
-*Last updated: 2026-01-25 after Phase 13 completion*
+*Last updated: 2026-01-25 — Milestone v6 complete*
