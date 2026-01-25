@@ -6,65 +6,44 @@
 
 ## Summary
 
-Extend SpecTrace from a traceability dashboard into an **agent coordination platform**. Multiple AI agents (Planner, Coder, Reviewer) coordinate through SpecTrace's database as a "blackboard" — reading requirements, claiming tasks, submitting work, and recording reviews.
+Extend SpecTrace into an agent coordination platform. AI agents (Planner, Coder, Reviewer) coordinate through SpecTrace's database — claiming tasks, submitting work, recording reviews. No agent-to-agent messages. The database is the blackboard.
 
-This transforms SpecTrace from "observe what was built" to "orchestrate what gets built."
+## Problem
 
----
+SpecTrace observes what was built. It does not orchestrate what gets built.
 
-## Problem Statement
+AI agents work fast but break things. They fabricate success, merge bad code, skip tests. The fix: adversarial review where Coder cannot merge own work and Reviewer cannot implement.
 
-### Current State
+This requires coordination. Agents need to claim tasks, submit work, request reviews, record outcomes. SpecTrace already has requirements, validations, and results. Add a task state machine and it becomes a blackboard.
 
-SpecTrace tracks the relationship between requirements and their verification:
+## Why SpecTrace?
 
-```
-Requirements → Tests → Results → Dashboard
-             → InAppValidations → Results
-```
-
-This is **reactive** — it observes what happened after humans (or agents) did the work.
-
-### The Opportunity
-
-The article ["Adversarial Vibe Coding"](https://medium.com/@tangi.vass/i-tried-to-kill-vibe-coding-i-built-adversarial-vibe-coding-without-the-vibes-bc4a63872440) describes a multi-agent system where:
-
-1. **Planner** decomposes goals into tasks with falsifiable `done_when` criteria
-2. **Coder** claims tasks, implements in isolated worktrees, submits for review
-3. **Reviewer** validates against specs, approves or rejects
-4. **Blackboard** (shared YAML) coordinates all agents — no direct agent-to-agent messages
-
-SpecTrace already has most of the data model. The missing piece is the **task state machine** that lets agents claim, execute, and review work.
-
-### Why SpecTrace?
-
-| What Liza Uses | What SpecTrace Has |
-|----------------|-------------------|
-| YAML blackboard file | PostgreSQL/SQLite database with REST API |
-| `done_when` criteria | `InAppValidation.steps` with pass/fail per step |
+| Liza (YAML file) | SpecTrace (database) |
+|------------------|---------------------|
+| `done_when` in YAML | `InAppValidation.steps` with pass/fail |
 | Task specs | `Requirement` with structured fields |
 | Review outcome | `InAppValidationResult.status` |
 | Sprint boundary | `InAppValidationRun` |
-| Audit trail | `InAppValidationResult.context` + `steps` |
+| Audit trail | `InAppValidationResult.context` |
 
-SpecTrace could be a **better blackboard** — queryable, with history, with a dashboard, with existing API infrastructure.
+SpecTrace adds: queries, history, dashboard, existing API.
 
 ---
 
 ## Goals
 
-1. **Enable multi-agent coordination** through SpecTrace's database and API
-2. **Preserve traceability** — all agent work traces back to requirements
-3. **Support adversarial review** — Coder can't merge own work, Reviewer can't implement
-4. **Maintain compatibility** — existing dashboard and API continue working
-5. **Provide visibility** — humans can monitor agent activity in real-time
+1. Multi-agent coordination through database and API
+2. All agent work traces to requirements
+3. Role separation enforced (Coder can't merge own work)
+4. Existing dashboard and API unchanged
+5. Humans monitor agent activity in real-time
 
 ## Non-Goals
 
-1. **Agent runtime** — SpecTrace doesn't run agents, it coordinates them
-2. **Git operations** — worktree management is external to SpecTrace
-3. **LLM orchestration** — agents decide what to do; SpecTrace tracks what they decided
-4. **Replacing existing validation flow** — this extends, not replaces
+1. Running agents — SpecTrace coordinates, not executes
+2. Git operations — agents manage their own worktrees
+3. LLM orchestration — agents decide; SpecTrace records
+4. Replacing validation flow — this extends it
 
 ---
 
@@ -110,7 +89,7 @@ SpecTrace could be a **better blackboard** — queryable, with history, with a d
 
 #### AgentTask
 
-The core work item that agents coordinate around.
+Work item on the blackboard. Agents claim it, implement it, submit for review.
 
 ```python
 class AgentTaskStatus(models.TextChoices):
@@ -280,7 +259,7 @@ STATE_TRANSITIONS = {
 
 #### Agent
 
-Registered agents that can interact with the blackboard.
+Registered agent with role (Planner, Coder, Reviewer). Role determines allowed actions.
 
 ```python
 class AgentRole(models.TextChoices):
@@ -342,7 +321,7 @@ class Agent(models.Model):
 
 #### AgentTaskHistory
 
-Complete audit trail of all blackboard changes.
+Every state change logged. Who did what, when, why.
 
 ```python
 class AgentTaskHistory(models.Model):
@@ -387,7 +366,7 @@ class AgentTaskHistory(models.Model):
 
 #### AgentTaskReview
 
-Structured review feedback.
+Review record: decision, done_when verification, feedback, blocking issues.
 
 ```python
 class ReviewDecision(models.TextChoices):
@@ -452,7 +431,7 @@ class AgentTaskReview(models.Model):
 
 #### AgentSprint
 
-Grouping mechanism for tasks (like InAppValidationRun).
+Batch of related tasks. Tracks progress: total, merged, in-progress, pending.
 
 ```python
 class AgentSprint(models.Model):
@@ -687,38 +666,18 @@ Response:
 
 ### Dashboard Views
 
-New admin views for monitoring agent activity:
-
-#### Agent Task List (`/admin/agent-tasks/`)
-
-- Filterable by status, sprint, claimed_by
-- Real-time status updates (polling or WebSocket)
-- Quick actions: release claim, block, abandon
-
-#### Agent Task Detail (`/admin/agent-tasks/<id>/`)
-
-- Full task details with done_when criteria
-- History timeline
-- Review history
-- Link to git diff (if commit_sha present)
-
-#### Agent Activity (`/admin/agents/`)
-
-- Registered agents with last heartbeat
-- Current task per agent
-- Activity log
-
-#### Sprint Dashboard (`/admin/sprints/`)
-
-- Progress bar per sprint
-- Task breakdown by status
-- Blocked tasks highlighted
+| View | URL | Shows |
+|------|-----|-------|
+| Task List | `/admin/agent-tasks/` | Filter by status/sprint/agent. Quick actions. |
+| Task Detail | `/admin/agent-tasks/<id>/` | done_when criteria, history, reviews, git diff link |
+| Agents | `/admin/agents/` | Heartbeats, current tasks, activity log |
+| Sprints | `/admin/sprints/` | Progress bars, blocked tasks highlighted |
 
 ---
 
 ### Role Enforcement
 
-**Critical**: The adversarial aspect requires role separation.
+Role separation is enforced at the API level. Coders claim. Reviewers approve. No exceptions.
 
 ```python
 # In API views
@@ -763,7 +722,7 @@ def submit_review(request, data):
 
 #### Linking to Requirements
 
-Tasks link to requirements via ManyToMany:
+ManyToMany from AgentTask to Requirement. Dashboard shows: Requirements → Tasks → Reviews.
 
 ```python
 task = AgentTask.objects.create(
@@ -776,11 +735,9 @@ task.requirements.add(
 )
 ```
 
-This maintains traceability: dashboard can show "Requirements → Agent Tasks → Reviews".
-
 #### Linking to Validation Results
 
-When a task is merged, optionally trigger validation:
+On merge, trigger validation for linked requirements:
 
 ```python
 # After merge
@@ -799,7 +756,7 @@ for req in task.requirements.all():
 
 ### Hypothesis Exhaustion
 
-When multiple coders fail the same task, the task is presumed wrong:
+Two coders fail the same task → task is wrong, not the coders. Auto-block and notify Planner to rescope.
 
 ```python
 def handle_review_rejection(task, review):
@@ -832,7 +789,7 @@ def handle_review_rejection(task, review):
 
 ### Lease Management
 
-Prevent tasks from being stuck if an agent crashes:
+Tasks have expiring leases. Agent crashes → lease expires → task returns to UNCLAIMED.
 
 ```python
 # Periodic task (celery or cron)
@@ -860,74 +817,44 @@ def expire_stale_leases():
 
 ## Migration Path
 
-### Phase 1: Models Only
-
-1. Add new models (AgentTask, Agent, AgentTaskHistory, etc.)
-2. Add admin views for manual inspection
-3. No API yet — just the data model
-
-### Phase 2: Read API
-
-1. Add read endpoints (list tasks, get task detail)
-2. Add dashboard views
-3. Allow manual task creation via admin
-
-### Phase 3: Write API
-
-1. Add claim, update, review endpoints
-2. Add role enforcement
-3. Add lease management
-
-### Phase 4: Agent Integration
-
-1. Document API for agent developers
-2. Create reference agent implementation
-3. Test with real multi-agent workflows
+| Phase | Deliverable |
+|-------|-------------|
+| 1. Models | AgentTask, Agent, AgentTaskHistory. Admin views. No API. |
+| 2. Read API | List tasks, get detail. Dashboard views. Manual task creation. |
+| 3. Write API | Claim, update, review endpoints. Role enforcement. Lease management. |
+| 4. Agents | API docs. Reference agent. Real multi-agent test. |
 
 ---
 
 ## Alternatives Considered
 
-### 1. Use Existing InAppValidation Models
-
-**Rejected**: InAppValidation tracks *results*, not *work in progress*. The state machine for agent coordination (CLAIMED → IN_PROGRESS → READY_FOR_REVIEW) doesn't fit the validation lifecycle.
-
-### 2. File-Based Blackboard (Like Liza)
-
-**Rejected**: SpecTrace already has a database, API, and dashboard. Adding a YAML file would create sync issues and lose the benefits of existing infrastructure.
-
-### 3. External Coordination Service
-
-**Rejected**: Adds deployment complexity. SpecTrace is already deployed; extending it is simpler than running a separate service.
-
-### 4. Just Use GitHub Issues
-
-**Rejected**: No atomic claiming, no role enforcement, no structured done_when criteria, no integration with traceability data.
+| Option | Why Not |
+|--------|---------|
+| Reuse InAppValidation | Tracks results, not work-in-progress. Wrong lifecycle. |
+| File-based blackboard (YAML) | Creates sync issues. Loses database, API, dashboard benefits. |
+| External coordination service | Extra deployment. SpecTrace already deployed. |
+| GitHub Issues | No atomic claiming. No role enforcement. No done_when criteria. |
 
 ---
 
 ## Open Questions
 
-1. **WebSocket for real-time updates?** Polling works but WebSocket would be better for dashboard UX.
-
-2. **Integration with git worktrees?** Should SpecTrace provide worktree management commands, or leave that to agents?
-
-3. **Authentication for agents?** API keys? JWT? Or trust the network?
-
-4. **Rate limiting?** Should agents have rate limits to prevent runaway loops?
-
-5. **Merge automation?** Should SpecTrace trigger the merge, or just approve and let agents/humans merge?
+1. **WebSocket vs polling?** Better UX but more complexity.
+2. **Worktree management?** SpecTrace provides commands, or agents handle themselves?
+3. **Agent auth?** API keys, JWT, or trust-the-network?
+4. **Rate limiting?** Prevent runaway loops?
+5. **Merge trigger?** SpecTrace merges, or just approves?
 
 ---
 
 ## Success Criteria
 
-1. **Multiple agents can coordinate** through SpecTrace API without direct communication
-2. **Role separation is enforced** — coder can't approve own work
-3. **Full audit trail** — every state change is logged
-4. **Dashboard visibility** — humans can monitor agent activity in real-time
-5. **Traceability preserved** — all agent work traces back to requirements
-6. **Hypothesis exhaustion works** — tasks auto-block after repeated failures
+1. Agents coordinate through API, no direct communication
+2. Role separation enforced (coder can't approve own work)
+3. Every state change logged
+4. Humans monitor agents in real-time
+5. All work traces to requirements
+6. Tasks auto-block after repeated failures
 
 ---
 

@@ -76,3 +76,28 @@ dev/test  versioned   all users
 
 ### Testing Requirement
 **Always test both enabled AND disabled states** — verify fallback behavior works correctly.
+
+---
+
+## Writing Style
+
+### Core Principles (Strunk's Elements of Style)
+- **Active voice.** "Agents claim tasks" not "Tasks are claimed by agents"
+- **Positive form.** "He forgot" not "He did not remember"
+- **Concrete language.** Name specific endpoints, models, states — not "various components"
+- **Omit needless words.** Cut "In order to", "the fact that", "In this document we will explore"
+- **Emphatic words at end.** "This addresses the stretch goal" not "The stretch goal is addressed by this"
+
+### Document Structure (Briefs Style)
+- Keep it short. Readable in under 5 minutes.
+- State the problem first. No history front-loading.
+- Include measurable target or objective.
+- Open questions are fine. Uncertainty is honest.
+- Brain dumps acceptable. Unstructured thoughts beat polished fluff.
+
+### Anti-Patterns
+- ❌ "In this document we will explore..." — just say the thing
+- ❌ "It is important to note that..." — if it's important, it speaks for itself
+- ❌ Generic descriptions — name the actual API endpoint, the actual model
+- ❌ Hedging everything — "This could potentially help" → "This helps"
+- ❌ AI slop — vague, safe, says everything and nothing
