@@ -10,12 +10,12 @@ See: .planning/PROJECT.md (updated 2026-01-24)
 ## Current Position
 
 Milestone: v6 Impact Analysis & Validation API
-Phase: 12 (Impact Analysis Core) — not started
+Phase: 14 (Validation API) — not started
 Plan: —
 Status: **READY TO PLAN**
-Last activity: 2026-01-25 — v6 roadmap created
+Last activity: 2026-01-25 — Phase 13 complete
 
-Progress: [----------] 0% (3 phases: 12, 13, 14)
+Progress: [======----] 66% (phases 12, 13 complete; phase 14 pending)
 
 ## Post-v4 Work (Outside GSD)
 
@@ -65,12 +65,12 @@ None.
 ### Next Steps
 
 v6 milestone in progress:
-- Define requirements for Impact Analysis + Validation API
-- Create roadmap with phases
-- `/gsd:plan-phase [N]` to start execution
+- [x] Phase 12: Impact Analysis Core (ImpactAnalyzer service)
+- [x] Phase 13: Impact Analysis UI/CLI (dashboard view + management command)
+- [ ] Phase 14: Validation API (JSON endpoints for validation runs)
 
 ## Session Continuity
 
 Last session: 2026-01-25
-Stopped at: v6 milestone requirements definition
+Stopped at: Phase 13 complete, ready for Phase 14
 Resume file: None

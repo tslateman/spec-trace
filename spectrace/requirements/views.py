@@ -2,11 +2,13 @@
 import csv
 
 from django.contrib.admin.views.decorators import staff_member_required
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
+from django.views.decorators.http import require_http_methods
 
 from .matrix import get_matrix_data, get_cell_color
 from .models import Requirement, InAppValidation, InAppValidationStatus
+from .services.impact_analyzer import ImpactAnalyzer
 
 
 def _build_matrix_filters(request) -> dict:
@@ -176,3 +178,42 @@ def vendor_coverage_view(request):
     
     return render(request, 'admin/requirements/vendor_coverage.html', context)
 
+
+@staff_member_required
+@require_http_methods(["GET", "POST"])
+def impact_analysis_view(request):
+    """View for impact analysis with git ref comparison."""
+    context = {
+        "title": "Impact Analysis",
+        "site_header": "SpecTrace Dashboard",
+    }
+
+    if request.method == "POST":
+        base_ref = request.POST.get("base_ref", "").strip()
+        head_ref = request.POST.get("head_ref", "").strip()
+        include_hierarchy = request.POST.get("include_hierarchy", "true") == "true"
+
+        if not base_ref or not head_ref:
+            return JsonResponse(
+                {"error": "Both base_ref and head_ref are required"}, status=400
+            )
+
+        analyzer = ImpactAnalyzer()
+
+        try:
+            result = analyzer.analyze(base_ref, head_ref, include_hierarchy=include_hierarchy)
+        except ValueError as e:
+            return JsonResponse({"error": str(e)}, status=400)
+
+        return JsonResponse({
+            "changed_requirements": result.changed_requirements,
+            "affected_tests": result.affected_tests,
+            "hierarchy_expansion": result.hierarchy_expansion,
+            "summary": {
+                "requirements_changed": len(result.changed_requirements),
+                "tests_affected": len(result.affected_tests),
+                "has_impact": len(result.affected_tests) > 0,
+            },
+        })
+
+    return render(request, "admin/requirements/impact_analysis.html", context)

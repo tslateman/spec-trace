@@ -1,0 +1,359 @@
+---
+phase: 13
+plan: 02
+title: Impact Analysis Dashboard View
+wave: 1
+depends_on: []
+files_modified:
+  - spectrace/requirements/views.py (MODIFIED)
+  - spectrace/spectrace/urls.py (MODIFIED)
+  - spectrace/templates/admin/requirements/impact_analysis.html (NEW)
+  - spectrace/templates/admin/index.html (MODIFIED)
+autonomous: true
+---
+
+# Plan 02: Impact Analysis Dashboard View
+
+## Goal
+
+Add dashboard section and dedicated view for impact analysis with git ref inputs.
+
+## must_haves
+
+- [ ] Dashboard "Quick Actions" includes link to Impact Analysis view
+- [ ] Impact Analysis page accepts two git refs as input
+- [ ] Results show changed requirements and affected tests
+- [ ] Results show hierarchy expansion when applicable
+- [ ] Alpine.js for interactive form submission without page reload
+
+## Tasks
+
+<task id="1">
+Add impact_analysis view to `spectrace/requirements/views.py`:
+
+```python
+# Add to existing imports at top
+from django.http import JsonResponse
+from django.views.decorators.http import require_http_methods
+
+from .services.impact_analyzer import ImpactAnalyzer
+
+# Add this view function
+@require_http_methods(["GET", "POST"])
+def impact_analysis_view(request):
+    """View for impact analysis with git ref comparison."""
+    context = {
+        "title": "Impact Analysis",
+        "site_header": "SpecTrace Dashboard",
+    }
+
+    if request.method == "POST":
+        base_ref = request.POST.get("base_ref", "").strip()
+        head_ref = request.POST.get("head_ref", "").strip()
+        include_hierarchy = request.POST.get("include_hierarchy", "true") == "true"
+
+        if not base_ref or not head_ref:
+            return JsonResponse({"error": "Both base_ref and head_ref are required"}, status=400)
+
+        analyzer = ImpactAnalyzer()
+
+        try:
+            result = analyzer.analyze(base_ref, head_ref, include_hierarchy=include_hierarchy)
+        except ValueError as e:
+            return JsonResponse({"error": str(e)}, status=400)
+
+        return JsonResponse({
+            "changed_requirements": result.changed_requirements,
+            "affected_tests": result.affected_tests,
+            "hierarchy_expansion": result.hierarchy_expansion,
+            "summary": {
+                "requirements_changed": len(result.changed_requirements),
+                "tests_affected": len(result.affected_tests),
+                "has_impact": len(result.affected_tests) > 0,
+            },
+        })
+
+    return render(request, "admin/requirements/impact_analysis.html", context)
+```
+</task>
+
+<task id="2">
+Add URL route in `spectrace/spectrace/urls.py`:
+
+```python
+# Add to imports
+from requirements.views import matrix_view, matrix_export, vendor_coverage_view, impact_analysis_view
+
+# Add to urlpatterns before admin/
+path('admin/impact-analysis/', impact_analysis_view, name='admin-impact-analysis'),
+```
+</task>
+
+<task id="3">
+Create template at `spectrace/templates/admin/requirements/impact_analysis.html`:
+
+```html
+{% extends "unfold/layouts/base.html" %}
+{% load i18n %}
+
+{% block content %}
+<style>
+    .status-passing {
+        background-color: #dcfce7;
+        color: #166534;
+    }
+    .status-failing {
+        background-color: #fee2e2;
+        color: #991b1b;
+    }
+    .status-warning {
+        background-color: #fef9c3;
+        color: #854d0e;
+    }
+    .dark .status-passing {
+        background-color: #052e16;
+        color: #4ade80;
+    }
+    .dark .status-failing {
+        background-color: #450a0a;
+        color: #f87171;
+    }
+    .dark .status-warning {
+        background-color: #422006;
+        color: #facc15;
+    }
+    [x-cloak] {
+        display: none !important;
+    }
+</style>
+
+<div class="p-6" x-data="impactAnalysisWidget()" x-cloak>
+    {% csrf_token %}
+
+    <!-- Header -->
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-base-900 dark:text-white">Impact Analysis</h1>
+        <p class="text-base-600 dark:text-base-400 mt-1">
+            Compare two git refs to see which requirements changed and which tests are affected.
+        </p>
+    </div>
+
+    <!-- Input Form -->
+    <div class="bg-white dark:bg-base-900 rounded-lg shadow border border-base-200 dark:border-base-800 p-6 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+                <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">
+                    Base Ref (e.g., main, HEAD~1, v1.0)
+                </label>
+                <input
+                    type="text"
+                    x-model="baseRef"
+                    placeholder="main"
+                    class="w-full px-3 py-2 border border-base-300 dark:border-base-600 rounded-lg bg-white dark:bg-base-800 text-base-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                >
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">
+                    Head Ref (e.g., feature-branch, HEAD)
+                </label>
+                <input
+                    type="text"
+                    x-model="headRef"
+                    placeholder="HEAD"
+                    class="w-full px-3 py-2 border border-base-300 dark:border-base-600 rounded-lg bg-white dark:bg-base-800 text-base-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                >
+            </div>
+        </div>
+
+        <div class="flex items-center gap-4">
+            <label class="flex items-center gap-2 text-sm text-base-700 dark:text-base-300">
+                <input type="checkbox" x-model="includeHierarchy" class="rounded border-base-300 dark:border-base-600">
+                Include child requirements
+            </label>
+
+            <button
+                @click="analyze()"
+                :disabled="isLoading || !baseRef || !headRef"
+                class="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+                <svg x-show="isLoading" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span x-text="isLoading ? 'Analyzing...' : 'Analyze'"></span>
+            </button>
+        </div>
+
+        <!-- Error Display -->
+        <div x-show="error" class="mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+            <p class="text-sm text-red-600 dark:text-red-400" x-text="error"></p>
+        </div>
+    </div>
+
+    <!-- Results -->
+    <div x-show="result" x-cloak>
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="bg-white dark:bg-base-900 rounded-lg shadow p-4 border border-base-200 dark:border-base-800">
+                <div class="text-sm text-base-500 dark:text-base-400">Changed Requirements</div>
+                <div class="text-3xl font-bold text-base-900 dark:text-white" x-text="result?.summary?.requirements_changed || 0"></div>
+            </div>
+            <div class="bg-white dark:bg-base-900 rounded-lg shadow p-4 border border-base-200 dark:border-base-800" :class="result?.summary?.has_impact ? 'border-l-4 border-l-yellow-500' : 'border-l-4 border-l-green-500'">
+                <div class="text-sm text-base-500 dark:text-base-400">Affected Tests</div>
+                <div class="text-3xl font-bold" :class="result?.summary?.has_impact ? 'text-yellow-600 dark:text-yellow-400' : 'text-green-600 dark:text-green-400'" x-text="result?.summary?.tests_affected || 0"></div>
+            </div>
+            <div class="bg-white dark:bg-base-900 rounded-lg shadow p-4 border border-base-200 dark:border-base-800">
+                <div class="text-sm text-base-500 dark:text-base-400">Impact Status</div>
+                <div class="mt-1">
+                    <span x-show="result?.summary?.has_impact" class="status-warning text-sm px-2 py-1 rounded font-medium">Tests Need Running</span>
+                    <span x-show="!result?.summary?.has_impact" class="status-passing text-sm px-2 py-1 rounded font-medium">No Impact</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Changed Requirements -->
+        <div class="bg-white dark:bg-base-900 rounded-lg shadow border border-base-200 dark:border-base-800 mb-6" x-show="result?.changed_requirements?.length > 0">
+            <div class="p-4 border-b border-base-200 dark:border-base-800">
+                <h2 class="text-lg font-semibold text-base-900 dark:text-white">Changed Requirements</h2>
+            </div>
+            <div class="p-4">
+                <ul class="space-y-2">
+                    <template x-for="reqId in result?.changed_requirements || []" :key="reqId">
+                        <li class="flex items-center">
+                            <span class="font-mono text-sm text-primary-600 dark:text-primary-400" x-text="reqId"></span>
+                            <template x-if="result?.hierarchy_expansion?.[reqId]">
+                                <span class="ml-2 text-sm text-base-500 dark:text-base-400">
+                                    → <span x-text="result.hierarchy_expansion[reqId].join(', ')"></span>
+                                </span>
+                            </template>
+                        </li>
+                    </template>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Affected Tests -->
+        <div class="bg-white dark:bg-base-900 rounded-lg shadow border border-base-200 dark:border-base-800" x-show="result?.affected_tests?.length > 0">
+            <div class="p-4 border-b border-base-200 dark:border-base-800">
+                <h2 class="text-lg font-semibold text-base-900 dark:text-white">Affected Tests</h2>
+                <p class="text-sm text-base-500 dark:text-base-400 mt-1">These tests should be run to verify the changes.</p>
+            </div>
+            <div class="p-4">
+                <ul class="space-y-1 font-mono text-sm">
+                    <template x-for="test in result?.affected_tests || []" :key="test">
+                        <li class="text-base-700 dark:text-base-300 py-1 border-b border-base-100 dark:border-base-800 last:border-0" x-text="test"></li>
+                    </template>
+                </ul>
+            </div>
+        </div>
+
+        <!-- No Impact Message -->
+        <div class="bg-white dark:bg-base-900 rounded-lg shadow border border-base-200 dark:border-base-800 p-6" x-show="result && !result.summary.has_impact && result.changed_requirements.length === 0">
+            <div class="text-center">
+                <div class="text-green-500 mb-2">
+                    <svg class="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <p class="text-base-700 dark:text-base-300">No spec files changed between these refs.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- CLI Hint -->
+    <div class="mt-6 bg-base-100 dark:bg-base-800 rounded-lg p-4">
+        <h3 class="text-sm font-semibold text-base-900 dark:text-white mb-2">CLI Usage</h3>
+        <pre class="text-xs text-base-600 dark:text-base-400 overflow-x-auto"><code># Human-readable output
+python manage.py impact_analysis main HEAD
+
+# JSON output for CI pipelines
+python manage.py impact_analysis main HEAD --format json
+
+# Exit code: 0 = no impact, 1 = tests affected</code></pre>
+    </div>
+</div>
+
+<script>
+function impactAnalysisWidget() {
+    return {
+        baseRef: '',
+        headRef: '',
+        includeHierarchy: true,
+        isLoading: false,
+        error: null,
+        result: null,
+
+        async analyze() {
+            if (!this.baseRef || !this.headRef) return;
+
+            this.isLoading = true;
+            this.error = null;
+            this.result = null;
+
+            try {
+                const formData = new FormData();
+                formData.append('base_ref', this.baseRef);
+                formData.append('head_ref', this.headRef);
+                formData.append('include_hierarchy', this.includeHierarchy ? 'true' : 'false');
+
+                const response = await fetch(window.location.href, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
+                    },
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    this.error = data.error || 'Analysis failed';
+                    return;
+                }
+
+                this.result = data;
+            } catch (err) {
+                this.error = 'Failed to perform analysis. Make sure this is a git repository.';
+            } finally {
+                this.isLoading = false;
+            }
+        }
+    };
+}
+</script>
+{% endblock %}
+```
+</task>
+
+<task id="4">
+Update dashboard index.html to add Impact Analysis link in Quick Actions:
+
+In `spectrace/templates/admin/index.html`, add to the Quick Actions section:
+
+```html
+<a href="{% url 'admin-impact-analysis' %}"
+   class="px-4 py-2 bg-base-200 dark:bg-base-700 text-base-800 dark:text-base-200 hover:bg-base-300 dark:hover:bg-base-600 rounded-lg transition-colors">
+    Impact Analysis
+</a>
+```
+</task>
+
+<task id="5">
+Test the view manually:
+
+```bash
+python manage.py runserver
+# Visit http://127.0.0.1:8000/admin/impact-analysis/
+# Test with refs: main and HEAD
+```
+</task>
+
+## Verification
+
+- [ ] Impact Analysis link appears in dashboard Quick Actions
+- [ ] Impact Analysis page loads at /admin/impact-analysis/
+- [ ] Form accepts git refs and submits via AJAX
+- [ ] Results display changed requirements
+- [ ] Results display affected tests
+- [ ] Hierarchy expansion shown when applicable
+- [ ] Error messages display for invalid refs

@@ -9,11 +9,11 @@ Requirements for Impact Analysis & Validation API milestone.
 
 ### Impact Analysis
 
-- [ ] **IMPACT-01**: Detect changed requirements from git diff (compare commits/branches)
-- [ ] **IMPACT-02**: Return list of tests linked to changed requirements
-- [ ] **IMPACT-03**: Propagate impact through hierarchy (parent change → child requirement tests)
-- [ ] **IMPACT-04**: Dashboard view showing impact analysis results
-- [ ] **IMPACT-05**: CLI command `impact_analysis` for CI pipelines (JSON/text output)
+- [x] **IMPACT-01**: Detect changed requirements from git diff (compare commits/branches)
+- [x] **IMPACT-02**: Return list of tests linked to changed requirements
+- [x] **IMPACT-03**: Propagate impact through hierarchy (parent change → child requirement tests)
+- [x] **IMPACT-04**: Dashboard view showing impact analysis results
+- [x] **IMPACT-05**: CLI command `impact_analysis` for CI pipelines (JSON/text output)
 
 ### Validation API
 
@@ -41,14 +41,14 @@ Deferred to v7+:
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| IMPACT-01 | Phase 1 | Pending |
-| IMPACT-02 | Phase 1 | Pending |
-| IMPACT-03 | Phase 1 | Pending |
-| IMPACT-04 | Phase 2 | Pending |
-| IMPACT-05 | Phase 2 | Pending |
-| API-01 | Phase 3 | Pending |
-| API-02 | Phase 3 | Pending |
-| API-03 | Phase 3 | Pending |
+| IMPACT-01 | Phase 12 | Complete |
+| IMPACT-02 | Phase 12 | Complete |
+| IMPACT-03 | Phase 12 | Complete |
+| IMPACT-04 | Phase 13 | Complete |
+| IMPACT-05 | Phase 13 | Complete |
+| API-01 | Phase 14 | Pending |
+| API-02 | Phase 14 | Pending |
+| API-03 | Phase 14 | Pending |
 
 **Coverage:**
 - v6 requirements: 8 total
@@ -57,4 +57,4 @@ Deferred to v7+:
 
 ---
 *Requirements defined: 2026-01-25*
-*Last updated: 2026-01-25 after initial definition*
+*Last updated: 2026-01-25 after Phase 13 completion*
