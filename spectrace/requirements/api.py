@@ -1,5 +1,4 @@
 """API endpoints for external systems to push status updates."""
-import json
 from dataclasses import asdict
 from decimal import Decimal, InvalidOperation
 
@@ -21,6 +20,20 @@ from .models import (
     SLO,
     SLOStatus,
 )
+from .openapi.decorators import validate_request
+from .openapi.schemas import (
+    LinearHealthResponse,
+    LinearTestRequest,
+    LinearTestResponse,
+    RequirementStatusResponse,
+    SLOStatusRequest,
+    SLOStatusResponse,
+    ValidationResultRequest,
+    ValidationResultResponse,
+    ValidationRunDetailResponse,
+    ValidationRunsResponse,
+    ValidationRunStepsResponse,
+)
 from .status import (
     compute_inapp_validation_status,
     compute_verification_status,
@@ -41,72 +54,47 @@ def parse_decimal_safe(value) -> Decimal | None:
 
 @csrf_exempt
 @require_http_methods(["POST"])
-def update_slo_status(request):
-    """Update SLO status from observability platform.
+@validate_request(
+    request_schema=SLOStatusRequest,
+    response_schema=SLOStatusResponse,
+    tags=["SLO"],
+    summary="Update SLO status",
+    methods=["POST"],
+)
+def update_slo_status(request, data: SLOStatusRequest | None = None):
+    """Update SLO status from observability platform."""
+    if data is None:
+        return JsonResponse({'success': False, 'error': 'No data provided'}, status=400)
 
-    POST /api/slo/status/
-
-    Request body:
-    {
-        "slos": [
-            {
-                "name": "api-availability",
-                "status": "met",  // met, at_risk, breached
-                "current_value": 0.9995,
-                "error_budget_remaining": 0.75
-            },
-            ...
-        ]
-    }
-
-    Response:
-    {
-        "success": true,
-        "updated": 5,
-        "not_found": 1,
-        "requirement_status": {
-            "met": 10,
-            "at_risk": 2,
-            "breached": 1,
-            "not_linked": 50
-        }
-    }
-    """
-    try:
-        data = json.loads(request.body)
-    except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
-
-    slos_data = data.get('slos', [])
-    if not slos_data:
+    if not data.slos:
         return JsonResponse({'success': False, 'error': 'No SLOs in request'}, status=400)
 
     updated = 0
     not_found = 0
 
-    for slo_data in slos_data:
-        name = slo_data.get('name')
-        if not name:
+    for slo_item in data.slos:
+        if not slo_item.name:
             continue
 
         try:
-            slo = SLO.objects.get(name=name)
+            slo = SLO.objects.get(name=slo_item.name)
         except SLO.DoesNotExist:
             not_found += 1
             continue
 
         # Map status
-        status_str = slo_data.get('status', 'unknown')
-        slo.status = SLOStatus.from_string(status_str)
+        slo.status = SLOStatus.from_string(slo_item.status)
 
         # Update values
-        current_value = parse_decimal_safe(slo_data.get('current_value'))
-        if current_value is not None:
-            slo.current_value = current_value
+        if slo_item.current_value is not None:
+            current_value = parse_decimal_safe(slo_item.current_value)
+            if current_value is not None:
+                slo.current_value = current_value
 
-        error_budget = parse_decimal_safe(slo_data.get('error_budget_remaining'))
-        if error_budget is not None:
-            slo.error_budget_remaining = error_budget
+        if slo_item.error_budget_remaining is not None:
+            error_budget = parse_decimal_safe(slo_item.error_budget_remaining)
+            if error_budget is not None:
+                slo.error_budget_remaining = error_budget
 
         slo.last_updated = timezone.now()
         slo.save()
@@ -116,7 +104,7 @@ def update_slo_status(request):
     req_counts = update_all_slo_statuses()
 
     # Optionally update unified verification status
-    if data.get('update_verification_status', False):
+    if data.update_verification_status:
         update_all_unified_statuses()
 
     return JsonResponse({
@@ -129,49 +117,24 @@ def update_slo_status(request):
 
 @csrf_exempt
 @require_http_methods(["POST"])
-def submit_validation_result(request):
-    """Submit in-app validation results from product.
+@validate_request(
+    request_schema=ValidationResultRequest,
+    response_schema=ValidationResultResponse,
+    tags=["Validation"],
+    summary="Submit validation results",
+    methods=["POST"],
+)
+def submit_validation_result(request, data: ValidationResultRequest | None = None):
+    """Submit in-app validation results from product."""
+    if data is None:
+        return JsonResponse({'success': False, 'error': 'No data provided'}, status=400)
 
-    POST /api/validation/result/
-
-    Request body:
-    {
-        "source": "production-app",
-        "validations": [
-            {
-                "requirement_id": "REQ-AUTH-001",
-                "name": "Verify Login Flow",
-                "endpoint": "/api/auth/verify",
-                "status": "success",  // success, failure, unknown
-                "message": "All checks passed",
-                "checked_at": "2024-01-15T10:30:00Z"  // optional
-            },
-            ...
-        ]
-    }
-
-    Response:
-    {
-        "success": true,
-        "imported": 5,
-        "skipped": 1,
-        "created_validations": 2
-    }
-    """
-    try:
-        data = json.loads(request.body)
-    except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
-
-    source = data.get('source', 'api')
-    validations_data = data.get('validations', [])
-
-    if not validations_data:
+    if not data.validations:
         return JsonResponse({'success': False, 'error': 'No validations in request'}, status=400)
 
     # Create validation run
     validation_run = InAppValidationRun.objects.create(
-        source=source,
+        source=data.source,
     )
 
     successful = 0
@@ -179,44 +142,46 @@ def submit_validation_result(request):
     skipped = 0
     created_validations = 0
 
-    for v in validations_data:
-        requirement_id = v.get('requirement_id')
-        if not requirement_id:
+    for v in data.validations:
+        if not v.requirement_id:
             skipped += 1
             continue
 
         try:
-            requirement = Requirement.objects.get(external_id=requirement_id)
+            requirement = Requirement.objects.get(external_id=v.requirement_id)
         except Requirement.DoesNotExist:
             skipped += 1
             continue
+
+        # Extract context data - context is a flexible dict
+        context_dict = v.context or {}
+        vendor = context_dict.get("vendor", "")
+        feature_flags = context_dict.get("feature_flags", {}) or {}
 
         # Get or create InAppValidation (lookup by requirement only to avoid duplicates)
         validation, created = InAppValidation.objects.get_or_create(
             requirement=requirement,
             defaults={
-                'name': v.get('name', f'Validation for {requirement_id}'),
-                'endpoint': v.get('endpoint', ''),
-                'vendor': v.get('context', {}).get('vendor', ''),
-                'feature_flags': v.get('context', {}).get('feature_flags', {}),
+                'name': v.name or f'Validation for {v.requirement_id}',
+                'endpoint': v.endpoint,
+                'vendor': vendor,
+                'feature_flags': feature_flags,
             }
         )
         if created:
             created_validations += 1
         else:
             # Update name, vendor, and feature_flags if provided
-            new_name = v.get('name')
-            if new_name:
-                validation.name = new_name
-            context = v.get('context', {})
-            if context.get('vendor'):
-                validation.vendor = context['vendor']
-            if context.get('feature_flags') is not None:
-                validation.feature_flags = context['feature_flags'] or {}
+            if v.name:
+                validation.name = v.name
+            if vendor:
+                validation.vendor = vendor
+            if feature_flags:
+                validation.feature_flags = feature_flags
             validation.save()
 
         # Parse status
-        status_str = v.get('status', 'unknown').lower()
+        status_str = v.status.lower()
         if status_str == 'success':
             status = InAppValidationStatus.SUCCESS
             successful += 1
@@ -224,37 +189,47 @@ def submit_validation_result(request):
             status = InAppValidationStatus.FAILURE
             failed += 1
         elif status_str == 'degraded':
-            # SDK sends 'degraded' for partial failures, but InAppValidationStatus
-            # doesn't have DEGRADED choice yet, so we map to FAILURE
+            # SDK sends 'degraded' for partial failures
             status = InAppValidationStatus.FAILURE
             failed += 1
         else:
             status = InAppValidationStatus.UNKNOWN
 
         # Parse checked_at
-        checked_at_str = v.get('checked_at')
-        checked_at = parse_datetime(checked_at_str) if checked_at_str else None
+        checked_at = parse_datetime(v.checked_at) if v.checked_at else None
         if checked_at is None:
             checked_at = timezone.now()
+
+        # Convert steps to dict format
+        steps_data = [
+            {
+                "name": step.name,
+                "passed": step.passed,
+                "details": step.details,
+                "error_message": step.error_message,
+                "duration_ms": step.duration_ms,
+            }
+            for step in v.steps
+        ]
 
         # Create result with steps and context
         InAppValidationResult.objects.create(
             validation_run=validation_run,
             validation=validation,
             status=status,
-            message=v.get('message', ''),
+            message=v.message,
             checked_at=checked_at,
-            steps=v.get('steps', []),
-            context=v.get('context', {}),
+            steps=steps_data,
+            context=context_dict,
         )
 
     # Optionally update unified verification status
-    if data.get('update_verification_status', False):
+    if data.update_verification_status:
         update_all_unified_statuses()
 
     return JsonResponse({
         'success': True,
-        'imported': len(validations_data) - skipped,
+        'imported': len(data.validations) - skipped,
         'skipped': skipped,
         'created_validations': created_validations,
         'successful': successful,
@@ -263,25 +238,14 @@ def submit_validation_result(request):
 
 
 @require_http_methods(["GET"])
-def get_requirement_status(request, external_id):
-    """Get verification status for a requirement.
-
-    GET /api/requirement/{external_id}/status/
-
-    Response:
-    {
-        "external_id": "REQ-AUTH-001",
-        "title": "User Authentication",
-        "verification_method": "both",
-        "verification_status": "passing",
-        "slo_status": "met",
-        "test_status": "passing",
-        "inapp_status": "passing",
-        "linked_tests": 5,
-        "linked_slos": 2,
-        "linked_validations": 1
-    }
-    """
+@validate_request(
+    response_schema=RequirementStatusResponse,
+    tags=["Requirements"],
+    summary="Get requirement status",
+    methods=["GET"],
+)
+def get_requirement_status(request, external_id, data=None):
+    """Get verification status for a requirement."""
     try:
         requirement = Requirement.objects.get(external_id=external_id)
     except Requirement.DoesNotExist:
@@ -351,62 +315,28 @@ def _result_to_dict(result: TestConnectionResult) -> dict:
 
 @csrf_exempt
 @require_http_methods(["POST"])
-def test_linear_connection(request):
-    """Test Linear API connection with fresh health check.
-
-    POST /api/integrations/linear/test-connection/
-
-    Request body: (optional)
-    {
-        "api_key": "lin_api_...",   // Override settings
-        "workspace": "my-workspace",
-        "team": "my-team"
-    }
-
-    If no body provided, uses Django settings:
-    - LINEAR_API_KEY
-    - LINEAR_WORKSPACE
-    - LINEAR_TEAM
-
-    Response:
-    {
-        "success": true,
-        "message": "All checks passed",
-        "status": "healthy",  // healthy, degraded, unhealthy
-        "checks": [
-            {
-                "name": "Configuration",
-                "passed": true,
-                "details": "API key present, workspace: ...",
-                "error_message": null,
-                "response_status": null,
-                "response_body": null,
-                "timestamp": "2024-01-15T10:30:00.000Z"
-            },
-            ...
-        ],
-        "error_details": null,
-        "cached": false
-    }
-    """
+@validate_request(
+    request_schema=LinearTestRequest,
+    response_schema=LinearTestResponse,
+    tags=["Integrations"],
+    summary="Test Linear connection",
+    methods=["POST"],
+)
+def test_linear_connection(request, data: LinearTestRequest | None = None):
+    """Test Linear API connection with fresh health check."""
     # Parse optional override from request body
     api_key = getattr(settings, 'LINEAR_API_KEY', '')
     workspace = getattr(settings, 'LINEAR_WORKSPACE', '')
     team = getattr(settings, 'LINEAR_TEAM', '')
 
-    # Only try to parse JSON if content type indicates JSON and body is not empty
-    content_type = request.content_type or ''
-    if 'application/json' in content_type and request.body:
-        try:
-            data = json.loads(request.body)
-            api_key = data.get('api_key', api_key)
-            workspace = data.get('workspace', workspace)
-            team = data.get('team', team)
-        except json.JSONDecodeError:
-            return JsonResponse(
-                {'success': False, 'error': 'Invalid JSON'},
-                status=400
-            )
+    # Use data from request if provided
+    if data is not None:
+        if data.api_key:
+            api_key = data.api_key
+        if data.workspace:
+            workspace = data.workspace
+        if data.team:
+            team = data.team
 
     # Run fresh health check
     result = verify_linear_connection(api_key, workspace, team)
@@ -422,43 +352,14 @@ def test_linear_connection(request):
 
 
 @require_http_methods(["GET"])
-def list_validation_runs(request):
-    """List validation runs with filtering and pagination.
-
-    GET /api/validation-runs/
-
-    Query parameters:
-        page: Page number (default: 1)
-        per_page: Items per page (default: 20, max: 100)
-        requirement_id: Filter by requirement external_id
-        vendor: Filter by vendor name
-        status: Filter by status (success, failure, unknown)
-        start_date: Filter runs after this date (ISO format)
-        end_date: Filter runs before this date (ISO format)
-
-    Response:
-    {
-        "runs": [
-            {
-                "id": 1,
-                "source": "production-app",
-                "imported_at": "2024-01-15T10:30:00Z",
-                "total_validations": 10,
-                "successful": 8,
-                "failed": 2
-            },
-            ...
-        ],
-        "pagination": {
-            "page": 1,
-            "per_page": 20,
-            "total": 50,
-            "total_pages": 3,
-            "has_next": true,
-            "has_prev": false
-        }
-    }
-    """
+@validate_request(
+    response_schema=ValidationRunsResponse,
+    tags=["Validation Runs"],
+    summary="List validation runs",
+    methods=["GET"],
+)
+def list_validation_runs(request, data=None):
+    """List validation runs with filtering and pagination."""
     # Parse pagination
     page = int(request.GET.get('page', 1))
     per_page = min(int(request.GET.get('per_page', 20)), 100)
@@ -531,36 +432,14 @@ def list_validation_runs(request):
 
 
 @require_http_methods(["GET"])
-def get_validation_run(request, run_id):
-    """Get validation run detail with all results.
-
-    GET /api/validation-runs/<id>/
-
-    Response:
-    {
-        "id": 1,
-        "source": "production-app",
-        "imported_at": "2024-01-15T10:30:00Z",
-        "total_validations": 10,
-        "successful": 8,
-        "failed": 2,
-        "results": [
-            {
-                "id": 1,
-                "validation_id": 5,
-                "validation_name": "Login Flow Check",
-                "requirement_id": "REQ-AUTH-001",
-                "vendor": "acme",
-                "status": "success",
-                "message": "All checks passed",
-                "checked_at": "2024-01-15T10:30:00Z",
-                "step_count": 3,
-                "steps_passed": 3
-            },
-            ...
-        ]
-    }
-    """
+@validate_request(
+    response_schema=ValidationRunDetailResponse,
+    tags=["Validation Runs"],
+    summary="Get validation run detail",
+    methods=["GET"],
+)
+def get_validation_run(request, run_id, data=None):
+    """Get validation run detail with all results."""
     try:
         run = InAppValidationRun.objects.prefetch_related(
             'results__validation__requirement'
@@ -596,42 +475,14 @@ def get_validation_run(request, run_id):
 
 
 @require_http_methods(["GET"])
-def get_validation_run_steps(request, run_id):
-    """Get step-level detail for a validation run.
-
-    GET /api/validation-runs/<id>/steps/
-
-    Query parameters:
-        result_id: Filter to specific result (optional)
-
-    Response:
-    {
-        "run_id": 1,
-        "results": [
-            {
-                "result_id": 1,
-                "validation_name": "Login Flow Check",
-                "requirement_id": "REQ-AUTH-001",
-                "status": "success",
-                "steps": [
-                    {
-                        "name": "Check login form",
-                        "passed": true,
-                        "details": "Form rendered correctly",
-                        "duration_ms": 50
-                    },
-                    ...
-                ],
-                "context": {
-                    "vendor": "acme",
-                    "feature_flags": {"new_ui": true},
-                    "environment": "production"
-                }
-            },
-            ...
-        ]
-    }
-    """
+@validate_request(
+    response_schema=ValidationRunStepsResponse,
+    tags=["Validation Runs"],
+    summary="Get validation run steps",
+    methods=["GET"],
+)
+def get_validation_run_steps(request, run_id, data=None):
+    """Get step-level detail for a validation run."""
     try:
         run = InAppValidationRun.objects.prefetch_related(
             'results__validation__requirement'
@@ -663,35 +514,14 @@ def get_validation_run_steps(request, run_id):
 
 
 @require_http_methods(["GET"])
-def get_linear_health(request):
-    """Get cached Linear integration health status.
-
-    GET /api/integrations/linear/health/
-
-    Returns cached health check result without triggering a new test.
-    Use POST /api/integrations/linear/test-connection/ to refresh.
-
-    Response:
-    {
-        "success": true,
-        "message": "All checks passed",
-        "status": "healthy",  // healthy, degraded, unhealthy
-        "checks": [...],
-        "error_details": null,
-        "cached": true,
-        "cache_remaining_seconds": 45
-    }
-
-    If no cached result exists:
-    {
-        "success": false,
-        "message": "No cached health check available",
-        "status": "unknown",
-        "checks": null,
-        "error_details": null,
-        "cached": false
-    }
-    """
+@validate_request(
+    response_schema=LinearHealthResponse,
+    tags=["Integrations"],
+    summary="Get Linear health status",
+    methods=["GET"],
+)
+def get_linear_health(request, data=None):
+    """Get cached Linear integration health status."""
     cached_result = cache.get(LINEAR_HEALTH_CACHE_KEY)
 
     if cached_result:

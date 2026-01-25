@@ -18,6 +18,7 @@ from django.contrib import admin
 from django.urls import path
 
 from requirements import api
+from requirements.openapi.views import openapi_spec, swagger_ui
 from requirements.views import (
     matrix_view,
     matrix_export,
@@ -55,4 +56,8 @@ urlpatterns = [
     path('api/validation-runs/', api.list_validation_runs, name='api-validation-runs'),
     path('api/validation-runs/<int:run_id>/', api.get_validation_run, name='api-validation-run-detail'),
     path('api/validation-runs/<int:run_id>/steps/', api.get_validation_run_steps, name='api-validation-run-steps'),
+
+    # OpenAPI documentation endpoints
+    path('api/openapi.json', openapi_spec, name='openapi-spec'),
+    path('api/docs/', swagger_ui, name='swagger-ui'),
 ]
