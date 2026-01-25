@@ -53,6 +53,35 @@ COMPLETENESS_COLORS = {
 }
 
 
+class StructureCompletenessFilter(admin.SimpleListFilter):
+    """Filter requirements by structure completeness level."""
+
+    title = 'structure completeness'
+    parameter_name = 'completeness'
+
+    def lookups(self, request, model_admin):
+        return [
+            ('none', 'None (0%)'),
+            ('low', 'Low (1-40%)'),
+            ('medium', 'Medium (41-80%)'),
+            ('high', 'High (81-100%)'),
+            ('needs_structure', 'Needs Structure (<80%)'),
+        ]
+
+    def queryset(self, request, queryset):
+        if self.value() == 'none':
+            return queryset.filter(structure_completeness=0)
+        elif self.value() == 'low':
+            return queryset.filter(structure_completeness__gt=0, structure_completeness__lte=0.4)
+        elif self.value() == 'medium':
+            return queryset.filter(structure_completeness__gt=0.4, structure_completeness__lte=0.8)
+        elif self.value() == 'high':
+            return queryset.filter(structure_completeness__gt=0.8)
+        elif self.value() == 'needs_structure':
+            return queryset.filter(structure_completeness__lt=0.8)
+        return queryset
+
+
 def _render_badge_link(color: str, status: str, url: str, label: str, suffix: str = '') -> str:
     """Render a single badge with link for admin displays."""
     return format_html(
@@ -92,7 +121,7 @@ class RequirementAdmin(ModelAdmin):
     ]
     list_filter = [
         'verification_status', 'verification_method', 'slo_status', 'status',
-        'priority', 'component', ('structure_completeness', admin.EmptyFieldListFilter)
+        'priority', 'component', StructureCompletenessFilter
     ]
     search_fields = ['external_id', 'title', 'description', 'component', 'condition', 'response']
     readonly_fields = [
