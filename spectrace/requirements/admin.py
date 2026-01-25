@@ -44,6 +44,14 @@ INAPP_STATUS_COLORS = {
     'not_run': '#6b7280',
 }
 
+# Completeness score colors (gradient from red to green)
+COMPLETENESS_COLORS = {
+    'none': '#ef4444',      # 0%
+    'low': '#f97316',       # 1-40%
+    'medium': '#eab308',    # 41-80%
+    'high': '#22c55e',      # 81-100%
+}
+
 
 def _render_badge_link(color: str, status: str, url: str, label: str, suffix: str = '') -> str:
     """Render a single badge with link for admin displays."""
@@ -80,13 +88,17 @@ class RequirementAdmin(ModelAdmin):
 
     list_display = [
         'external_id', 'title', 'verification_method', 'verification_status',
-        'slo_status', 'priority', 'status', 'updated_at'
+        'slo_status', 'priority', 'status', 'completeness_badge', 'component', 'updated_at'
     ]
-    list_filter = ['verification_status', 'verification_method', 'slo_status', 'status', 'priority']
-    search_fields = ['external_id', 'title', 'description']
+    list_filter = [
+        'verification_status', 'verification_method', 'slo_status', 'status',
+        'priority', 'component', ('structure_completeness', admin.EmptyFieldListFilter)
+    ]
+    search_fields = ['external_id', 'title', 'description', 'component', 'condition', 'response']
     readonly_fields = [
         'verification_status', 'slo_status', 'created_at', 'updated_at',
-        'linked_tests', 'linked_slos', 'linked_inapp_validations'
+        'linked_tests', 'linked_slos', 'linked_inapp_validations',
+        'structure_completeness', 'completeness_badge'
     ]
 
     fieldsets = (
@@ -96,6 +108,13 @@ class RequirementAdmin(ModelAdmin):
         ('Metadata', {
             'fields': ('tags', 'priority', 'status', 'verification_method', 'source_file')
         }),
+        ('Structured Fields (FRET-inspired)', {
+            'fields': ('scope', 'condition', 'component', 'timing', 'response', 'structure_completeness'),
+            'description': 'Optional structured fields for formal requirement specification. '
+                          'Scope: when does this apply? Condition: what triggers it? '
+                          'Component: what system owns it? Timing: performance constraint? '
+                          'Response: what must happen?'
+        }),
         ('Verification Status', {
             'fields': ('verification_status', 'slo_status', 'linked_tests', 'linked_inapp_validations', 'linked_slos')
         }),
@@ -104,6 +123,32 @@ class RequirementAdmin(ModelAdmin):
             'classes': ('collapse',)
         }),
     )
+
+    def completeness_badge(self, obj):
+        """Display structure completeness as a colored badge."""
+        score = obj.structure_completeness
+        pct = int(score * 100)
+
+        if score == 0:
+            color = COMPLETENESS_COLORS['none']
+            label = 'None'
+        elif score <= 0.4:
+            color = COMPLETENESS_COLORS['low']
+            label = f'{pct}%'
+        elif score <= 0.8:
+            color = COMPLETENESS_COLORS['medium']
+            label = f'{pct}%'
+        else:
+            color = COMPLETENESS_COLORS['high']
+            label = f'{pct}%'
+
+        return format_html(
+            '<span style="display: inline-block; padding: 2px 8px; border-radius: 4px; '
+            'font-size: 11px; font-weight: 500; color: white; background-color: {};">{}</span>',
+            color, label
+        )
+
+    completeness_badge.short_description = 'Structure'
 
     def linked_tests(self, obj):
         """Display linked test results with status badges and clickable links."""

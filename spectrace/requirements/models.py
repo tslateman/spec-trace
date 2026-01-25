@@ -114,6 +114,42 @@ class Requirement(MP_Node):
         help_text="SLO compliance status for this requirement"
     )
 
+    # Structured fields (FRET-inspired, all optional)
+    scope = models.TextField(
+        blank=True,
+        default="",
+        help_text="When does this requirement apply? (e.g., 'when in active_session')"
+    )
+    condition = models.TextField(
+        blank=True,
+        default="",
+        help_text="What triggers the behavior? (e.g., 'battery_level < 10')"
+    )
+    component = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        db_index=True,
+        help_text="What system owns this? (e.g., 'warning_system')"
+    )
+    timing = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="Performance constraint? (e.g., 'within 2 seconds')"
+    )
+    response = models.TextField(
+        blank=True,
+        default="",
+        help_text="What must happen? (e.g., 'display battery_warning')"
+    )
+
+    # Computed metadata for structured fields
+    structure_completeness = models.FloatField(
+        default=0.0,
+        help_text="Percentage of structured fields populated (0.0-1.0)"
+    )
+
     # Source tracking
     source_file = models.CharField(
         max_length=500,
@@ -133,6 +169,21 @@ class Requirement(MP_Node):
 
     def __str__(self):
         return f"{self.external_id}: {self.title}"
+
+    def calculate_structure_completeness(self) -> float:
+        """Calculate the percentage of structured fields that are populated.
+
+        Returns:
+            Float between 0.0 and 1.0 representing completeness.
+        """
+        fields = [self.scope, self.condition, self.component, self.timing, self.response]
+        populated = sum(1 for f in fields if f and f.strip())
+        return populated / len(fields)
+
+    def save(self, *args, **kwargs):
+        """Update structure_completeness before saving."""
+        self.structure_completeness = self.calculate_structure_completeness()
+        super().save(*args, **kwargs)
 
 
 class TestRun(models.Model):
@@ -696,6 +747,10 @@ class ConflictPattern(models.TextChoices):
     MUTUAL_EXCLUSION = 'mutual_exclusion', 'Mutual Exclusion'
     CODE_OVERLAP = 'code_overlap', 'Code Overlap'
     INVERSE_CORRELATION = 'inverse_correlation', 'Inverse Correlation'
+    # Structured field-based conflicts
+    CONDITION_OVERLAP = 'condition_overlap', 'Condition Overlap'
+    TIMING_CONFLICT = 'timing_conflict', 'Timing Conflict'
+    RESPONSE_CONTRADICTION = 'response_contradiction', 'Response Contradiction'
 
 
 class ConflictConfidence(models.TextChoices):

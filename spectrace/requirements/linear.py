@@ -2,6 +2,7 @@
 import requests
 
 from requirements.models import VerificationMethod
+from requirements.services.requirement_parser import extract_structured_fields
 
 
 class LinearClient:
@@ -188,14 +189,24 @@ class LinearClient:
         parent = issue.get('parent')
         parent_id = parent.get('identifier') if parent else None
 
+        # Extract structured fields from description (best-effort)
+        description = issue.get('description') or ''
+        structured = extract_structured_fields(description)
+
         return {
             'external_id': identifier,
             'title': issue.get('title', ''),
-            'description': issue.get('description') or '',
+            'description': description,
             'tags': tags,
             'priority': priority,
             'status': status,
             'parent_id': parent_id,
             'source_file': source_file,
             'verification_method': verification_method,
+            # Structured fields (FRET-inspired) extracted from description
+            'scope': structured.get('scope', ''),
+            'condition': structured.get('condition', ''),
+            'component': structured.get('component', ''),
+            'timing': structured.get('timing', ''),
+            'response': structured.get('response', ''),
         }

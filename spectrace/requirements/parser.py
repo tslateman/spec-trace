@@ -22,6 +22,12 @@ class RequirementData(TypedDict, total=False):
     parent_id: str | None
     source_file: str
     verification_method: str
+    # Structured fields (FRET-inspired)
+    scope: str
+    condition: str
+    component: str
+    timing: str
+    response: str
 
 
 def normalize_verification_method(value: str | None) -> str:
@@ -55,6 +61,12 @@ def _extract_requirement_fields(req_data: dict[str, Any]) -> dict[str, Any]:
         'status': req_data.get('status', 'draft'),
         'source_file': req_data.get('source_file', ''),
         'verification_method': normalize_verification_method(req_data.get('verification_method')),
+        # Structured fields (FRET-inspired)
+        'scope': req_data.get('scope', ''),
+        'condition': req_data.get('condition', ''),
+        'component': req_data.get('component', ''),
+        'timing': req_data.get('timing', ''),
+        'response': req_data.get('response', ''),
     }
 
 
@@ -203,6 +215,12 @@ class SpecParser:
             'parent_id': post.metadata.get('parent'),
             'source_file': str(file_path),
             'verification_method': post.metadata.get('verification_method', VerificationMethod.UNSPECIFIED),
+            # Structured fields (FRET-inspired)
+            'scope': post.metadata.get('scope', ''),
+            'condition': post.metadata.get('condition', ''),
+            'component': post.metadata.get('component', ''),
+            'timing': post.metadata.get('timing', ''),
+            'response': post.metadata.get('response', ''),
         }
 
     def _parse_multi(self, post: frontmatter.Post, file_path: Path) -> list[dict[str, Any]]:
@@ -233,6 +251,12 @@ class SpecParser:
         shared_priority = post.metadata.get('priority', '')
         shared_status = post.metadata.get('status', 'draft')
         shared_verification_method = post.metadata.get('verification_method', VerificationMethod.UNSPECIFIED)
+        # Structured fields (FRET-inspired) - shared across all requirements in file
+        shared_scope = post.metadata.get('scope', '')
+        shared_condition = post.metadata.get('condition', '')
+        shared_component = post.metadata.get('component', '')
+        shared_timing = post.metadata.get('timing', '')
+        shared_response = post.metadata.get('response', '')
 
         # Track the first requirement as root for implicit hierarchy
         first_req_id = None
@@ -264,6 +288,12 @@ class SpecParser:
                 'parent_id': parent_id,
                 'source_file': str(file_path),
                 'verification_method': shared_verification_method,
+                # Structured fields (FRET-inspired)
+                'scope': shared_scope,
+                'condition': shared_condition,
+                'component': shared_component,
+                'timing': shared_timing,
+                'response': shared_response,
             })
 
         return requirements

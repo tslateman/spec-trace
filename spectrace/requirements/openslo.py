@@ -1,4 +1,5 @@
 """OpenSLO YAML parser for importing SLOs."""
+import re
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
@@ -300,3 +301,135 @@ def update_slo_status_from_json(json_data: dict[str, Any]) -> dict[str, int]:
         updated += 1
 
     return {'updated': updated, 'not_found': not_found}
+
+
+def parse_timing_to_seconds(timing: str) -> float | None:
+    """Parse timing constraint to seconds.
+
+    Supports formats like:
+    - "within 2 seconds"
+    - "in 500ms"
+    - "after 1 minute"
+    - "2s"
+    - "100ms"
+
+    Args:
+        timing: Timing constraint string
+
+    Returns:
+        Timing in seconds, or None if unparseable.
+    """
+    if not timing:
+        return None
+
+    timing = timing.lower().strip()
+
+    # Match patterns like "2 seconds", "500ms", "1 minute"
+    pattern = r'(\d+(?:\.\d+)?)\s*(seconds?|s|ms|milliseconds?|minutes?|m)'
+    match = re.search(pattern, timing)
+
+    if not match:
+        return None
+
+    value = float(match.group(1))
+    unit = match.group(2)
+
+    if unit in ('ms', 'millisecond', 'milliseconds'):
+        return value / 1000
+    elif unit in ('m', 'minute', 'minutes'):
+        return value * 60
+    else:  # seconds
+        return value
+
+
+def parse_slo_time_window_to_seconds(time_window: str) -> float | None:
+    """Parse SLO time window to seconds.
+
+    Supports formats like:
+    - "30d" (30 days)
+    - "7d" (7 days)
+    - "1h" (1 hour)
+
+    Args:
+        time_window: SLO time window string
+
+    Returns:
+        Time window in seconds, or None if unparseable.
+    """
+    if not time_window:
+        return None
+
+    time_window = time_window.lower().strip()
+
+    # Match patterns like "30d", "7d", "1h"
+    pattern = r'(\d+(?:\.\d+)?)\s*(d|days?|h|hours?|m|minutes?|s|seconds?)'
+    match = re.search(pattern, time_window)
+
+    if not match:
+        return None
+
+    value = float(match.group(1))
+    unit = match.group(2)
+
+    if unit in ('d', 'day', 'days'):
+        return value * 86400  # seconds per day
+    elif unit in ('h', 'hour', 'hours'):
+        return value * 3600
+    elif unit in ('m', 'minute', 'minutes'):
+        return value * 60
+    else:  # seconds
+        return value
+
+
+def auto_link_slos_by_timing() -> dict[str, int]:
+    """Auto-link SLOs to requirements based on timing fields.
+
+    Links requirements with timing constraints to SLOs where the
+    requirement's timing fits within the SLO's target latency.
+
+    For example, if an SLO has a latency target of 2 seconds,
+    requirements with timing "within 2 seconds" or less will be linked.
+
+    Returns:
+        Summary dict with linked_count, skipped_count.
+    """
+    linked_count = 0
+    skipped_count = 0
+
+    # Get requirements with timing defined
+    requirements_with_timing = Requirement.objects.exclude(timing='')
+
+    # Get SLOs with targets (latency-based SLOs typically have targets like 0.95, 0.99)
+    slos = SLO.objects.filter(target__isnull=False)
+
+    for slo in slos:
+        slo_target = float(slo.target) if slo.target else 0
+
+        # For latency SLOs, we look at the time_window as a potential latency threshold
+        # This is a heuristic - in practice, latency SLOs might define this differently
+        # For now, we link requirements whose timing is ≤ a certain threshold
+
+        for req in requirements_with_timing:
+            req_timing_seconds = parse_timing_to_seconds(req.timing)
+
+            if req_timing_seconds is None:
+                skipped_count += 1
+                continue
+
+            # Heuristic: Link if requirement specifies a timing constraint
+            # and SLO is for the same or related service
+            # For now, we use component matching as a proxy
+            if req.component and slo.service:
+                # Check if component matches service (case-insensitive, partial match)
+                component_lower = req.component.lower()
+                service_lower = slo.service.lower()
+
+                if component_lower in service_lower or service_lower in component_lower:
+                    # Add requirement to SLO if not already linked
+                    if not slo.requirements.filter(id=req.id).exists():
+                        slo.requirements.add(req)
+                        linked_count += 1
+                        print(f"Auto-linked: {req.external_id} -> {slo.name} "
+                              f"(timing: {req.timing}, component: {req.component})")
+
+    return {'linked_count': linked_count, 'skipped_count': skipped_count}

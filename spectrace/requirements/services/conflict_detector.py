@@ -2,7 +2,11 @@
 
 Detects patterns where requirements may be in conflict, such as:
 - Mutual exclusion: Tests for both requirements never pass in the same run.
+- Condition overlap: Requirements with overlapping conditions on same component.
+- Timing conflict: Same component, conflicting timing constraints.
+- Response contradiction: Same trigger, different expected responses.
 """
+import re
 from collections import defaultdict
 from dataclasses import dataclass
 from itertools import combinations
@@ -207,6 +211,343 @@ class ConflictDetector:
                 'inverse_ratio': inverse_ratio,
             }
         )
+
+    def detect_condition_overlap(self) -> list[ConflictResult]:
+        """Detect conflicts where requirements have overlapping conditions on same component.
+
+        Identifies requirement pairs where:
+        - Both have the same component
+        - Both have conditions defined
+        - Conditions appear to overlap (simple heuristic based on variable names)
+
+        Returns:
+            List of ConflictResult objects for detected conflicts.
+        """
+        # Get requirements with both component and condition defined
+        requirements = list(
+            Requirement.objects.exclude(component='').exclude(condition='')
+        )
+
+        if len(requirements) < 2:
+            return []
+
+        conflicts = []
+
+        # Group by component
+        by_component: dict[str, list[Requirement]] = defaultdict(list)
+        for req in requirements:
+            by_component[req.component.lower().strip()].append(req)
+
+        # Check pairs within same component
+        for component, reqs in by_component.items():
+            if len(reqs) < 2:
+                continue
+
+            for req_a, req_b in combinations(reqs, 2):
+                overlap_info = self._check_condition_overlap(req_a, req_b)
+                if overlap_info:
+                    confidence = self._calculate_condition_confidence(overlap_info)
+                    conflicts.append(ConflictResult(
+                        requirement_a_id=req_a.id,
+                        requirement_b_id=req_b.id,
+                        requirement_a_external_id=req_a.external_id,
+                        requirement_b_external_id=req_b.external_id,
+                        pattern=ConflictPattern.CONDITION_OVERLAP,
+                        confidence=confidence,
+                        runs_analyzed=0,
+                        details={
+                            'component': component,
+                            'condition_a': req_a.condition,
+                            'condition_b': req_b.condition,
+                            **overlap_info,
+                        }
+                    ))
+
+        return conflicts
+
+    def _check_condition_overlap(
+        self, req_a: Requirement, req_b: Requirement
+    ) -> dict | None:
+        """Check if two requirements have overlapping conditions.
+
+        Uses simple heuristics:
+        - Same variable names being compared
+        - Overlapping numeric ranges
+
+        Returns:
+            Dict with overlap details, or None if no overlap detected.
+        """
+        cond_a = req_a.condition.lower()
+        cond_b = req_b.condition.lower()
+
+        # Extract variables being compared (e.g., "battery_level", "temperature")
+        var_pattern = r'([a-z_][a-z0-9_]*)\s*[<>=!]+'
+        vars_a = set(re.findall(var_pattern, cond_a))
+        vars_b = set(re.findall(var_pattern, cond_b))
+
+        common_vars = vars_a & vars_b
+        if not common_vars:
+            return None
+
+        # Extract numeric thresholds for comparison
+        threshold_pattern = r'[<>=!]+\s*(\d+(?:\.\d+)?)'
+        thresholds_a = [float(t) for t in re.findall(threshold_pattern, cond_a)]
+        thresholds_b = [float(t) for t in re.findall(threshold_pattern, cond_b)]
+
+        # Check for potential range overlap
+        overlap_type = 'variable_overlap'
+        if thresholds_a and thresholds_b:
+            # Simple overlap check: if ranges might intersect
+            min_a, max_a = min(thresholds_a), max(thresholds_a)
+            min_b, max_b = min(thresholds_b), max(thresholds_b)
+
+            if max_a >= min_b and max_b >= min_a:
+                overlap_type = 'range_overlap'
+
+        return {
+            'common_variables': list(common_vars),
+            'overlap_type': overlap_type,
+            'thresholds_a': thresholds_a,
+            'thresholds_b': thresholds_b,
+        }
+
+    def _calculate_condition_confidence(self, overlap_info: dict) -> str:
+        """Calculate confidence level for condition overlap."""
+        if overlap_info.get('overlap_type') == 'range_overlap':
+            return ConflictConfidence.HIGH
+        elif len(overlap_info.get('common_variables', [])) > 1:
+            return ConflictConfidence.MEDIUM
+        return ConflictConfidence.LOW
+
+    def detect_timing_conflicts(self) -> list[ConflictResult]:
+        """Detect conflicts where same component has conflicting timing constraints.
+
+        Identifies requirement pairs where:
+        - Both have the same component
+        - Both have timing constraints defined
+        - Timing constraints appear contradictory
+
+        Returns:
+            List of ConflictResult objects for detected conflicts.
+        """
+        # Get requirements with both component and timing defined
+        requirements = list(
+            Requirement.objects.exclude(component='').exclude(timing='')
+        )
+
+        if len(requirements) < 2:
+            return []
+
+        conflicts = []
+
+        # Group by component
+        by_component: dict[str, list[Requirement]] = defaultdict(list)
+        for req in requirements:
+            by_component[req.component.lower().strip()].append(req)
+
+        # Check pairs within same component
+        for component, reqs in by_component.items():
+            if len(reqs) < 2:
+                continue
+
+            for req_a, req_b in combinations(reqs, 2):
+                timing_a = self._parse_timing(req_a.timing)
+                timing_b = self._parse_timing(req_b.timing)
+
+                if timing_a is None or timing_b is None:
+                    continue
+
+                # Different timing requirements for same component = potential conflict
+                if timing_a != timing_b:
+                    # Greater difference = higher confidence
+                    ratio = max(timing_a, timing_b) / min(timing_a, timing_b) if min(timing_a, timing_b) > 0 else 10
+                    if ratio >= 5:
+                        confidence = ConflictConfidence.HIGH
+                    elif ratio >= 2:
+                        confidence = ConflictConfidence.MEDIUM
+                    else:
+                        confidence = ConflictConfidence.LOW
+
+                    conflicts.append(ConflictResult(
+                        requirement_a_id=req_a.id,
+                        requirement_b_id=req_b.id,
+                        requirement_a_external_id=req_a.external_id,
+                        requirement_b_external_id=req_b.external_id,
+                        pattern=ConflictPattern.TIMING_CONFLICT,
+                        confidence=confidence,
+                        runs_analyzed=0,
+                        details={
+                            'component': component,
+                            'timing_a': req_a.timing,
+                            'timing_b': req_b.timing,
+                            'seconds_a': timing_a,
+                            'seconds_b': timing_b,
+                            'ratio': ratio,
+                        }
+                    ))
+
+        return conflicts
+
+    def _parse_timing(self, timing: str) -> float | None:
+        """Parse timing constraint to seconds.
+
+        Supports formats like:
+        - "within 2 seconds"
+        - "in 500ms"
+        - "after 1 minute"
+        - "2s"
+
+        Returns:
+            Timing in seconds, or None if unparseable.
+        """
+        timing = timing.lower().strip()
+
+        # Match patterns like "2 seconds", "500ms", "1 minute"
+        pattern = r'(\d+(?:\.\d+)?)\s*(seconds?|s|ms|milliseconds?|minutes?|m)'
+        match = re.search(pattern, timing)
+
+        if not match:
+            return None
+
+        value = float(match.group(1))
+        unit = match.group(2)
+
+        if unit in ('ms', 'millisecond', 'milliseconds'):
+            return value / 1000
+        elif unit in ('m', 'minute', 'minutes'):
+            return value * 60
+        else:  # seconds
+            return value
+
+    def detect_response_contradictions(self) -> list[ConflictResult]:
+        """Detect conflicts where same trigger leads to different responses.
+
+        Identifies requirement pairs where:
+        - Both have similar conditions
+        - Both have responses defined
+        - Responses appear contradictory
+
+        Returns:
+            List of ConflictResult objects for detected conflicts.
+        """
+        # Get requirements with both condition and response defined
+        requirements = list(
+            Requirement.objects.exclude(condition='').exclude(response='')
+        )
+
+        if len(requirements) < 2:
+            return []
+
+        conflicts = []
+
+        for req_a, req_b in combinations(requirements, 2):
+            # Check if conditions are similar
+            if not self._conditions_similar(req_a.condition, req_b.condition):
+                continue
+
+            # Check if responses are contradictory
+            contradiction_info = self._check_response_contradiction(
+                req_a.response, req_b.response
+            )
+
+            if contradiction_info:
+                conflicts.append(ConflictResult(
+                    requirement_a_id=req_a.id,
+                    requirement_b_id=req_b.id,
+                    requirement_a_external_id=req_a.external_id,
+                    requirement_b_external_id=req_b.external_id,
+                    pattern=ConflictPattern.RESPONSE_CONTRADICTION,
+                    confidence=contradiction_info['confidence'],
+                    runs_analyzed=0,
+                    details={
+                        'condition_a': req_a.condition,
+                        'condition_b': req_b.condition,
+                        'response_a': req_a.response,
+                        'response_b': req_b.response,
+                        **contradiction_info,
+                    }
+                ))
+
+        return conflicts
+
+    def _conditions_similar(self, cond_a: str, cond_b: str) -> bool:
+        """Check if two conditions are similar enough to compare responses.
+
+        Uses simple word overlap heuristic.
+        """
+        words_a = set(re.findall(r'[a-z_][a-z0-9_]*', cond_a.lower()))
+        words_b = set(re.findall(r'[a-z_][a-z0-9_]*', cond_b.lower()))
+
+        if not words_a or not words_b:
+            return False
+
+        overlap = words_a & words_b
+        min_len = min(len(words_a), len(words_b))
+
+        # At least 50% word overlap
+        return len(overlap) >= min_len * 0.5
+
+    def _check_response_contradiction(
+        self, response_a: str, response_b: str
+    ) -> dict | None:
+        """Check if two responses are contradictory.
+
+        Looks for patterns like:
+        - "show" vs "hide"
+        - "enable" vs "disable"
+        - "start" vs "stop"
+        - "allow" vs "deny"
+        """
+        antonym_pairs = [
+            ('show', 'hide'),
+            ('display', 'hide'),
+            ('enable', 'disable'),
+            ('start', 'stop'),
+            ('allow', 'deny'),
+            ('accept', 'reject'),
+            ('open', 'close'),
+            ('lock', 'unlock'),
+            ('activate', 'deactivate'),
+            ('on', 'off'),
+        ]
+
+        resp_a = response_a.lower()
+        resp_b = response_b.lower()
+
+        for word_a, word_b in antonym_pairs:
+            # Check if a has word_a and b has word_b, or vice versa
+            if (word_a in resp_a and word_b in resp_b) or (word_b in resp_a and word_a in resp_b):
+                return {
+                    'contradiction_type': 'antonym',
+                    'antonym_pair': (word_a, word_b),
+                    'confidence': ConflictConfidence.HIGH,
+                }
+
+        # Check for same action on same object (might be duplicate, not conflict)
+        # This is lower confidence as it might be intentional
+        words_a = set(re.findall(r'[a-z_][a-z0-9_]*', resp_a))
+        words_b = set(re.findall(r'[a-z_][a-z0-9_]*', resp_b))
+
+        if words_a != words_b and len(words_a & words_b) >= 2:
+            return {
+                'contradiction_type': 'partial_overlap',
+                'common_words': list(words_a & words_b),
+                'confidence': ConflictConfidence.LOW,
+            }
+
+        return None
+
+    def detect_all_structured_conflicts(self) -> list[ConflictResult]:
+        """Run all structured field-based conflict detection.
+
+        Returns:
+            Combined list of all detected structured conflicts.
+        """
+        conflicts = []
+        conflicts.extend(self.detect_condition_overlap())
+        conflicts.extend(self.detect_timing_conflicts())
+        conflicts.extend(self.detect_response_contradictions())
+        return conflicts
 
     def log_conflicts(
         self,
