@@ -10,6 +10,14 @@ PMs can see, at any moment, which requirements are verified by passing tests —
 
 ## What's Shipped
 
+### v7 UI Polish & API Documentation (Shipped: 2026-01-25)
+
+- **Dark mode consistency:** All 10 custom admin templates with proper dark: classes (311 occurrences)
+- **Breadcrumb navigation:** Detail views have clear navigation paths
+- **Loading states:** Impact analysis and comparison views show spinners
+- **Validation filtering:** Date range and requirement ID filters with URL persistence
+- **OpenAPI documentation:** Full API spec at `/api/openapi.json` with Swagger UI at `/api/docs/`
+
 ### v6 Impact Analysis & Validation API (Shipped: 2026-01-25)
 
 - **Impact Analysis Core:** ImpactAnalyzer service detects changed requirements from git diff, returns affected tests
@@ -118,16 +126,22 @@ PMs can see, at any moment, which requirements are verified by passing tests —
 - ✓ STRUCT-05: SLO auto-linking by timing field — post-v4
 - ✓ TRACE-01: Linear issue traceability and conflict detection — post-v4
 
-### Active (v7 — UI Polish & API Documentation)
+### Validated (v7)
 
-**Goal:** Improve validation runs UX, add OpenAPI docs, fix dark mode consistency.
-
-**Target features:**
-- Validation runs filtering improvements (date range, test/requirement filters)
-- OpenAPI documentation for all public APIs
-- Dark mode consistency across custom views
-- Navigation flow improvements
-- Loading states for async operations
+- ✓ FILTER-01: Date range filter on validation runs list — v7
+- ✓ FILTER-02: Filter by specific requirement ID — v7
+- ✓ FILTER-03: Persist filters across navigation (URL params) — v7
+- ✓ DOCS-01: Generate OpenAPI spec from msgspec Structs — v7
+- ✓ DOCS-02: Serve OpenAPI JSON at `/api/openapi.json` — v7
+- ✓ DOCS-03: Add Swagger UI at `/api/docs/` — v7
+- ✓ DARK-01: Fix validation runs list page dark mode — v7
+- ✓ DARK-02: Fix validation run detail page dark mode — v7
+- ✓ DARK-03: Fix validation run comparison page dark mode — v7
+- ✓ DARK-04: Fix impact analysis page dark mode — v7
+- ✓ NAV-01: Add breadcrumb navigation to detail views — v7
+- ✓ NAV-02: Add "back to list" links on detail pages — v7
+- ✓ LOAD-01: Add loading spinner for impact analysis form — v7
+- ✓ LOAD-02: Add loading state for validation run comparison — v7
 
 ### Validated (v6)
 

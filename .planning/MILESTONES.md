@@ -1,5 +1,42 @@
 # Project Milestones: SpecTrace
 
+## v7 UI Polish & API Documentation (Shipped: 2026-01-25)
+
+**Delivered:** Dark mode consistency, breadcrumb navigation, validation filtering improvements, OpenAPI 3.1 documentation.
+
+**Phases completed:** 15-18 (4 phases)
+
+**Key accomplishments:**
+
+- Dark mode styling across all 10 custom admin templates (311 dark: classes)
+- Breadcrumb navigation on detail views
+- Loading states for async operations (impact analysis, comparison)
+- Date range and requirement ID filters for validation runs
+- OpenAPI 3.1 spec generation from msgspec Structs
+- Swagger UI at `/api/docs/` with 9 endpoints and 20 schemas
+
+**Stats:**
+
+- 4 commits
+- 12 files modified
+- 4 phases, 1 day
+
+**Git range:** `dff75a9` → `9757182`
+
+**Archive:** [v7-ROADMAP.md](milestones/v7-ROADMAP.md), [v7-REQUIREMENTS.md](milestones/v7-REQUIREMENTS.md)
+
+---
+
+## v6 Impact Analysis & Validation API (Shipped: 2026-01-25)
+
+**Delivered:** Impact analysis for spec changes, JSON API for validation runs.
+
+**Phases completed:** 12-14 (3 phases)
+
+**Archive:** [v6-ROADMAP.md](milestones/v6-ROADMAP.md), [v6-REQUIREMENTS.md](milestones/v6-REQUIREMENTS.md)
+
+---
+
 ## v5 Structured Requirements (Shipped: 2026-01-24)
 
 **Delivered:** FRET-inspired structured requirement fields with enhanced conflict detection, Linear import enrichment, and SLO auto-linking.

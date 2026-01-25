@@ -5,22 +5,22 @@
 See: .planning/PROJECT.md (updated 2026-01-25)
 
 **Core value:** PMs can see, at any moment, which requirements are verified by passing tests
-**Current focus:** v7 UI Polish & API Documentation
+**Current focus:** Between milestones (v7 complete)
 
 ## Current Position
 
-Milestone: v7 UI Polish & API Documentation
-Phase: 15 (Dark Mode Fixes) — not started
-Plan: —
-Status: **READY TO PLAN**
-Last activity: 2026-01-25 — Requirements and roadmap defined
+Milestone: v7 UI Polish & API Documentation — COMPLETE
+Phase: All 4 phases (15-18) complete
+Status: **MILESTONE COMPLETE**
+Last activity: 2026-01-25 — v7 shipped
 
-Progress: 0/4 phases complete
+Progress: 4/4 phases complete
 
 ## Milestone History
 
 | Milestone | Shipped | Phases | Summary |
 |-----------|---------|--------|---------|
+| v7 UI Polish | 2026-01-25 | 15-18 | Dark mode, breadcrumbs, filtering, OpenAPI docs |
 | v6 Impact | 2026-01-25 | 12-14 | Impact analysis and validation API (29 tests) |
 | v4 SDK | 2026-01-21 | 8-11 | In-app validation SDK with vendor tracking, feature flags, examples, docs |
 | v3 Health | 2026-01-22 | 5-7 | Linear integration health checks with dashboard UI |
@@ -42,23 +42,24 @@ Two features implemented outside the GSD workflow (ad-hoc development):
 
 ## Performance Metrics
 
-**v6 Velocity (complete):**
-- Phases 12-14: 3 phases
-- Commits: 6
-- Files changed: 18
-- Lines: +3,216 / -24
-- Tests: 29 passing
+**v7 Velocity (complete):**
+- Phases 15-18: 4 phases
+- Commits: 4
+- Files changed: 12
+- Requirements: 14/14 satisfied
+- Tests: 265 passing
 
 ## Accumulated Context
 
-### Key Decisions (v6)
+### Key Decisions (v7)
 
-See: .planning/milestones/v6-ROADMAP.md for full decision table
+See: .planning/milestones/v7-ROADMAP.md for full decision table
 
 Highlights:
-- Plain Django JSON views (no DRF dependency)
-- git diff via subprocess (simpler than GitPython)
-- CLI exit codes for CI (zero = no impact)
+- msgspec for OpenAPI (already using msgspec Structs)
+- base-* classes over gray-* (django-unfold consistency)
+- URL-based filter persistence (shareable, back/forward works)
+- Swagger UI via CDN (no extra dependencies)
 
 ### Blockers/Concerns
 
@@ -66,14 +67,12 @@ None.
 
 ### Next Steps
 
-v7 milestone in progress:
-- [x] Define milestone goals
-- [x] Define requirements (REQUIREMENTS.md) — 14 requirements
-- [x] Create roadmap (ROADMAP.md) — 4 phases (15-18)
-- [ ] Plan Phase 15 (Dark Mode Fixes)
+v7 milestone complete. Options:
+- `/gsd:new-milestone` — Start v8 planning
+- Manual development — Ad-hoc features outside GSD
 
 ## Session Continuity
 
 Last session: 2026-01-25
-Stopped at: Defining v7 requirements
+Stopped at: v7 milestone completion
 Resume file: None
