@@ -386,3 +386,12 @@ def validation_run_compare_view(request):
     }
 
     return render(request, 'admin/requirements/validation_run_compare_select.html', context)
+
+
+@staff_member_required
+def about_view(request):
+    """About SpecTrace page - explains what SpecTrace is and why it exists."""
+    context = {
+        'title': 'About SpecTrace',
+    }
+    return render(request, 'admin/requirements/about.html', context)
