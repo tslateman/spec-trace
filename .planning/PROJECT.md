@@ -10,6 +10,15 @@ PMs can see, at any moment, which requirements are verified by passing tests —
 
 ## What's Shipped
 
+### v6 Impact Analysis & Validation API (Shipped: 2026-01-25)
+
+- **Impact Analysis Core:** ImpactAnalyzer service detects changed requirements from git diff, returns affected tests
+- **Hierarchy propagation:** Parent requirement changes include child tests in impact
+- **Dashboard view:** Impact analysis accessible at `/admin/impact-analysis/` with git ref inputs
+- **CLI command:** `manage.py impact_analysis <base> <head>` for CI pipelines with JSON/text output
+- **Validation API:** REST endpoints for validation runs (list, detail, steps) at `/api/validation-runs/`
+- **Test coverage:** 29 tests covering analyzer, CLI command, and API endpoints
+
 ### v5 Structured Requirements (Shipped: 2026-01-24)
 
 - **Structured requirement fields:** FRET-inspired optional fields (scope, condition, component, timing, response) for formal requirement specification
@@ -109,18 +118,20 @@ PMs can see, at any moment, which requirements are verified by passing tests —
 - ✓ STRUCT-05: SLO auto-linking by timing field — post-v4
 - ✓ TRACE-01: Linear issue traceability and conflict detection — post-v4
 
-### Active (v6 Impact Analysis & Validation API)
+### Active (None — Between Milestones)
 
-**Goal:** Enable impact analysis when specs change and expose validation data via JSON API for custom UIs.
+All v6 requirements shipped. Run `/gsd:new-milestone` to start v7.
 
-- [ ] IMPACT-01: Detect changed requirements from git diff
-- [ ] IMPACT-02: Show affected tests for changed requirements
-- [ ] IMPACT-03: Include hierarchy (parent change → child tests)
-- [ ] IMPACT-04: Dashboard view for impact analysis
-- [ ] IMPACT-05: CLI command for CI integration
-- [ ] API-01: JSON endpoint for InAppValidationRun detail
-- [ ] API-02: JSON endpoint for InAppValidationRun list with filtering
-- [ ] API-03: JSON endpoint for validation steps and results
+### Validated (v6)
+
+- ✓ IMPACT-01: Detect changed requirements from git diff — v6
+- ✓ IMPACT-02: Show affected tests for changed requirements — v6
+- ✓ IMPACT-03: Include hierarchy (parent change → child tests) — v6
+- ✓ IMPACT-04: Dashboard view for impact analysis — v6
+- ✓ IMPACT-05: CLI command for CI integration — v6
+- ✓ API-01: JSON endpoint for InAppValidationRun list with filtering — v6
+- ✓ API-02: JSON endpoint for InAppValidationRun detail — v6
+- ✓ API-03: JSON endpoint for validation steps and results — v6
 
 ### Future (v7+)
 
@@ -177,4 +188,4 @@ PMs can see, at any moment, which requirements are verified by passing tests —
 | 5-step PMS / 3-step mobile key | Consistent validation granularity | ✓ Good |
 
 ---
-*Last updated: 2026-01-25 after v6 milestone start*
+*Last updated: 2026-01-25 after v6 milestone complete*

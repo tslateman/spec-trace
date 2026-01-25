@@ -2,20 +2,32 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-01-24)
+See: .planning/PROJECT.md (updated 2026-01-25)
 
 **Core value:** PMs can see, at any moment, which requirements are verified by passing tests
-**Current focus:** Planning next milestone
+**Current focus:** Between milestones — ready for v7
 
 ## Current Position
 
-Milestone: v6 Impact Analysis & Validation API
-Phase: Complete
+Milestone: None (v6 archived)
+Phase: —
 Plan: —
-Status: **MILESTONE COMPLETE**
-Last activity: 2026-01-25 — Phase 14 complete
+Status: **BETWEEN MILESTONES**
+Last activity: 2026-01-25 — v6 archived
 
-Progress: [==========] 100% (all phases 12, 13, 14 complete)
+Progress: Ready for next milestone
+
+## Milestone History
+
+| Milestone | Shipped | Phases | Summary |
+|-----------|---------|--------|---------|
+| v6 Impact | 2026-01-25 | 12-14 | Impact analysis and validation API (29 tests) |
+| v4 SDK | 2026-01-21 | 8-11 | In-app validation SDK with vendor tracking, feature flags, examples, docs |
+| v3 Health | 2026-01-22 | 5-7 | Linear integration health checks with dashboard UI |
+| v2 Matrix | 2026-01-21 | 1-4 (v2) | Traceability matrix view |
+| v1 MVP | 2026-01-21 | 1-4 (v1) | Spec parsing, test linking, verification dashboard |
+
+See: .planning/MILESTONES.md
 
 ## Post-v4 Work (Outside GSD)
 
@@ -28,35 +40,25 @@ Two features implemented outside the GSD workflow (ad-hoc development):
    - SLO auto-linking by timing field
    - Structure completeness scoring in dashboard
 
-## Milestone History
-
-| Milestone | Shipped | Phases | Summary |
-|-----------|---------|--------|---------|
-| v4 SDK | 2026-01-21 | 8-11 | In-app validation SDK with vendor tracking, feature flags, examples, docs |
-| v3 Health | 2026-01-22 | 5-7 | Linear integration health checks with dashboard UI |
-| v2 Matrix | 2026-01-21 | 1-4 (v2) | Traceability matrix view |
-| v1 MVP | 2026-01-21 | 1-4 (v1) | Spec parsing, test linking, verification dashboard |
-
-See: .planning/MILESTONES.md
-
 ## Performance Metrics
 
-**v4 Velocity (complete):**
-- Phase 8-11: 4 plans completed
-- Total: 4 plans in 1 day
-- Files: 19 SDK files created
+**v6 Velocity (complete):**
+- Phases 12-14: 3 phases
+- Commits: 6
+- Files changed: 18
+- Lines: +3,216 / -24
+- Tests: 29 passing
 
 ## Accumulated Context
 
-### Key Decisions (v4)
+### Key Decisions (v6)
 
-See: .planning/milestones/v4-ROADMAP.md for full decision table
+See: .planning/milestones/v6-ROADMAP.md for full decision table
 
 Highlights:
-- Bundled Django app (no separate package)
-- Context manager pattern (clean resource management)
-- Best-effort submission (never break user code)
-- Multi-source flag extraction (Django/env/model)
+- Plain Django JSON views (no DRF dependency)
+- git diff via subprocess (simpler than GitPython)
+- CLI exit codes for CI (zero = no impact)
 
 ### Blockers/Concerns
 
@@ -64,15 +66,13 @@ None.
 
 ### Next Steps
 
-v6 milestone complete:
-- [x] Phase 12: Impact Analysis Core (ImpactAnalyzer service)
-- [x] Phase 13: Impact Analysis UI/CLI (dashboard view + management command)
-- [x] Phase 14: Validation API (JSON endpoints for validation runs)
-
-Next: Run `/gsd:complete-milestone` to archive v6 and prepare for v7.
+Run `/gsd:new-milestone` to start v7 planning:
+- Define vision and requirements
+- Create ROADMAP.md
+- Plan first phase
 
 ## Session Continuity
 
 Last session: 2026-01-25
-Stopped at: v6 milestone complete
+Stopped at: v6 archived, ready for v7
 Resume file: None
