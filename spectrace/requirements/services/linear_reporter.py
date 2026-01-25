@@ -5,8 +5,11 @@ following the pattern established in the observability/services/datadog_linear.p
 from the Canary project.
 """
 from dataclasses import dataclass
+import logging
 
 import requests
+
+logger = logging.getLogger(__name__)
 
 from requirements.models import (
     Requirement,
@@ -98,7 +101,8 @@ class LinearReporter:
         try:
             data = self._execute_query(query, {'identifier': identifier})
             return data.get('issue')
-        except Exception:
+        except (requests.RequestException, ValueError) as e:
+            logger.warning("Failed to get issue %s: %s", identifier, e)
             return None
 
     def _get_or_create_label(self, team_id: str, name: str, color: str = "#888888") -> str:
@@ -164,7 +168,8 @@ class LinearReporter:
                 'body': body,
             })
             return data.get('commentCreate', {}).get('success', False)
-        except Exception:
+        except (requests.RequestException, ValueError) as e:
+            logger.warning("Failed to add comment to issue %s: %s", issue_id, e)
             return False
 
     def _update_labels(self, issue_id: str, label_ids: list[str]) -> bool:
@@ -182,7 +187,8 @@ class LinearReporter:
                 'labelIds': label_ids,
             })
             return data.get('issueUpdate', {}).get('success', False)
-        except Exception:
+        except (requests.RequestException, ValueError) as e:
+            logger.warning("Failed to update labels on issue %s: %s", issue_id, e)
             return False
 
     def report_test_results(

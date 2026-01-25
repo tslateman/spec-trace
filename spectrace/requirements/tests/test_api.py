@@ -322,8 +322,8 @@ class TestLinearTestConnectionAPI:
         assert 'Invalid JSON' in response.json()['error']
 
     @pytest.mark.django_db
-    def test_test_connection_uses_request_body_overrides(self, client):
-        """Request body can override settings."""
+    def test_test_connection_ignores_request_body_credentials(self, client):
+        """Request body credentials are ignored for security (uses settings only)."""
         mock_result = TestConnectionResult(
             success=True,
             message="All checks passed",
@@ -342,7 +342,8 @@ class TestLinearTestConnectionAPI:
             )
 
         assert response.status_code == 200
-        mock_verify.assert_called_once_with('lin_api_custom', 'custom-workspace', 'custom-team')
+        # Credentials from request body should be ignored - uses settings (empty in test)
+        mock_verify.assert_called_once_with('', '', '')
 
     @pytest.mark.django_db
     def test_test_connection_caches_result(self, client):

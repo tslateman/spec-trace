@@ -1,10 +1,41 @@
 """Impact analysis service for detecting spec changes and affected tests."""
 from dataclasses import dataclass
+import logging
+import re
 import subprocess
 from pathlib import Path
 from typing import Optional
 
 from requirements.models import Requirement, TestRequirementLink
+
+logger = logging.getLogger(__name__)
+
+# Valid git ref pattern: alphanumeric, dots, slashes, hyphens, underscores, colons
+# Also allows HEAD, HEAD~N, HEAD^N, @{upstream}, etc.
+GIT_REF_PATTERN = re.compile(r'^[a-zA-Z0-9][a-zA-Z0-9._/:\-~^@{}]*$')
+
+
+def validate_git_ref(ref: str) -> None:
+    """Validate a git ref is safe to use in commands.
+
+    Args:
+        ref: Git reference string (commit, branch, tag)
+
+    Raises:
+        ValueError: If ref is empty, too long, or contains invalid characters.
+    """
+    if not ref:
+        raise ValueError("Git ref cannot be empty")
+    if len(ref) > 256:
+        raise ValueError("Git ref too long (max 256 characters)")
+    if not GIT_REF_PATTERN.match(ref):
+        raise ValueError(
+            "Invalid git ref format. Use alphanumeric characters, dots, "
+            "slashes, hyphens, underscores, or standard git ref syntax."
+        )
+    # Block refs that look like command-line flags
+    if ref.startswith('-'):
+        raise ValueError("Git ref cannot start with a hyphen")
 
 
 @dataclass
@@ -42,6 +73,10 @@ class ImpactAnalyzer:
         Raises:
             ValueError: If refs are invalid or git command fails.
         """
+        # Validate refs before using in subprocess
+        validate_git_ref(base_ref)
+        validate_git_ref(head_ref)
+
         try:
             result = subprocess.run(
                 [
@@ -61,7 +96,11 @@ class ImpactAnalyzer:
             )
             return [f for f in result.stdout.strip().split("\n") if f and f.endswith(".md")]
         except subprocess.CalledProcessError as e:
-            raise ValueError(f"Git diff failed: {e.stderr}") from e
+            # Log full error for debugging, return sanitized message to user
+            logger.error("Git diff failed: %s", e.stderr)
+            raise ValueError(
+                "Git diff failed. Please check that the refs exist and are valid."
+            ) from e
         except subprocess.TimeoutExpired:
             raise ValueError("Git diff timed out")
 
@@ -75,6 +114,9 @@ class ImpactAnalyzer:
         Returns:
             List of requirement external IDs found in files.
         """
+        # Ref should already be validated by get_changed_files, but validate again
+        validate_git_ref(ref)
+
         ids = []
         for path in file_paths:
             try:

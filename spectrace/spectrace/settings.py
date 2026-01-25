@@ -8,6 +8,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import os
 from pathlib import Path
 from django.urls import reverse_lazy
 from django.utils.translation import gettext_lazy as _
@@ -20,12 +21,27 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-dev-key-change-in-production'
+# In production, set SECRET_KEY environment variable
+SECRET_KEY = os.environ.get(
+    'SECRET_KEY',
+    'django-insecure-dev-key-change-in-production'
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# Set DEBUG=false in production environment
+DEBUG = os.environ.get('DEBUG', 'true').lower() in ('true', '1', 'yes')
 
-ALLOWED_HOSTS = []
+# ALLOWED_HOSTS must be set in production
+# Set as comma-separated list: ALLOWED_HOSTS=example.com,www.example.com
+ALLOWED_HOSTS = [
+    h.strip()
+    for h in os.environ.get('ALLOWED_HOSTS', '').split(',')
+    if h.strip()
+] or ['localhost', '127.0.0.1', '[::1]']
+
+# API key for external systems to submit data
+# Required for /api/update-slo-status, /api/submit-validation-result, etc.
+SPECTRACE_API_KEY = os.environ.get('SPECTRACE_API_KEY', '')
 
 
 # Application definition

@@ -1,6 +1,9 @@
 """API endpoints for external systems to push status updates."""
 from dataclasses import asdict
 from decimal import Decimal, InvalidOperation
+from functools import wraps
+import hmac
+import logging
 
 from django.conf import settings
 from django.core.cache import cache
@@ -11,6 +14,61 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from .health import TestConnectionResult, verify_linear_connection
+
+logger = logging.getLogger(__name__)
+
+
+def require_api_key(view_func):
+    """Decorator to require API key authentication for endpoints.
+
+    Checks for API key in:
+    1. Authorization header: "Bearer <key>" or "Api-Key <key>"
+    2. X-API-Key header
+
+    The expected key is configured via SPECTRACE_API_KEY in settings.
+    If SPECTRACE_API_KEY is not set, authentication is bypassed (dev mode warning).
+    """
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        expected_key = getattr(settings, 'SPECTRACE_API_KEY', None)
+
+        # If no API key configured, allow request but log warning
+        if not expected_key:
+            logger.warning(
+                "SPECTRACE_API_KEY not configured - API endpoint accessed without auth: %s",
+                request.path
+            )
+            return view_func(request, *args, **kwargs)
+
+        # Extract API key from headers
+        provided_key = None
+
+        # Check Authorization header
+        auth_header = request.headers.get('Authorization', '')
+        if auth_header.startswith('Bearer '):
+            provided_key = auth_header[7:]
+        elif auth_header.startswith('Api-Key '):
+            provided_key = auth_header[8:]
+
+        # Check X-API-Key header as fallback
+        if not provided_key:
+            provided_key = request.headers.get('X-API-Key', '')
+
+        # Validate key using constant-time comparison
+        if not provided_key or not hmac.compare_digest(provided_key, expected_key):
+            logger.warning(
+                "API authentication failed for endpoint: %s from IP: %s",
+                request.path,
+                request.META.get('REMOTE_ADDR', 'unknown')
+            )
+            return JsonResponse(
+                {'error': 'Authentication required. Provide API key via Authorization or X-API-Key header.'},
+                status=401
+            )
+
+        return view_func(request, *args, **kwargs)
+
+    return wrapper
 from .models import (
     InAppValidation,
     InAppValidationResult,
@@ -53,6 +111,7 @@ def parse_decimal_safe(value) -> Decimal | None:
 
 
 @csrf_exempt
+@require_api_key
 @require_http_methods(["POST"])
 @validate_request(
     request_schema=SLOStatusRequest,
@@ -116,6 +175,7 @@ def update_slo_status(request, data: SLOStatusRequest | None = None):
 
 
 @csrf_exempt
+@require_api_key
 @require_http_methods(["POST"])
 @validate_request(
     request_schema=ValidationResultRequest,
@@ -314,6 +374,7 @@ def _result_to_dict(result: TestConnectionResult) -> dict:
 
 
 @csrf_exempt
+@require_api_key
 @require_http_methods(["POST"])
 @validate_request(
     request_schema=LinearTestRequest,
@@ -323,20 +384,16 @@ def _result_to_dict(result: TestConnectionResult) -> dict:
     methods=["POST"],
 )
 def test_linear_connection(request, data: LinearTestRequest | None = None):
-    """Test Linear API connection with fresh health check."""
-    # Parse optional override from request body
+    """Test Linear API connection with fresh health check.
+
+    Note: Credential override from request body is disabled for security.
+    Configure credentials via settings (LINEAR_API_KEY, LINEAR_WORKSPACE, LINEAR_TEAM).
+    """
+    # Use only configured credentials - no override from request to prevent
+    # credential enumeration attacks
     api_key = getattr(settings, 'LINEAR_API_KEY', '')
     workspace = getattr(settings, 'LINEAR_WORKSPACE', '')
     team = getattr(settings, 'LINEAR_TEAM', '')
-
-    # Use data from request if provided
-    if data is not None:
-        if data.api_key:
-            api_key = data.api_key
-        if data.workspace:
-            workspace = data.workspace
-        if data.team:
-            team = data.team
 
     # Run fresh health check
     result = verify_linear_connection(api_key, workspace, team)

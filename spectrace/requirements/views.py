@@ -9,7 +9,7 @@ from django.views.decorators.http import require_http_methods
 
 from .matrix import get_matrix_data, get_cell_color
 from .models import Requirement, InAppValidation, InAppValidationStatus, InAppValidationRun
-from .services.impact_analyzer import ImpactAnalyzer
+from .services.impact_analyzer import ImpactAnalyzer, validate_git_ref
 from .validation_runs import (
     get_validation_runs_data,
     get_run_results_grouped,
@@ -44,9 +44,15 @@ def matrix_view(request):
         tags: Comma-separated list of tags to filter by
         parent_id: Show only children of this requirement
     """
-    # Parse query parameters
-    page = int(request.GET.get('page', 1))
-    per_page = int(request.GET.get('per_page', 25))
+    # Parse query parameters with bounds validation
+    try:
+        page = max(1, min(int(request.GET.get('page', 1)), 10000))
+    except (ValueError, TypeError):
+        page = 1
+    try:
+        per_page = max(1, min(int(request.GET.get('per_page', 25)), 100))
+    except (ValueError, TypeError):
+        per_page = 25
 
     # Build filters from query params
     filters = _build_matrix_filters(request)
@@ -208,6 +214,13 @@ def impact_analysis_view(request):
                 {"error": "Both base_ref and head_ref are required"}, status=400
             )
 
+        # Validate git refs before processing
+        try:
+            validate_git_ref(base_ref)
+            validate_git_ref(head_ref)
+        except ValueError as e:
+            return JsonResponse({"error": str(e)}, status=400)
+
         analyzer = ImpactAnalyzer()
 
         try:
@@ -263,8 +276,15 @@ def validation_run_list_view(request):
         date_from: Filter by start date (YYYY-MM-DD)
         date_to: Filter by end date (YYYY-MM-DD)
     """
-    page = int(request.GET.get('page', 1))
-    per_page = int(request.GET.get('per_page', 25))
+    # Parse pagination with bounds validation
+    try:
+        page = max(1, min(int(request.GET.get('page', 1)), 10000))
+    except (ValueError, TypeError):
+        page = 1
+    try:
+        per_page = max(1, min(int(request.GET.get('per_page', 25)), 100))
+    except (ValueError, TypeError):
+        per_page = 25
 
     filters = _build_validation_run_filters(request)
     data = get_validation_runs_data(page=page, per_page=per_page, filters=filters)
