@@ -1,5 +1,33 @@
 # Project Milestones: SpecTrace
 
+## v5 Structured Requirements (Shipped: 2026-01-24)
+
+**Delivered:** FRET-inspired structured requirement fields with enhanced conflict detection, Linear import enrichment, and SLO auto-linking.
+
+**Phases completed:** 5 (ad-hoc, outside GSD workflow)
+
+**Key accomplishments:**
+
+- Optional structured fields: scope, condition, component, timing, response
+- Structure completeness scoring with dashboard badge
+- Condition-based conflict detection (overlap, timing conflicts, response contradictions)
+- Linear import enrichment with best-effort pattern extraction
+- SLO auto-linking based on timing field matching
+- Component filter and structured fields fieldset in admin
+
+**Stats:**
+
+- 3 new files created
+- 6 files modified
+- 30 new tests (228 total)
+- 5 phases, 1 day
+
+**Git range:** `0a47cdf` → `fd13976`
+
+**What's next:** v6 — Historical tracking, scheduled validation, alerting
+
+---
+
 ## v4 SDK (Shipped: 2026-01-21)
 
 **Delivered:** Production-ready validation SDK with vendor tracking, feature flag correlation, regression detection, examples, and documentation.

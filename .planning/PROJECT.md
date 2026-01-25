@@ -10,7 +10,7 @@ PMs can see, at any moment, which requirements are verified by passing tests —
 
 ## What's Shipped
 
-### Post-v4 Enhancements (2026-01-24)
+### v5 Structured Requirements (Shipped: 2026-01-24)
 
 - **Structured requirement fields:** FRET-inspired optional fields (scope, condition, component, timing, response) for formal requirement specification
 - **Enhanced conflict detection:** Condition overlap, timing conflicts, and response contradiction detection based on structured fields
