@@ -54,7 +54,7 @@
             <h2 class="text-lg font-semibold text-base-900 dark:text-white">Filters</h2>
         </div>
         <form method="get" class="p-4">
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Source</label>
                     <select name="source" class="w-full rounded-md border-base-300 dark:border-base-600 dark:bg-base-800 dark:text-white">
@@ -70,6 +70,15 @@
                         <option value="">All Vendors</option>
                         {% for vendor in vendors %}
                         <option value="{{ vendor }}" {% if current_filters.vendor == vendor %}selected{% endif %}>{{ vendor }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Requirement</label>
+                    <select name="requirement" class="w-full rounded-md border-base-300 dark:border-base-600 dark:bg-base-800 dark:text-white">
+                        <option value="">All Requirements</option>
+                        {% for req in requirements %}
+                        <option value="{{ req }}" {% if current_filters.requirement == req %}selected{% endif %}>{{ req }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -145,7 +154,7 @@
                     <tr>
                         <td colspan="7" class="px-4 py-8 text-center text-base-500 dark:text-base-400">
                             No validation runs found.
-                            {% if current_filters.source or current_filters.vendor or current_filters.date_from or current_filters.date_to %}
+                            {% if current_filters.source or current_filters.vendor or current_filters.requirement or current_filters.date_from or current_filters.date_to %}
                             <br><a href="{% url 'admin-validation-runs' %}" class="text-primary-600 hover:underline">Clear filters</a> to see all runs.
                             {% endif %}
                         </td>
@@ -164,13 +173,13 @@
             </div>
             <div class="flex gap-2">
                 {% if pagination.has_previous %}
-                <a href="?page={{ pagination.previous_page }}{% if current_filters.source %}&source={{ current_filters.source }}{% endif %}{% if current_filters.vendor %}&vendor={{ current_filters.vendor }}{% endif %}{% if current_filters.date_from %}&date_from={{ current_filters.date_from }}{% endif %}{% if current_filters.date_to %}&date_to={{ current_filters.date_to }}{% endif %}"
+                <a href="?page={{ pagination.previous_page }}{% if current_filters.source %}&source={{ current_filters.source }}{% endif %}{% if current_filters.vendor %}&vendor={{ current_filters.vendor }}{% endif %}{% if current_filters.requirement %}&requirement={{ current_filters.requirement }}{% endif %}{% if current_filters.date_from %}&date_from={{ current_filters.date_from }}{% endif %}{% if current_filters.date_to %}&date_to={{ current_filters.date_to }}{% endif %}"
                    class="px-3 py-1 bg-base-200 dark:bg-base-700 rounded hover:bg-base-300 dark:hover:bg-base-600 text-sm">
                     Previous
                 </a>
                 {% endif %}
                 {% if pagination.has_next %}
-                <a href="?page={{ pagination.next_page }}{% if current_filters.source %}&source={{ current_filters.source }}{% endif %}{% if current_filters.vendor %}&vendor={{ current_filters.vendor }}{% endif %}{% if current_filters.date_from %}&date_from={{ current_filters.date_from }}{% endif %}{% if current_filters.date_to %}&date_to={{ current_filters.date_to }}{% endif %}"
+                <a href="?page={{ pagination.next_page }}{% if current_filters.source %}&source={{ current_filters.source }}{% endif %}{% if current_filters.vendor %}&vendor={{ current_filters.vendor }}{% endif %}{% if current_filters.requirement %}&requirement={{ current_filters.requirement }}{% endif %}{% if current_filters.date_from %}&date_from={{ current_filters.date_from }}{% endif %}{% if current_filters.date_to %}&date_to={{ current_filters.date_to }}{% endif %}"
                    class="px-3 py-1 bg-base-200 dark:bg-base-700 rounded hover:bg-base-300 dark:hover:bg-base-600 text-sm">
                     Next
                 </a>

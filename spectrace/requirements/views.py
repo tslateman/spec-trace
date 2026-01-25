@@ -236,6 +236,8 @@ def _build_validation_run_filters(request) -> dict:
         filters['source'] = request.GET['source']
     if request.GET.get('vendor'):
         filters['vendor'] = request.GET['vendor']
+    if request.GET.get('requirement'):
+        filters['requirement'] = request.GET['requirement']
     if request.GET.get('date_from'):
         try:
             filters['date_from'] = datetime.strptime(request.GET['date_from'], '%Y-%m-%d')
@@ -267,6 +269,15 @@ def validation_run_list_view(request):
     filters = _build_validation_run_filters(request)
     data = get_validation_runs_data(page=page, per_page=per_page, filters=filters)
 
+    # Get requirements with validations for filter dropdown
+    requirements_with_validations = (
+        Requirement.objects
+        .filter(in_app_validations__isnull=False)
+        .distinct()
+        .order_by('external_id')
+        .values_list('external_id', flat=True)
+    )
+
     context = {
         'title': 'Validation Runs',
         'runs': data['runs'],
@@ -274,9 +285,11 @@ def validation_run_list_view(request):
         'summary': data['summary'],
         'vendors': get_unique_vendors(),
         'sources': get_unique_sources(),
+        'requirements': list(requirements_with_validations),
         'current_filters': {
             'source': request.GET.get('source', ''),
             'vendor': request.GET.get('vendor', ''),
+            'requirement': request.GET.get('requirement', ''),
             'date_from': request.GET.get('date_from', ''),
             'date_to': request.GET.get('date_to', ''),
             'per_page': per_page,

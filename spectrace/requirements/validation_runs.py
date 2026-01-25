@@ -63,6 +63,10 @@ def get_validation_runs_data(page: int = 1, per_page: int = 25, filters: dict | 
     if filters.get('vendor'):
         queryset = queryset.filter(results__validation__vendor=filters['vendor']).distinct()
 
+    # For requirement filter, we need to filter by validation's requirement
+    if filters.get('requirement'):
+        queryset = queryset.filter(results__validation__requirement__external_id=filters['requirement']).distinct()
+
     # Paginate
     paginator = Paginator(queryset, per_page)
     page_obj = paginator.get_page(page)
