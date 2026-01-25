@@ -17,7 +17,7 @@
     }
 </style>
 
-<div class="p-6" x-data="{ runA: null, runB: null }">
+<div class="p-6 bg-base-50 dark:bg-base-950 min-h-screen" x-data="{ runA: null, runB: null }">
     <!-- Header -->
     <div class="mb-6 flex items-center justify-between">
         <div>
@@ -27,7 +27,7 @@
             </p>
         </div>
         <a href="{% url 'admin-validation-runs' %}"
-           class="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600">
+           class="px-4 py-2 bg-base-200 dark:bg-base-700 rounded hover:bg-base-300 dark:hover:bg-base-600">
             ← Back to List
         </a>
     </div>
@@ -46,7 +46,7 @@
                 </div>
             </div>
             <a :href="runA && runB ? '{% url 'admin-validation-run-compare' %}?run_a=' + runA + '&run_b=' + runB : '#'"
-               :class="runA && runB ? 'bg-primary-600 hover:bg-primary-700' : 'bg-gray-400 cursor-not-allowed'"
+               :class="runA && runB ? 'bg-primary-600 hover:bg-primary-700' : 'bg-base-400 cursor-not-allowed'"
                class="px-4 py-2 text-white rounded-lg transition-colors">
                 Compare Selected Runs
             </a>

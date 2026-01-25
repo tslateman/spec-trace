@@ -17,7 +17,7 @@
     .dark .change-removed { background: #262626; color: #737373; }
 </style>
 
-<div class="p-6">
+<div class="p-6 bg-base-50 dark:bg-base-950 min-h-screen">
     <!-- Header -->
     <div class="mb-6 flex items-center justify-between">
         <div>
@@ -32,7 +32,7 @@
                 New Comparison
             </a>
             <a href="{% url 'admin-validation-runs' %}"
-               class="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600">
+               class="px-4 py-2 bg-base-200 dark:bg-base-700 rounded hover:bg-base-300 dark:hover:bg-base-600">
                 ← Back to List
             </a>
         </div>
@@ -90,22 +90,22 @@
     <!-- Filter Buttons -->
     <div class="mb-4 flex gap-2" x-data="{ filter: 'all' }">
         <button @click="filter = 'all'"
-                :class="filter === 'all' ? 'bg-primary-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-base-700 dark:text-base-300'"
+                :class="filter === 'all' ? 'bg-primary-600 text-white' : 'bg-base-200 dark:bg-base-700 text-base-700 dark:text-base-300'"
                 class="px-3 py-1 rounded text-sm transition-colors">
             All ({{ comparison.changes|length }})
         </button>
         <button @click="filter = 'regressed'"
-                :class="filter === 'regressed' ? 'bg-red-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-base-700 dark:text-base-300'"
+                :class="filter === 'regressed' ? 'bg-red-600 text-white' : 'bg-base-200 dark:bg-base-700 text-base-700 dark:text-base-300'"
                 class="px-3 py-1 rounded text-sm transition-colors">
             Regressed ({{ comparison.summary.regressed }})
         </button>
         <button @click="filter = 'improved'"
-                :class="filter === 'improved' ? 'bg-green-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-base-700 dark:text-base-300'"
+                :class="filter === 'improved' ? 'bg-green-600 text-white' : 'bg-base-200 dark:bg-base-700 text-base-700 dark:text-base-300'"
                 class="px-3 py-1 rounded text-sm transition-colors">
             Improved ({{ comparison.summary.improved }})
         </button>
         <button @click="filter = 'new'"
-                :class="filter === 'new' ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-base-700 dark:text-base-300'"
+                :class="filter === 'new' ? 'bg-blue-600 text-white' : 'bg-base-200 dark:bg-base-700 text-base-700 dark:text-base-300'"
                 class="px-3 py-1 rounded text-sm transition-colors">
             New ({{ comparison.summary.new }})
         </button>

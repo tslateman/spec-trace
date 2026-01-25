@@ -24,7 +24,7 @@
     .pass-rate-fill.danger { background: #ef4444; }
 </style>
 
-<div class="p-6">
+<div class="p-6 bg-base-50 dark:bg-base-950 min-h-screen">
     <!-- Header -->
     <div class="mb-6 flex items-center justify-between">
         <div>
@@ -39,7 +39,7 @@
                 Compare Runs
             </a>
             <a href="{% url 'admin:index' %}"
-               class="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600">
+               class="px-4 py-2 bg-base-200 dark:bg-base-700 rounded hover:bg-base-300 dark:hover:bg-base-600">
                 ← Back to Admin
             </a>
         </div>
@@ -88,7 +88,7 @@
                 <button type="submit" class="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg">
                     Apply Filters
                 </button>
-                <a href="{% url 'admin-validation-runs' %}" class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-base-800 dark:text-base-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600">
+                <a href="{% url 'admin-validation-runs' %}" class="px-4 py-2 bg-base-200 dark:bg-base-700 text-base-800 dark:text-base-200 rounded-lg hover:bg-base-300 dark:hover:bg-base-600">
                     Clear Filters
                 </a>
             </div>

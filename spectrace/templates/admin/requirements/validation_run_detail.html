@@ -71,7 +71,7 @@
     }
 </style>
 
-<div class="p-6" x-data="{ expandAll: false }">
+<div class="p-6 bg-base-50 dark:bg-base-950 min-h-screen" x-data="{ expandAll: false }">
     <!-- Header with Navigation -->
     <div class="mb-6 flex items-center justify-between">
         <div>
@@ -83,14 +83,14 @@
         <div class="flex gap-2">
             {% if previous_run %}
             <a href="{% url 'admin-validation-run-detail' previous_run.id %}"
-               class="px-3 py-2 bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600 text-sm"
+               class="px-3 py-2 bg-base-200 dark:bg-base-700 rounded hover:bg-base-300 dark:hover:bg-base-600 text-sm"
                title="Previous Run #{{ previous_run.id }}">
                 ← Previous
             </a>
             {% endif %}
             {% if next_run %}
             <a href="{% url 'admin-validation-run-detail' next_run.id %}"
-               class="px-3 py-2 bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600 text-sm"
+               class="px-3 py-2 bg-base-200 dark:bg-base-700 rounded hover:bg-base-300 dark:hover:bg-base-600 text-sm"
                title="Next Run #{{ next_run.id }}">
                 Next →
             </a>
@@ -100,7 +100,7 @@
                 View All Steps
             </a>
             <a href="{% url 'admin-validation-runs' %}"
-               class="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600">
+               class="px-4 py-2 bg-base-200 dark:bg-base-700 rounded hover:bg-base-300 dark:hover:bg-base-600">
                 ← Back to List
             </a>
         </div>
@@ -141,7 +141,7 @@
     <!-- Expand/Collapse All -->
     <div class="mb-4 flex justify-end">
         <button @click="expandAll = !expandAll"
-                class="px-3 py-1 text-sm bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600">
+                class="px-3 py-1 text-sm bg-base-200 dark:bg-base-700 rounded hover:bg-base-300 dark:hover:bg-base-600">
             <span x-text="expandAll ? 'Collapse All' : 'Expand All'"></span>
         </button>
     </div>
