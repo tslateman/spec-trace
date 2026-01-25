@@ -3,12 +3,19 @@ import csv
 from datetime import datetime
 
 from django.contrib.admin.views.decorators import staff_member_required
+from django.db.models import Prefetch
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.http import require_http_methods
 
 from .matrix import get_matrix_data, get_cell_color
-from .models import Requirement, InAppValidation, InAppValidationStatus, InAppValidationRun
+from .models import (
+    Requirement,
+    InAppValidation,
+    InAppValidationResult,
+    InAppValidationStatus,
+    InAppValidationRun,
+)
 from .services.impact_analyzer import ImpactAnalyzer, validate_git_ref
 from .validation_runs import (
     get_validation_runs_data,
@@ -130,17 +137,23 @@ def matrix_export(request):
 @staff_member_required
 def vendor_coverage_view(request):
     """Dashboard showing validation coverage by vendor.
-    
+
     Shows:
     - Vendor list with validation counts
     - Per-vendor pass/fail rates
     - Recent regressions per vendor
     """
-    # Group validations by vendor (prefetch results to avoid N+1 queries)
+    # Group validations by vendor with Prefetch to avoid N+1 queries
+    # Order results by checked_at descending so we can access latest without re-querying
     vendors = {}
     all_flags = set()
-    
-    for validation in InAppValidation.objects.exclude(vendor='').prefetch_related('results'):
+
+    prefetch = Prefetch(
+        'results',
+        queryset=InAppValidationResult.objects.order_by('-checked_at')
+    )
+
+    for validation in InAppValidation.objects.exclude(vendor='').prefetch_related(prefetch):
         vendor = validation.vendor
         if vendor not in vendors:
             vendors[vendor] = {
@@ -153,24 +166,34 @@ def vendor_coverage_view(request):
                 'regressions': [],
                 'common_flags': {},
             }
-        
+
         vendors[vendor]['total'] += 1
-        status = validation.status
+
+        # Access prefetched results (already ordered by -checked_at) without triggering new query
+        results = list(validation.results.all())
+        latest = results[0] if results else None
+        status = latest.status if latest else InAppValidationStatus.NOT_RUN
+
         if status == InAppValidationStatus.SUCCESS:
             vendors[vendor]['passing'] += 1
         elif status == InAppValidationStatus.FAILURE:
             vendors[vendor]['failing'] += 1
         elif status == InAppValidationStatus.NOT_RUN:
             vendors[vendor]['not_run'] += 1
-        
-        # Check for regression
-        regression = validation.detect_regression()
-        if regression['is_regression']:
-            vendors[vendor]['regressions'].append({
-                'name': validation.name,
-                'regressed_at': regression['regressed_at'],
-            })
-        
+
+        # Check for regression using prefetched results (no additional query)
+        if len(results) >= 2:
+            current, previous = results[0], results[1]
+            is_regression = (
+                previous.status == InAppValidationStatus.SUCCESS and
+                current.status == InAppValidationStatus.FAILURE
+            )
+            if is_regression:
+                vendors[vendor]['regressions'].append({
+                    'name': validation.name,
+                    'regressed_at': current.checked_at,
+                })
+
         # Collect feature flags
         if validation.feature_flags:
             all_flags.update(validation.feature_flags.keys())
@@ -178,12 +201,12 @@ def vendor_coverage_view(request):
                 if flag not in vendors[vendor]['common_flags']:
                     vendors[vendor]['common_flags'][flag] = 0
                 vendors[vendor]['common_flags'][flag] += 1
-    
+
     # Calculate pass rates
     for vendor_data in vendors.values():
         total = vendor_data['total']
         vendor_data['pass_rate'] = round((vendor_data['passing'] / total) * 100, 1)
-    
+
     context = {
         'title': 'Vendor Coverage',
         'vendors': sorted(vendors.values(), key=lambda v: v['name']),
@@ -191,7 +214,7 @@ def vendor_coverage_view(request):
         'total_vendors': len(vendors),
         'total_validations': sum(v['total'] for v in vendors.values()),
     }
-    
+
     return render(request, 'admin/requirements/vendor_coverage.html', context)
 
 

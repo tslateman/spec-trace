@@ -1,6 +1,22 @@
 """msgspec Struct definitions for SpecTrace API request/response schemas."""
 
-from msgspec import Struct
+from typing import Annotated
+
+from msgspec import Meta, Struct
+
+from requirements.constants import (
+    MAX_ENDPOINT_LENGTH,
+    MAX_MESSAGE_LENGTH,
+    MAX_NAME_LENGTH,
+    MAX_REQUIREMENT_ID_LENGTH,
+    MAX_SLOS_PER_REQUEST,
+    MAX_SOURCE_LENGTH,
+    MAX_STATUS_LENGTH,
+    MAX_STEPS_PER_VALIDATION,
+    MAX_URL_LENGTH,
+    MAX_VALIDATIONS_PER_REQUEST,
+    MAX_VENDOR_LENGTH,
+)
 
 
 # === SLO Status ===
@@ -8,8 +24,8 @@ from msgspec import Struct
 class SLOStatusItem(Struct):
     """Individual SLO status update."""
 
-    name: str
-    status: str  # met, at_risk, breached
+    name: Annotated[str, Meta(max_length=MAX_NAME_LENGTH)]
+    status: Annotated[str, Meta(max_length=MAX_STATUS_LENGTH)]  # met, at_risk, breached
     current_value: float | None = None
     error_budget_remaining: float | None = None
 
@@ -17,7 +33,7 @@ class SLOStatusItem(Struct):
 class SLOStatusRequest(Struct):
     """Request body for POST /api/slo/status/."""
 
-    slos: list[SLOStatusItem]
+    slos: Annotated[list[SLOStatusItem], Meta(max_length=MAX_SLOS_PER_REQUEST)]
     update_verification_status: bool = False
 
 
@@ -35,7 +51,7 @@ class SLOStatusResponse(Struct):
 class ValidationStep(Struct):
     """Individual validation step result."""
 
-    name: str
+    name: Annotated[str, Meta(max_length=MAX_NAME_LENGTH)]
     passed: bool
     details: str | None = None
     error_message: str | None = None
@@ -45,21 +61,21 @@ class ValidationStep(Struct):
 class ValidationItem(Struct, kw_only=True):
     """Individual validation result in a submission."""
 
-    requirement_id: str
-    name: str
-    status: str  # success, failure, unknown
-    message: str = ""
-    endpoint: str = ""
+    requirement_id: Annotated[str, Meta(max_length=MAX_REQUIREMENT_ID_LENGTH)]
+    name: Annotated[str, Meta(max_length=MAX_NAME_LENGTH)]
+    status: Annotated[str, Meta(max_length=MAX_STATUS_LENGTH)]  # success, failure, unknown
+    message: Annotated[str, Meta(max_length=MAX_MESSAGE_LENGTH)] = ""
+    endpoint: Annotated[str, Meta(max_length=MAX_ENDPOINT_LENGTH)] = ""
     checked_at: str | None = None
-    steps: list[ValidationStep] = []
+    steps: Annotated[list[ValidationStep], Meta(max_length=MAX_STEPS_PER_VALIDATION)] = []
     context: dict | None = None  # Flexible dict to preserve all context fields
 
 
 class ValidationResultRequest(Struct):
     """Request body for POST /api/validation/result/."""
 
-    source: str
-    validations: list[ValidationItem]
+    source: Annotated[str, Meta(max_length=MAX_SOURCE_LENGTH)]
+    validations: Annotated[list[ValidationItem], Meta(max_length=MAX_VALIDATIONS_PER_REQUEST)]
     update_verification_status: bool = False
 
 
@@ -104,7 +120,7 @@ class LinearTestRequest(Struct, kw_only=True):
 class HealthCheck(Struct):
     """Individual health check result."""
 
-    name: str
+    name: Annotated[str, Meta(max_length=MAX_NAME_LENGTH)]
     passed: bool
     details: str | None = None
     error_message: str | None = None

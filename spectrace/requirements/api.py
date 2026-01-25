@@ -12,7 +12,15 @@ from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
+from django_ratelimit.decorators import ratelimit
 
+from .constants import (
+    LINEAR_HEALTH_CACHE_TIMEOUT,
+    RATE_LIMIT_EXTERNAL,
+    RATE_LIMIT_HEAVY_WRITE,
+    RATE_LIMIT_READ,
+    RATE_LIMIT_WRITE,
+)
 from .health import TestConnectionResult, verify_linear_connection
 
 logger = logging.getLogger(__name__)
@@ -113,6 +121,7 @@ def parse_decimal_safe(value) -> Decimal | None:
 @csrf_exempt
 @require_api_key
 @require_http_methods(["POST"])
+@ratelimit(key='ip', rate=RATE_LIMIT_WRITE, block=True)
 @validate_request(
     request_schema=SLOStatusRequest,
     response_schema=SLOStatusResponse,
@@ -177,6 +186,7 @@ def update_slo_status(request, data: SLOStatusRequest | None = None):
 @csrf_exempt
 @require_api_key
 @require_http_methods(["POST"])
+@ratelimit(key='ip', rate=RATE_LIMIT_HEAVY_WRITE, block=True)
 @validate_request(
     request_schema=ValidationResultRequest,
     response_schema=ValidationResultResponse,
@@ -298,6 +308,7 @@ def submit_validation_result(request, data: ValidationResultRequest | None = Non
 
 
 @require_http_methods(["GET"])
+@ratelimit(key='ip', rate=RATE_LIMIT_READ, block=True)
 @validate_request(
     response_schema=RequirementStatusResponse,
     tags=["Requirements"],
@@ -334,9 +345,8 @@ def get_requirement_status(request, external_id, data=None):
     })
 
 
-# Cache key and timeout for Linear health check results
+# Cache key for Linear health check results
 LINEAR_HEALTH_CACHE_KEY = 'linear_connection_health'
-LINEAR_HEALTH_CACHE_TIMEOUT = 60  # 1 minute cache to respect rate limits
 
 
 def _compute_overall_status(result: TestConnectionResult) -> str:
@@ -376,6 +386,7 @@ def _result_to_dict(result: TestConnectionResult) -> dict:
 @csrf_exempt
 @require_api_key
 @require_http_methods(["POST"])
+@ratelimit(key='ip', rate=RATE_LIMIT_EXTERNAL, block=True)
 @validate_request(
     request_schema=LinearTestRequest,
     response_schema=LinearTestResponse,
@@ -409,6 +420,7 @@ def test_linear_connection(request, data: LinearTestRequest | None = None):
 
 
 @require_http_methods(["GET"])
+@ratelimit(key='ip', rate=RATE_LIMIT_READ, block=True)
 @validate_request(
     response_schema=ValidationRunsResponse,
     tags=["Validation Runs"],
@@ -489,6 +501,7 @@ def list_validation_runs(request, data=None):
 
 
 @require_http_methods(["GET"])
+@ratelimit(key='ip', rate=RATE_LIMIT_READ, block=True)
 @validate_request(
     response_schema=ValidationRunDetailResponse,
     tags=["Validation Runs"],
@@ -532,6 +545,7 @@ def get_validation_run(request, run_id, data=None):
 
 
 @require_http_methods(["GET"])
+@ratelimit(key='ip', rate=RATE_LIMIT_READ, block=True)
 @validate_request(
     response_schema=ValidationRunStepsResponse,
     tags=["Validation Runs"],
@@ -571,6 +585,7 @@ def get_validation_run_steps(request, run_id, data=None):
 
 
 @require_http_methods(["GET"])
+@ratelimit(key='ip', rate=RATE_LIMIT_READ, block=True)
 @validate_request(
     response_schema=LinearHealthResponse,
     tags=["Integrations"],
