@@ -272,7 +272,7 @@ def validation_run_list_view(request):
     # Get requirements with validations for filter dropdown
     requirements_with_validations = (
         Requirement.objects
-        .filter(in_app_validations__isnull=False)
+        .filter(inapp_validations__isnull=False)
         .distinct()
         .order_by('external_id')
         .values_list('external_id', flat=True)
