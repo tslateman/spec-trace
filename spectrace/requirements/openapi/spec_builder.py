@@ -146,11 +146,13 @@ def build_openapi_spec(
 
     # Add ErrorResponse schema if not already present
     if "ErrorResponse" not in schemas:
-        from msgspec import json as msgspec_json
+        from .schema_generator import struct_to_json_schema
 
-        error_schema = msgspec_json.schema(ErrorResponse)
-        error_schema.pop("$schema", None)
-        schemas["ErrorResponse"] = error_schema
+        main_schema, additional = struct_to_json_schema(ErrorResponse)
+        for name, schema in additional.items():
+            if name not in schemas:
+                schemas[name] = schema
+        schemas["ErrorResponse"] = main_schema
 
     # Build the spec
     spec: dict[str, Any] = {

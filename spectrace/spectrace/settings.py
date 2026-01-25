@@ -9,6 +9,8 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+from django.urls import reverse_lazy
+from django.utils.translation import gettext_lazy as _
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -50,6 +52,70 @@ UNFOLD = {
     "SITE_TITLE": "SpecTrace",
     "SITE_HEADER": "SpecTrace Dashboard",
     "DASHBOARD_CALLBACK": "requirements.dashboard.dashboard_callback",
+    "SIDEBAR": {
+        "show_search": False,
+        "show_all_applications": False,
+        "navigation": [
+            {
+                "title": _("Quick Links"),
+                "separator": True,
+                "items": [
+                    {
+                        "title": _("Dashboard"),
+                        "icon": "dashboard",
+                        "link": reverse_lazy("admin:index"),
+                    },
+                    {
+                        "title": _("About SpecTrace"),
+                        "icon": "info",
+                        "link": reverse_lazy("admin-about"),
+                    },
+                ],
+            },
+            {
+                "title": _("Analysis Tools"),
+                "separator": True,
+                "items": [
+                    {
+                        "title": _("Traceability Matrix"),
+                        "icon": "grid_on",
+                        "link": reverse_lazy("admin-matrix"),
+                    },
+                    {
+                        "title": _("Vendor Coverage"),
+                        "icon": "business",
+                        "link": reverse_lazy("admin-vendor-coverage"),
+                    },
+                    {
+                        "title": _("Impact Analysis"),
+                        "icon": "analytics",
+                        "link": reverse_lazy("admin-impact-analysis"),
+                    },
+                    {
+                        "title": _("Validation Runs"),
+                        "icon": "fact_check",
+                        "link": reverse_lazy("admin-validation-runs"),
+                    },
+                ],
+            },
+            {
+                "title": _("Data Management"),
+                "separator": True,
+                "items": [
+                    {
+                        "title": _("Requirements"),
+                        "icon": "assignment",
+                        "link": reverse_lazy("admin:requirements_requirement_changelist"),
+                    },
+                    {
+                        "title": _("Test Runs"),
+                        "icon": "science",
+                        "link": reverse_lazy("admin:requirements_testrun_changelist"),
+                    },
+                ],
+            },
+        ],
+    },
 }
 
 MIDDLEWARE = [

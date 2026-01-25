@@ -8,56 +8,60 @@ from msgspec import Struct
 from .introspection import EndpointInfo
 
 
-def struct_to_json_schema(struct_type: type[Struct]) -> tuple[str, dict[str, Any]]:
+def _convert_refs(obj: Any) -> Any:
+    """Recursively convert $ref paths from $defs to components/schemas format.
+
+    Converts: #/$defs/SchemaName -> #/components/schemas/SchemaName
+    """
+    if isinstance(obj, dict):
+        result = {}
+        for key, value in obj.items():
+            if key == "$ref" and isinstance(value, str) and value.startswith("#/$defs/"):
+                # Convert $defs reference to components/schemas reference
+                schema_name = value.replace("#/$defs/", "")
+                result[key] = f"#/components/schemas/{schema_name}"
+            else:
+                result[key] = _convert_refs(value)
+        return result
+    elif isinstance(obj, list):
+        return [_convert_refs(item) for item in obj]
+    else:
+        return obj
+
+
+def struct_to_json_schema(struct_type: type[Struct]) -> tuple[dict[str, Any], dict[str, Any]]:
     """Convert a msgspec Struct to OpenAPI 3.1 JSON Schema.
 
     Args:
         struct_type: The msgspec Struct class to convert.
 
     Returns:
-        Tuple of (schema_name, schema_definition)
+        Tuple of (main_schema, additional_schemas_dict)
+        - main_schema: The schema for the struct itself
+        - additional_schemas_dict: Any nested schemas that should be added to components
     """
     # Use msgspec's built-in schema generation
-    schema = msgspec.json.schema(struct_type)
+    raw_schema = msgspec.json.schema(struct_type)
 
-    # The schema name is the class name
-    schema_name = struct_type.__name__
+    # Remove $schema if present
+    raw_schema.pop("$schema", None)
 
-    # Clean up schema for OpenAPI 3.1 compatibility
-    # msgspec generates JSON Schema compatible output, but we may need minor adjustments
-    schema = _clean_schema_for_openapi(schema)
+    # Extract $defs (nested type definitions)
+    defs = raw_schema.pop("$defs", {})
 
-    return schema_name, schema
+    # The main schema might be just a $ref to the actual definition
+    # In that case, get the actual schema from $defs
+    if "$ref" in raw_schema and raw_schema["$ref"].startswith("#/$defs/"):
+        ref_name = raw_schema["$ref"].replace("#/$defs/", "")
+        main_schema = defs.pop(ref_name, raw_schema)
+    else:
+        main_schema = raw_schema
 
+    # Convert all $ref paths in main schema and defs
+    main_schema = _convert_refs(main_schema)
+    additional_schemas = {name: _convert_refs(schema) for name, schema in defs.items()}
 
-def _clean_schema_for_openapi(schema: dict[str, Any]) -> dict[str, Any]:
-    """Clean up a JSON Schema for OpenAPI 3.1 compatibility.
-
-    OpenAPI 3.1 uses JSON Schema draft 2020-12, which msgspec targets,
-    so minimal changes are needed.
-    """
-    # Remove $schema if present (OpenAPI has its own schema declaration)
-    schema.pop("$schema", None)
-
-    return schema
-
-
-def _extract_component_refs(
-    schema: dict[str, Any],
-    defs: dict[str, Any],
-) -> dict[str, Any]:
-    """Extract $defs from a schema and return them as separate components.
-
-    msgspec generates schemas with $defs for nested types. We need to extract
-    these and reference them properly in OpenAPI's components/schemas.
-    """
-    components: dict[str, Any] = {}
-
-    if "$defs" in defs:
-        for name, definition in defs["$defs"].items():
-            components[name] = _clean_schema_for_openapi(definition)
-
-    return components
+    return main_schema, additional_schemas
 
 
 def collect_schemas_from_endpoints(
@@ -78,31 +82,28 @@ def collect_schemas_from_endpoints(
         # Process request schema
         if endpoint.request_schema and endpoint.request_schema not in seen_types:
             seen_types.add(endpoint.request_schema)
-            name, schema = struct_to_json_schema(endpoint.request_schema)
+            main_schema, additional = struct_to_json_schema(endpoint.request_schema)
 
-            # Extract and add $defs as separate components
-            if "$defs" in schema:
-                for def_name, definition in schema["$defs"].items():
-                    if def_name not in schemas:
-                        schemas[def_name] = _clean_schema_for_openapi(definition)
-                # Remove $defs from main schema and use $ref instead
-                del schema["$defs"]
+            # Add additional schemas first (dependencies)
+            for name, schema in additional.items():
+                if name not in schemas:
+                    schemas[name] = schema
 
-            schemas[name] = schema
+            # Add main schema
+            schemas[endpoint.request_schema.__name__] = main_schema
 
         # Process response schema
         if endpoint.response_schema and endpoint.response_schema not in seen_types:
             seen_types.add(endpoint.response_schema)
-            name, schema = struct_to_json_schema(endpoint.response_schema)
+            main_schema, additional = struct_to_json_schema(endpoint.response_schema)
 
-            # Extract and add $defs as separate components
-            if "$defs" in schema:
-                for def_name, definition in schema["$defs"].items():
-                    if def_name not in schemas:
-                        schemas[def_name] = _clean_schema_for_openapi(definition)
-                del schema["$defs"]
+            # Add additional schemas first (dependencies)
+            for name, schema in additional.items():
+                if name not in schemas:
+                    schemas[name] = schema
 
-            schemas[name] = schema
+            # Add main schema
+            schemas[endpoint.response_schema.__name__] = main_schema
 
     return schemas
 
