@@ -5,15 +5,20 @@
 
 {% block content %}
 <style>
+    /* Fix unfold's main container background in dark mode */
+    html.dark #main,
+    html.dark div[id="main"] {
+        background-color: #111827 !important; /* dark:bg-base-900 equivalent */
+    }
+    
     /* Professional styling matching django-unfold patterns */
     
-    /* Fix: Ensure page container has proper background */
-    .about-page-container {
-        background: #f9fafb;
-        min-height: 100vh;
+    /* Base text colors for all content */
+    .max-w-6xl {
+        color: #111827;
     }
-    html.dark .about-page-container {
-        background: #111827;
+    html.dark .max-w-6xl {
+        color: #e5e7eb;
     }
     
     .about-hero {
@@ -45,14 +50,14 @@
     }
     
     .feature-card {
-        background: #f9fafb;
+        background: #f9fafb !important;
         border: 1px solid #e5e7eb;
         border-radius: 8px;
         padding: 1.5rem;
         transition: all 0.2s;
     }
-    .dark .feature-card {
-        background: #111827;
+    html.dark .feature-card {
+        background: #111827 !important;
         border-color: #374151;
     }
     .feature-card:hover {
@@ -80,24 +85,24 @@
     }
     
     .problem-box {
-        background: #fef2f2;
+        background: #fef2f2 !important;
         border-left: 4px solid #ef4444;
         border-radius: 8px;
         padding: 1.5rem;
     }
-    .dark .problem-box {
-        background: #450a0a;
+    html.dark .problem-box {
+        background: #450a0a !important;
         border-left-color: #f87171;
     }
     
     .solution-box {
-        background: #f0fdf4;
+        background: #f0fdf4 !important;
         border-left: 4px solid #22c55e;
         border-radius: 8px;
         padding: 1.5rem;
     }
-    .dark .solution-box {
-        background: #052e16;
+    html.dark .solution-box {
+        background: #052e16 !important;
         border-left-color: #4ade80;
     }
     
@@ -116,7 +121,7 @@
     }
     
     .workflow-step {
-        background: white;
+        background: white !important;
         border: 2px solid #e5e7eb;
         border-radius: 8px;
         padding: 1rem;
@@ -128,10 +133,12 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
+        color: #111827;
     }
-    .dark .workflow-step {
-        background: #1f2937;
+    html.dark .workflow-step {
+        background: #1f2937 !important;
         border-color: #374151;
+        color: #f3f4f6;
     }
     
     .workflow-arrow {
@@ -159,7 +166,7 @@
     }
     
     .code-block {
-        background: #111827;
+        background: #111827 !important;
         color: #f9fafb;
         border-radius: 6px;
         padding: 1rem;
@@ -169,18 +176,18 @@
         line-height: 1.5;
         margin-top: 0.75rem;
     }
-    .dark .code-block {
-        background: #030712;
+    html.dark .code-block {
+        background: #030712 !important;
     }
     
     .key-concept {
         padding: 1rem;
         border-left: 3px solid #667eea;
         margin-bottom: 1rem;
-        background: #f9fafb;
+        background: #f9fafb !important;
     }
-    .dark .key-concept {
-        background: #111827;
+    html.dark .key-concept {
+        background: #111827 !important;
     }
     
     .key-concept dt {
@@ -193,7 +200,7 @@
         color: #6b7280;
         margin-left: 0;
     }
-    .dark .key-concept dd {
+    html.dark .key-concept dd {
         color: #9ca3af;
     }
     
@@ -228,7 +235,7 @@
         color: #111827;
         margin-bottom: 1rem;
     }
-    .dark h2 {
+    html.dark h2 {
         color: #f9fafb;
     }
     
@@ -238,7 +245,7 @@
         color: #1f2937;
         margin-bottom: 0.75rem;
     }
-    .dark h3 {
+    html.dark h3 {
         color: #f3f4f6;
     }
     
@@ -248,13 +255,50 @@
         color: #374151;
         margin-bottom: 0.5rem;
     }
-    .dark h4 {
+    html.dark h4 {
         color: #e5e7eb;
+    }
+    
+    p {
+        color: #374151;
+    }
+    html.dark p {
+        color: #d1d5db;
+    }
+    
+    strong {
+        color: #111827;
+    }
+    html.dark strong {
+        color: #f3f4f6;
     }
     
     ul {
         list-style: none;
         padding-left: 0;
+    }
+    
+    dl {
+        margin: 1rem 0;
+    }
+    
+    dt {
+        font-weight: 600;
+        color: #111827;
+        margin-top: 1rem;
+        margin-bottom: 0.25rem;
+    }
+    html.dark dt {
+        color: #f3f4f6;
+    }
+    
+    dd {
+        color: #4b5563;
+        margin-left: 1rem;
+        margin-bottom: 0.75rem;
+    }
+    html.dark dd {
+        color: #d1d5db;
     }
     
     ul li {
@@ -263,7 +307,7 @@
         margin-bottom: 0.5rem;
         color: #4b5563;
     }
-    .dark ul li {
+    html.dark ul li {
         color: #9ca3af;
     }
     
@@ -278,19 +322,21 @@
     .text-muted {
         color: #6b7280;
     }
-    .dark .text-muted {
+    html.dark .text-muted {
         color: #9ca3af;
     }
     
     .highlight-box {
-        background: #ede9fe;
+        background: #ede9fe !important;
         border-left: 4px solid #667eea;
         padding: 1rem 1.5rem;
         border-radius: 4px;
         margin: 1.5rem 0;
+        color: #1f2937;
     }
-    .dark .highlight-box {
-        background: #1e1b4b;
+    html.dark .highlight-box {
+        background: #1e1b4b !important;
+        color: #e5e7eb;
     }
     
     .wiki-link {
@@ -304,8 +350,8 @@
     }
 </style>
 
-<div class="about-page-container">
-<div class="p-6 max-w-6xl mx-auto">
+<div class="p-6">
+<div class="max-w-6xl mx-auto">
     <!-- Hero Section -->
     <div class="about-hero">
         <h1 class="text-4xl font-bold mb-3">About SpecTrace</h1>
@@ -580,13 +626,9 @@ python manage.py import_results results.xml --links links.json</div>
 
     <!-- Footer -->
     <div class="text-center text-sm text-muted" style="padding: 2rem 0;">
-        <p class="mb-2">
-            Learn more about 
-            <a href="https://en.wikipedia.org/wiki/Requirements_traceability" class="wiki-link" target="_blank">requirements traceability on Wikipedia</a>
-        </p>
         <p>
             <a href="{% url 'swagger-ui' %}" class="wiki-link">API Documentation</a> •
-            <a href="https://github.com/yourusername/spec-trace" class="wiki-link">GitHub</a>
+            <a href="https://github.com/tslateman/spec-trace" class="wiki-link" target="_blank">GitHub</a>
         </p>
         <p class="mt-4" style="font-size: 0.75rem; opacity: 0.7;">
             SpecTrace — Open source requirements traceability built with Django + pytest

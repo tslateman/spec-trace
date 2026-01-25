@@ -77,9 +77,9 @@ UNFOLD = {
                 "separator": True,
                 "items": [
                     {
-                        "title": _("Traceability Matrix"),
-                        "icon": "grid_on",
-                        "link": reverse_lazy("admin-matrix"),
+                        "title": _("Validation Runs"),
+                        "icon": "fact_check",
+                        "link": reverse_lazy("admin-validation-runs"),
                     },
                     {
                         "title": _("Vendor Coverage"),
@@ -87,14 +87,14 @@ UNFOLD = {
                         "link": reverse_lazy("admin-vendor-coverage"),
                     },
                     {
+                        "title": _("Traceability Matrix"),
+                        "icon": "grid_on",
+                        "link": reverse_lazy("admin-matrix"),
+                    },
+                    {
                         "title": _("Impact Analysis"),
                         "icon": "analytics",
                         "link": reverse_lazy("admin-impact-analysis"),
-                    },
-                    {
-                        "title": _("Validation Runs"),
-                        "icon": "fact_check",
-                        "link": reverse_lazy("admin-validation-runs"),
                     },
                 ],
             },
