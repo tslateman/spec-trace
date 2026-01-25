@@ -90,7 +90,11 @@
             </p>
         </div>
         <div class="flex gap-2">
-            <a href="{% url 'admin:index' %}" 
+            <a href="{% url 'admin-validation-runs' %}"
+               class="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors">
+                View All Runs
+            </a>
+            <a href="{% url 'admin:index' %}"
                class="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600">
                 ← Back to Admin
             </a>

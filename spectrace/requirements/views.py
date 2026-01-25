@@ -1,14 +1,23 @@
 """Views for requirements app."""
 import csv
+from datetime import datetime
 
 from django.contrib.admin.views.decorators import staff_member_required
 from django.http import HttpResponse, JsonResponse
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, render
 from django.views.decorators.http import require_http_methods
 
 from .matrix import get_matrix_data, get_cell_color
-from .models import Requirement, InAppValidation, InAppValidationStatus
+from .models import Requirement, InAppValidation, InAppValidationStatus, InAppValidationRun
 from .services.impact_analyzer import ImpactAnalyzer
+from .validation_runs import (
+    get_validation_runs_data,
+    get_run_results_grouped,
+    build_run_comparison,
+    get_adjacent_runs,
+    get_unique_vendors,
+    get_unique_sources,
+)
 
 
 def _build_matrix_filters(request) -> dict:
@@ -217,3 +226,120 @@ def impact_analysis_view(request):
         })
 
     return render(request, "admin/requirements/impact_analysis.html", context)
+
+
+def _build_validation_run_filters(request) -> dict:
+    """Build filter dict from request query parameters for validation runs."""
+    filters = {}
+    if request.GET.get('source'):
+        filters['source'] = request.GET['source']
+    if request.GET.get('vendor'):
+        filters['vendor'] = request.GET['vendor']
+    if request.GET.get('date_from'):
+        try:
+            filters['date_from'] = datetime.strptime(request.GET['date_from'], '%Y-%m-%d')
+        except ValueError:
+            pass
+    if request.GET.get('date_to'):
+        try:
+            filters['date_to'] = datetime.strptime(request.GET['date_to'], '%Y-%m-%d')
+        except ValueError:
+            pass
+    return filters
+
+
+@staff_member_required
+def validation_run_list_view(request):
+    """List view for validation runs with filtering and pagination.
+
+    Query parameters:
+        page: Page number (default: 1)
+        per_page: Items per page (default: 25)
+        source: Filter by source string
+        vendor: Filter by vendor
+        date_from: Filter by start date (YYYY-MM-DD)
+        date_to: Filter by end date (YYYY-MM-DD)
+    """
+    page = int(request.GET.get('page', 1))
+    per_page = int(request.GET.get('per_page', 25))
+
+    filters = _build_validation_run_filters(request)
+    data = get_validation_runs_data(page=page, per_page=per_page, filters=filters)
+
+    context = {
+        'title': 'Validation Runs',
+        'runs': data['runs'],
+        'pagination': data['pagination'],
+        'summary': data['summary'],
+        'vendors': get_unique_vendors(),
+        'sources': get_unique_sources(),
+        'current_filters': {
+            'source': request.GET.get('source', ''),
+            'vendor': request.GET.get('vendor', ''),
+            'date_from': request.GET.get('date_from', ''),
+            'date_to': request.GET.get('date_to', ''),
+            'per_page': per_page,
+        },
+    }
+
+    return render(request, 'admin/requirements/validation_runs.html', context)
+
+
+@staff_member_required
+def validation_run_detail_view(request, run_id: int):
+    """Detail view for a single validation run.
+
+    Shows results grouped by vendor with expandable step timelines.
+    """
+    run = get_object_or_404(InAppValidationRun, id=run_id)
+    results_by_vendor = get_run_results_grouped(run)
+    adjacent = get_adjacent_runs(run)
+
+    context = {
+        'title': f'Validation Run #{run.id}',
+        'run': run,
+        'results_by_vendor': results_by_vendor,
+        'previous_run': adjacent['previous'],
+        'next_run': adjacent['next'],
+    }
+
+    return render(request, 'admin/requirements/validation_run_detail.html', context)
+
+
+@staff_member_required
+def validation_run_compare_view(request):
+    """Compare two validation runs side-by-side.
+
+    Query parameters:
+        run_a: ID of first run (older)
+        run_b: ID of second run (newer)
+
+    Without parameters, shows a run selector UI.
+    """
+    run_a_id = request.GET.get('run_a')
+    run_b_id = request.GET.get('run_b')
+
+    # If both IDs provided, show comparison
+    if run_a_id and run_b_id:
+        run_a = get_object_or_404(InAppValidationRun, id=run_a_id)
+        run_b = get_object_or_404(InAppValidationRun, id=run_b_id)
+        comparison = build_run_comparison(run_a, run_b)
+
+        context = {
+            'title': 'Run Comparison',
+            'comparison': comparison,
+            'run_a': run_a,
+            'run_b': run_b,
+        }
+
+        return render(request, 'admin/requirements/validation_run_compare.html', context)
+
+    # Otherwise, show run selector
+    recent_runs = InAppValidationRun.objects.order_by('-imported_at')[:20]
+
+    context = {
+        'title': 'Compare Validation Runs',
+        'recent_runs': recent_runs,
+    }
+
+    return render(request, 'admin/requirements/validation_run_compare_select.html', context)

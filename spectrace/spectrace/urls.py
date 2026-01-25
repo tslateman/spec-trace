@@ -18,7 +18,15 @@ from django.contrib import admin
 from django.urls import path
 
 from requirements import api
-from requirements.views import matrix_view, matrix_export, vendor_coverage_view, impact_analysis_view
+from requirements.views import (
+    matrix_view,
+    matrix_export,
+    vendor_coverage_view,
+    impact_analysis_view,
+    validation_run_list_view,
+    validation_run_detail_view,
+    validation_run_compare_view,
+)
 
 urlpatterns = [
     # Matrix views must come before admin to avoid being caught by admin prefix
@@ -26,6 +34,10 @@ urlpatterns = [
     path('admin/matrix/export/', matrix_export, name='admin-matrix-export'),
     path('admin/vendor-coverage/', vendor_coverage_view, name='admin-vendor-coverage'),
     path('admin/impact-analysis/', impact_analysis_view, name='admin-impact-analysis'),
+    # Validation run views
+    path('admin/validation-runs/', validation_run_list_view, name='admin-validation-runs'),
+    path('admin/validation-runs/<int:run_id>/', validation_run_detail_view, name='admin-validation-run-detail'),
+    path('admin/validation-runs/compare/', validation_run_compare_view, name='admin-validation-run-compare'),
     path('admin/', admin.site.urls),
 
     # API endpoints for external systems

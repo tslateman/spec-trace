@@ -1,0 +1,111 @@
+{% extends "unfold/layouts/base.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} | SpecTrace{% endblock %}
+
+{% block content %}
+<style>
+    .run-selector {
+        border: 2px solid transparent;
+        transition: border-color 0.2s;
+    }
+    .run-selector.selected {
+        border-color: #3b82f6;
+    }
+    .run-selector:hover {
+        border-color: #93c5fd;
+    }
+</style>
+
+<div class="p-6" x-data="{ runA: null, runB: null }">
+    <!-- Header -->
+    <div class="mb-6 flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-base-900 dark:text-white">{{ title }}</h1>
+            <p class="text-base-500 dark:text-base-400 mt-1">
+                Select two runs to compare side-by-side
+            </p>
+        </div>
+        <a href="{% url 'admin-validation-runs' %}"
+           class="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600">
+            ← Back to List
+        </a>
+    </div>
+
+    <!-- Selection Info -->
+    <div class="mb-6 bg-white dark:bg-base-900 rounded-lg shadow border border-base-200 dark:border-base-800 p-4">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <div>
+                    <span class="text-sm text-base-500 dark:text-base-400">Run A (older):</span>
+                    <span class="ml-2 font-medium text-base-900 dark:text-white" x-text="runA ? '#' + runA : 'Not selected'"></span>
+                </div>
+                <div>
+                    <span class="text-sm text-base-500 dark:text-base-400">Run B (newer):</span>
+                    <span class="ml-2 font-medium text-base-900 dark:text-white" x-text="runB ? '#' + runB : 'Not selected'"></span>
+                </div>
+            </div>
+            <a :href="runA && runB ? '{% url 'admin-validation-run-compare' %}?run_a=' + runA + '&run_b=' + runB : '#'"
+               :class="runA && runB ? 'bg-primary-600 hover:bg-primary-700' : 'bg-gray-400 cursor-not-allowed'"
+               class="px-4 py-2 text-white rounded-lg transition-colors">
+                Compare Selected Runs
+            </a>
+        </div>
+    </div>
+
+    <!-- Run Selection Grid -->
+    <div class="bg-white dark:bg-base-900 rounded-lg shadow border border-base-200 dark:border-base-800">
+        <div class="p-4 border-b border-base-200 dark:border-base-800">
+            <h2 class="text-lg font-semibold text-base-900 dark:text-white">Recent Validation Runs</h2>
+            <p class="text-sm text-base-500 dark:text-base-400 mt-1">
+                Click to select Run A, then Run B. Run A should be the older run.
+            </p>
+        </div>
+        <div class="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {% for run in recent_runs %}
+            <div @click="if (!runA) { runA = {{ run.id }} } else if (!runB && runA !== {{ run.id }}) { runB = {{ run.id }} } else if (runA === {{ run.id }}) { runA = null } else if (runB === {{ run.id }}) { runB = null }"
+                 :class="{ 'ring-2 ring-blue-500': runA === {{ run.id }} || runB === {{ run.id }}, 'ring-blue-300': runA === {{ run.id }}, 'ring-green-500': runB === {{ run.id }} }"
+                 class="run-selector bg-base-50 dark:bg-base-800 rounded-lg p-4 cursor-pointer hover:shadow-md transition-shadow relative">
+                <!-- Selection Badge -->
+                <div x-show="runA === {{ run.id }}" class="absolute top-2 right-2 px-2 py-1 bg-blue-500 text-white text-xs rounded">
+                    Run A
+                </div>
+                <div x-show="runB === {{ run.id }}" class="absolute top-2 right-2 px-2 py-1 bg-green-500 text-white text-xs rounded">
+                    Run B
+                </div>
+
+                <div class="flex items-center justify-between mb-2">
+                    <span class="font-bold text-base-900 dark:text-white">#{{ run.id }}</span>
+                    <span class="text-sm text-base-500 dark:text-base-400">{{ run.imported_at|date:"Y-m-d H:i" }}</span>
+                </div>
+                <div class="text-sm text-base-600 dark:text-base-400 mb-2 truncate">{{ run.source }}</div>
+                <div class="flex items-center justify-between text-sm">
+                    <span>
+                        <span class="text-green-600 dark:text-green-400">{{ run.successful }}</span> /
+                        <span class="text-red-600 dark:text-red-400">{{ run.failed }}</span> /
+                        <span class="text-base-500">{{ run.total_validations }}</span>
+                    </span>
+                    <span class="font-medium {% if run.pass_rate >= 90 %}text-green-600 dark:text-green-400{% elif run.pass_rate >= 70 %}text-yellow-600 dark:text-yellow-400{% else %}text-red-600 dark:text-red-400{% endif %}">
+                        {{ run.pass_rate }}%
+                    </span>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-span-full text-center py-8 text-base-500 dark:text-base-400">
+                No validation runs available for comparison.
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Instructions -->
+    <div class="mt-6 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+        <h3 class="font-semibold text-blue-700 dark:text-blue-300 mb-2">How to Compare Runs</h3>
+        <ol class="list-decimal list-inside text-sm text-blue-600 dark:text-blue-400 space-y-1">
+            <li>Click on the older run you want to compare (it will be labeled "Run A")</li>
+            <li>Click on the newer run (it will be labeled "Run B")</li>
+            <li>Click "Compare Selected Runs" to see the side-by-side comparison</li>
+        </ol>
+    </div>
+</div>
+{% endblock %}

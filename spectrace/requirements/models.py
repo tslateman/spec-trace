@@ -467,6 +467,33 @@ class InAppValidationRun(models.Model):
         """Number of failed validations."""
         return self.results.filter(status=InAppValidationStatus.FAILURE).count()
 
+    @property
+    def pass_rate(self) -> float:
+        """Pass rate as a percentage (0-100)."""
+        total = self.total_validations
+        if total == 0:
+            return 0.0
+        return round((self.successful / total) * 100, 1)
+
+    def get_results_by_vendor(self) -> dict:
+        """Get validation results grouped by vendor.
+
+        Returns:
+            Dict mapping vendor names to lists of InAppValidationResult objects.
+        """
+        from collections import defaultdict
+        results_by_vendor = defaultdict(list)
+
+        results = self.results.select_related('validation', 'validation__requirement').order_by(
+            'validation__vendor', 'validation__name'
+        )
+
+        for result in results:
+            vendor = result.validation.vendor or 'Unassigned'
+            results_by_vendor[vendor].append(result)
+
+        return dict(sorted(results_by_vendor.items()))
+
 
 class InAppValidationResult(models.Model):
     """Individual result from an in-app validation run."""
@@ -510,6 +537,30 @@ class InAppValidationResult(models.Model):
 
     def __str__(self):
         return f"{self.validation.name} ({self.status}) at {self.checked_at}"
+
+    @property
+    def steps_passed(self) -> int:
+        """Number of steps that passed."""
+        if not self.steps:
+            return 0
+        return sum(1 for s in self.steps if s.get('passed', False))
+
+    @property
+    def steps_failed(self) -> int:
+        """Number of steps that failed."""
+        if not self.steps:
+            return 0
+        return sum(1 for s in self.steps if not s.get('passed', False))
+
+    @property
+    def first_failed_step(self) -> dict | None:
+        """Get the first step that failed, or None if all passed."""
+        if not self.steps:
+            return None
+        for step in self.steps:
+            if not step.get('passed', False):
+                return step
+        return None
 
 
 class VerificationFlowStatus(models.TextChoices):

@@ -1,0 +1,21 @@
+<!-- Validation Run Summary Stats Card -->
+<div class="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div class="bg-white dark:bg-base-900 rounded-lg shadow p-4 border border-base-200 dark:border-base-800">
+        <div class="text-sm text-base-500 dark:text-base-400">Total Runs</div>
+        <div class="text-3xl font-bold text-base-900 dark:text-white">{{ summary.total_runs }}</div>
+    </div>
+    <div class="bg-white dark:bg-base-900 rounded-lg shadow p-4 border border-base-200 dark:border-base-800 border-l-4 border-l-green-500">
+        <div class="text-sm text-base-500 dark:text-base-400">Avg Pass Rate</div>
+        <div class="text-3xl font-bold {% if summary.avg_pass_rate >= 90 %}text-green-600 dark:text-green-400{% elif summary.avg_pass_rate >= 70 %}text-yellow-600 dark:text-yellow-400{% else %}text-red-600 dark:text-red-400{% endif %}">
+            {{ summary.avg_pass_rate }}%
+        </div>
+    </div>
+    <div class="bg-white dark:bg-base-900 rounded-lg shadow p-4 border border-base-200 dark:border-base-800 border-l-4 border-l-red-500">
+        <div class="text-sm text-base-500 dark:text-base-400">Recent Failures (7d)</div>
+        <div class="text-3xl font-bold text-red-600 dark:text-red-400">{{ summary.recent_failures }}</div>
+    </div>
+    <div class="bg-white dark:bg-base-900 rounded-lg shadow p-4 border border-base-200 dark:border-base-800 border-l-4 border-l-blue-500">
+        <div class="text-sm text-base-500 dark:text-base-400">Vendors</div>
+        <div class="text-3xl font-bold text-blue-600 dark:text-blue-400">{{ summary.unique_vendors }}</div>
+    </div>
+</div>
