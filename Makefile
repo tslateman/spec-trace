@@ -1,5 +1,8 @@
 .PHONY: help install install-dev test migrate makemigrations shell run clean setup demo
 
+# Use venv Python if it exists, otherwise fall back to system python
+PYTHON := $(shell [ -f .venv/bin/python ] && echo .venv/bin/python || echo python)
+
 help:
 	@echo "Available targets:"
 	@echo "  install         Install package in editable mode"
@@ -20,19 +23,19 @@ install-dev:
 	uv pip install -e ".[dev]"
 
 test:
-	pytest
+	$(PYTHON) -m pytest
 
 migrate:
-	python spectrace/manage.py migrate
+	$(PYTHON) spectrace/manage.py migrate
 
 makemigrations:
-	python spectrace/manage.py makemigrations
+	$(PYTHON) spectrace/manage.py makemigrations
 
 shell:
-	python spectrace/manage.py shell
+	$(PYTHON) spectrace/manage.py shell
 
 run:
-	python spectrace/manage.py runserver
+	$(PYTHON) spectrace/manage.py runserver
 
 clean:
 	rm -rf build/ dist/ *.egg-info .pytest_cache __pycache__
@@ -40,7 +43,7 @@ clean:
 	find . -type f -name "*.pyc" -delete 2>/dev/null || true
 
 setup:
-	python scripts/setup.py
+	$(PYTHON) scripts/setup.py
 
 demo:
-	python scripts/demo.py
+	$(PYTHON) scripts/demo.py
