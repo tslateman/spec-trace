@@ -4,425 +4,477 @@
 {% block title %}{{ title }} | SpecTrace{% endblock %}
 
 {% block content %}
+{% include "admin/requirements/_design_system.html" %}
+
 <style>
-    /* Fix unfold's main container background in dark mode */
-    html.dark #main,
-    html.dark div[id="main"] {
-        background-color: #111827 !important; /* dark:bg-base-900 equivalent */
-    }
-    
-    /* Professional styling matching django-unfold patterns */
-    
-    /* Base text colors for all content */
-    .max-w-6xl {
-        color: #111827;
-    }
-    html.dark .max-w-6xl {
-        color: #e5e7eb;
-    }
-    
-    .about-hero {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: 12px;
-        padding: 3rem 2rem;
-        color: white;
-        margin-bottom: 2rem;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    }
-    
-    .section-card {
-        background: white !important;
-        border-radius: 8px;
-        padding: 2rem;
-        margin-bottom: 1.5rem;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    }
-    html.dark .section-card {
-        background: #1f2937 !important;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-    }
-    
-    .feature-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-        gap: 1rem;
-        margin-top: 1.5rem;
-    }
-    
-    .feature-card {
-        background: #f9fafb !important;
-        border: 1px solid #e5e7eb;
-        border-radius: 8px;
-        padding: 1.5rem;
-        transition: all 0.2s;
-    }
-    html.dark .feature-card {
-        background: #111827 !important;
-        border-color: #374151;
-    }
-    .feature-card:hover {
-        border-color: #667eea;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    }
-    
-    .feature-icon {
-        font-size: 2.5rem;
-        margin-bottom: 0.75rem;
-        display: block;
-    }
-    
+/* About page editorial styles */
+.about-hero {
+    position: relative;
+    padding: var(--st-space-12) var(--st-space-8);
+    background: linear-gradient(135deg, #16191d 0%, #212529 100%);
+    border-radius: var(--st-radius-xl);
+    color: white;
+    overflow: hidden;
+}
+
+.about-hero::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image:
+        radial-gradient(circle at 20% 50%, rgba(251, 191, 36, 0.15) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(251, 191, 36, 0.1) 0%, transparent 40%);
+    pointer-events: none;
+}
+
+html.dark .about-hero {
+    background: linear-gradient(135deg, #0d0f12 0%, #16191d 100%);
+}
+
+.about-hero__title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    margin-bottom: var(--st-space-4);
+    position: relative;
+}
+
+.about-hero__subtitle {
+    font-size: 1.125rem;
+    opacity: 0.85;
+    max-width: 600px;
+    line-height: 1.6;
+    position: relative;
+}
+
+.about-section {
+    padding: var(--st-space-8) 0;
+    border-bottom: 1px solid var(--st-border);
+}
+
+.about-section:last-child {
+    border-bottom: none;
+}
+
+.about-section__title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--st-text);
+    margin-bottom: var(--st-space-6);
+}
+
+.feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--st-space-4);
+}
+
+.feature-card {
+    padding: var(--st-space-6);
+    background: var(--st-surface-sunken);
+    border: 1px solid var(--st-border);
+    border-radius: var(--st-radius-lg);
+    transition: all 0.2s var(--st-ease-out);
+}
+
+.feature-card:hover {
+    border-color: var(--st-accent-400);
+    transform: translateY(-2px);
+    box-shadow: var(--st-shadow-md);
+}
+
+.feature-card__icon {
+    font-size: 2rem;
+    margin-bottom: var(--st-space-3);
+    display: block;
+}
+
+.feature-card__title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--st-text);
+    margin-bottom: var(--st-space-2);
+}
+
+.feature-card__desc {
+    font-size: 0.875rem;
+    color: var(--st-text-muted);
+    line-height: 1.5;
+}
+
+.comparison-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--st-space-6);
+}
+
+@media (max-width: 768px) {
     .comparison-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 1.5rem;
-        margin-top: 1.5rem;
+        grid-template-columns: 1fr;
     }
-    @media (max-width: 768px) {
-        .comparison-grid {
-            grid-template-columns: 1fr;
-        }
-    }
-    
-    .problem-box {
-        background: #fef2f2 !important;
-        border-left: 4px solid #ef4444;
-        border-radius: 8px;
-        padding: 1.5rem;
-    }
-    html.dark .problem-box {
-        background: #450a0a !important;
-        border-left-color: #f87171;
-    }
-    
-    .solution-box {
-        background: #f0fdf4 !important;
-        border-left: 4px solid #22c55e;
-        border-radius: 8px;
-        padding: 1.5rem;
-    }
-    html.dark .solution-box {
-        background: #052e16 !important;
-        border-left-color: #4ade80;
-    }
-    
-    .workflow {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin: 2rem 0;
-        gap: 0.5rem;
-    }
-    @media (max-width: 768px) {
-        .workflow {
-            flex-direction: column;
-            gap: 1rem;
-        }
-    }
-    
-    .workflow-step {
-        background: white !important;
-        border: 2px solid #e5e7eb;
-        border-radius: 8px;
-        padding: 1rem;
-        flex: 1;
-        text-align: center;
-        font-weight: 500;
-        min-height: 80px;
-        display: flex;
+}
+
+.comparison-box {
+    padding: var(--st-space-6);
+    border-radius: var(--st-radius-lg);
+}
+
+.comparison-box--problem {
+    background: var(--st-fail-muted);
+    border-left: 4px solid var(--st-fail);
+}
+
+.comparison-box--solution {
+    background: var(--st-pass-muted);
+    border-left: 4px solid var(--st-pass);
+}
+
+.comparison-box__title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin-bottom: var(--st-space-4);
+}
+
+.comparison-box--problem .comparison-box__title {
+    color: var(--st-fail-dark);
+}
+
+html.dark .comparison-box--problem .comparison-box__title {
+    color: var(--st-fail);
+}
+
+.comparison-box--solution .comparison-box__title {
+    color: var(--st-pass-dark);
+}
+
+html.dark .comparison-box--solution .comparison-box__title {
+    color: var(--st-pass);
+}
+
+.comparison-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.comparison-list li {
+    padding: var(--st-space-2) 0;
+    padding-left: var(--st-space-5);
+    position: relative;
+    font-size: 0.875rem;
+    color: var(--st-text-muted);
+}
+
+.comparison-list li::before {
+    content: '→';
+    position: absolute;
+    left: 0;
+    font-weight: 600;
+}
+
+.comparison-box--problem .comparison-list li::before {
+    color: var(--st-fail);
+}
+
+.comparison-box--solution .comparison-list li::before {
+    color: var(--st-pass);
+}
+
+.workflow-steps {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--st-space-2);
+    padding: var(--st-space-6) 0;
+    overflow-x: auto;
+}
+
+@media (max-width: 768px) {
+    .workflow-steps {
         flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        color: #111827;
+        align-items: stretch;
     }
-    html.dark .workflow-step {
-        background: #1f2937 !important;
-        border-color: #374151;
-        color: #f3f4f6;
-    }
-    
+}
+
+.workflow-step {
+    flex: 1;
+    min-width: 140px;
+    padding: var(--st-space-5);
+    background: var(--st-surface);
+    border: 1px solid var(--st-border);
+    border-radius: var(--st-radius-lg);
+    text-align: center;
+}
+
+html.dark .workflow-step {
+    border-color: var(--st-border);
+}
+
+.workflow-step__number {
+    width: 32px;
+    height: 32px;
+    background: var(--st-accent-500);
+    color: #0d0f12;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 0.875rem;
+    margin-bottom: var(--st-space-3);
+}
+
+.workflow-step__title {
+    font-weight: 600;
+    color: var(--st-text);
+    font-size: 0.9375rem;
+}
+
+.workflow-step__desc {
+    font-size: 0.75rem;
+    color: var(--st-text-subtle);
+    margin-top: var(--st-space-1);
+}
+
+.workflow-arrow {
+    display: flex;
+    align-items: center;
+    color: var(--st-text-subtle);
+    font-size: 1.25rem;
+    flex-shrink: 0;
+    padding-top: var(--st-space-6);
+}
+
+@media (max-width: 768px) {
     .workflow-arrow {
-        color: #9ca3af;
-        font-size: 1.5rem;
-        flex-shrink: 0;
-    }
-    @media (max-width: 768px) {
-        .workflow-arrow {
-            transform: rotate(90deg);
-        }
-    }
-    
-    .step-number {
-        background: #667eea;
-        color: white;
-        width: 2rem;
-        height: 2rem;
-        border-radius: 50%;
-        display: inline-flex;
-        align-items: center;
+        transform: rotate(90deg);
         justify-content: center;
-        font-weight: bold;
-        margin-bottom: 0.5rem;
+        padding-top: 0;
     }
-    
-    .code-block {
-        background: #111827 !important;
-        color: #f9fafb;
-        border-radius: 6px;
-        padding: 1rem;
-        overflow-x: auto;
-        font-family: 'Monaco', 'Courier New', monospace;
-        font-size: 0.875rem;
-        line-height: 1.5;
-        margin-top: 0.75rem;
+}
+
+.concept-card {
+    padding: var(--st-space-4) var(--st-space-5);
+    background: var(--st-surface-sunken);
+    border-left: 3px solid var(--st-accent-500);
+    margin-bottom: var(--st-space-3);
+}
+
+.concept-card__term {
+    font-weight: 600;
+    color: var(--st-accent-600);
+    font-size: 0.9375rem;
+    margin-bottom: var(--st-space-1);
+}
+
+html.dark .concept-card__term {
+    color: var(--st-accent-400);
+}
+
+.concept-card__def {
+    font-size: 0.875rem;
+    color: var(--st-text-muted);
+    line-height: 1.5;
+}
+
+.cta-banner {
+    background: linear-gradient(135deg, #16191d 0%, #212529 100%);
+    border-radius: var(--st-radius-xl);
+    padding: var(--st-space-8);
+    text-align: center;
+    color: white;
+    position: relative;
+    overflow: hidden;
+}
+
+html.dark .cta-banner {
+    background: linear-gradient(135deg, #0d0f12 0%, #16191d 100%);
+}
+
+.cta-banner::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle at 50% 0%, rgba(251, 191, 36, 0.2) 0%, transparent 60%);
+    pointer-events: none;
+}
+
+.cta-banner__title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: var(--st-space-2);
+    position: relative;
+}
+
+.cta-banner__subtitle {
+    opacity: 0.8;
+    margin-bottom: var(--st-space-6);
+    position: relative;
+}
+
+.cta-banner__actions {
+    display: flex;
+    justify-content: center;
+    gap: var(--st-space-3);
+    flex-wrap: wrap;
+    position: relative;
+}
+
+.cta-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--st-space-2);
+    padding: var(--st-space-3) var(--st-space-5);
+    background: white;
+    color: #16191d;
+    font-weight: 600;
+    font-size: 0.875rem;
+    border-radius: var(--st-radius-md);
+    text-decoration: none;
+    transition: all 0.15s var(--st-ease-out);
+}
+
+.cta-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.tech-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--st-space-6);
+}
+
+@media (max-width: 768px) {
+    .tech-list {
+        grid-template-columns: 1fr;
     }
-    html.dark .code-block {
-        background: #030712 !important;
-    }
-    
-    .key-concept {
-        padding: 1rem;
-        border-left: 3px solid #667eea;
-        margin-bottom: 1rem;
-        background: #f9fafb !important;
-    }
-    html.dark .key-concept {
-        background: #111827 !important;
-    }
-    
-    .key-concept dt {
-        font-weight: 600;
-        color: #667eea;
-        margin-bottom: 0.25rem;
-    }
-    
-    .key-concept dd {
-        color: #6b7280;
-        margin-left: 0;
-    }
-    html.dark .key-concept dd {
-        color: #9ca3af;
-    }
-    
-    .cta-box {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: 8px;
-        padding: 2rem;
-        color: white;
-        text-align: center;
-        margin: 2rem 0;
-    }
-    
-    .cta-box a {
-        background: white;
-        color: #667eea;
-        padding: 0.75rem 1.5rem;
-        border-radius: 6px;
-        text-decoration: none;
-        font-weight: 600;
-        display: inline-block;
-        margin: 0.5rem;
-        transition: transform 0.2s;
-    }
-    .cta-box a:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
-    }
-    
-    h2 {
-        font-size: 1.875rem;
-        font-weight: 700;
-        color: #111827;
-        margin-bottom: 1rem;
-    }
-    html.dark h2 {
-        color: #f9fafb;
-    }
-    
-    h3 {
-        font-size: 1.5rem;
-        font-weight: 600;
-        color: #1f2937;
-        margin-bottom: 0.75rem;
-    }
-    html.dark h3 {
-        color: #f3f4f6;
-    }
-    
-    h4 {
-        font-size: 1.125rem;
-        font-weight: 600;
-        color: #374151;
-        margin-bottom: 0.5rem;
-    }
-    html.dark h4 {
-        color: #e5e7eb;
-    }
-    
-    p {
-        color: #374151;
-    }
-    html.dark p {
-        color: #d1d5db;
-    }
-    
-    strong {
-        color: #111827;
-    }
-    html.dark strong {
-        color: #f3f4f6;
-    }
-    
-    ul {
-        list-style: none;
-        padding-left: 0;
-    }
-    
-    dl {
-        margin: 1rem 0;
-    }
-    
-    dt {
-        font-weight: 600;
-        color: #111827;
-        margin-top: 1rem;
-        margin-bottom: 0.25rem;
-    }
-    html.dark dt {
-        color: #f3f4f6;
-    }
-    
-    dd {
-        color: #4b5563;
-        margin-left: 1rem;
-        margin-bottom: 0.75rem;
-    }
-    html.dark dd {
-        color: #d1d5db;
-    }
-    
-    ul li {
-        padding-left: 1.5rem;
-        position: relative;
-        margin-bottom: 0.5rem;
-        color: #4b5563;
-    }
-    html.dark ul li {
-        color: #9ca3af;
-    }
-    
-    ul li:before {
-        content: "→";
-        position: absolute;
-        left: 0;
-        color: #667eea;
-        font-weight: bold;
-    }
-    
-    .text-muted {
-        color: #6b7280;
-    }
-    html.dark .text-muted {
-        color: #9ca3af;
-    }
-    
-    .highlight-box {
-        background: #ede9fe !important;
-        border-left: 4px solid #667eea;
-        padding: 1rem 1.5rem;
-        border-radius: 4px;
-        margin: 1.5rem 0;
-        color: #1f2937;
-    }
-    html.dark .highlight-box {
-        background: #1e1b4b !important;
-        color: #e5e7eb;
-    }
-    
-    .wiki-link {
-        color: #667eea;
-        text-decoration: none;
-        font-weight: 500;
-        border-bottom: 1px dotted #667eea;
-    }
-    .wiki-link:hover {
-        border-bottom-style: solid;
-    }
+}
+
+.tech-list__title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--st-text);
+    margin-bottom: var(--st-space-4);
+}
+
+.tech-list ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.tech-list li {
+    padding: var(--st-space-2) 0;
+    padding-left: var(--st-space-5);
+    position: relative;
+    font-size: 0.875rem;
+    color: var(--st-text-muted);
+}
+
+.tech-list li::before {
+    content: '→';
+    position: absolute;
+    left: 0;
+    color: var(--st-accent-500);
+    font-weight: 600;
+}
+
+.wiki-link {
+    color: var(--st-accent-600);
+    text-decoration: none;
+    border-bottom: 1px dotted var(--st-accent-500);
+    transition: border-bottom-style 0.15s;
+}
+
+html.dark .wiki-link {
+    color: var(--st-accent-400);
+    border-bottom-color: var(--st-accent-400);
+}
+
+.wiki-link:hover {
+    border-bottom-style: solid;
+}
 </style>
 
-<div class="p-6">
-<div class="max-w-6xl mx-auto">
-    <!-- Hero Section -->
-    <div class="about-hero">
-        <h1 class="text-4xl font-bold mb-3">About SpecTrace</h1>
-        <p class="text-xl opacity-90 mb-4">
-            Modern <a href="https://en.wikipedia.org/wiki/Requirements_traceability" class="wiki-link" target="_blank" style="color: white; border-bottom-color: white;">requirements traceability</a> for Python teams
-        </p>
-        <p class="text-lg opacity-80">
-            Connect product specs to verified code. See what's tested, what's verified, what's working.
+<div class="st-page-wrapper">
+<div class="st-page st-container" style="max-width: 900px;">
+    <!-- Hero -->
+    <div class="about-hero st-animate-in mb-8">
+        <h1 class="about-hero__title">SpecTrace</h1>
+        <p class="about-hero__subtitle">
+            Modern <a href="https://en.wikipedia.org/wiki/Requirements_traceability" class="wiki-link" target="_blank" style="color: var(--st-accent-400); border-bottom-color: var(--st-accent-400);">requirements traceability</a> for Python teams.
+            Connect product specs to verified code.
         </p>
     </div>
 
-    <!-- What is Requirements Traceability? -->
-    <div class="section-card">
-        <h2>What is Requirements Traceability?</h2>
-        <p class="text-muted mb-4">
-            <a href="https://en.wikipedia.org/wiki/Requirements_traceability" class="wiki-link" target="_blank">Requirements traceability</a> 
-            is the ability to track requirements through the entire development lifecycle — from specification through 
-            implementation to testing. It answers critical questions: "Is this requirement implemented?" 
-            "Which tests verify this feature?" "What breaks if I change this spec?"
+    <!-- What is Traceability -->
+    <section class="about-section st-animate-in st-animate-delay-1">
+        <h2 class="about-section__title">What is Requirements Traceability?</h2>
+        <p class="st-body" style="max-width: 700px; margin-bottom: var(--st-space-4);">
+            <a href="https://en.wikipedia.org/wiki/Requirements_traceability" class="wiki-link" target="_blank">Requirements traceability</a>
+            tracks requirements through the development lifecycle — from specification through implementation to testing.
+            It answers: "Is this requirement implemented?" "Which tests verify this feature?" "What breaks if I change this spec?"
         </p>
-        
-        <div class="highlight-box">
-            <strong>SpecTrace brings requirements traceability to Python projects</strong> with specs-as-code, 
-            pytest integration, and a live dashboard showing verification status.
+        <div style="padding: var(--st-space-4) var(--st-space-5); background: var(--st-accent-bg); border-left: 4px solid var(--st-accent-500); border-radius: var(--st-radius-sm);">
+            <p style="color: var(--st-text); font-weight: 500; margin: 0;">
+                SpecTrace brings requirements traceability to Python projects with specs-as-code, pytest integration, and a live verification dashboard.
+            </p>
         </div>
-    </div>
+    </section>
 
     <!-- Core Capabilities -->
-    <div class="section-card">
-        <h2>Core Capabilities</h2>
+    <section class="about-section st-animate-in st-animate-delay-2">
+        <h2 class="about-section__title">Core Capabilities</h2>
         <div class="feature-grid">
             <div class="feature-card">
-                <span class="feature-icon">📝</span>
-                <h4>Specs as Code</h4>
-                <p class="text-muted">Requirements live in your repo as markdown files. Version controlled, reviewable, no drift.</p>
+                <span class="feature-card__icon">📝</span>
+                <h3 class="feature-card__title">Specs as Code</h3>
+                <p class="feature-card__desc">Requirements live in your repo as markdown. Version controlled, reviewable, no drift.</p>
             </div>
             <div class="feature-card">
-                <span class="feature-icon">🔗</span>
-                <h4>Test Linking</h4>
-                <p class="text-muted">Link tests to requirements with <code>@pytest.mark.requirement("REQ-XXX")</code> decorators.</p>
+                <span class="feature-card__icon">🔗</span>
+                <h3 class="feature-card__title">Test Linking</h3>
+                <p class="feature-card__desc">Link tests to requirements with <code class="st-mono" style="font-size: 0.75rem;">@pytest.mark.requirement</code> decorators.</p>
             </div>
             <div class="feature-card">
-                <span class="feature-icon">✅</span>
-                <h4>Verification Status</h4>
-                <p class="text-muted">Live dashboard shows which requirements are passing, failing, or untested.</p>
+                <span class="feature-card__icon">✅</span>
+                <h3 class="feature-card__title">Verification Status</h3>
+                <p class="feature-card__desc">Live dashboard shows which requirements are passing, failing, or untested.</p>
             </div>
             <div class="feature-card">
-                <span class="feature-icon">🌳</span>
-                <h4>Hierarchical</h4>
-                <p class="text-muted">Organize requirements in parent-child trees. Efficient materialized path queries.</p>
+                <span class="feature-card__icon">🌳</span>
+                <h3 class="feature-card__title">Hierarchical</h3>
+                <p class="feature-card__desc">Organize requirements in parent-child trees. Efficient materialized path queries.</p>
             </div>
             <div class="feature-card">
-                <span class="feature-icon">💥</span>
-                <h4>Impact Analysis</h4>
-                <p class="text-muted">See which tests are affected when specs change (git diff integration).</p>
+                <span class="feature-card__icon">💥</span>
+                <h3 class="feature-card__title">Impact Analysis</h3>
+                <p class="feature-card__desc">See which tests are affected when specs change via git diff integration.</p>
             </div>
             <div class="feature-card">
-                <span class="feature-icon">📊</span>
-                <h4>Traceability Matrix</h4>
-                <p class="text-muted">Visual grid of requirements × tests with color-coded verification status.</p>
+                <span class="feature-card__icon">📊</span>
+                <h3 class="feature-card__title">Traceability Matrix</h3>
+                <p class="feature-card__desc">Visual grid of requirements × tests with color-coded verification status.</p>
             </div>
         </div>
-    </div>
+    </section>
 
-    <!-- The Problem & Solution -->
-    <div class="section-card">
-        <h2>Why Requirements Traceability Matters</h2>
+    <!-- Problem / Solution -->
+    <section class="about-section st-animate-in st-animate-delay-3">
+        <h2 class="about-section__title">Why Traceability Matters</h2>
         <div class="comparison-grid">
-            <div class="problem-box">
-                <h3>❌ Without Traceability</h3>
-                <ul>
+            <div class="comparison-box comparison-box--problem">
+                <h3 class="comparison-box__title">❌ Without Traceability</h3>
+                <ul class="comparison-list">
                     <li>Specs scattered across Slack, Notion, Linear</li>
                     <li>No single source of truth</li>
                     <li>Can't answer "is REQ-X working?"</li>
@@ -431,9 +483,9 @@
                     <li>Specs drift from implementation</li>
                 </ul>
             </div>
-            <div class="solution-box">
-                <h3>✅ With SpecTrace</h3>
-                <ul>
+            <div class="comparison-box comparison-box--solution">
+                <h3 class="comparison-box__title">✅ With SpecTrace</h3>
+                <ul class="comparison-list">
                     <li>Specs version-controlled with code</li>
                     <li>Single source of truth in repo</li>
                     <li>One-click verification status</li>
@@ -443,73 +495,69 @@
                 </ul>
             </div>
         </div>
-    </div>
+    </section>
 
     <!-- How It Works -->
-    <div class="section-card">
-        <h2>How It Works</h2>
-        <div class="workflow">
+    <section class="about-section st-animate-in st-animate-delay-4">
+        <h2 class="about-section__title">How It Works</h2>
+        <div class="workflow-steps">
             <div class="workflow-step">
-                <div class="step-number">1</div>
-                <div>Write Specs</div>
-                <small class="text-muted">Markdown in specs/</small>
+                <span class="workflow-step__number">1</span>
+                <div class="workflow-step__title">Write Specs</div>
+                <div class="workflow-step__desc">Markdown in specs/</div>
             </div>
             <div class="workflow-arrow">→</div>
             <div class="workflow-step">
-                <div class="step-number">2</div>
-                <div>Link Tests</div>
-                <small class="text-muted">@pytest.mark</small>
+                <span class="workflow-step__number">2</span>
+                <div class="workflow-step__title">Link Tests</div>
+                <div class="workflow-step__desc">@pytest.mark</div>
             </div>
             <div class="workflow-arrow">→</div>
             <div class="workflow-step">
-                <div class="step-number">3</div>
-                <div>Run Tests</div>
-                <small class="text-muted">JUnit XML</small>
+                <span class="workflow-step__number">3</span>
+                <div class="workflow-step__title">Run Tests</div>
+                <div class="workflow-step__desc">JUnit XML</div>
             </div>
             <div class="workflow-arrow">→</div>
             <div class="workflow-step">
-                <div class="step-number">4</div>
-                <div>Import</div>
-                <small class="text-muted">Django CLI</small>
+                <span class="workflow-step__number">4</span>
+                <div class="workflow-step__title">Import</div>
+                <div class="workflow-step__desc">Django CLI</div>
             </div>
             <div class="workflow-arrow">→</div>
             <div class="workflow-step">
-                <div class="step-number">5</div>
-                <div>Dashboard</div>
-                <small class="text-muted">Live status</small>
+                <span class="workflow-step__number">5</span>
+                <div class="workflow-step__title">Dashboard</div>
+                <div class="workflow-step__desc">Live status</div>
             </div>
         </div>
-        
-        <div style="margin-top: 2rem;">
-            <h3>Key Concepts</h3>
-            <dl>
-                <div class="key-concept">
-                    <dt>Requirement</dt>
-                    <dd>Product spec parsed from markdown with unique ID (REQ-XXX-001). Organized hierarchically with parent-child relationships.</dd>
-                </div>
-                <div class="key-concept">
-                    <dt>Verification Status</dt>
-                    <dd><strong>Passing:</strong> All linked tests pass | <strong>Failing:</strong> Any test fails | <strong>Untested:</strong> No tests linked</dd>
-                </div>
-                <div class="key-concept">
-                    <dt>Traceability</dt>
-                    <dd>Bidirectional links between requirements ↔ tests. Navigate from requirement to tests, or from test to requirements.</dd>
-                </div>
-                <div class="key-concept">
-                    <dt>Impact Analysis</dt>
-                    <dd>Git diff integration shows which tests are affected when specs change. Helps target test runs efficiently.</dd>
-                </div>
-            </dl>
+
+        <h3 style="font-size: 1.125rem; font-weight: 600; color: var(--st-text); margin: var(--st-space-8) 0 var(--st-space-4);">Key Concepts</h3>
+        <div class="concept-card">
+            <div class="concept-card__term">Requirement</div>
+            <div class="concept-card__def">Product spec parsed from markdown with unique ID (REQ-XXX-001). Organized hierarchically with parent-child relationships.</div>
         </div>
-    </div>
+        <div class="concept-card">
+            <div class="concept-card__term">Verification Status</div>
+            <div class="concept-card__def"><strong>Passing:</strong> All linked tests pass · <strong>Failing:</strong> Any test fails · <strong>Untested:</strong> No tests linked</div>
+        </div>
+        <div class="concept-card">
+            <div class="concept-card__term">Traceability</div>
+            <div class="concept-card__def">Bidirectional links between requirements ↔ tests. Navigate from requirement to tests, or from test to requirements.</div>
+        </div>
+        <div class="concept-card">
+            <div class="concept-card__term">Impact Analysis</div>
+            <div class="concept-card__def">Git diff integration shows which tests are affected when specs change. Helps target test runs efficiently.</div>
+        </div>
+    </section>
 
     <!-- Getting Started -->
-    <div class="section-card">
-        <h2>Getting Started</h2>
-        
-        <h3 style="margin-top: 1.5rem;">1. Create a Spec File</h3>
-        <p class="text-muted">Create <code>specs/auth.md</code> with YAML frontmatter:</p>
-        <div class="code-block">---
+    <section class="about-section st-animate-in st-animate-delay-5">
+        <h2 class="about-section__title">Getting Started</h2>
+
+        <h3 class="st-heading-3" style="margin-bottom: var(--st-space-3);">1. Create a Spec File</h3>
+        <p class="st-caption" style="margin-bottom: var(--st-space-2);">Create <code class="st-mono">specs/auth.md</code> with YAML frontmatter:</p>
+        <div class="st-code" style="margin-bottom: var(--st-space-6);">---
 id: REQ-AUTH-001
 title: User Login
 priority: high
@@ -523,18 +571,17 @@ Users must be able to log in with email and password.
 - Password strength requirements
 - Session creation on success</div>
 
-        <h3 style="margin-top: 2rem;">2. Import Specs</h3>
-        <p class="text-muted">Parse markdown files into the database:</p>
-        <div class="code-block">python manage.py parse_specs specs/</div>
+        <h3 class="st-heading-3" style="margin-bottom: var(--st-space-3);">2. Import Specs</h3>
+        <p class="st-caption" style="margin-bottom: var(--st-space-2);">Parse markdown files into the database:</p>
+        <div class="st-code" style="margin-bottom: var(--st-space-6);">python manage.py parse_specs specs/</div>
 
-        <h3 style="margin-top: 2rem;">3. Link Tests</h3>
-        <p class="text-muted">Annotate pytest tests with requirement IDs:</p>
-        <div class="code-block">import pytest
+        <h3 class="st-heading-3" style="margin-bottom: var(--st-space-3);">3. Link Tests</h3>
+        <p class="st-caption" style="margin-bottom: var(--st-space-2);">Annotate pytest tests with requirement IDs:</p>
+        <div class="st-code" style="margin-bottom: var(--st-space-6);">import pytest
 
 @pytest.mark.requirement("REQ-AUTH-001")
 def test_user_can_login():
     """Test successful login with valid credentials."""
-    # Test implementation
     pass
 
 @pytest.mark.requirement("REQ-AUTH-001", "REQ-AUTH-002")
@@ -542,65 +589,64 @@ def test_login_creates_session():
     """Test can link to multiple requirements."""
     pass</div>
 
-        <h3 style="margin-top: 2rem;">4. Run Tests & Import Results</h3>
-        <p class="text-muted">Run pytest and import results to see verification status:</p>
-        <div class="code-block">pytest --junitxml=results.xml
+        <h3 class="st-heading-3" style="margin-bottom: var(--st-space-3);">4. Run Tests & Import Results</h3>
+        <p class="st-caption" style="margin-bottom: var(--st-space-2);">Run pytest and import results:</p>
+        <div class="st-code" style="margin-bottom: var(--st-space-6);">pytest --junitxml=results.xml
 python manage.py extract_links -o links.json
 python manage.py import_results results.xml --links links.json</div>
 
-        <h3 style="margin-top: 2rem;">5. View Dashboard</h3>
-        <p class="text-muted">Open the dashboard to see real-time verification status:</p>
-        <div class="code-block">python manage.py runserver
+        <h3 class="st-heading-3" style="margin-bottom: var(--st-space-3);">5. View Dashboard</h3>
+        <div class="st-code">python manage.py runserver
 # Open http://localhost:8000/admin/</div>
-    </div>
+    </section>
 
     <!-- Advanced Features -->
-    <div class="section-card">
-        <h2>Advanced Features</h2>
+    <section class="about-section">
+        <h2 class="about-section__title">Advanced Features</h2>
         <div class="feature-grid">
             <div class="feature-card">
-                <h4>🏢 Vendor Coverage</h4>
-                <p class="text-muted">Track integration validation by vendor (PMS systems, mobile keys, payment gateways). See pass rates per vendor.</p>
+                <h3 class="feature-card__title">🏢 Vendor Coverage</h3>
+                <p class="feature-card__desc">Track integration validation by vendor. See pass rates per PMS, mobile key provider, or payment gateway.</p>
             </div>
             <div class="feature-card">
-                <h4>📱 In-App Validation</h4>
-                <p class="text-muted">SDK for validation buttons in production apps. Multi-step validations with granular pass/fail tracking.</p>
+                <h3 class="feature-card__title">📱 In-App Validation</h3>
+                <p class="feature-card__desc">SDK for validation buttons in production apps. Multi-step validations with granular pass/fail tracking.</p>
             </div>
             <div class="feature-card">
-                <h4>🎯 SLO Integration</h4>
-                <p class="text-muted">Link requirements to Service Level Objectives using OpenSLO YAML. Track operational compliance.</p>
+                <h3 class="feature-card__title">🎯 SLO Integration</h3>
+                <p class="feature-card__desc">Link requirements to Service Level Objectives using OpenSLO YAML. Track operational compliance.</p>
             </div>
             <div class="feature-card">
-                <h4>🔌 REST API</h4>
-                <p class="text-muted">Push validation results from external systems. Submit status updates, retrieve requirement status.</p>
+                <h3 class="feature-card__title">🔌 REST API</h3>
+                <p class="feature-card__desc">Push validation results from external systems. Submit status updates, retrieve requirement status.</p>
             </div>
             <div class="feature-card">
-                <h4>🔍 Conflict Detection</h4>
-                <p class="text-muted">FRET-inspired structured fields enable condition overlap, timing conflict, and response contradiction detection.</p>
+                <h3 class="feature-card__title">🔍 Conflict Detection</h3>
+                <p class="feature-card__desc">FRET-inspired structured fields enable condition overlap, timing conflict, and response contradiction detection.</p>
             </div>
             <div class="feature-card">
-                <h4>📈 Linear Integration</h4>
-                <p class="text-muted">Sync with Linear issues. Track requirement-to-issue mapping with health checks and auto-enrichment.</p>
+                <h3 class="feature-card__title">📈 Linear Integration</h3>
+                <p class="feature-card__desc">Sync with Linear issues. Track requirement-to-issue mapping with health checks and auto-enrichment.</p>
             </div>
         </div>
-    </div>
+    </section>
 
     <!-- Tech Stack -->
-    <div class="section-card">
-        <h2>Tech Stack</h2>
-        <div class="comparison-grid">
+    <section class="about-section">
+        <h2 class="about-section__title">Tech Stack</h2>
+        <div class="tech-list">
             <div>
-                <h3>Core Technologies</h3>
+                <h3 class="tech-list__title">Core Technologies</h3>
                 <ul>
                     <li><strong>Django 5.2 LTS</strong> — Web framework</li>
-                    <li><strong>django-treebeard</strong> — Hierarchical requirements storage</li>
-                    <li><strong>django-unfold</strong> — Modern admin UI with Tailwind CSS</li>
-                    <li><strong>pytest</strong> — Test framework with requirement markers</li>
-                    <li><strong>SQLite/PostgreSQL</strong> — Database (SQLite dev, Postgres prod)</li>
+                    <li><strong>django-treebeard</strong> — Hierarchical storage</li>
+                    <li><strong>django-unfold</strong> — Modern admin UI</li>
+                    <li><strong>pytest</strong> — Test framework with markers</li>
+                    <li><strong>SQLite/PostgreSQL</strong> — Database</li>
                 </ul>
             </div>
             <div>
-                <h3>Design Philosophy</h3>
+                <h3 class="tech-list__title">Design Philosophy</h3>
                 <ul>
                     <li>Specs in codebase, not Notion — version control</li>
                     <li>Markdown format — PM-friendly, reviewable</li>
@@ -610,30 +656,30 @@ python manage.py import_results results.xml --links links.json</div>
                 </ul>
             </div>
         </div>
-    </div>
+    </section>
 
-    <!-- Call to Action -->
-    <div class="cta-box">
-        <h2 style="color: white; margin-bottom: 1rem;">Explore SpecTrace</h2>
-        <p style="opacity: 0.9; margin-bottom: 1.5rem;">Start tracking your requirements traceability</p>
-        <div>
-            <a href="{% url 'admin:index' %}">View Dashboard</a>
-            <a href="{% url 'admin-matrix' %}">Traceability Matrix</a>
-            <a href="{% url 'admin-vendor-coverage' %}">Vendor Coverage</a>
-            <a href="{% url 'admin-impact-analysis' %}">Impact Analysis</a>
+    <!-- CTA -->
+    <div class="cta-banner st-animate-in" style="animation-delay: 0.5s; margin-top: var(--st-space-8);">
+        <h2 class="cta-banner__title">Explore SpecTrace</h2>
+        <p class="cta-banner__subtitle">Start tracking your requirements traceability</p>
+        <div class="cta-banner__actions">
+            <a href="{% url 'admin:index' %}" class="cta-btn">View Dashboard</a>
+            <a href="{% url 'admin-matrix' %}" class="cta-btn">Traceability Matrix</a>
+            <a href="{% url 'admin-vendor-coverage' %}" class="cta-btn">Vendor Coverage</a>
+            <a href="{% url 'admin-impact-analysis' %}" class="cta-btn">Impact Analysis</a>
         </div>
     </div>
 
     <!-- Footer -->
-    <div class="text-center text-sm text-muted" style="padding: 2rem 0;">
+    <footer style="text-align: center; padding: var(--st-space-8) 0; color: var(--st-text-subtle);">
         <p>
-            <a href="{% url 'swagger-ui' %}" class="wiki-link">API Documentation</a> •
+            <a href="{% url 'swagger-ui' %}" class="wiki-link">API Documentation</a> ·
             <a href="https://github.com/tslateman/spec-trace" class="wiki-link" target="_blank">GitHub</a>
         </p>
-        <p class="mt-4" style="font-size: 0.75rem; opacity: 0.7;">
-            SpecTrace — Open source requirements traceability built with Django + pytest
+        <p style="font-size: 0.75rem; margin-top: var(--st-space-4); opacity: 0.7;">
+            SpecTrace — Open source requirements traceability for Django + pytest
         </p>
-    </div>
+    </footer>
 </div>
 </div>
 {% endblock %}

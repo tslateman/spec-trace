@@ -2,293 +2,300 @@
 {% load i18n %}
 
 {% block content %}
-<style>
-    .status-passing {
-        background-color: #dcfce7;
-        color: #166534;
-    }
-    .status-failing {
-        background-color: #fee2e2;
-        color: #991b1b;
-    }
-    .status-untested {
-        background-color: #fef9c3;
-        color: #854d0e;
-    }
-    .dark .status-passing {
-        background-color: #052e16;
-        color: #4ade80;
-    }
-    .dark .status-failing {
-        background-color: #450a0a;
-        color: #f87171;
-    }
-    .dark .status-untested {
-        background-color: #422006;
-        color: #facc15;
-    }
-    [x-cloak] {
-        display: none !important;
-    }
-</style>
-<div class="p-6">
-    <!-- Metrics Banner -->
-    <div class="mb-8 grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div class="bg-white dark:bg-base-900 rounded-lg shadow p-4 border border-base-200 dark:border-base-800">
-            <div class="text-sm text-base-500 dark:text-base-400">Total Requirements</div>
-            <div class="text-3xl font-bold text-base-900 dark:text-white">{{ total_requirements|default:"0" }}</div>
+{% include "admin/requirements/_design_system.html" %}
+
+<div class="st-page-wrapper">
+<div class="st-page st-container st-bg-grid">
+    <!-- Dashboard Header -->
+    <header class="st-flex-between mb-8 st-animate-in">
+        <div>
+            <h1 class="st-heading-1">Requirements Dashboard</h1>
+            <p class="st-caption mt-1">Real-time verification status across your spec coverage</p>
         </div>
-        <div class="bg-white dark:bg-base-900 rounded-lg shadow p-4 border border-base-200 dark:border-base-800 border-l-4 border-l-green-500">
-            <div class="text-sm text-base-500 dark:text-base-400">Passing</div>
-            <div class="text-3xl font-bold text-green-600 dark:text-green-400">{{ passing_count|default:"0" }}</div>
-            <div class="text-sm text-green-600 dark:text-green-400">{{ passing_pct|default:"0" }}%</div>
+        <div class="st-cluster">
+            <span class="st-badge st-badge--neutral">
+                <span class="st-dot st-dot--pass st-dot--pulse"></span>
+                Live
+            </span>
         </div>
-        <div class="bg-white dark:bg-base-900 rounded-lg shadow p-4 border border-base-200 dark:border-base-800 border-l-4 border-l-red-500">
-            <div class="text-sm text-base-500 dark:text-base-400">Failing</div>
-            <div class="text-3xl font-bold text-red-600 dark:text-red-400">{{ failing_count|default:"0" }}</div>
-            <div class="text-sm text-red-600 dark:text-red-400">{{ failing_pct|default:"0" }}%</div>
+    </header>
+
+    <!-- Metrics Grid -->
+    <div class="st-grid-stats mb-8">
+        <div class="st-metric st-metric--accent st-animate-in st-animate-delay-1 st-lift">
+            <div class="st-metric__label">Total Requirements</div>
+            <div class="st-metric__value">{{ total_requirements|default:"0" }}</div>
         </div>
-        <div class="bg-white dark:bg-base-900 rounded-lg shadow p-4 border border-base-200 dark:border-base-800 border-l-4 border-l-yellow-500">
-            <div class="text-sm text-base-500 dark:text-base-400">Untested</div>
-            <div class="text-3xl font-bold text-yellow-600 dark:text-yellow-400">{{ untested_count|default:"0" }}</div>
-            <div class="text-sm text-yellow-600 dark:text-yellow-400">{{ untested_pct|default:"0" }}%</div>
+        <div class="st-metric st-metric--pass st-animate-in st-animate-delay-2 st-lift">
+            <div class="st-metric__label">Passing</div>
+            <div class="st-metric__value" style="color: var(--st-pass);">{{ passing_count|default:"0" }}</div>
+            <div class="st-metric__delta st-metric__delta--up">{{ passing_pct|default:"0" }}% coverage</div>
+        </div>
+        <div class="st-metric st-metric--fail st-animate-in st-animate-delay-3 st-lift">
+            <div class="st-metric__label">Failing</div>
+            <div class="st-metric__value" style="color: var(--st-fail);">{{ failing_count|default:"0" }}</div>
+            <div class="st-metric__delta st-metric__delta--down">{{ failing_pct|default:"0" }}% of total</div>
+        </div>
+        <div class="st-metric st-metric--warn st-animate-in st-animate-delay-4 st-lift">
+            <div class="st-metric__label">Untested</div>
+            <div class="st-metric__value" style="color: var(--st-warn);">{{ untested_count|default:"0" }}</div>
+            <div class="st-metric__delta" style="color: var(--st-text-subtle);">{{ untested_pct|default:"0" }}% need coverage</div>
         </div>
     </div>
 
-    <!-- Requirements Tree -->
-    <div class="bg-white dark:bg-base-900 rounded-lg shadow border border-base-200 dark:border-base-800">
-        <div class="p-4 border-b border-base-200 dark:border-base-800">
-            <h2 class="text-lg font-semibold text-base-900 dark:text-white">Requirements</h2>
-        </div>
-        <div class="p-4">
-            {% if requirements_tree %}
-            <ul class="space-y-1">
-                {% for node, info in requirements_tree %}
-                {% if info.open %}
-                <li style="margin-left: {{ info.level|add:info.level }}rem;">
-                    <div class="flex items-center p-2 rounded-lg {% if node.verification_status == 'untested' %}bg-yellow-50 dark:bg-yellow-900/20{% endif %}">
-                        <!-- Status dot -->
-                        <span class="w-3 h-3 rounded-full mr-3
-                            {% if node.verification_status == 'passing' %}bg-green-500
-                            {% elif node.verification_status == 'failing' %}bg-red-500
-                            {% else %}bg-base-400{% endif %}">
-                        </span>
-                        <!-- Requirement info -->
-                        <a href="{% url 'admin:requirements_requirement_change' node.pk %}"
-                           class="flex-1 hover:underline">
-                            <span class="font-mono text-sm text-base-600 dark:text-base-400">{{ node.external_id }}</span>
-                            <span class="ml-2 text-base-900 dark:text-white">{{ node.title }}</span>
-                        </a>
-                        <!-- Status badge -->
-                        <span class="status-badge text-xs px-2 py-1 rounded font-medium ml-3
-                            {% if node.verification_status == 'passing' %}status-passing
-                            {% elif node.verification_status == 'failing' %}status-failing
-                            {% else %}status-untested{% endif %}">
-                            {{ node.verification_status|title }}
-                        </span>
-                    </div>
-                {% endif %}
-                {% for close in info.close %}</li>{% endfor %}
-                {% endfor %}
-            </ul>
-            {% else %}
-            <p class="text-base-500 dark:text-base-400">No requirements found. Run <code>python manage.py parse_specs</code> to import specs.</p>
-            {% endif %}
-        </div>
-    </div>
-
-    <!-- Quick Actions -->
-    <div class="mt-6 flex flex-wrap gap-4">
-        <a href="{% url 'admin-matrix' %}"
-           class="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors">
-            View Traceability Matrix
-        </a>
-        <a href="{% url 'admin-vendor-coverage' %}"
-           class="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors">
-            Vendor Coverage
-        </a>
-        <a href="{% url 'admin-impact-analysis' %}"
-           class="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors">
-            Impact Analysis
-        </a>
-        <a href="{% url 'admin-validation-runs' %}"
-           class="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors">
-            Validation Runs
-        </a>
-        <a href="{% url 'admin:requirements_requirement_changelist' %}"
-           class="px-4 py-2 bg-base-200 dark:bg-base-700 text-base-800 dark:text-base-200 hover:bg-base-300 dark:hover:bg-base-600 rounded-lg transition-colors">
-            View All Requirements
-        </a>
-        <a href="{% url 'admin:requirements_testrun_changelist' %}"
-           class="px-4 py-2 bg-base-200 dark:bg-base-700 text-base-800 dark:text-base-200 hover:bg-base-300 dark:hover:bg-base-600 rounded-lg transition-colors">
-            View Test Runs
-        </a>
-    </div>
-
-    <!-- Integrations -->
-    <div class="mt-6 bg-white dark:bg-base-900 rounded-lg shadow border border-base-200 dark:border-base-800">
-        <div class="p-4 border-b border-base-200 dark:border-base-800">
-            <h2 class="text-lg font-semibold text-base-900 dark:text-white">Integrations</h2>
-        </div>
-        <div class="p-4" x-data="linearHealthWidget()" x-init="fetchHealth()" x-cloak>
-            {% csrf_token %}
-            <!-- Linear Integration Row -->
-            <div class="flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                    <span class="text-base-900 dark:text-white font-medium">Linear</span>
-                    <span class="text-xs px-2 py-1 rounded font-medium" :class="statusClass" x-text="statusLabel"></span>
-                    <span class="text-sm text-base-500 dark:text-base-400" x-show="lastChecked" x-text="lastCheckedText"></span>
-                </div>
-                <button
-                    @click="testConnection()"
-                    :disabled="isLoading"
-                    class="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                    <svg x-show="isLoading" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span x-text="isLoading ? 'Testing...' : 'Test Connection'"></span>
-                </button>
+    <!-- Main Content Grid -->
+    <div style="display: grid; grid-template-columns: 1fr 320px; gap: var(--st-space-6); align-items: start;">
+        <!-- Requirements Tree -->
+        <div class="st-card st-animate-in st-animate-delay-5">
+            <div class="st-card-header">
+                <h2 class="st-heading-3">Requirements</h2>
+                <a href="{% url 'admin:requirements_requirement_changelist' %}" class="st-btn st-btn--ghost st-btn--sm">
+                    View All →
+                </a>
             </div>
-            <!-- Error Display -->
-            <div x-show="error" class="mt-3 text-sm text-red-600 dark:text-red-400" x-text="error"></div>
+            <div class="st-card-body" style="max-height: 500px; overflow-y: auto;">
+                {% if requirements_tree %}
+                <div class="st-stack st-stack--sm">
+                    {% for node, info in requirements_tree %}
+                    {% if info.open %}
+                    <div style="margin-left: {{ info.level|add:info.level }}rem;">
+                        <a href="{% url 'admin:requirements_requirement_change' node.pk %}"
+                           class="st-lift"
+                           style="display: flex; align-items: center; gap: var(--st-space-3); padding: var(--st-space-3); border-radius: var(--st-radius-md); text-decoration: none; {% if node.verification_status == 'untested' %}background: var(--st-warn-muted);{% endif %}">
+                            <span class="st-dot {% if node.verification_status == 'passing' %}st-dot--pass{% elif node.verification_status == 'failing' %}st-dot--fail{% else %}st-dot--neutral{% endif %}"></span>
+                            <span class="st-mono" style="font-size: 0.75rem; color: var(--st-text-subtle);">{{ node.external_id }}</span>
+                            <span style="flex: 1; color: var(--st-text); font-size: 0.875rem;">{{ node.title }}</span>
+                            <span class="st-badge {% if node.verification_status == 'passing' %}st-badge--pass{% elif node.verification_status == 'failing' %}st-badge--fail{% else %}st-badge--warn{% endif %}">
+                                {{ node.verification_status|title }}
+                            </span>
+                        </a>
+                    </div>
+                    {% endif %}
+                    {% for close in info.close %}{% endfor %}
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div style="text-align: center; padding: var(--st-space-10); color: var(--st-text-subtle);">
+                    <p style="margin-bottom: var(--st-space-4);">No requirements found</p>
+                    <div class="st-code" style="text-align: left; display: inline-block;">python manage.py parse_specs specs/</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="st-stack">
+            <!-- Quick Actions -->
+            <div class="st-card st-animate-in" style="animation-delay: 0.3s;">
+                <div class="st-card-header">
+                    <h3 class="st-heading-3">Quick Actions</h3>
+                </div>
+                <div class="st-card-body st-stack st-stack--sm">
+                    <a href="{% url 'admin-matrix' %}" class="st-btn st-btn--primary" style="width: 100%;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="7" height="7"></rect>
+                            <rect x="14" y="3" width="7" height="7"></rect>
+                            <rect x="3" y="14" width="7" height="7"></rect>
+                            <rect x="14" y="14" width="7" height="7"></rect>
+                        </svg>
+                        Traceability Matrix
+                    </a>
+                    <a href="{% url 'admin-validation-runs' %}" class="st-btn st-btn--secondary" style="width: 100%;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+                        </svg>
+                        Validation Runs
+                    </a>
+                    <a href="{% url 'admin-vendor-coverage' %}" class="st-btn st-btn--secondary" style="width: 100%;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                        Vendor Coverage
+                    </a>
+                    <a href="{% url 'admin-impact-analysis' %}" class="st-btn st-btn--secondary" style="width: 100%;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                        </svg>
+                        Impact Analysis
+                    </a>
+                </div>
+            </div>
+
+            <!-- Integration Health -->
+            <div class="st-card st-animate-in" style="animation-delay: 0.35s;" x-data="linearHealthWidget()" x-init="fetchHealth()" x-cloak>
+                {% csrf_token %}
+                <div class="st-card-header">
+                    <h3 class="st-heading-3">Integrations</h3>
+                </div>
+                <div class="st-card-body">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--st-space-3);">
+                        <div style="display: flex; align-items: center; gap: var(--st-space-3);">
+                            <svg width="20" height="20" viewBox="0 0 100 100" style="color: var(--st-text-muted);">
+                                <path fill="currentColor" d="M50 0L0 25v50l50 25 50-25V25L50 0zm0 12.5l37.5 18.75v37.5L50 87.5l-37.5-18.75v-37.5L50 12.5z"/>
+                            </svg>
+                            <span style="font-weight: 600; color: var(--st-text);">Linear</span>
+                        </div>
+                        <span class="st-badge"
+                              :class="{'st-badge--pass': status === 'healthy', 'st-badge--warn': status === 'degraded', 'st-badge--fail': status === 'unhealthy', 'st-badge--neutral': status === 'unknown'}"
+                              x-text="statusLabel"></span>
+                    </div>
+                    <p class="st-caption" x-show="lastChecked" x-text="lastCheckedText" style="margin-bottom: var(--st-space-3);"></p>
+                    <button @click="testConnection()"
+                            :disabled="isLoading"
+                            class="st-btn st-btn--secondary st-btn--sm"
+                            style="width: 100%;">
+                        <svg x-show="isLoading" class="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2v4m0 12v4m-7.07-3.93l2.83-2.83m8.48-8.48l2.83-2.83M2 12h4m12 0h4m-3.93 7.07l-2.83-2.83M6.34 6.34L3.51 3.51"></path>
+                        </svg>
+                        <span x-text="isLoading ? 'Testing...' : 'Test Connection'"></span>
+                    </button>
+                    <p x-show="error" class="st-caption" style="color: var(--st-fail); margin-top: var(--st-space-2);" x-text="error"></p>
+                </div>
+            </div>
+
+            <!-- Status Legend -->
+            <div class="st-card st-animate-in" style="animation-delay: 0.4s;">
+                <div class="st-card-header">
+                    <h3 class="st-heading-3">Status Legend</h3>
+                </div>
+                <div class="st-card-body st-stack st-stack--sm">
+                    <div style="display: flex; align-items: center; gap: var(--st-space-3);">
+                        <span class="st-dot st-dot--pass"></span>
+                        <span class="st-badge st-badge--pass">Passing</span>
+                        <span class="st-caption">All linked tests pass</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: var(--st-space-3);">
+                        <span class="st-dot st-dot--fail"></span>
+                        <span class="st-badge st-badge--fail">Failing</span>
+                        <span class="st-caption">Any linked test fails</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: var(--st-space-3);">
+                        <span class="st-dot st-dot--neutral"></span>
+                        <span class="st-badge st-badge--warn">Untested</span>
+                        <span class="st-caption">No tests linked</span>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- Help Section -->
-    <div class="mt-8 bg-white dark:bg-base-900 rounded-lg shadow border border-base-200 dark:border-base-800">
-        <div class="p-4 border-b border-base-200 dark:border-base-800">
-            <h2 class="text-lg font-semibold text-base-900 dark:text-white">Quick Reference</h2>
+    <!-- Footer Quick Reference -->
+    <div class="st-card st-animate-in" style="animation-delay: 0.45s; margin-top: var(--st-space-8);">
+        <div class="st-card-header">
+            <h3 class="st-heading-3">Quick Reference</h3>
+            <a href="{% url 'admin-about' %}" class="st-btn st-btn--ghost st-btn--sm">Full Documentation →</a>
         </div>
-        <div class="p-4 text-sm text-base-700 dark:text-base-300">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <h3 class="font-semibold text-base-900 dark:text-white mb-2">Update Data</h3>
-                    <pre class="bg-base-100 dark:bg-base-800 p-3 rounded text-xs overflow-x-auto"><code># Import specs
+        <div class="st-card-body" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--st-space-6);">
+            <div>
+                <h4 class="st-label" style="margin-bottom: var(--st-space-3);">Import Data</h4>
+                <div class="st-code">
+# Parse specs from markdown
 python manage.py parse_specs specs/
 
-# Run tests
+# Run tests & import results
 pytest --junitxml=results.xml
-
-# Extract links & import
 python manage.py extract_links -o links.json
-python manage.py import_results results.xml --links links.json</code></pre>
-                </div>
-                <div>
-                    <h3 class="font-semibold text-base-900 dark:text-white mb-2">Status Legend</h3>
-                    <ul class="space-y-2">
-                        <li class="flex items-center">
-                            <span class="w-3 h-3 rounded-full bg-green-500 mr-2"></span>
-                            <span class="status-passing text-xs px-2 py-1 rounded font-medium mr-2">Passing</span>
-                            All linked tests pass
-                        </li>
-                        <li class="flex items-center">
-                            <span class="w-3 h-3 rounded-full bg-red-500 mr-2"></span>
-                            <span class="status-failing text-xs px-2 py-1 rounded font-medium mr-2">Failing</span>
-                            Any linked test fails
-                        </li>
-                        <li class="flex items-center">
-                            <span class="w-3 h-3 rounded-full bg-base-400 mr-2"></span>
-                            <span class="status-untested text-xs px-2 py-1 rounded font-medium mr-2">Untested</span>
-                            No tests linked
-                        </li>
-                    </ul>
-                </div>
+python manage.py import_results results.xml --links links.json</div>
+            </div>
+            <div>
+                <h4 class="st-label" style="margin-bottom: var(--st-space-3);">Link Tests to Requirements</h4>
+                <div class="st-code">
+import pytest
+
+@pytest.mark.requirement("REQ-AUTH-001")
+def test_user_login():
+    """Links this test to REQ-AUTH-001"""
+    pass</div>
             </div>
         </div>
     </div>
-
-    <script>
-    function linearHealthWidget() {
-        return {
-            status: 'unknown',
-            message: '',
-            lastChecked: null,
-            isLoading: false,
-            error: null,
-
-            get statusLabel() {
-                const labels = {
-                    'healthy': 'Healthy',
-                    'degraded': 'Degraded',
-                    'unhealthy': 'Unhealthy',
-                    'unknown': 'Unknown'
-                };
-                return labels[this.status] || 'Unknown';
-            },
-
-            get statusClass() {
-                const classes = {
-                    'healthy': 'status-passing',
-                    'degraded': 'status-untested',
-                    'unhealthy': 'status-failing',
-                    'unknown': 'bg-base-200 dark:bg-base-700 text-base-600 dark:text-base-400'
-                };
-                return classes[this.status] || classes['unknown'];
-            },
-
-            get lastCheckedText() {
-                if (!this.lastChecked) return '';
-                const now = new Date();
-                const checked = new Date(this.lastChecked);
-                const diffMs = now - checked;
-                const diffSec = Math.floor(diffMs / 1000);
-                const diffMin = Math.floor(diffSec / 60);
-                const diffHour = Math.floor(diffMin / 60);
-                const diffDay = Math.floor(diffHour / 24);
-
-                if (diffSec < 60) return 'Last checked just now';
-                if (diffMin < 60) return `Last checked ${diffMin} minute${diffMin !== 1 ? 's' : ''} ago`;
-                if (diffHour < 24) return `Last checked ${diffHour} hour${diffHour !== 1 ? 's' : ''} ago`;
-                return `Last checked ${diffDay} day${diffDay !== 1 ? 's' : ''} ago`;
-            },
-
-            updateFromResponse(data) {
-                this.status = data.status || 'unknown';
-                this.message = data.message || '';
-                if (data.checks && data.checks.length > 0 && data.checks[0].timestamp) {
-                    this.lastChecked = data.checks[0].timestamp;
-                } else if (data.timestamp) {
-                    this.lastChecked = data.timestamp;
-                }
-            },
-
-            async fetchHealth() {
-                try {
-                    const response = await fetch('/api/integrations/linear/health/');
-                    const data = await response.json();
-                    this.updateFromResponse(data);
-                    this.error = null;
-                } catch (err) {
-                    this.error = 'Failed to fetch health status';
-                }
-            },
-
-            async testConnection() {
-                this.isLoading = true;
-                this.error = null;
-                try {
-                    const response = await fetch('/api/integrations/linear/test-connection/', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
-                        }
-                    });
-                    const data = await response.json();
-                    this.updateFromResponse(data);
-                    if (!response.ok) {
-                        this.error = data.message || 'Connection test failed';
-                    }
-                } catch (err) {
-                    this.error = 'Failed to test connection';
-                } finally {
-                    this.isLoading = false;
-                }
-            }
-        };
-    }
-    </script>
 </div>
+</div>
+
+<script>
+function linearHealthWidget() {
+    return {
+        status: 'unknown',
+        message: '',
+        lastChecked: null,
+        isLoading: false,
+        error: null,
+
+        get statusLabel() {
+            const labels = {
+                'healthy': 'Healthy',
+                'degraded': 'Degraded',
+                'unhealthy': 'Unhealthy',
+                'unknown': 'Unknown'
+            };
+            return labels[this.status] || 'Unknown';
+        },
+
+        get lastCheckedText() {
+            if (!this.lastChecked) return '';
+            const now = new Date();
+            const checked = new Date(this.lastChecked);
+            const diffMs = now - checked;
+            const diffSec = Math.floor(diffMs / 1000);
+            const diffMin = Math.floor(diffSec / 60);
+            const diffHour = Math.floor(diffMin / 60);
+            const diffDay = Math.floor(diffHour / 24);
+
+            if (diffSec < 60) return 'Checked just now';
+            if (diffMin < 60) return `Checked ${diffMin}m ago`;
+            if (diffHour < 24) return `Checked ${diffHour}h ago`;
+            return `Checked ${diffDay}d ago`;
+        },
+
+        updateFromResponse(data) {
+            this.status = data.status || 'unknown';
+            this.message = data.message || '';
+            if (data.checks && data.checks.length > 0 && data.checks[0].timestamp) {
+                this.lastChecked = data.checks[0].timestamp;
+            } else if (data.timestamp) {
+                this.lastChecked = data.timestamp;
+            }
+        },
+
+        async fetchHealth() {
+            try {
+                const response = await fetch('/api/integrations/linear/health/');
+                const data = await response.json();
+                this.updateFromResponse(data);
+                this.error = null;
+            } catch (err) {
+                this.error = 'Failed to fetch status';
+            }
+        },
+
+        async testConnection() {
+            this.isLoading = true;
+            this.error = null;
+            try {
+                const response = await fetch('/api/integrations/linear/test-connection/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
+                    }
+                });
+                const data = await response.json();
+                this.updateFromResponse(data);
+                if (!response.ok) {
+                    this.error = data.message || 'Connection test failed';
+                }
+            } catch (err) {
+                this.error = 'Failed to test connection';
+            } finally {
+                this.isLoading = false;
+            }
+        }
+    };
+}
+</script>
 {% endblock %}

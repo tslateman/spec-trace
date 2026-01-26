@@ -1,192 +1,165 @@
 {% extends "unfold/layouts/base.html" %}
 {% load i18n %}
 
-{% block content %}
-<style>
-    .status-passing {
-        background-color: #dcfce7;
-        color: #166534;
-    }
-    .status-failing {
-        background-color: #fee2e2;
-        color: #991b1b;
-    }
-    .status-warning {
-        background-color: #fef9c3;
-        color: #854d0e;
-    }
-    .dark .status-passing {
-        background-color: #052e16;
-        color: #4ade80;
-    }
-    .dark .status-failing {
-        background-color: #450a0a;
-        color: #f87171;
-    }
-    .dark .status-warning {
-        background-color: #422006;
-        color: #facc15;
-    }
-    [x-cloak] {
-        display: none !important;
-    }
-</style>
+{% block title %}Impact Analysis | SpecTrace{% endblock %}
 
-<div class="p-6 bg-base-50 dark:bg-base-950 min-h-screen" x-data="impactAnalysisWidget()" x-cloak>
+{% block content %}
+{% include "admin/requirements/_design_system.html" %}
+
+<div class="st-page-wrapper">
+<div class="st-page st-container" x-data="impactAnalysisWidget()" x-cloak>
     {% csrf_token %}
 
-    <!-- Breadcrumbs -->
-    <nav class="mb-4 text-sm" aria-label="Breadcrumb">
-        <ol class="flex items-center space-x-2">
-            <li>
-                <a href="{% url 'admin:index' %}" class="text-base-500 dark:text-base-400 hover:text-primary-600 dark:hover:text-primary-400">Dashboard</a>
-            </li>
-            <li class="text-base-400">/</li>
-            <li class="text-base-900 dark:text-white font-medium">Impact Analysis</li>
-        </ol>
-    </nav>
-
     <!-- Header -->
-    <div class="mb-6">
-        <h1 class="text-2xl font-bold text-base-900 dark:text-white">Impact Analysis</h1>
-        <p class="text-base-600 dark:text-base-400 mt-1">
-            Compare two git refs to see which requirements changed and which tests are affected.
-        </p>
-    </div>
+    <header class="st-flex-between mb-6 st-animate-in" style="flex-wrap: wrap; gap: var(--st-space-4);">
+        <div>
+            <h1 class="st-heading-1">Impact Analysis</h1>
+            <p class="st-caption mt-1">Compare git refs to see which requirements changed and which tests are affected</p>
+        </div>
+        <div class="st-cluster">
+            <a href="{% url 'admin:index' %}" class="st-btn st-btn--secondary">
+                ← Dashboard
+            </a>
+        </div>
+    </header>
 
     <!-- Input Form -->
-    <div class="bg-white dark:bg-base-900 rounded-lg shadow border border-base-200 dark:border-base-800 p-6 mb-6">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div>
-                <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">
-                    Base Ref (e.g., main, HEAD~1, v1.0)
-                </label>
-                <input
-                    type="text"
-                    x-model="baseRef"
-                    placeholder="main"
-                    class="w-full px-3 py-2 border border-base-300 dark:border-base-600 rounded-lg bg-white dark:bg-base-800 text-base-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                >
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">
-                    Head Ref (e.g., feature-branch, HEAD)
-                </label>
-                <input
-                    type="text"
-                    x-model="headRef"
-                    placeholder="HEAD"
-                    class="w-full px-3 py-2 border border-base-300 dark:border-base-600 rounded-lg bg-white dark:bg-base-800 text-base-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                >
-            </div>
+    <div class="st-card st-animate-in st-animate-delay-1 mb-6">
+        <div class="st-card-header">
+            <h2 class="st-heading-3">Compare References</h2>
         </div>
+        <div class="st-card-body">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--st-space-4); margin-bottom: var(--st-space-4);">
+                <div>
+                    <label class="st-input-label">Base Ref (e.g., main, HEAD~1, v1.0)</label>
+                    <input
+                        type="text"
+                        x-model="baseRef"
+                        placeholder="main"
+                        class="st-input"
+                    >
+                </div>
+                <div>
+                    <label class="st-input-label">Head Ref (e.g., feature-branch, HEAD)</label>
+                    <input
+                        type="text"
+                        x-model="headRef"
+                        placeholder="HEAD"
+                        class="st-input"
+                    >
+                </div>
+            </div>
 
-        <div class="flex items-center gap-4">
-            <label class="flex items-center gap-2 text-sm text-base-700 dark:text-base-300">
-                <input type="checkbox" x-model="includeHierarchy" class="rounded border-base-300 dark:border-base-600">
-                Include child requirements
-            </label>
+            <div class="st-cluster" style="align-items: center;">
+                <label style="display: flex; align-items: center; gap: var(--st-space-2); font-size: 0.875rem; color: var(--st-text-muted); cursor: pointer;">
+                    <input type="checkbox" x-model="includeHierarchy" style="accent-color: var(--st-accent-500);">
+                    Include child requirements
+                </label>
 
-            <button
-                @click="analyze()"
-                :disabled="isLoading || !baseRef || !headRef"
-                class="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-                <svg x-show="isLoading" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <span x-text="isLoading ? 'Analyzing...' : 'Analyze'"></span>
-            </button>
-        </div>
+                <button
+                    @click="analyze()"
+                    :disabled="isLoading || !baseRef || !headRef"
+                    class="st-btn st-btn--primary"
+                    :style="(isLoading || !baseRef || !headRef) ? 'opacity: 0.5; cursor: not-allowed;' : ''"
+                >
+                    <svg x-show="isLoading" class="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2v4m0 12v4m-7.07-3.93l2.83-2.83m8.48-8.48l2.83-2.83M2 12h4m12 0h4m-3.93 7.07l-2.83-2.83M6.34 6.34L3.51 3.51"></path>
+                    </svg>
+                    <span x-text="isLoading ? 'Analyzing...' : 'Analyze'"></span>
+                </button>
+            </div>
 
-        <!-- Error Display -->
-        <div x-show="error" class="mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-            <p class="text-sm text-red-600 dark:text-red-400" x-text="error"></p>
+            <!-- Error Display -->
+            <div x-show="error" style="margin-top: var(--st-space-4); padding: var(--st-space-4); background: var(--st-fail-muted); border-left: 3px solid var(--st-fail); border-radius: var(--st-radius-sm);">
+                <p style="font-size: 0.875rem; color: var(--st-fail);" x-text="error"></p>
+            </div>
         </div>
     </div>
 
     <!-- Results -->
     <div x-show="result" x-cloak>
         <!-- Summary Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div class="bg-white dark:bg-base-900 rounded-lg shadow p-4 border border-base-200 dark:border-base-800">
-                <div class="text-sm text-base-500 dark:text-base-400">Changed Requirements</div>
-                <div class="text-3xl font-bold text-base-900 dark:text-white" x-text="result?.summary?.requirements_changed || 0"></div>
+        <div class="st-grid-stats mb-6 st-animate-in st-animate-delay-2">
+            <div class="st-metric st-metric--accent st-lift">
+                <div class="st-metric__label">Changed Requirements</div>
+                <div class="st-metric__value" x-text="result?.summary?.requirements_changed || 0"></div>
             </div>
-            <div class="bg-white dark:bg-base-900 rounded-lg shadow p-4 border border-base-200 dark:border-base-800" :class="result?.summary?.has_impact ? 'border-l-4 border-l-yellow-500' : 'border-l-4 border-l-green-500'">
-                <div class="text-sm text-base-500 dark:text-base-400">Affected Tests</div>
-                <div class="text-3xl font-bold" :class="result?.summary?.has_impact ? 'text-yellow-600 dark:text-yellow-400' : 'text-green-600 dark:text-green-400'" x-text="result?.summary?.tests_affected || 0"></div>
+            <div class="st-metric st-lift" :class="result?.summary?.has_impact ? 'st-metric--warn' : 'st-metric--pass'">
+                <div class="st-metric__label">Affected Tests</div>
+                <div class="st-metric__value" :style="result?.summary?.has_impact ? 'color: var(--st-warn);' : 'color: var(--st-pass);'" x-text="result?.summary?.tests_affected || 0"></div>
             </div>
-            <div class="bg-white dark:bg-base-900 rounded-lg shadow p-4 border border-base-200 dark:border-base-800">
-                <div class="text-sm text-base-500 dark:text-base-400">Impact Status</div>
-                <div class="mt-1">
-                    <span x-show="result?.summary?.has_impact" class="status-warning text-sm px-2 py-1 rounded font-medium">Tests Need Running</span>
-                    <span x-show="!result?.summary?.has_impact" class="status-passing text-sm px-2 py-1 rounded font-medium">No Impact</span>
+            <div class="st-metric st-lift">
+                <div class="st-metric__label">Impact Status</div>
+                <div style="margin-top: var(--st-space-2);">
+                    <span x-show="result?.summary?.has_impact" class="st-badge st-badge--warn">Tests Need Running</span>
+                    <span x-show="!result?.summary?.has_impact" class="st-badge st-badge--pass">No Impact</span>
                 </div>
             </div>
         </div>
 
         <!-- Changed Requirements -->
-        <div class="bg-white dark:bg-base-900 rounded-lg shadow border border-base-200 dark:border-base-800 mb-6" x-show="result?.changed_requirements?.length > 0">
-            <div class="p-4 border-b border-base-200 dark:border-base-800">
-                <h2 class="text-lg font-semibold text-base-900 dark:text-white">Changed Requirements</h2>
+        <div class="st-card st-animate-in st-animate-delay-3 mb-6" x-show="result?.changed_requirements?.length > 0">
+            <div class="st-card-header">
+                <h2 class="st-heading-3">Changed Requirements</h2>
             </div>
-            <div class="p-4">
-                <ul class="space-y-2">
+            <div class="st-card-body">
+                <div class="st-stack st-stack--sm">
                     <template x-for="reqId in result?.changed_requirements || []" :key="reqId">
-                        <li class="flex items-center">
-                            <span class="font-mono text-sm text-primary-600 dark:text-primary-400" x-text="reqId"></span>
+                        <div style="display: flex; align-items: center; padding: var(--st-space-2) 0; border-bottom: 1px solid var(--st-border-muted);">
+                            <span class="st-mono" style="font-size: 0.875rem; color: var(--st-accent-600);" x-text="reqId"></span>
                             <template x-if="result?.hierarchy_expansion?.[reqId]">
-                                <span class="ml-2 text-sm text-base-500 dark:text-base-400">
-                                    &rarr; <span x-text="result.hierarchy_expansion[reqId].join(', ')"></span>
+                                <span style="margin-left: var(--st-space-3); font-size: 0.8125rem; color: var(--st-text-subtle);">
+                                    → <span x-text="result.hierarchy_expansion[reqId].join(', ')"></span>
                                 </span>
                             </template>
-                        </li>
+                        </div>
                     </template>
-                </ul>
+                </div>
             </div>
         </div>
 
         <!-- Affected Tests -->
-        <div class="bg-white dark:bg-base-900 rounded-lg shadow border border-base-200 dark:border-base-800" x-show="result?.affected_tests?.length > 0">
-            <div class="p-4 border-b border-base-200 dark:border-base-800">
-                <h2 class="text-lg font-semibold text-base-900 dark:text-white">Affected Tests</h2>
-                <p class="text-sm text-base-500 dark:text-base-400 mt-1">These tests should be run to verify the changes.</p>
+        <div class="st-card st-animate-in st-animate-delay-4 mb-6" x-show="result?.affected_tests?.length > 0">
+            <div class="st-card-header">
+                <h2 class="st-heading-3">Affected Tests</h2>
+                <span class="st-caption">These tests should be run to verify the changes</span>
             </div>
-            <div class="p-4">
-                <ul class="space-y-1 font-mono text-sm">
+            <div class="st-card-body">
+                <div class="st-stack st-stack--sm">
                     <template x-for="test in result?.affected_tests || []" :key="test">
-                        <li class="text-base-700 dark:text-base-300 py-1 border-b border-base-100 dark:border-base-800 last:border-0" x-text="test"></li>
+                        <div class="st-mono" style="font-size: 0.8125rem; color: var(--st-text-muted); padding: var(--st-space-2) 0; border-bottom: 1px solid var(--st-border-muted);" x-text="test"></div>
                     </template>
-                </ul>
+                </div>
             </div>
         </div>
 
         <!-- No Impact Message -->
-        <div class="bg-white dark:bg-base-900 rounded-lg shadow border border-base-200 dark:border-base-800 p-6" x-show="result && !result.summary.has_impact && result.changed_requirements.length === 0">
-            <div class="text-center">
-                <div class="text-green-500 mb-2">
-                    <svg class="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                </div>
-                <p class="text-base-700 dark:text-base-300">No spec files changed between these refs.</p>
+        <div class="st-card st-animate-in st-animate-delay-3" x-show="result && !result.summary.has_impact && result.changed_requirements.length === 0">
+            <div class="st-card-body" style="text-align: center; padding: var(--st-space-12);">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--st-pass)" stroke-width="2" style="margin: 0 auto var(--st-space-4);">
+                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <p style="color: var(--st-text-muted);">No spec files changed between these refs.</p>
             </div>
         </div>
     </div>
 
     <!-- CLI Hint -->
-    <div class="mt-6 bg-base-100 dark:bg-base-800 rounded-lg p-4">
-        <h3 class="text-sm font-semibold text-base-900 dark:text-white mb-2">CLI Usage</h3>
-        <pre class="text-xs text-base-600 dark:text-base-400 overflow-x-auto"><code># Human-readable output
+    <div class="st-card st-animate-in" style="animation-delay: 0.3s; margin-top: var(--st-space-6);">
+        <div class="st-card-header">
+            <h3 class="st-heading-3">CLI Usage</h3>
+        </div>
+        <div class="st-card-body">
+            <div class="st-code"># Human-readable output
 python manage.py impact_analysis main HEAD
 
 # JSON output for CI pipelines
 python manage.py impact_analysis main HEAD --format json
 
-# Exit code: 0 = no impact, 1 = tests affected</code></pre>
+# Exit code: 0 = no impact, 1 = tests affected</div>
+        </div>
     </div>
+</div>
 </div>
 
 <script>

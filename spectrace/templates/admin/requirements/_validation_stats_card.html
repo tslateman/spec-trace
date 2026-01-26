@@ -1,21 +1,22 @@
 <!-- Validation Run Summary Stats Card -->
-<div class="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
-    <div class="bg-white dark:bg-base-900 rounded-lg shadow p-4 border border-base-200 dark:border-base-800">
-        <div class="text-sm text-base-500 dark:text-base-400">Total Runs</div>
-        <div class="text-3xl font-bold text-base-900 dark:text-white">{{ summary.total_runs }}</div>
+<!-- Note: Requires _design_system.html to be included in the parent template -->
+<div class="st-grid-stats mb-6">
+    <div class="st-metric st-metric--accent st-lift">
+        <div class="st-metric__label">Total Runs</div>
+        <div class="st-metric__value">{{ summary.total_runs }}</div>
     </div>
-    <div class="bg-white dark:bg-base-900 rounded-lg shadow p-4 border border-base-200 dark:border-base-800 border-l-4 border-l-green-500">
-        <div class="text-sm text-base-500 dark:text-base-400">Avg Pass Rate</div>
-        <div class="text-3xl font-bold {% if summary.avg_pass_rate >= 90 %}text-green-600 dark:text-green-400{% elif summary.avg_pass_rate >= 70 %}text-yellow-600 dark:text-yellow-400{% else %}text-red-600 dark:text-red-400{% endif %}">
+    <div class="st-metric {% if summary.avg_pass_rate >= 90 %}st-metric--pass{% elif summary.avg_pass_rate >= 70 %}st-metric--warn{% else %}st-metric--fail{% endif %} st-lift">
+        <div class="st-metric__label">Avg Pass Rate</div>
+        <div class="st-metric__value" style="{% if summary.avg_pass_rate >= 90 %}color: var(--st-pass);{% elif summary.avg_pass_rate >= 70 %}color: var(--st-warn);{% else %}color: var(--st-fail);{% endif %}">
             {{ summary.avg_pass_rate }}%
         </div>
     </div>
-    <div class="bg-white dark:bg-base-900 rounded-lg shadow p-4 border border-base-200 dark:border-base-800 border-l-4 border-l-red-500">
-        <div class="text-sm text-base-500 dark:text-base-400">Recent Failures (7d)</div>
-        <div class="text-3xl font-bold text-red-600 dark:text-red-400">{{ summary.recent_failures }}</div>
+    <div class="st-metric st-metric--fail st-lift">
+        <div class="st-metric__label">Recent Failures (7d)</div>
+        <div class="st-metric__value" style="color: var(--st-fail);">{{ summary.recent_failures }}</div>
     </div>
-    <div class="bg-white dark:bg-base-900 rounded-lg shadow p-4 border border-base-200 dark:border-base-800 border-l-4 border-l-blue-500">
-        <div class="text-sm text-base-500 dark:text-base-400">Vendors</div>
-        <div class="text-3xl font-bold text-blue-600 dark:text-blue-400">{{ summary.unique_vendors }}</div>
+    <div class="st-metric st-lift">
+        <div class="st-metric__label">Vendors</div>
+        <div class="st-metric__value">{{ summary.unique_vendors }}</div>
     </div>
 </div>

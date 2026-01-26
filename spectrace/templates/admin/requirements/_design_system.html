@@ -1,0 +1,720 @@
+{% comment %}
+SpecTrace Design System
+=======================
+A technical-precision aesthetic with warm accents.
+Inspired by mission control dashboards meets modern fintech.
+
+Include this partial at the top of {% block content %}:
+{% include "admin/requirements/_design_system.html" %}
+{% endcomment %}
+
+<style>
+/* ==========================================================================
+   DESIGN TOKENS
+   ========================================================================== */
+
+:root {
+    /* Typography - JetBrains Mono for data, DM Sans for UI */
+    --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+    --font-display: 'DM Sans', 'Inter', system-ui, sans-serif;
+
+    /* Core palette - Warm slate with amber accents */
+    --st-slate-50: #f8f9fa;
+    --st-slate-100: #f1f3f5;
+    --st-slate-200: #e9ecef;
+    --st-slate-300: #dee2e6;
+    --st-slate-400: #adb5bd;
+    --st-slate-500: #868e96;
+    --st-slate-600: #495057;
+    --st-slate-700: #343a40;
+    --st-slate-800: #212529;
+    --st-slate-900: #16191d;
+    --st-slate-950: #0d0f12;
+
+    /* Accent - Warm amber/gold */
+    --st-accent-50: #fff9eb;
+    --st-accent-100: #fef0c7;
+    --st-accent-200: #fde68a;
+    --st-accent-300: #fcd34d;
+    --st-accent-400: #fbbf24;
+    --st-accent-500: #f59e0b;
+    --st-accent-600: #d97706;
+    --st-accent-700: #b45309;
+
+    /* Status colors - Refined, not neon */
+    --st-pass: #10b981;
+    --st-pass-muted: #d1fae5;
+    --st-pass-dark: #065f46;
+    --st-fail: #ef4444;
+    --st-fail-muted: #fee2e2;
+    --st-fail-dark: #7f1d1d;
+    --st-warn: #f59e0b;
+    --st-warn-muted: #fef3c7;
+    --st-warn-dark: #78350f;
+    --st-untested: #6b7280;
+    --st-untested-muted: #f3f4f6;
+
+    /* Spacing scale */
+    --st-space-1: 0.25rem;
+    --st-space-2: 0.5rem;
+    --st-space-3: 0.75rem;
+    --st-space-4: 1rem;
+    --st-space-5: 1.25rem;
+    --st-space-6: 1.5rem;
+    --st-space-8: 2rem;
+    --st-space-10: 2.5rem;
+    --st-space-12: 3rem;
+
+    /* Shadows - Subtle and layered */
+    --st-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+    --st-shadow-md: 0 2px 4px rgba(0, 0, 0, 0.04), 0 4px 8px rgba(0, 0, 0, 0.04);
+    --st-shadow-lg: 0 4px 8px rgba(0, 0, 0, 0.04), 0 8px 16px rgba(0, 0, 0, 0.06), 0 16px 32px rgba(0, 0, 0, 0.04);
+    --st-shadow-glow: 0 0 0 3px rgba(251, 191, 36, 0.15);
+
+    /* Transitions */
+    --st-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --st-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+    /* Border radius */
+    --st-radius-sm: 4px;
+    --st-radius-md: 8px;
+    --st-radius-lg: 12px;
+    --st-radius-xl: 16px;
+
+    /* Semantic surface colors - auto-flip in dark mode */
+    --st-surface: #ffffff;
+    --st-surface-elevated: #ffffff;
+    --st-surface-sunken: #f8f9fa;
+
+    /* Semantic text colors - light mode */
+    --st-text: #16191d;
+    --st-text-muted: #495057;
+    --st-text-subtle: #868e96;
+
+    /* Semantic border colors - light mode */
+    --st-border: #dee2e6;
+    --st-border-muted: #e9ecef;
+
+    /* Accent backgrounds - light mode */
+    --st-accent-bg: #fef3c7;
+}
+
+/* Dark mode overrides - DON'T invert slate scale, use semantic vars instead */
+html.dark {
+    --st-pass-muted: #064e3b;
+    --st-fail-muted: #450a0a;
+    --st-warn-muted: #451a03;
+    --st-untested-muted: #1f2937;
+
+    --st-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+    --st-shadow-md: 0 2px 4px rgba(0, 0, 0, 0.2), 0 4px 8px rgba(0, 0, 0, 0.15);
+    --st-shadow-lg: 0 4px 8px rgba(0, 0, 0, 0.2), 0 8px 16px rgba(0, 0, 0, 0.15), 0 16px 32px rgba(0, 0, 0, 0.1);
+
+    /* Semantic surface colors - dark mode */
+    --st-surface: #1c2026;
+    --st-surface-elevated: #252a31;
+    --st-surface-sunken: #16191d;
+
+    /* Semantic text colors - dark mode */
+    --st-text: #f1f3f5;
+    --st-text-muted: #adb5bd;
+    --st-text-subtle: #868e96;
+
+    /* Semantic border colors - dark mode */
+    --st-border: #343a40;
+    --st-border-muted: #252a31;
+
+    /* Accent backgrounds - dark mode */
+    --st-accent-bg: #451a03;
+}
+
+/* ==========================================================================
+   TYPOGRAPHY
+   ========================================================================== */
+
+/* Import fonts */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+.st-page {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+    -webkit-font-smoothing: antialiased;
+    background: var(--st-surface);
+    min-height: 100vh;
+}
+
+/* Force proper backgrounds in dark mode - override unfold defaults */
+html.dark #content,
+html.dark #main,
+html.dark main,
+html.dark .main,
+html.dark [class*="content"],
+html.dark .st-page {
+    background: #1c2026 !important;
+}
+
+html.dark body,
+html.dark #container,
+html.dark .container {
+    background: #16191d !important;
+}
+
+/* Ensure text is readable - force semantic vars */
+html.dark .st-page,
+html.dark .st-page * {
+    --st-text: #f1f3f5;
+    --st-text-muted: #adb5bd;
+    --st-text-subtle: #868e96;
+}
+
+/* Page wrapper - must be present on all pages for proper background coverage */
+.st-page-wrapper {
+    background: #ffffff;
+    min-height: 100vh;
+    margin: -24px;
+    padding: 24px;
+}
+
+html.dark .st-page-wrapper {
+    background: #1c2026 !important;
+}
+
+/* Nuclear option: force dark backgrounds on ALL elements within wrapper in dark mode */
+html.dark .st-page-wrapper,
+html.dark .st-page-wrapper > *,
+html.dark .st-page-wrapper .st-container {
+    background-color: #1c2026;
+}
+
+.st-mono {
+    font-family: var(--font-mono);
+    font-feature-settings: 'liga' 0;
+    letter-spacing: -0.02em;
+}
+
+.st-heading-1 {
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    color: var(--st-text);
+}
+
+.st-heading-2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    color: var(--st-text);
+}
+
+.st-heading-3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1.3;
+    color: var(--st-text);
+}
+
+.st-label {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--st-text-subtle);
+}
+
+.st-body {
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    color: var(--st-text-muted);
+}
+
+.st-caption {
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: var(--st-text-subtle);
+}
+
+/* ==========================================================================
+   CARDS & SURFACES
+   ========================================================================== */
+
+.st-card {
+    background: var(--st-surface);
+    border: 1px solid var(--st-border);
+    border-radius: var(--st-radius-lg);
+    box-shadow: var(--st-shadow-sm);
+    transition: box-shadow 0.2s var(--st-ease-out), border-color 0.2s var(--st-ease-out);
+}
+
+.st-card-hover:hover {
+    box-shadow: var(--st-shadow-md);
+}
+
+.st-card-header {
+    padding: var(--st-space-5) var(--st-space-6);
+    border-bottom: 1px solid var(--st-border-muted);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.st-card-body {
+    padding: var(--st-space-6);
+}
+
+/* Glass effect variant */
+.st-card-glass {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+html.dark .st-card-glass {
+    background: rgba(28, 32, 38, 0.8);
+}
+
+/* ==========================================================================
+   METRIC CARDS - The signature stat display
+   ========================================================================== */
+
+.st-metric {
+    position: relative;
+    padding: var(--st-space-5) var(--st-space-6);
+    border-radius: var(--st-radius-lg);
+    background: linear-gradient(135deg, var(--st-surface) 0%, var(--st-surface-sunken) 100%);
+    border: 1px solid var(--st-border);
+    overflow: hidden;
+}
+
+.st-metric::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: var(--st-border);
+    transition: background 0.2s var(--st-ease-out);
+}
+
+.st-metric--pass::before { background: var(--st-pass); }
+.st-metric--fail::before { background: var(--st-fail); }
+.st-metric--warn::before { background: var(--st-warn); }
+.st-metric--accent::before { background: var(--st-accent-500); }
+
+.st-metric__label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--st-text-subtle);
+    margin-bottom: var(--st-space-2);
+}
+
+.st-metric__value {
+    font-family: var(--font-mono);
+    font-size: 2rem;
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    color: var(--st-text);
+    line-height: 1;
+}
+
+.st-metric__delta {
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    margin-top: var(--st-space-2);
+}
+
+.st-metric__delta--up { color: var(--st-pass); }
+.st-metric__delta--down { color: var(--st-fail); }
+
+/* ==========================================================================
+   STATUS BADGES
+   ========================================================================== */
+
+.st-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--st-space-1);
+    padding: 0.25rem 0.625rem;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    border-radius: var(--st-radius-sm);
+    white-space: nowrap;
+}
+
+.st-badge--pass {
+    background: var(--st-pass-muted);
+    color: var(--st-pass-dark);
+}
+
+html.dark .st-badge--pass {
+    background: var(--st-pass-muted);
+    color: var(--st-pass);
+}
+
+.st-badge--fail {
+    background: var(--st-fail-muted);
+    color: var(--st-fail-dark);
+}
+
+html.dark .st-badge--fail {
+    background: var(--st-fail-muted);
+    color: var(--st-fail);
+}
+
+.st-badge--warn {
+    background: var(--st-warn-muted);
+    color: var(--st-warn-dark);
+}
+
+html.dark .st-badge--warn {
+    background: var(--st-warn-muted);
+    color: var(--st-warn);
+}
+
+.st-badge--neutral {
+    background: var(--st-untested-muted);
+    color: var(--st-untested);
+}
+
+/* Status dot - small indicator */
+.st-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.st-dot--pass { background: var(--st-pass); }
+.st-dot--fail { background: var(--st-fail); }
+.st-dot--warn { background: var(--st-warn); }
+.st-dot--neutral { background: var(--st-text-subtle); }
+
+/* Pulsing dot for live status */
+.st-dot--pulse {
+    animation: st-pulse 2s var(--st-ease-out) infinite;
+}
+
+@keyframes st-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(0.9); }
+}
+
+/* ==========================================================================
+   BUTTONS
+   ========================================================================== */
+
+.st-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--st-space-2);
+    padding: 0.625rem 1rem;
+    font-family: var(--font-display);
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1;
+    border-radius: var(--st-radius-md);
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.15s var(--st-ease-out);
+    text-decoration: none;
+}
+
+.st-btn:focus-visible {
+    outline: none;
+    box-shadow: var(--st-shadow-glow);
+}
+
+.st-btn--primary {
+    background: #16191d;
+    color: white;
+    border-color: #16191d;
+}
+
+.st-btn--primary:hover {
+    background: #212529;
+    border-color: #212529;
+    transform: translateY(-1px);
+}
+
+html.dark .st-btn--primary {
+    background: var(--st-accent-500);
+    color: #0d0f12;
+    border-color: var(--st-accent-500);
+}
+
+html.dark .st-btn--primary:hover {
+    background: var(--st-accent-400);
+    border-color: var(--st-accent-400);
+}
+
+.st-btn--secondary {
+    background: var(--st-surface);
+    color: var(--st-text-muted);
+    border-color: var(--st-border);
+}
+
+.st-btn--secondary:hover {
+    background: var(--st-surface-sunken);
+}
+
+.st-btn--ghost {
+    background: transparent;
+    color: var(--st-text-muted);
+}
+
+.st-btn--ghost:hover {
+    background: var(--st-surface-sunken);
+    color: var(--st-text);
+}
+
+.st-btn--sm {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8125rem;
+}
+
+/* ==========================================================================
+   FORM CONTROLS
+   ========================================================================== */
+
+.st-input,
+.st-select {
+    width: 100%;
+    padding: 0.625rem 0.875rem;
+    font-family: var(--font-display);
+    font-size: 0.875rem;
+    color: var(--st-text);
+    background: var(--st-surface-elevated);
+    border: 1px solid var(--st-border);
+    border-radius: var(--st-radius-md);
+    transition: border-color 0.15s var(--st-ease-out), box-shadow 0.15s var(--st-ease-out);
+}
+
+.st-input:focus,
+.st-select:focus {
+    outline: none;
+    border-color: var(--st-accent-500);
+    box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.15);
+}
+
+.st-input-label {
+    display: block;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--st-text-muted);
+    margin-bottom: var(--st-space-2);
+}
+
+/* ==========================================================================
+   PROGRESS BARS
+   ========================================================================== */
+
+.st-progress {
+    height: 6px;
+    background: var(--st-border-muted);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.st-progress__fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.5s var(--st-ease-out);
+}
+
+.st-progress__fill--pass { background: var(--st-pass); }
+.st-progress__fill--fail { background: var(--st-fail); }
+.st-progress__fill--warn { background: var(--st-warn); }
+.st-progress__fill--accent { background: var(--st-accent-500); }
+
+/* Gradient progress for visual interest */
+.st-progress__fill--gradient {
+    background: linear-gradient(90deg, var(--st-pass) 0%, var(--st-accent-500) 100%);
+}
+
+/* ==========================================================================
+   DATA TABLE
+   ========================================================================== */
+
+.st-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.st-table th {
+    padding: var(--st-space-3) var(--st-space-4);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    text-align: left;
+    color: var(--st-text-subtle);
+    background: var(--st-surface-sunken);
+    border-bottom: 1px solid var(--st-border);
+}
+
+.st-table td {
+    padding: var(--st-space-3) var(--st-space-4);
+    font-size: 0.875rem;
+    color: var(--st-text-muted);
+    border-bottom: 1px solid var(--st-border-muted);
+}
+
+.st-table tbody tr {
+    transition: background 0.1s var(--st-ease-out);
+}
+
+.st-table tbody tr:hover {
+    background: var(--st-surface-sunken);
+}
+
+/* ==========================================================================
+   MATRIX GRID - The signature traceability display
+   ========================================================================== */
+
+.st-matrix-cell {
+    width: 28px;
+    height: 28px;
+    border-radius: var(--st-radius-sm);
+    cursor: pointer;
+    transition: transform 0.15s var(--st-ease-spring), box-shadow 0.15s var(--st-ease-out);
+    position: relative;
+}
+
+.st-matrix-cell:hover {
+    transform: scale(1.3);
+    z-index: 10;
+    box-shadow: var(--st-shadow-lg);
+}
+
+.st-matrix-cell--pass { background: var(--st-pass); }
+.st-matrix-cell--fail { background: var(--st-fail); }
+.st-matrix-cell--warn { background: var(--st-warn); }
+.st-matrix-cell--untested { background: var(--st-text-subtle); }
+.st-matrix-cell--unlinked { background: var(--st-border); }
+
+/* ==========================================================================
+   LAYOUT UTILITIES
+   ========================================================================== */
+
+.st-container {
+    padding: var(--st-space-8);
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.st-grid-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--st-space-4);
+}
+
+.st-flex-between {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--st-space-4);
+}
+
+.st-stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--st-space-4);
+}
+
+.st-stack--sm { gap: var(--st-space-2); }
+.st-stack--lg { gap: var(--st-space-6); }
+
+.st-cluster {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--st-space-2);
+}
+
+/* ==========================================================================
+   ANIMATIONS
+   ========================================================================== */
+
+@keyframes st-fade-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.st-animate-in {
+    animation: st-fade-in 0.4s var(--st-ease-out) forwards;
+    opacity: 0;
+}
+
+.st-animate-delay-1 { animation-delay: 0.05s; }
+.st-animate-delay-2 { animation-delay: 0.1s; }
+.st-animate-delay-3 { animation-delay: 0.15s; }
+.st-animate-delay-4 { animation-delay: 0.2s; }
+.st-animate-delay-5 { animation-delay: 0.25s; }
+
+/* Hover lift effect */
+.st-lift {
+    transition: transform 0.2s var(--st-ease-out), box-shadow 0.2s var(--st-ease-out);
+}
+
+.st-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--st-shadow-md);
+}
+
+/* ==========================================================================
+   DECORATIVE ELEMENTS
+   ========================================================================== */
+
+/* Subtle grid background */
+.st-bg-grid {
+    background-image:
+        linear-gradient(var(--st-border-muted) 1px, transparent 1px),
+        linear-gradient(90deg, var(--st-border-muted) 1px, transparent 1px);
+    background-size: 24px 24px;
+}
+
+/* Accent border highlight */
+.st-accent-border {
+    position: relative;
+}
+
+.st-accent-border::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, var(--st-accent-500), var(--st-accent-300));
+}
+
+/* Code block styling - always dark */
+.st-code {
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    background: #16191d;
+    color: #f1f3f5;
+    padding: var(--st-space-4);
+    border-radius: var(--st-radius-md);
+    overflow-x: auto;
+    line-height: 1.6;
+}
+
+html.dark .st-code {
+    background: #0d0f12;
+}
+
+/* Hide Alpine.js elements until ready */
+[x-cloak] {
+    display: none !important;
+}
+</style>

@@ -4,60 +4,63 @@
 {% block title %}{{ title }} | SpecTrace{% endblock %}
 
 {% block content %}
-<style>
-    .pass-rate-bar {
-        height: 8px;
-        border-radius: 4px;
-        background: #e5e7eb;
-        overflow: hidden;
-    }
-    .dark .pass-rate-bar {
-        background: #374151;
-    }
-    .pass-rate-fill {
-        height: 100%;
-        border-radius: 4px;
-        transition: width 0.3s ease;
-    }
-    .pass-rate-fill.good { background: #22c55e; }
-    .pass-rate-fill.warning { background: #eab308; }
-    .pass-rate-fill.danger { background: #ef4444; }
-</style>
+{% include "admin/requirements/_design_system.html" %}
 
-<div class="p-6 bg-base-50 dark:bg-base-950 min-h-screen">
+<div class="st-page-wrapper">
+<div class="st-page st-container">
     <!-- Header -->
-    <div class="mb-6 flex items-center justify-between">
+    <header class="st-flex-between mb-6 st-animate-in" style="flex-wrap: wrap; gap: var(--st-space-4);">
         <div>
-            <h1 class="text-2xl font-bold text-base-900 dark:text-white">{{ title }}</h1>
-            <p class="text-base-500 dark:text-base-400 mt-1">
-                Track validation run history and results
-            </p>
+            <h1 class="st-heading-1">{{ title }}</h1>
+            <p class="st-caption mt-1">Track validation run history and results</p>
         </div>
-        <div class="flex gap-2">
-            <a href="{% url 'admin-validation-run-compare' %}"
-               class="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors">
+        <div class="st-cluster">
+            <a href="{% url 'admin-validation-run-compare' %}" class="st-btn st-btn--primary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="20" x2="18" y2="10"></line>
+                    <line x1="12" y1="20" x2="12" y2="4"></line>
+                    <line x1="6" y1="20" x2="6" y2="14"></line>
+                </svg>
                 Compare Runs
             </a>
-            <a href="{% url 'admin:index' %}"
-               class="px-4 py-2 bg-base-200 dark:bg-base-700 rounded hover:bg-base-300 dark:hover:bg-base-600">
-                ← Back to Admin
+            <a href="{% url 'admin:index' %}" class="st-btn st-btn--secondary">
+                ← Dashboard
             </a>
         </div>
-    </div>
+    </header>
 
     <!-- Summary Stats -->
-    {% include "admin/requirements/_validation_stats_card.html" with summary=summary %}
+    {% if summary %}
+    <div class="st-grid-stats mb-6 st-animate-in st-animate-delay-1">
+        <div class="st-metric st-metric--accent st-lift">
+            <div class="st-metric__label">Total Runs</div>
+            <div class="st-metric__value">{{ summary.total_runs|default:"0" }}</div>
+        </div>
+        <div class="st-metric st-metric--pass st-lift">
+            <div class="st-metric__label">Total Passed</div>
+            <div class="st-metric__value" style="color: var(--st-pass);">{{ summary.total_passed|default:"0" }}</div>
+        </div>
+        <div class="st-metric st-metric--fail st-lift">
+            <div class="st-metric__label">Total Failed</div>
+            <div class="st-metric__value" style="color: var(--st-fail);">{{ summary.total_failed|default:"0" }}</div>
+        </div>
+        <div class="st-metric st-lift">
+            <div class="st-metric__label">Avg Pass Rate</div>
+            <div class="st-metric__value">{{ summary.avg_pass_rate|default:"0" }}%</div>
+        </div>
+    </div>
+    {% endif %}
 
     <!-- Filters -->
-    <div class="bg-white dark:bg-base-900 rounded-lg shadow border border-base-200 dark:border-base-800 mb-6">
-        <div class="p-4 border-b border-base-200 dark:border-base-800">
-            <h2 class="text-lg font-semibold text-base-900 dark:text-white">Filters</h2>
+    <div class="st-card st-animate-in st-animate-delay-2 mb-6">
+        <div class="st-card-header">
+            <h2 class="st-heading-3">Filters</h2>
         </div>
-        <form method="get" class="p-4">
-            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        <form method="get" class="st-card-body">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--st-space-4); align-items: end;">
                 <div>
-                    <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Source</label>
-                    <select name="source" class="w-full rounded-md border-base-300 dark:border-base-600 dark:bg-base-800 dark:text-white">
+                    <label class="st-input-label">Source</label>
+                    <select name="source" class="st-select">
                         <option value="">All Sources</option>
                         {% for source in sources %}
                         <option value="{{ source }}" {% if current_filters.source == source %}selected{% endif %}>{{ source }}</option>
@@ -65,8 +68,8 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Vendor</label>
-                    <select name="vendor" class="w-full rounded-md border-base-300 dark:border-base-600 dark:bg-base-800 dark:text-white">
+                    <label class="st-input-label">Vendor</label>
+                    <select name="vendor" class="st-select">
                         <option value="">All Vendors</option>
                         {% for vendor in vendors %}
                         <option value="{{ vendor }}" {% if current_filters.vendor == vendor %}selected{% endif %}>{{ vendor }}</option>
@@ -74,8 +77,8 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Requirement</label>
-                    <select name="requirement" class="w-full rounded-md border-base-300 dark:border-base-600 dark:bg-base-800 dark:text-white">
+                    <label class="st-input-label">Requirement</label>
+                    <select name="requirement" class="st-select">
                         <option value="">All Requirements</option>
                         {% for req in requirements %}
                         <option value="{{ req }}" {% if current_filters.requirement == req %}selected{% endif %}>{{ req }}</option>
@@ -83,68 +86,72 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Date From</label>
-                    <input type="date" name="date_from" value="{{ current_filters.date_from }}"
-                           class="w-full rounded-md border-base-300 dark:border-base-600 dark:bg-base-800 dark:text-white">
+                    <label class="st-input-label">Date From</label>
+                    <input type="date" name="date_from" value="{{ current_filters.date_from }}" class="st-input">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Date To</label>
-                    <input type="date" name="date_to" value="{{ current_filters.date_to }}"
-                           class="w-full rounded-md border-base-300 dark:border-base-600 dark:bg-base-800 dark:text-white">
+                    <label class="st-input-label">Date To</label>
+                    <input type="date" name="date_to" value="{{ current_filters.date_to }}" class="st-input">
                 </div>
-            </div>
-            <div class="mt-4 flex gap-2">
-                <button type="submit" class="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg">
-                    Apply Filters
-                </button>
-                <a href="{% url 'admin-validation-runs' %}" class="px-4 py-2 bg-base-200 dark:bg-base-700 text-base-800 dark:text-base-200 rounded-lg hover:bg-base-300 dark:hover:bg-base-600">
-                    Clear Filters
-                </a>
+                <div class="st-cluster">
+                    <button type="submit" class="st-btn st-btn--primary">Apply</button>
+                    <a href="{% url 'admin-validation-runs' %}" class="st-btn st-btn--ghost">Clear</a>
+                </div>
             </div>
         </form>
     </div>
 
     <!-- Runs Table -->
-    <div class="bg-white dark:bg-base-900 rounded-lg shadow border border-base-200 dark:border-base-800">
-        <div class="p-4 border-b border-base-200 dark:border-base-800">
-            <h2 class="text-lg font-semibold text-base-900 dark:text-white">Validation Runs</h2>
+    <div class="st-card st-animate-in st-animate-delay-3">
+        <div class="st-card-header">
+            <h2 class="st-heading-3">Validation Runs</h2>
         </div>
-        <div class="overflow-x-auto">
-            <table class="w-full">
-                <thead class="bg-base-50 dark:bg-base-800">
+        <div style="overflow-x: auto;">
+            <table class="st-table">
+                <thead>
                     <tr>
-                        <th class="px-4 py-3 text-left text-sm font-medium text-base-700 dark:text-base-300">Run ID</th>
-                        <th class="px-4 py-3 text-left text-sm font-medium text-base-700 dark:text-base-300">Source</th>
-                        <th class="px-4 py-3 text-left text-sm font-medium text-base-700 dark:text-base-300">Timestamp</th>
-                        <th class="px-4 py-3 text-right text-sm font-medium text-base-700 dark:text-base-300">Total</th>
-                        <th class="px-4 py-3 text-right text-sm font-medium text-base-700 dark:text-base-300">Success</th>
-                        <th class="px-4 py-3 text-right text-sm font-medium text-base-700 dark:text-base-300">Failed</th>
-                        <th class="px-4 py-3 text-left text-sm font-medium text-base-700 dark:text-base-300" style="min-width: 150px;">Pass Rate</th>
+                        <th>Run ID</th>
+                        <th>Source</th>
+                        <th>Timestamp</th>
+                        <th style="text-align: right;">Total</th>
+                        <th style="text-align: right;">Success</th>
+                        <th style="text-align: right;">Failed</th>
+                        <th style="min-width: 180px;">Pass Rate</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-base-200 dark:divide-base-700">
+                <tbody>
                     {% for run in runs %}
-                    <tr class="hover:bg-base-50 dark:hover:bg-base-800">
-                        <td class="px-4 py-3">
+                    <tr>
+                        <td>
                             <a href="{% url 'admin-validation-run-detail' run.id %}"
-                               class="text-primary-600 hover:text-primary-700 dark:text-primary-400 font-medium">
-                                #{{ run.id }}
+                               style="color: var(--st-accent-600); text-decoration: none; font-weight: 600;">
+                                <span class="st-mono">#{{ run.id }}</span>
                             </a>
                         </td>
-                        <td class="px-4 py-3 text-base-700 dark:text-base-300">{{ run.source }}</td>
-                        <td class="px-4 py-3 text-base-500 dark:text-base-400 text-sm">
-                            {{ run.imported_at|date:"Y-m-d H:i" }}
+                        <td>
+                            <span class="st-badge st-badge--neutral">{{ run.source }}</span>
                         </td>
-                        <td class="px-4 py-3 text-right text-base-700 dark:text-base-300">{{ run.total }}</td>
-                        <td class="px-4 py-3 text-right text-green-600 dark:text-green-400">{{ run.success }}</td>
-                        <td class="px-4 py-3 text-right text-red-600 dark:text-red-400">{{ run.failure }}</td>
-                        <td class="px-4 py-3">
-                            <div class="flex items-center gap-2">
-                                <div class="pass-rate-bar flex-1">
-                                    <div class="pass-rate-fill {% if run.pass_rate >= 90 %}good{% elif run.pass_rate >= 70 %}warning{% else %}danger{% endif %}"
-                                         style="width: {{ run.pass_rate }}%"></div>
+                        <td>
+                            <span class="st-mono" style="font-size: 0.8125rem; color: var(--st-text-subtle);">
+                                {{ run.imported_at|date:"Y-m-d H:i" }}
+                            </span>
+                        </td>
+                        <td style="text-align: right;">
+                            <span class="st-mono" style="color: var(--st-text-muted);">{{ run.total }}</span>
+                        </td>
+                        <td style="text-align: right;">
+                            <span class="st-mono" style="color: var(--st-pass);">{{ run.success }}</span>
+                        </td>
+                        <td style="text-align: right;">
+                            <span class="st-mono" style="color: var(--st-fail);">{{ run.failure }}</span>
+                        </td>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: var(--st-space-3);">
+                                <div class="st-progress" style="flex: 1;">
+                                    <div class="st-progress__fill {% if run.pass_rate >= 90 %}st-progress__fill--pass{% elif run.pass_rate >= 70 %}st-progress__fill--warn{% else %}st-progress__fill--fail{% endif %}"
+                                         style="width: {{ run.pass_rate }}%;"></div>
                                 </div>
-                                <span class="text-sm font-medium text-base-700 dark:text-base-300 w-12 text-right">
+                                <span class="st-mono" style="font-size: 0.8125rem; font-weight: 600; width: 48px; text-align: right; {% if run.pass_rate >= 90 %}color: var(--st-pass);{% elif run.pass_rate >= 70 %}color: var(--st-warn);{% else %}color: var(--st-fail);{% endif %}">
                                     {{ run.pass_rate }}%
                                 </span>
                             </div>
@@ -152,10 +159,10 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="7" class="px-4 py-8 text-center text-base-500 dark:text-base-400">
+                        <td colspan="7" style="text-align: center; padding: var(--st-space-10); color: var(--st-text-subtle);">
                             No validation runs found.
                             {% if current_filters.source or current_filters.vendor or current_filters.requirement or current_filters.date_from or current_filters.date_to %}
-                            <br><a href="{% url 'admin-validation-runs' %}" class="text-primary-600 hover:underline">Clear filters</a> to see all runs.
+                            <br><a href="{% url 'admin-validation-runs' %}" class="st-btn st-btn--ghost st-btn--sm" style="margin-top: var(--st-space-3);">Clear filters</a>
                             {% endif %}
                         </td>
                     </tr>
@@ -166,27 +173,30 @@
 
         <!-- Pagination -->
         {% if pagination.total_pages > 1 %}
-        <div class="p-4 border-t border-base-200 dark:border-base-800 flex items-center justify-between">
-            <div class="text-sm text-base-500 dark:text-base-400">
-                Page {{ pagination.current_page }} of {{ pagination.total_pages }}
-                ({{ pagination.total_items }} total runs)
-            </div>
-            <div class="flex gap-2">
-                {% if pagination.has_previous %}
-                <a href="?page={{ pagination.previous_page }}{% if current_filters.source %}&source={{ current_filters.source }}{% endif %}{% if current_filters.vendor %}&vendor={{ current_filters.vendor }}{% endif %}{% if current_filters.requirement %}&requirement={{ current_filters.requirement }}{% endif %}{% if current_filters.date_from %}&date_from={{ current_filters.date_from }}{% endif %}{% if current_filters.date_to %}&date_to={{ current_filters.date_to }}{% endif %}"
-                   class="px-3 py-1 bg-base-200 dark:bg-base-700 rounded hover:bg-base-300 dark:hover:bg-base-600 text-sm">
-                    Previous
-                </a>
-                {% endif %}
-                {% if pagination.has_next %}
-                <a href="?page={{ pagination.next_page }}{% if current_filters.source %}&source={{ current_filters.source }}{% endif %}{% if current_filters.vendor %}&vendor={{ current_filters.vendor }}{% endif %}{% if current_filters.requirement %}&requirement={{ current_filters.requirement }}{% endif %}{% if current_filters.date_from %}&date_from={{ current_filters.date_from }}{% endif %}{% if current_filters.date_to %}&date_to={{ current_filters.date_to }}{% endif %}"
-                   class="px-3 py-1 bg-base-200 dark:bg-base-700 rounded hover:bg-base-300 dark:hover:bg-base-600 text-sm">
-                    Next
-                </a>
-                {% endif %}
+        <div class="st-card-body" style="border-top: 1px solid var(--st-border);">
+            <div class="st-flex-between">
+                <span class="st-caption">
+                    Page <strong>{{ pagination.current_page }}</strong> of <strong>{{ pagination.total_pages }}</strong>
+                    · {{ pagination.total_items }} total runs
+                </span>
+                <div class="st-cluster">
+                    {% if pagination.has_previous %}
+                    <a href="?page={{ pagination.previous_page }}{% if current_filters.source %}&source={{ current_filters.source }}{% endif %}{% if current_filters.vendor %}&vendor={{ current_filters.vendor }}{% endif %}{% if current_filters.requirement %}&requirement={{ current_filters.requirement }}{% endif %}{% if current_filters.date_from %}&date_from={{ current_filters.date_from }}{% endif %}{% if current_filters.date_to %}&date_to={{ current_filters.date_to }}{% endif %}"
+                       class="st-btn st-btn--secondary st-btn--sm">
+                        ← Previous
+                    </a>
+                    {% endif %}
+                    {% if pagination.has_next %}
+                    <a href="?page={{ pagination.next_page }}{% if current_filters.source %}&source={{ current_filters.source }}{% endif %}{% if current_filters.vendor %}&vendor={{ current_filters.vendor }}{% endif %}{% if current_filters.requirement %}&requirement={{ current_filters.requirement }}{% endif %}{% if current_filters.date_from %}&date_from={{ current_filters.date_from }}{% endif %}{% if current_filters.date_to %}&date_to={{ current_filters.date_to }}{% endif %}"
+                       class="st-btn st-btn--secondary st-btn--sm">
+                        Next →
+                    </a>
+                    {% endif %}
+                </div>
             </div>
         </div>
         {% endif %}
     </div>
+</div>
 </div>
 {% endblock %}

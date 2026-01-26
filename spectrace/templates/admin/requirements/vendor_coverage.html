@@ -4,193 +4,308 @@
 {% block title %}{{ title }} | SpecTrace{% endblock %}
 
 {% block content %}
+{% include "admin/requirements/_design_system.html" %}
+
 <style>
-    .vendor-card {
-        background: white;
-        border-radius: 8px;
-        padding: 1.5rem;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        margin-bottom: 1rem;
-    }
-    .dark .vendor-card {
-        background: #1f2937;
-    }
-    .stat-row {
-        display: flex;
-        gap: 2rem;
-        margin: 1rem 0;
-    }
-    .stat {
-        flex: 1;
-    }
-    .stat-label {
-        font-size: 0.875rem;
-        color: #6b7280;
-        margin-bottom: 0.25rem;
-    }
-    .dark .stat-label {
-        color: #9ca3af;
-    }
-    .stat-value {
-        font-size: 1.5rem;
-        font-weight: bold;
-        color: #111827;
-    }
-    .dark .stat-value {
-        color: #f9fafb;
-    }
-    .pass-rate {
-        font-size: 2rem;
-        font-weight: bold;
-    }
-    .pass-rate.good { color: #22c55e; }
-    .pass-rate.warning { color: #eab308; }
-    .pass-rate.danger { color: #ef4444; }
-    .badge {
-        display: inline-block;
-        padding: 0.25rem 0.5rem;
-        background: #e5e7eb;
-        border-radius: 4px;
-        font-size: 0.75rem;
-        margin-right: 0.5rem;
-        margin-bottom: 0.5rem;
-    }
-    .dark .badge {
-        background: #374151;
-    }
-    .regression-list {
-        background: #fef2f2;
-        border-left: 4px solid #ef4444;
-        padding: 1rem;
-        margin-top: 1rem;
-        border-radius: 4px;
-    }
-    .dark .regression-list {
-        background: #1f1917;
-    }
-    .regression-item {
-        padding: 0.5rem 0;
-        border-bottom: 1px solid #e5e7eb;
-    }
-    .dark .regression-item {
-        border-bottom-color: #374151;
-    }
-    .regression-item:last-child {
-        border-bottom: none;
-    }
+/* Vendor-specific styles */
+.vendor-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    gap: var(--st-space-5);
+}
+
+.vendor-card {
+    position: relative;
+    padding: var(--st-space-6);
+    background: var(--st-surface);
+    border: 1px solid var(--st-border);
+    border-radius: var(--st-radius-lg);
+    transition: all 0.2s var(--st-ease-out);
+}
+
+.vendor-card:hover {
+    box-shadow: var(--st-shadow-md);
+}
+
+.vendor-card__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: var(--st-space-5);
+}
+
+.vendor-card__name {
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--st-text);
+}
+
+.vendor-card__rate {
+    font-family: var(--font-mono);
+    font-size: 1.75rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1;
+}
+
+.vendor-card__rate--good { color: var(--st-pass); }
+.vendor-card__rate--warning { color: var(--st-warn); }
+.vendor-card__rate--danger { color: var(--st-fail); }
+
+.vendor-card__rate-label {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--st-text-subtle);
+    margin-top: var(--st-space-1);
+}
+
+.vendor-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--st-space-3);
+    padding: var(--st-space-4) 0;
+    border-top: 1px solid var(--st-border-muted);
+    border-bottom: 1px solid var(--st-border-muted);
+    margin-bottom: var(--st-space-4);
+}
+
+.vendor-stat {
+    text-align: center;
+}
+
+.vendor-stat__value {
+    font-family: var(--font-mono);
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--st-text);
+}
+
+.vendor-stat__value--pass { color: var(--st-pass); }
+.vendor-stat__value--fail { color: var(--st-fail); }
+.vendor-stat__value--muted { color: var(--st-text-subtle); }
+
+.vendor-stat__label {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--st-text-subtle);
+    margin-top: var(--st-space-1);
+}
+
+.vendor-flags {
+    margin-top: var(--st-space-4);
+}
+
+.vendor-flags__label {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--st-text-subtle);
+    margin-bottom: var(--st-space-2);
+}
+
+.flag-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--st-space-1);
+    padding: var(--st-space-1) var(--st-space-2);
+    background: var(--st-surface-sunken);
+    border-radius: var(--st-radius-sm);
+    font-size: 0.75rem;
+    font-family: var(--font-mono);
+    color: var(--st-text-muted);
+    margin-right: var(--st-space-2);
+    margin-bottom: var(--st-space-2);
+}
+
+.flag-tag__count {
+    background: var(--st-border-muted);
+    padding: 0 var(--st-space-1);
+    border-radius: 2px;
+    font-weight: 600;
+    font-size: 0.6875rem;
+}
+
+.regression-alert {
+    margin-top: var(--st-space-4);
+    padding: var(--st-space-4);
+    background: var(--st-fail-muted);
+    border-left: 3px solid var(--st-fail);
+    border-radius: var(--st-radius-sm);
+}
+
+.regression-alert__title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--st-fail-dark);
+    margin-bottom: var(--st-space-2);
+    display: flex;
+    align-items: center;
+    gap: var(--st-space-2);
+}
+
+html.dark .regression-alert__title {
+    color: var(--st-fail);
+}
+
+.regression-item {
+    padding: var(--st-space-2) 0;
+    border-bottom: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.regression-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.regression-item__name {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--st-text);
+}
+
+.regression-item__time {
+    font-size: 0.75rem;
+    font-family: var(--font-mono);
+    color: var(--st-text-subtle);
+    margin-top: var(--st-space-1);
+}
 </style>
 
-<div class="p-6">
+<div class="st-page-wrapper">
+<div class="st-page st-container">
     <!-- Header -->
-    <div class="mb-6 flex items-center justify-between">
+    <header class="st-flex-between mb-6 st-animate-in" style="flex-wrap: wrap; gap: var(--st-space-4);">
         <div>
-            <h1 class="text-2xl font-bold text-base-900 dark:text-white">{{ title }}</h1>
-            <p class="text-base-500 dark:text-base-400 mt-1">
-                Validation coverage by integration vendor
-            </p>
+            <h1 class="st-heading-1">{{ title }}</h1>
+            <p class="st-caption mt-1">Validation coverage by integration vendor</p>
         </div>
-        <div class="flex gap-2">
-            <a href="{% url 'admin-validation-runs' %}"
-               class="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors">
+        <div class="st-cluster">
+            <a href="{% url 'admin-validation-runs' %}" class="st-btn st-btn--primary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+                </svg>
                 View All Runs
             </a>
-            <a href="{% url 'admin:index' %}"
-               class="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600">
-                ← Back to Admin
+            <a href="{% url 'admin:index' %}" class="st-btn st-btn--secondary">
+                ← Dashboard
             </a>
         </div>
-    </div>
+    </header>
 
     <!-- Summary Stats -->
-    <div class="vendor-card mb-6">
-        <h2 class="text-lg font-semibold mb-4">Summary</h2>
-        <div class="stat-row">
-            <div class="stat">
-                <div class="stat-label">Total Vendors</div>
-                <div class="stat-value">{{ total_vendors }}</div>
-            </div>
-            <div class="stat">
-                <div class="stat-label">Total Validations</div>
-                <div class="stat-value">{{ total_validations }}</div>
-            </div>
-            <div class="stat">
-                <div class="stat-label">Feature Flags Tracked</div>
-                <div class="stat-value">{{ all_flags|length }}</div>
-            </div>
+    <div class="st-grid-stats mb-8 st-animate-in st-animate-delay-1">
+        <div class="st-metric st-metric--accent st-lift">
+            <div class="st-metric__label">Total Vendors</div>
+            <div class="st-metric__value">{{ total_vendors|default:"0" }}</div>
+        </div>
+        <div class="st-metric st-lift">
+            <div class="st-metric__label">Total Validations</div>
+            <div class="st-metric__value">{{ total_validations|default:"0" }}</div>
+        </div>
+        <div class="st-metric st-lift">
+            <div class="st-metric__label">Feature Flags</div>
+            <div class="st-metric__value">{{ all_flags|length|default:"0" }}</div>
         </div>
     </div>
 
     <!-- Vendor Cards -->
-    {% for vendor in vendors %}
-    <div class="vendor-card">
-        <div class="flex justify-between items-start">
-            <div class="flex-1">
-                <h2 class="text-xl font-bold mb-2">{{ vendor.name }}</h2>
-                
-                <!-- Pass Rate -->
-                <div class="mb-4">
-                    <span class="pass-rate {% if vendor.pass_rate >= 90 %}good{% elif vendor.pass_rate >= 70 %}warning{% else %}danger{% endif %}">
+    {% if vendors %}
+    <div class="vendor-grid">
+        {% for vendor in vendors %}
+        <div class="vendor-card st-animate-in" style="animation-delay: {{ forloop.counter0|add:2 }}00ms;">
+            <div class="vendor-card__header">
+                <h2 class="vendor-card__name">{{ vendor.name }}</h2>
+                <div style="text-align: right;">
+                    <div class="vendor-card__rate {% if vendor.pass_rate >= 90 %}vendor-card__rate--good{% elif vendor.pass_rate >= 70 %}vendor-card__rate--warning{% else %}vendor-card__rate--danger{% endif %}">
                         {{ vendor.pass_rate }}%
+                    </div>
+                    <div class="vendor-card__rate-label">Pass Rate</div>
+                </div>
+            </div>
+
+            <!-- Pass Rate Bar -->
+            <div class="st-progress" style="height: 8px; margin-bottom: var(--st-space-4);">
+                <div class="st-progress__fill {% if vendor.pass_rate >= 90 %}st-progress__fill--pass{% elif vendor.pass_rate >= 70 %}st-progress__fill--warn{% else %}st-progress__fill--fail{% endif %}"
+                     style="width: {{ vendor.pass_rate }}%;"></div>
+            </div>
+
+            <!-- Stats Grid -->
+            <div class="vendor-stats">
+                <div class="vendor-stat">
+                    <div class="vendor-stat__value">{{ vendor.total }}</div>
+                    <div class="vendor-stat__label">Total</div>
+                </div>
+                <div class="vendor-stat">
+                    <div class="vendor-stat__value vendor-stat__value--pass">{{ vendor.passing }}</div>
+                    <div class="vendor-stat__label">Passing</div>
+                </div>
+                <div class="vendor-stat">
+                    <div class="vendor-stat__value vendor-stat__value--fail">{{ vendor.failing }}</div>
+                    <div class="vendor-stat__label">Failing</div>
+                </div>
+                <div class="vendor-stat">
+                    <div class="vendor-stat__value vendor-stat__value--muted">{{ vendor.not_run }}</div>
+                    <div class="vendor-stat__label">Not Run</div>
+                </div>
+            </div>
+
+            <!-- Feature Flags -->
+            {% if vendor.common_flags %}
+            <div class="vendor-flags">
+                <div class="vendor-flags__label">Feature Flags</div>
+                <div>
+                    {% for flag, count in vendor.common_flags.items %}
+                    <span class="flag-tag">
+                        {{ flag }}
+                        <span class="flag-tag__count">{{ count }}</span>
                     </span>
-                    <span class="text-sm text-gray-500 ml-2">pass rate</span>
-                </div>
-                
-                <!-- Stats -->
-                <div class="stat-row">
-                    <div class="stat">
-                        <div class="stat-label">Total</div>
-                        <div class="stat-value text-lg">{{ vendor.total }}</div>
-                    </div>
-                    <div class="stat">
-                        <div class="stat-label">Passing</div>
-                        <div class="stat-value text-lg" style="color: #22c55e;">{{ vendor.passing }}</div>
-                    </div>
-                    <div class="stat">
-                        <div class="stat-label">Failing</div>
-                        <div class="stat-value text-lg" style="color: #ef4444;">{{ vendor.failing }}</div>
-                    </div>
-                    <div class="stat">
-                        <div class="stat-label">Not Run</div>
-                        <div class="stat-value text-lg" style="color: #9ca3af;">{{ vendor.not_run }}</div>
-                    </div>
-                </div>
-                
-                <!-- Feature Flags -->
-                {% if vendor.common_flags %}
-                <div class="mt-4">
-                    <div class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Common Feature Flags:</div>
-                    <div>
-                        {% for flag, count in vendor.common_flags.items %}
-                        <span class="badge">{{ flag }} ({{ count }})</span>
-                        {% endfor %}
-                    </div>
-                </div>
-                {% endif %}
-                
-                <!-- Regressions -->
-                {% if vendor.regressions %}
-                <div class="regression-list">
-                    <div class="text-sm font-bold text-red-700 dark:text-red-400 mb-2">
-                        ⚠️ Recent Regressions ({{ vendor.regressions|length }})
-                    </div>
-                    {% for regression in vendor.regressions %}
-                    <div class="regression-item">
-                        <div class="font-medium">{{ regression.name }}</div>
-                        <div class="text-xs text-gray-500">
-                            Regressed at: {{ regression.regressed_at|date:"Y-m-d H:i" }}
-                        </div>
-                    </div>
                     {% endfor %}
                 </div>
-                {% endif %}
             </div>
+            {% endif %}
+
+            <!-- Regressions -->
+            {% if vendor.regressions %}
+            <div class="regression-alert">
+                <div class="regression-alert__title">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                        <line x1="12" y1="9" x2="12" y2="13"></line>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                    {{ vendor.regressions|length }} Recent Regression{{ vendor.regressions|length|pluralize }}
+                </div>
+                {% for regression in vendor.regressions %}
+                <div class="regression-item">
+                    <div class="regression-item__name">{{ regression.name }}</div>
+                    <div class="regression-item__time">{{ regression.regressed_at|date:"Y-m-d H:i" }}</div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="st-card st-animate-in st-animate-delay-2">
+        <div class="st-card-body" style="text-align: center; padding: var(--st-space-12);">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--st-text-subtle)" stroke-width="1.5" style="margin: 0 auto var(--st-space-4);">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+            <p style="color: var(--st-text-muted); font-size: 1rem; margin-bottom: var(--st-space-2);">No vendors with validations yet</p>
+            <p class="st-caption">Vendors will appear here once validation results are submitted via the SDK.</p>
         </div>
     </div>
-    {% empty %}
-    <div class="vendor-card text-center text-gray-500">
-        <p>No vendors with validations yet.</p>
-        <p class="text-sm mt-2">Vendors will appear here once validation results are submitted via the SDK.</p>
-    </div>
-    {% endfor %}
+    {% endif %}
+</div>
 </div>
 {% endblock %}
