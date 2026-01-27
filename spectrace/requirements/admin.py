@@ -7,11 +7,18 @@ from django.utils.html import format_html
 from unfold.admin import ModelAdmin
 
 from .models import (
+    Agent,
+    AgentSprint,
+    AgentTask,
+    AgentTaskHistory,
+    AgentTaskReview,
+    AgentTaskStatus,
     ConflictLog,
     InAppValidation,
     InAppValidationResult,
     InAppValidationRun,
     Requirement,
+    ReviewDecision,
     SLO,
     TestRequirementLink,
     TestResult,
@@ -396,6 +403,27 @@ CONFLICT_CONFIDENCE_COLORS = {
     'low': '#6b7280',
 }
 
+# Agent task status colors
+AGENT_TASK_STATUS_COLORS = {
+    'draft': '#6b7280',           # gray
+    'unclaimed': '#3b82f6',       # blue
+    'claimed': '#8b5cf6',         # purple
+    'in_progress': '#f59e0b',     # amber
+    'ready_for_review': '#eab308', # yellow
+    'changes_requested': '#f97316', # orange
+    'approved': '#22c55e',        # green
+    'merged': '#10b981',          # emerald
+    'blocked': '#ef4444',         # red
+    'abandoned': '#374151',       # dark gray
+}
+
+# Review decision colors
+REVIEW_DECISION_COLORS = {
+    'approved': '#22c55e',
+    'changes_requested': '#f97316',
+    'rejected': '#ef4444',
+}
+
 
 @admin.register(TestRequirementLink)
 class TestRequirementLinkAdmin(ModelAdmin):
@@ -523,3 +551,339 @@ class ConflictLogAdmin(ModelAdmin):
             json.dumps(obj.details, indent=2)
         )
     details_display.short_description = 'Details'  # type: ignore[attr-defined]
+
+
+# =============================================================================
+# Agent Coordination Admin Classes
+# =============================================================================
+
+
+@admin.register(AgentSprint)
+class AgentSprintAdmin(ModelAdmin):
+    """Admin interface for AgentSprint."""
+
+    list_display = ['name', 'is_active', 'task_count', 'progress_badge', 'created_at']
+    list_filter = ['is_active']
+    search_fields = ['name', 'description', 'goal_description']
+    readonly_fields = ['created_at', 'completed_at', 'task_count', 'progress_badge']
+
+    fieldsets = (
+        (None, {
+            'fields': ('name', 'description', 'goal_description')
+        }),
+        ('Status', {
+            'fields': ('is_active', 'completed_at')
+        }),
+        ('Progress', {
+            'fields': ('task_count', 'progress_badge'),
+            'description': 'Read-only progress metrics'
+        }),
+        ('Timestamps', {
+            'fields': ('created_at',),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def task_count(self, obj):
+        """Display task count."""
+        return obj.task_count
+    task_count.short_description = 'Tasks'  # type: ignore[attr-defined]
+
+    def progress_badge(self, obj):
+        """Display progress as a colored badge with percentage."""
+        progress = obj.progress
+        pct = progress['percent_complete']
+        merged = progress['merged']
+        total = progress['total']
+
+        if total == 0:
+            color = '#6b7280'
+            label = 'No tasks'
+        elif pct == 100:
+            color = '#22c55e'
+            label = 'Complete'
+        elif pct >= 50:
+            color = '#f59e0b'
+            label = f'{pct:.0f}%'
+        else:
+            color = '#3b82f6'
+            label = f'{pct:.0f}%'
+
+        return format_html(
+            '<span style="display: inline-block; padding: 2px 8px; border-radius: 4px; '
+            'font-size: 11px; font-weight: 500; color: white; background-color: {};">'
+            '{}</span> <span style="color: #6b7280;">({}/{})</span>',
+            color, label, merged, total
+        )
+    progress_badge.short_description = 'Progress'  # type: ignore[attr-defined]
+
+
+@admin.register(Agent)
+class AgentAdmin(ModelAdmin):
+    """Admin interface for Agent."""
+
+    list_display = ['agent_id', 'role', 'is_active', 'last_heartbeat', 'current_task_display']
+    list_filter = ['role', 'is_active']
+    search_fields = ['agent_id']
+    readonly_fields = ['registered_at', 'last_heartbeat', 'current_task_display', 'config_display']
+
+    fieldsets = (
+        (None, {
+            'fields': ('agent_id', 'role')
+        }),
+        ('Status', {
+            'fields': ('is_active', 'last_heartbeat', 'current_task_display')
+        }),
+        ('Configuration', {
+            'fields': ('config', 'config_display'),
+            'classes': ('collapse',)
+        }),
+        ('Timestamps', {
+            'fields': ('registered_at',),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def current_task_display(self, obj):
+        """Display current task as a clickable link."""
+        task = obj.current_task
+        if not task:
+            return format_html('<span style="color: #6b7280;">None</span>')
+        url = reverse('admin:requirements_agenttask_change', args=[task.pk])
+        color = AGENT_TASK_STATUS_COLORS.get(task.status, '#6b7280')
+        return format_html(
+            '<a href="{}">{}</a> '
+            '<span style="display: inline-block; padding: 2px 8px; border-radius: 4px; '
+            'font-size: 11px; font-weight: 500; color: white; background-color: {};">{}</span>',
+            url, task.external_id, color, task.status.upper()
+        )
+    current_task_display.short_description = 'Current Task'  # type: ignore[attr-defined]
+
+    def config_display(self, obj):
+        """Pretty-print config JSON."""
+        if not obj.config:
+            return "No config"
+        return format_html(
+            '<pre style="max-width: 600px; overflow-x: auto;">{}</pre>',
+            json.dumps(obj.config, indent=2)
+        )
+    config_display.short_description = 'Config Detail'  # type: ignore[attr-defined]
+
+
+@admin.register(AgentTask)
+class AgentTaskAdmin(ModelAdmin):
+    """Admin interface for AgentTask."""
+
+    list_display = [
+        'external_id', 'title', 'status_badge', 'claimed_by',
+        'sprint', 'attempt_count', 'updated_at'
+    ]
+    list_filter = ['status', 'sprint', 'claimed_by']
+    search_fields = ['external_id', 'title', 'description']
+    filter_horizontal = ['requirements', 'depends_on']
+    readonly_fields = [
+        'attempt_count', 'created_at', 'updated_at', 'status_badge',
+        'done_when_display', 'scope_in_display', 'scope_out_display',
+        'linked_requirements_display'
+    ]
+    raw_id_fields = ['claimed_by', 'sprint']
+
+    fieldsets = (
+        (None, {
+            'fields': ('external_id', 'title', 'description')
+        }),
+        ('Requirements', {
+            'fields': ('requirements', 'linked_requirements_display', 'spec_ref')
+        }),
+        ('State', {
+            'fields': ('status', 'status_badge', 'claimed_by', 'claimed_at', 'lease_expires')
+        }),
+        ('Completion Criteria', {
+            'fields': ('done_when', 'done_when_display', 'scope_in', 'scope_in_display', 'scope_out', 'scope_out_display'),
+            'description': 'Falsifiable criteria and scope boundaries'
+        }),
+        ('Git', {
+            'fields': ('worktree_path', 'branch_name', 'commit_sha'),
+            'classes': ('collapse',)
+        }),
+        ('Dependencies', {
+            'fields': ('depends_on', 'sprint')
+        }),
+        ('Retries', {
+            'fields': ('attempt_count', 'max_attempts'),
+            'description': 'Hypothesis exhaustion tracking'
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def status_badge(self, obj):
+        """Display status as a colored badge."""
+        color = AGENT_TASK_STATUS_COLORS.get(obj.status, '#6b7280')
+        return format_html(
+            '<span style="display: inline-block; padding: 2px 8px; border-radius: 4px; '
+            'font-size: 11px; font-weight: 500; color: white; background-color: {};">{}</span>',
+            color, obj.get_status_display()
+        )
+    status_badge.short_description = 'Status'  # type: ignore[attr-defined]
+
+    def done_when_display(self, obj):
+        """Pretty-print done_when as a checklist."""
+        if not obj.done_when:
+            return format_html('<span style="color: #6b7280;">No criteria defined</span>')
+        items = ''.join(f'<li>{criterion}</li>' for criterion in obj.done_when)
+        return format_html('<ul style="margin: 0; padding-left: 20px;">{}</ul>', format_html(items))
+    done_when_display.short_description = 'Done When (Display)'  # type: ignore[attr-defined]
+
+    def scope_in_display(self, obj):
+        """Pretty-print scope_in as a list."""
+        if not obj.scope_in:
+            return format_html('<span style="color: #6b7280;">Not specified</span>')
+        items = ''.join(f'<li>{item}</li>' for item in obj.scope_in)
+        return format_html('<ul style="margin: 0; padding-left: 20px;">{}</ul>', format_html(items))
+    scope_in_display.short_description = 'In Scope (Display)'  # type: ignore[attr-defined]
+
+    def scope_out_display(self, obj):
+        """Pretty-print scope_out as a list."""
+        if not obj.scope_out:
+            return format_html('<span style="color: #6b7280;">Not specified</span>')
+        items = ''.join(f'<li>{item}</li>' for item in obj.scope_out)
+        return format_html('<ul style="margin: 0; padding-left: 20px;">{}</ul>', format_html(items))
+    scope_out_display.short_description = 'Out of Scope (Display)'  # type: ignore[attr-defined]
+
+    def linked_requirements_display(self, obj):
+        """Display linked requirements with verification status badges."""
+        requirements = obj.requirements.all().order_by('external_id')
+        return _render_badge_list(
+            requirements, STATUS_BADGE_COLORS,
+            get_status=lambda r: r.verification_status,
+            get_url=lambda r: reverse('admin:requirements_requirement_change', args=[r.pk]),
+            get_label=lambda r: f"{r.external_id}: {r.title}",
+            empty_message='No linked requirements'
+        )
+    linked_requirements_display.short_description = 'Linked Requirements'  # type: ignore[attr-defined]
+
+
+@admin.register(AgentTaskHistory)
+class AgentTaskHistoryAdmin(ModelAdmin):
+    """Admin interface for AgentTaskHistory."""
+
+    list_display = ['task_link', 'action', 'agent', 'from_status', 'to_status', 'timestamp']
+    list_filter = ['action', 'agent']
+    search_fields = ['task__external_id', 'action']
+    readonly_fields = ['task', 'task_link', 'agent', 'timestamp', 'action', 'from_status', 'to_status', 'details_display']
+
+    fieldsets = (
+        (None, {
+            'fields': ('task', 'task_link', 'agent')
+        }),
+        ('Action', {
+            'fields': ('action', 'from_status', 'to_status', 'timestamp')
+        }),
+        ('Details', {
+            'fields': ('details_display',)
+        }),
+    )
+
+    def task_link(self, obj):
+        """Display task as a clickable link."""
+        url = reverse('admin:requirements_agenttask_change', args=[obj.task.pk])
+        return format_html('<a href="{}">{}</a>', url, obj.task.external_id)
+    task_link.short_description = 'Task'  # type: ignore[attr-defined]
+
+    def details_display(self, obj):
+        """Pretty-print details JSON."""
+        if not obj.details:
+            return "No details"
+        return format_html(
+            '<pre style="max-width: 600px; overflow-x: auto;">{}</pre>',
+            json.dumps(obj.details, indent=2)
+        )
+    details_display.short_description = 'Details'  # type: ignore[attr-defined]
+
+
+@admin.register(AgentTaskReview)
+class AgentTaskReviewAdmin(ModelAdmin):
+    """Admin interface for AgentTaskReview."""
+
+    list_display = ['task_link', 'reviewer', 'decision_badge', 'commit_sha_short', 'created_at']
+    list_filter = ['decision', 'reviewer']
+    search_fields = ['task__external_id', 'feedback']
+    readonly_fields = [
+        'task', 'task_link', 'reviewer', 'created_at',
+        'done_when_results_display', 'blocking_issues_display', 'suggestions_display'
+    ]
+
+    fieldsets = (
+        (None, {
+            'fields': ('task', 'task_link', 'reviewer')
+        }),
+        ('Decision', {
+            'fields': ('decision', 'commit_sha')
+        }),
+        ('Criteria Verification', {
+            'fields': ('done_when_results', 'done_when_results_display')
+        }),
+        ('Feedback', {
+            'fields': ('feedback', 'blocking_issues', 'blocking_issues_display', 'suggestions', 'suggestions_display')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at',),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def task_link(self, obj):
+        """Display task as a clickable link."""
+        url = reverse('admin:requirements_agenttask_change', args=[obj.task.pk])
+        return format_html('<a href="{}">{}</a>', url, obj.task.external_id)
+    task_link.short_description = 'Task'  # type: ignore[attr-defined]
+
+    def decision_badge(self, obj):
+        """Display decision as a colored badge."""
+        color = REVIEW_DECISION_COLORS.get(obj.decision, '#6b7280')
+        return format_html(
+            '<span style="display: inline-block; padding: 2px 8px; border-radius: 4px; '
+            'font-size: 11px; font-weight: 500; color: white; background-color: {};">{}</span>',
+            color, obj.get_decision_display()
+        )
+    decision_badge.short_description = 'Decision'  # type: ignore[attr-defined]
+
+    def commit_sha_short(self, obj):
+        """Display shortened commit SHA."""
+        if obj.commit_sha:
+            return obj.commit_sha[:8]
+        return "—"
+    commit_sha_short.short_description = 'Commit'  # type: ignore[attr-defined]
+
+    def done_when_results_display(self, obj):
+        """Pretty-print done_when_results as a checklist."""
+        if not obj.done_when_results:
+            return format_html('<span style="color: #6b7280;">No results</span>')
+        items = []
+        for result in obj.done_when_results:
+            criterion = result.get('criterion', 'Unknown')
+            passed = result.get('passed', False)
+            icon = '✓' if passed else '✗'
+            color = '#22c55e' if passed else '#ef4444'
+            items.append(f'<li><span style="color: {color};">{icon}</span> {criterion}</li>')
+        return format_html('<ul style="margin: 0; padding-left: 20px;">{}</ul>', format_html(''.join(items)))
+    done_when_results_display.short_description = 'Criteria Results'  # type: ignore[attr-defined]
+
+    def blocking_issues_display(self, obj):
+        """Pretty-print blocking_issues as a list."""
+        if not obj.blocking_issues:
+            return format_html('<span style="color: #6b7280;">None</span>')
+        items = ''.join(f'<li style="color: #ef4444;">{issue}</li>' for issue in obj.blocking_issues)
+        return format_html('<ul style="margin: 0; padding-left: 20px;">{}</ul>', format_html(items))
+    blocking_issues_display.short_description = 'Blocking Issues'  # type: ignore[attr-defined]
+
+    def suggestions_display(self, obj):
+        """Pretty-print suggestions as a list."""
+        if not obj.suggestions:
+            return format_html('<span style="color: #6b7280;">None</span>')
+        items = ''.join(f'<li>{suggestion}</li>' for suggestion in obj.suggestions)
+        return format_html('<ul style="margin: 0; padding-left: 20px;">{}</ul>', format_html(items))
+    suggestions_display.short_description = 'Suggestions'  # type: ignore[attr-defined]

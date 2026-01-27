@@ -45,6 +45,34 @@ class SLOStatus(models.TextChoices):
         return mapping.get(value.lower(), cls.NOT_LINKED)
 
 
+class AgentTaskStatus(models.TextChoices):
+    """Task lifecycle states for agent coordination."""
+    DRAFT = 'draft', 'Draft'
+    UNCLAIMED = 'unclaimed', 'Unclaimed'
+    CLAIMED = 'claimed', 'Claimed'
+    IN_PROGRESS = 'in_progress', 'In Progress'
+    READY_FOR_REVIEW = 'ready_for_review', 'Ready for Review'
+    CHANGES_REQUESTED = 'changes_requested', 'Changes Requested'
+    APPROVED = 'approved', 'Approved'
+    MERGED = 'merged', 'Merged'
+    BLOCKED = 'blocked', 'Blocked'
+    ABANDONED = 'abandoned', 'Abandoned'
+
+
+class AgentRole(models.TextChoices):
+    """Agent specializations for blackboard coordination."""
+    PLANNER = 'planner', 'Planner'
+    CODER = 'coder', 'Coder'
+    REVIEWER = 'reviewer', 'Code Reviewer'
+
+
+class ReviewDecision(models.TextChoices):
+    """Review outcomes for agent task reviews."""
+    APPROVED = 'approved', 'Approved'
+    CHANGES_REQUESTED = 'changes_requested', 'Changes Requested'
+    REJECTED = 'rejected', 'Rejected'
+
+
 class Requirement(MP_Node):
     """A requirement parsed from a spec markdown file.
 
@@ -970,3 +998,451 @@ class SLO(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.status})"
+
+
+# =============================================================================
+# Agent Coordination Models (Blackboard Architecture)
+# =============================================================================
+
+
+class AgentSprint(models.Model):
+    """A batch of related tasks for agent coordination.
+
+    Similar to InAppValidationRun, this groups tasks into a sprint
+    with a goal and tracks overall progress.
+    """
+
+    name = models.CharField(
+        max_length=200,
+        help_text="Sprint name (e.g., 'Auth Flow v2')"
+    )
+    description = models.TextField(
+        blank=True,
+        help_text="Optional additional description"
+    )
+    goal_description = models.TextField(
+        help_text="What this sprint should accomplish"
+    )
+
+    # Status
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Whether new tasks can be added to this sprint"
+    )
+    completed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the sprint was marked complete"
+    )
+
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Agent Sprint"
+        verbose_name_plural = "Agent Sprints"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.name
+
+    @property
+    def task_count(self) -> int:
+        """Total number of tasks in this sprint."""
+        return self.tasks.count()
+
+    @property
+    def progress(self) -> dict:
+        """Get sprint progress stats."""
+        tasks = self.tasks.all()
+        total = tasks.count()
+        if total == 0:
+            return {
+                'total': 0,
+                'merged': 0,
+                'in_progress': 0,
+                'pending': 0,
+                'percent_complete': 0.0,
+            }
+
+        merged = tasks.filter(status=AgentTaskStatus.MERGED).count()
+        in_progress = tasks.filter(
+            status__in=[
+                AgentTaskStatus.CLAIMED,
+                AgentTaskStatus.IN_PROGRESS,
+                AgentTaskStatus.READY_FOR_REVIEW,
+            ]
+        ).count()
+        return {
+            'total': total,
+            'merged': merged,
+            'in_progress': in_progress,
+            'pending': total - merged - in_progress,
+            'percent_complete': round((merged / total) * 100, 1),
+        }
+
+
+class Agent(models.Model):
+    """A registered agent that can interact with the blackboard.
+
+    Agents have roles (Planner, Coder, Reviewer) that determine
+    which actions they can perform.
+    """
+
+    agent_id = models.CharField(
+        max_length=100,
+        unique=True,
+        db_index=True,
+        help_text="Unique agent identifier (e.g., 'coder-1', 'reviewer-opus')"
+    )
+    role = models.CharField(
+        max_length=20,
+        choices=AgentRole.choices,
+        db_index=True,
+        help_text="Agent specialization determining allowed actions"
+    )
+
+    # Status
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Whether agent is active and can claim tasks"
+    )
+    last_heartbeat = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When agent last reported being alive"
+    )
+
+    # Configuration
+    config = models.JSONField(
+        default=dict,
+        help_text="Agent-specific configuration (model, temperature, etc.)"
+    )
+
+    # Timestamps
+    registered_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Agent"
+        verbose_name_plural = "Agents"
+
+    def __str__(self):
+        return f"{self.agent_id} ({self.role})"
+
+    def can_claim_tasks(self) -> bool:
+        """Only coders can claim tasks."""
+        return self.role == AgentRole.CODER
+
+    def can_review_tasks(self) -> bool:
+        """Only reviewers can approve/reject."""
+        return self.role == AgentRole.REVIEWER
+
+    def can_create_tasks(self) -> bool:
+        """Only planners can create tasks."""
+        return self.role == AgentRole.PLANNER
+
+    @property
+    def current_task(self):
+        """Get the agent's currently claimed task, if any."""
+        return self.claimed_tasks.filter(
+            status__in=[
+                AgentTaskStatus.CLAIMED,
+                AgentTaskStatus.IN_PROGRESS,
+            ]
+        ).first()
+
+
+class AgentTask(models.Model):
+    """A unit of work on the blackboard.
+
+    Tasks move through a state machine from DRAFT to MERGED.
+    Each task links to requirements and has falsifiable done_when criteria.
+    """
+
+    # Identity
+    external_id = models.CharField(
+        max_length=100,
+        unique=True,
+        db_index=True,
+        help_text="Task ID (e.g., 'task-auth-login-001')"
+    )
+    title = models.CharField(
+        max_length=200,
+        help_text="Short descriptive title"
+    )
+    description = models.TextField(
+        blank=True,
+        help_text="Detailed task description"
+    )
+
+    # Link to requirements
+    requirements = models.ManyToManyField(
+        Requirement,
+        related_name='agent_tasks',
+        blank=True,
+        help_text="Requirements this task implements"
+    )
+
+    # State machine
+    status = models.CharField(
+        max_length=20,
+        choices=AgentTaskStatus.choices,
+        default=AgentTaskStatus.DRAFT,
+        db_index=True,
+        help_text="Current task state"
+    )
+
+    # Claiming
+    claimed_by = models.ForeignKey(
+        Agent,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='claimed_tasks',
+        help_text="Agent that claimed this task"
+    )
+    claimed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the task was claimed"
+    )
+    lease_expires = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Task returns to UNCLAIMED if lease expires"
+    )
+
+    # Falsifiable completion criteria
+    done_when = models.JSONField(
+        default=list,
+        help_text="List of falsifiable criteria (e.g., 'pytest tests/test_auth.py exits 0')"
+    )
+
+    # Scope boundaries
+    scope_in = models.JSONField(
+        default=list,
+        help_text="What IS in scope for this task"
+    )
+    scope_out = models.JSONField(
+        default=list,
+        help_text="What is NOT in scope (explicit exclusions)"
+    )
+
+    # Spec reference
+    spec_ref = models.CharField(
+        max_length=500,
+        blank=True,
+        help_text="Path to spec file (e.g., 'specs/auth.md')"
+    )
+
+    # Git integration
+    worktree_path = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Path to git worktree (e.g., '.worktrees/task-auth-001')"
+    )
+    branch_name = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Git branch for this task"
+    )
+    commit_sha = models.CharField(
+        max_length=40,
+        blank=True,
+        help_text="Latest commit SHA submitted for review"
+    )
+
+    # Dependencies
+    depends_on = models.ManyToManyField(
+        'self',
+        symmetrical=False,
+        blank=True,
+        related_name='blocks',
+        help_text="Tasks that must complete before this one"
+    )
+
+    # Sprint grouping
+    sprint = models.ForeignKey(
+        AgentSprint,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='tasks',
+        help_text="Sprint this task belongs to"
+    )
+
+    # Retry tracking (hypothesis exhaustion)
+    attempt_count = models.PositiveIntegerField(
+        default=0,
+        help_text="Number of times this task has been attempted"
+    )
+    max_attempts = models.PositiveIntegerField(
+        default=2,
+        help_text="After this many failures by different coders, task is presumed wrong"
+    )
+
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Agent Task"
+        verbose_name_plural = "Agent Tasks"
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"{self.external_id}: {self.title}"
+
+    def is_claimable(self) -> bool:
+        """Check if task can be claimed."""
+        if self.status != AgentTaskStatus.UNCLAIMED:
+            return False
+        # Check dependencies
+        for dep in self.depends_on.all():
+            if dep.status != AgentTaskStatus.MERGED:
+                return False
+        return True
+
+    def can_transition_to(self, new_status: str) -> bool:
+        """Validate state transition."""
+        allowed = AGENT_TASK_STATE_TRANSITIONS.get(self.status, [])
+        return new_status in allowed
+
+
+# State machine transitions for AgentTask
+AGENT_TASK_STATE_TRANSITIONS = {
+    AgentTaskStatus.DRAFT: [AgentTaskStatus.UNCLAIMED, AgentTaskStatus.ABANDONED],
+    AgentTaskStatus.UNCLAIMED: [AgentTaskStatus.CLAIMED, AgentTaskStatus.BLOCKED],
+    AgentTaskStatus.CLAIMED: [AgentTaskStatus.IN_PROGRESS, AgentTaskStatus.UNCLAIMED],
+    AgentTaskStatus.IN_PROGRESS: [AgentTaskStatus.READY_FOR_REVIEW, AgentTaskStatus.BLOCKED],
+    AgentTaskStatus.READY_FOR_REVIEW: [AgentTaskStatus.APPROVED, AgentTaskStatus.CHANGES_REQUESTED],
+    AgentTaskStatus.CHANGES_REQUESTED: [AgentTaskStatus.READY_FOR_REVIEW, AgentTaskStatus.ABANDONED],
+    AgentTaskStatus.APPROVED: [AgentTaskStatus.MERGED],
+    AgentTaskStatus.BLOCKED: [AgentTaskStatus.UNCLAIMED, AgentTaskStatus.ABANDONED],
+    AgentTaskStatus.MERGED: [],  # Terminal
+    AgentTaskStatus.ABANDONED: [],  # Terminal
+}
+
+
+class AgentTaskHistory(models.Model):
+    """Audit trail for task state changes.
+
+    Every action on a task is logged with the agent, action,
+    state transition, and additional details.
+    """
+
+    task = models.ForeignKey(
+        AgentTask,
+        on_delete=models.CASCADE,
+        related_name='history',
+        help_text="The task this history entry belongs to"
+    )
+    agent = models.ForeignKey(
+        Agent,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='task_history',
+        help_text="Agent that performed the action (null for system actions)"
+    )
+
+    timestamp = models.DateTimeField(
+        auto_now_add=True,
+        db_index=True,
+        help_text="When this action occurred"
+    )
+
+    # What happened
+    action = models.CharField(
+        max_length=50,
+        help_text="Action taken (e.g., 'CLAIMED', 'SUBMITTED_FOR_REVIEW', 'APPROVED')"
+    )
+    from_status = models.CharField(
+        max_length=20,
+        blank=True,
+        help_text="Status before transition"
+    )
+    to_status = models.CharField(
+        max_length=20,
+        blank=True,
+        help_text="Status after transition"
+    )
+
+    # Additional context
+    details = models.JSONField(
+        default=dict,
+        help_text="Additional context (commit SHA, review feedback, etc.)"
+    )
+
+    class Meta:
+        verbose_name = "Agent Task History"
+        verbose_name_plural = "Agent Task History"
+        ordering = ['-timestamp']
+
+    def __str__(self):
+        agent_str = self.agent.agent_id if self.agent else 'system'
+        return f"{self.task.external_id}: {self.action} by {agent_str}"
+
+
+class AgentTaskReview(models.Model):
+    """A review of submitted work.
+
+    Captures the reviewer's decision, done_when verification results,
+    and structured feedback.
+    """
+
+    task = models.ForeignKey(
+        AgentTask,
+        on_delete=models.CASCADE,
+        related_name='reviews',
+        help_text="The task being reviewed"
+    )
+    reviewer = models.ForeignKey(
+        Agent,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='reviews_given',
+        help_text="Agent that performed the review"
+    )
+
+    # Review details
+    decision = models.CharField(
+        max_length=20,
+        choices=ReviewDecision.choices,
+        help_text="Review outcome"
+    )
+    commit_sha = models.CharField(
+        max_length=40,
+        help_text="The commit SHA that was reviewed"
+    )
+
+    # Criteria verification
+    done_when_results = models.JSONField(
+        default=list,
+        help_text="Pass/fail for each done_when criterion"
+    )
+
+    # Feedback
+    feedback = models.TextField(
+        blank=True,
+        help_text="Detailed review feedback"
+    )
+    blocking_issues = models.JSONField(
+        default=list,
+        help_text="Issues that must be fixed"
+    )
+    suggestions = models.JSONField(
+        default=list,
+        help_text="Non-blocking suggestions"
+    )
+
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Agent Task Review"
+        verbose_name_plural = "Agent Task Reviews"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Review of {self.task.external_id}: {self.decision}"
