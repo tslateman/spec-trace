@@ -78,10 +78,10 @@ def compute_verification_status(requirement: Requirement, latest_run=None) -> st
 
 
 def update_all_verification_statuses(latest_run=None) -> dict[str, int]:
-    """Update verification_status for all requirements.
+    """Update verification_status for all requirements using unified logic.
 
-    Iterates through all requirements, computes their status based on
-    linked test results, and updates the stored verification_status field.
+    Computes status considering verification_method, test results, in-app
+    validations, and SLO status (breached SLO → failing).
 
     Args:
         latest_run: Optional TestRun to filter results to. If provided,
@@ -95,7 +95,7 @@ def update_all_verification_statuses(latest_run=None) -> dict[str, int]:
     """
     return _update_all_statuses(
         'verification_status',
-        compute_verification_status,
+        compute_unified_verification_status,
         ['passing', 'failing', 'untested'],
         latest_run=latest_run,
     )
