@@ -13,7 +13,7 @@ Spec-driven development inverts this. Specifications become **executable context
 - Agents have no memory between sessions—everything must be explicit
 - Agents can't infer from incomplete information—precision matters
 - Agents can't "read the room"—ambiguity causes wrong choices
-- Code is cheap; design is the bottleneck
+- Code is cheap; design and validation are the bottlenecks
 
 Teams still need alignment. Stakeholders still need persuading. But the *implementation layer* shifts from human programmers to agents guided by precise specifications.
 
@@ -391,6 +391,89 @@ The traceability matrix then shows INV-B linked to its test.
 
 ---
 
+## Key Differences from ADRs
+
+Traditional [Architecture Decision Records](https://adr.github.io/) accumulate. You have ADR-001 through ADR-047, and a reader pieces together current truth from the history.
+
+Spec-driven development inverts this:
+
+| ADRs | Specs |
+|------|-------|
+| Accumulate over time | Show current truth only |
+| Reader reconstructs current state | Reader sees what's true NOW |
+| "Why did we decide this?" | "What must be true?" |
+| Immutable records | Living documents |
+| Superseded, not edited | Updated as understanding evolves |
+
+In practice:
+- Historical decisions are either **promoted to invariants** (if permanent) or **deleted** (if superseded)
+- An agent reading PLAN.md sees what's true now, not archaeology
+- SpecTrace itself tracks whether specs are verified—not the history of decisions
+
+---
+
+## The SpaceX Lens
+
+Apply [The Algorithm](https://www.youtube.com/watch?v=hTOtAniwC28) to documentation:
+
+1. **Question** — Does this document need to exist? Who/what reads it?
+2. **Delete** — What docs do you maintain that no agent references?
+3. **Simplify** — Can 5 doc types become 3?
+4. **Accelerate** — How fast can the feedback loop be?
+5. **Automate** — Only automate stable, understood doc workflows
+
+When code is cheap (agents write it), two things become bottlenecks:
+
+**Design** — Did we specify the right thing?
+- More time on specifications
+- More precision in interface definitions
+- More explicit constraint documentation
+
+**Validation** — Did the agent build it correctly?
+- Reviewing agent output
+- Verifying behavior matches spec
+- Catching drift before it compounds
+
+### The Limits of AI
+
+Agents can't know what isn't written. They don't know:
+
+- That table may have millions of rows in prod, requiring careful optimization
+- That swallowing this error will cause integrations to fail silently
+- That PM flagged a Q4 expansion with architectural implications for this feature
+- The tribal knowledge that makes certain patterns dangerous in your codebase
+
+This is both a **limitation** and **the reason specs matter**. If critical constraints aren't in the spec, the agent will violate them. If edge cases aren't documented, the agent won't handle them.
+
+At the end of the day, **you own the merge button**. No matter who (or what) wrote the code. No matter who (or what) reviewed it. Tests validate. Humans authorize.
+
+This is why SpecTrace exists. Design defines intent. Validation confirms reality matches intent. The traceability matrix closes the loop—linking specs to tests to verification status.
+
+Ruthlessly question every document. If an agent never loads it and no test validates it, why does it exist?
+
+---
+
+## References
+
+### Traditional Documentation
+- [Design Docs at Google](https://www.industrialempathy.com/posts/design-docs-at-google/)
+- [Amazon Working Backwards PR/FAQ](https://workingbackwards.com/concepts/working-backwards-pr-faq-process/)
+- [Stripe Writing Culture](https://slab.com/blog/stripe-writing-culture/)
+- [Shape Up - Basecamp](https://basecamp.com/shapeup)
+- [Rust RFC Process](https://rust-lang.github.io/rfcs/)
+- [ADR GitHub](https://adr.github.io/)
+
+### Spec-Driven Development
+- [Spec-Driven Development (Martin Fowler)](https://martinfowler.com/articles/exploring-gen-ai/sdd-3-tools.html)
+- [Kiro: The Future of AI Spec-Driven Development](https://kiro.dev/blog/kiro-and-the-future-of-software-development/)
+- [Agentic Software Engineering (SE 3.0)](https://arxiv.org/abs/2509.06216)
+
+### Related Concepts
+- [Living Documentation](https://nulab.com/learn/project-management/agile-teams-living-documentation/)
+- [FRET - NASA Formal Requirements](https://github.com/NASA-SW-VnV/fret)
+
+---
+
 ## Summary
 
 | Traditional | Spec-Driven |
@@ -401,4 +484,4 @@ The traceability matrix then shows INV-B linked to its test.
 | Tribal knowledge fills gaps | Explicit patterns in CLAUDE.md and specs |
 | History accumulates in ADRs | Current truth in living specs |
 
-Humans architect and validate. Specs define intent. Agents implement. Tests verify. SpecTrace tracks the links between specs and verification—the spec is the source of truth.
+Specs define intent. Agents implement. Tests validate. Humans authorize. SpecTrace tracks the links between specs and verification—the spec is the source of truth.
