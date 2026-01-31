@@ -86,6 +86,11 @@ UNFOLD = {
                         "icon": "info",
                         "link": reverse_lazy("admin-about"),
                     },
+                    {
+                        "title": _("Spec Syntax Guide"),
+                        "icon": "article",
+                        "link": reverse_lazy("admin-spec-syntax"),
+                    },
                 ],
             },
             {

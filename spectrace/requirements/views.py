@@ -438,3 +438,12 @@ def about_view(request):
         'title': 'About SpecTrace',
     }
     return render(request, 'admin/requirements/about.html', context)
+
+
+@staff_member_required
+def spec_syntax_help_view(request):
+    """Help page explaining FRET-inspired spec syntax."""
+    context = {
+        'title': 'Spec Syntax Guide',
+    }
+    return render(request, 'admin/requirements/spec_syntax_help.html', context)

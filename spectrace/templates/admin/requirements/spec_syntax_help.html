@@ -1,0 +1,600 @@
+{% extends "unfold/layouts/base.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} | SpecTrace{% endblock %}
+
+{% block content %}
+{% include "admin/requirements/_design_system.html" %}
+
+<style>
+.help-hero {
+    position: relative;
+    padding: var(--st-space-10) var(--st-space-8);
+    background: linear-gradient(135deg, #16191d 0%, #212529 100%);
+    border-radius: var(--st-radius-xl);
+    color: white;
+    overflow: hidden;
+}
+
+html.dark .help-hero {
+    background: linear-gradient(135deg, #0d0f12 0%, #16191d 100%);
+}
+
+.help-hero::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image:
+        radial-gradient(circle at 30% 50%, rgba(59, 130, 246, 0.15) 0%, transparent 50%),
+        radial-gradient(circle at 70% 80%, rgba(59, 130, 246, 0.1) 0%, transparent 40%);
+    pointer-events: none;
+}
+
+.help-hero__title {
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    margin-bottom: var(--st-space-3);
+    position: relative;
+}
+
+.help-hero__subtitle {
+    font-size: 1rem;
+    opacity: 0.85;
+    max-width: 600px;
+    line-height: 1.6;
+    position: relative;
+}
+
+.help-section {
+    padding: var(--st-space-8) 0;
+    border-bottom: 1px solid var(--st-border);
+}
+
+.help-section:last-child {
+    border-bottom: none;
+}
+
+.help-section__title {
+    font-size: 1.375rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--st-text);
+    margin-bottom: var(--st-space-4);
+}
+
+.help-section__subtitle {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--st-text);
+    margin-top: var(--st-space-6);
+    margin-bottom: var(--st-space-3);
+}
+
+.field-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: var(--st-space-4);
+}
+
+.field-table th,
+.field-table td {
+    text-align: left;
+    padding: var(--st-space-3) var(--st-space-4);
+    border-bottom: 1px solid var(--st-border);
+}
+
+.field-table th {
+    background: var(--st-surface-sunken);
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: var(--st-text);
+}
+
+.field-table td {
+    font-size: 0.875rem;
+    color: var(--st-text-muted);
+}
+
+.field-table code {
+    background: var(--st-surface-sunken);
+    padding: 2px 6px;
+    border-radius: var(--st-radius-sm);
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+}
+
+.field-name {
+    font-weight: 600;
+    color: var(--st-accent-600);
+}
+
+html.dark .field-name {
+    color: var(--st-accent-400);
+}
+
+.example-block {
+    background: var(--st-surface-sunken);
+    border: 1px solid var(--st-border);
+    border-radius: var(--st-radius-lg);
+    padding: var(--st-space-5);
+    margin-bottom: var(--st-space-4);
+}
+
+.example-block__title {
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: var(--st-text);
+    margin-bottom: var(--st-space-3);
+    display: flex;
+    align-items: center;
+    gap: var(--st-space-2);
+}
+
+.example-block__code {
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    color: var(--st-text-muted);
+}
+
+.tip-box {
+    padding: var(--st-space-4) var(--st-space-5);
+    background: var(--st-accent-bg);
+    border-left: 4px solid var(--st-accent-500);
+    border-radius: var(--st-radius-sm);
+    margin: var(--st-space-4) 0;
+}
+
+.tip-box__title {
+    font-weight: 600;
+    color: var(--st-accent-600);
+    margin-bottom: var(--st-space-1);
+}
+
+html.dark .tip-box__title {
+    color: var(--st-accent-400);
+}
+
+.tip-box__content {
+    font-size: 0.875rem;
+    color: var(--st-text-muted);
+}
+
+.fret-diagram {
+    background: var(--st-surface);
+    border: 1px solid var(--st-border);
+    border-radius: var(--st-radius-lg);
+    padding: var(--st-space-6);
+    text-align: center;
+    margin: var(--st-space-6) 0;
+}
+
+.fret-formula {
+    font-family: var(--font-mono);
+    font-size: 1.125rem;
+    color: var(--st-text);
+    letter-spacing: 0.05em;
+}
+
+.fret-formula span {
+    padding: var(--st-space-1) var(--st-space-2);
+    border-radius: var(--st-radius-sm);
+    margin: 0 2px;
+}
+
+.fret-scope { background: rgba(147, 51, 234, 0.15); color: #a855f7; }
+.fret-condition { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
+.fret-component { background: rgba(34, 197, 94, 0.15); color: #22c55e; }
+.fret-timing { background: rgba(251, 191, 36, 0.15); color: #f59e0b; }
+.fret-response { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+
+.completeness-meter {
+    display: flex;
+    align-items: center;
+    gap: var(--st-space-3);
+    padding: var(--st-space-4);
+    background: var(--st-surface-sunken);
+    border-radius: var(--st-radius-md);
+    margin: var(--st-space-4) 0;
+}
+
+.completeness-bar {
+    flex: 1;
+    height: 8px;
+    background: var(--st-border);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.completeness-fill {
+    height: 100%;
+    background: var(--st-accent-500);
+    border-radius: 4px;
+}
+
+.completeness-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--st-text);
+    min-width: 40px;
+}
+</style>
+
+<div class="st-page-wrapper">
+<div class="st-page st-container" style="max-width: 900px;">
+    <!-- Hero -->
+    <div class="help-hero st-animate-in mb-8">
+        <h1 class="help-hero__title">Spec Syntax Guide</h1>
+        <p class="help-hero__subtitle">
+            Write precise, testable requirements using FRET-inspired structured fields.
+            Better specs lead to better tests.
+        </p>
+    </div>
+
+    <!-- What is FRET -->
+    <section class="help-section st-animate-in st-animate-delay-1">
+        <h2 class="help-section__title">What is FRET?</h2>
+        <p class="st-body" style="margin-bottom: var(--st-space-4);">
+            <a href="https://github.com/NASA-SW-VnV/fret" class="wiki-link" target="_blank">FRET (Formal Requirements Elicitation Tool)</a>
+            is a NASA tool for writing unambiguous requirements. SpecTrace adapts FRET's structured approach
+            for practical use in product specs.
+        </p>
+
+        <div class="fret-diagram">
+            <div class="fret-formula">
+                <span class="fret-scope">SCOPE</span>
+                <span class="fret-condition">CONDITION</span>
+                <span class="fret-component">COMPONENT</span>
+                shall
+                <span class="fret-timing">TIMING</span>
+                <span class="fret-response">RESPONSE</span>
+            </div>
+            <p style="margin-top: var(--st-space-4); font-size: 0.875rem; color: var(--st-text-subtle);">
+                "When <em>in scope</em>, if <em>condition</em>, the <em>component</em> shall <em>within timing</em> <em>respond</em>."
+            </p>
+        </div>
+
+        <div class="tip-box">
+            <div class="tip-box__title">Why Structure Matters</div>
+            <div class="tip-box__content">
+                Structured fields enable automated analysis: conflict detection, timing validation,
+                and completeness scoring. Vague requirements hide bugs.
+            </div>
+        </div>
+    </section>
+
+    <!-- Structured Fields -->
+    <section class="help-section st-animate-in st-animate-delay-2">
+        <h2 class="help-section__title">Structured Fields</h2>
+        <p class="st-body" style="margin-bottom: var(--st-space-4);">
+            All fields are optional. Use what makes sense for each requirement.
+            More fields = higher completeness score = better automated analysis.
+        </p>
+
+        <table class="field-table">
+            <thead>
+                <tr>
+                    <th>Field</th>
+                    <th>Question</th>
+                    <th>Example</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="field-name">scope</span></td>
+                    <td>When does this apply?</td>
+                    <td><code>when in active_session</code></td>
+                </tr>
+                <tr>
+                    <td><span class="field-name">condition</span></td>
+                    <td>What triggers it?</td>
+                    <td><code>battery_level &lt; 10%</code></td>
+                </tr>
+                <tr>
+                    <td><span class="field-name">component</span></td>
+                    <td>What system owns this?</td>
+                    <td><code>notification_service</code></td>
+                </tr>
+                <tr>
+                    <td><span class="field-name">timing</span></td>
+                    <td>Performance constraint?</td>
+                    <td><code>within 2 seconds</code></td>
+                </tr>
+                <tr>
+                    <td><span class="field-name">response</span></td>
+                    <td>What must happen?</td>
+                    <td><code>display low_battery_warning</code></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="completeness-meter">
+            <span style="font-size: 0.875rem; color: var(--st-text-muted);">Completeness:</span>
+            <div class="completeness-bar">
+                <div class="completeness-fill" style="width: 60%;"></div>
+            </div>
+            <span class="completeness-label">60%</span>
+            <span style="font-size: 0.75rem; color: var(--st-text-subtle);">(3 of 5 fields)</span>
+        </div>
+    </section>
+
+    <!-- Spec File Format -->
+    <section class="help-section st-animate-in st-animate-delay-3">
+        <h2 class="help-section__title">Spec File Format</h2>
+        <p class="st-body" style="margin-bottom: var(--st-space-4);">
+            Requirements are written as Markdown files with YAML frontmatter.
+            Store them in a <code>specs/</code> directory in your repo.
+        </p>
+
+        <h3 class="help-section__subtitle">Basic Structure</h3>
+        <div class="example-block">
+            <div class="example-block__title">specs/auth/login.md</div>
+            <div class="example-block__code">---
+id: REQ-AUTH-001
+title: User Login
+priority: high
+status: active
+verification_method: test
+tags:
+  - auth
+  - security
+---
+
+Users must be able to log in with email and password.
+
+## Acceptance Criteria
+- Email validation on submit
+- Password minimum 8 characters
+- Session created on success
+- Error shown on invalid credentials</div>
+        </div>
+
+        <h3 class="help-section__subtitle">With Structured Fields</h3>
+        <div class="example-block">
+            <div class="example-block__title">specs/notifications/battery_warning.md</div>
+            <div class="example-block__code">---
+id: REQ-NOTIF-042
+title: Low Battery Warning
+priority: high
+status: active
+verification_method: both
+
+# FRET-style structured fields
+scope: when in active_session
+condition: battery_level < 10%
+component: notification_service
+timing: within 2 seconds
+response: display low_battery_warning AND vibrate_device
+---
+
+The system must warn users when battery is critically low
+during an active session to prevent data loss.
+
+## Rationale
+Users often ignore battery warnings. Combining visual
+and haptic feedback increases awareness.</div>
+        </div>
+
+        <h3 class="help-section__subtitle">Hierarchical Requirements</h3>
+        <div class="example-block">
+            <div class="example-block__title">specs/mobile_key/index.md (parent)</div>
+            <div class="example-block__code">---
+id: REQ-MKEY-000
+title: Mobile Key Feature
+status: active
+---
+
+Mobile key enables guests to unlock doors with their phone.</div>
+        </div>
+
+        <div class="example-block">
+            <div class="example-block__title">specs/mobile_key/provisioning.md (child)</div>
+            <div class="example-block__code">---
+id: REQ-MKEY-001
+title: Key Provisioning
+parent: REQ-MKEY-000
+status: active
+component: key_provisioning_service
+---
+
+Keys are provisioned after check-in confirmation.</div>
+        </div>
+    </section>
+
+    <!-- Frontmatter Reference -->
+    <section class="help-section st-animate-in st-animate-delay-4">
+        <h2 class="help-section__title">Frontmatter Reference</h2>
+
+        <h3 class="help-section__subtitle">Required Fields</h3>
+        <table class="field-table">
+            <thead>
+                <tr>
+                    <th>Field</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>id</code></td>
+                    <td>string</td>
+                    <td>Unique identifier (e.g., <code>REQ-AUTH-001</code>)</td>
+                </tr>
+                <tr>
+                    <td><code>title</code></td>
+                    <td>string</td>
+                    <td>Short descriptive title</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3 class="help-section__subtitle">Metadata Fields</h3>
+        <table class="field-table">
+            <thead>
+                <tr>
+                    <th>Field</th>
+                    <th>Values</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>status</code></td>
+                    <td><code>draft</code>, <code>active</code>, <code>deprecated</code></td>
+                    <td>Lifecycle state (default: <code>draft</code>)</td>
+                </tr>
+                <tr>
+                    <td><code>priority</code></td>
+                    <td><code>high</code>, <code>medium</code>, <code>low</code></td>
+                    <td>Business priority</td>
+                </tr>
+                <tr>
+                    <td><code>verification_method</code></td>
+                    <td><code>test</code>, <code>inapp</code>, <code>both</code></td>
+                    <td>How to verify (default: <code>unspecified</code>)</td>
+                </tr>
+                <tr>
+                    <td><code>tags</code></td>
+                    <td>list</td>
+                    <td>Category tags for filtering</td>
+                </tr>
+                <tr>
+                    <td><code>parent</code></td>
+                    <td>string</td>
+                    <td>Parent requirement ID for hierarchy</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3 class="help-section__subtitle">FRET Structured Fields</h3>
+        <table class="field-table">
+            <thead>
+                <tr>
+                    <th>Field</th>
+                    <th>Type</th>
+                    <th>Example</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>scope</code></td>
+                    <td>text</td>
+                    <td><code>when user_is_authenticated</code></td>
+                </tr>
+                <tr>
+                    <td><code>condition</code></td>
+                    <td>text</td>
+                    <td><code>request_count > rate_limit</code></td>
+                </tr>
+                <tr>
+                    <td><code>component</code></td>
+                    <td>string</td>
+                    <td><code>rate_limiter</code></td>
+                </tr>
+                <tr>
+                    <td><code>timing</code></td>
+                    <td>string</td>
+                    <td><code>immediately</code>, <code>within 500ms</code></td>
+                </tr>
+                <tr>
+                    <td><code>response</code></td>
+                    <td>text</td>
+                    <td><code>return HTTP 429 AND log_event</code></td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <!-- Writing Tips -->
+    <section class="help-section st-animate-in st-animate-delay-5">
+        <h2 class="help-section__title">Writing Tips</h2>
+
+        <div class="tip-box" style="margin-bottom: var(--st-space-4);">
+            <div class="tip-box__title">Use Active Voice</div>
+            <div class="tip-box__content">
+                <strong>Good:</strong> "The system displays an error message"<br>
+                <strong>Bad:</strong> "An error message is displayed by the system"
+            </div>
+        </div>
+
+        <div class="tip-box" style="margin-bottom: var(--st-space-4);">
+            <div class="tip-box__title">Be Specific About Timing</div>
+            <div class="tip-box__content">
+                <strong>Good:</strong> <code>timing: within 200ms</code><br>
+                <strong>Bad:</strong> <code>timing: quickly</code>
+            </div>
+        </div>
+
+        <div class="tip-box" style="margin-bottom: var(--st-space-4);">
+            <div class="tip-box__title">Name Components Consistently</div>
+            <div class="tip-box__content">
+                Use snake_case for component names. Match your codebase naming.
+                Examples: <code>auth_service</code>, <code>payment_gateway</code>, <code>notification_queue</code>
+            </div>
+        </div>
+
+        <div class="tip-box">
+            <div class="tip-box__title">Express Conditions as Predicates</div>
+            <div class="tip-box__content">
+                Write conditions that can be evaluated as true/false.<br>
+                <strong>Good:</strong> <code>user.role == 'admin' AND feature_flag.enabled</code><br>
+                <strong>Bad:</strong> <code>when appropriate</code>
+            </div>
+        </div>
+    </section>
+
+    <!-- Conflict Detection -->
+    <section class="help-section">
+        <h2 class="help-section__title">Conflict Detection</h2>
+        <p class="st-body" style="margin-bottom: var(--st-space-4);">
+            Structured fields enable automated conflict detection between requirements:
+        </p>
+
+        <table class="field-table">
+            <thead>
+                <tr>
+                    <th>Conflict Type</th>
+                    <th>What It Detects</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Condition Overlap</strong></td>
+                    <td>Two requirements with overlapping conditions but different responses</td>
+                </tr>
+                <tr>
+                    <td><strong>Timing Conflict</strong></td>
+                    <td>Incompatible timing constraints on the same component</td>
+                </tr>
+                <tr>
+                    <td><strong>Response Contradiction</strong></td>
+                    <td>Same condition triggers contradictory responses</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="tip-box" style="margin-top: var(--st-space-4);">
+            <div class="tip-box__title">Run Conflict Detection</div>
+            <div class="tip-box__content">
+                <code style="font-family: var(--font-mono);">python manage.py detect_conflicts --alert</code>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer style="text-align: center; padding: var(--st-space-8) 0; color: var(--st-text-subtle);">
+        <p>
+            <a href="{% url 'admin-about' %}" class="wiki-link">About SpecTrace</a> &middot;
+            <a href="{% url 'admin-matrix' %}" class="wiki-link">Traceability Matrix</a> &middot;
+            <a href="https://github.com/NASA-SW-VnV/fret" class="wiki-link" target="_blank">FRET on GitHub</a>
+        </p>
+    </footer>
+</div>
+</div>
+{% endblock %}
