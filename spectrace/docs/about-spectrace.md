@@ -4,8 +4,9 @@ Connect product specs to verified code.
 
 ## The Problem
 
-You write specs. You write tests. Over time, they drift apart.
-Does behavior match the spec? How is the feature supposed to work? Nobody knows.
+You gather requirements. You write tests.
+Over time, actuality drifts from specification.
+Does behavior match the intent? How is the feature supposed to work? Nobody knows.
 
 [Requirements traceability](https://en.wikipedia.org/wiki/Requirements_traceability) solves this by linking specs to code to tests.
 
@@ -13,14 +14,14 @@ Does behavior match the spec? How is the feature supposed to work? Nobody knows.
 
 ## Core Capabilities
 
-| Capability | Description |
-|------------|-------------|
-| **Specs as Code** | Requirements live in your repo as markdown. Version controlled, reviewable, no drift. |
-| **Test Linking** | Link tests to requirements with `@pytest.mark.requirement` decorators. |
-| **Verification Status** | Live dashboard shows which requirements are passing, failing, or untested. |
-| **Hierarchical** | Organize requirements in parent-child trees. Efficient materialized path queries. |
-| **Impact Analysis** | See which tests are affected when specs change via git diff integration. |
-| **Traceability Matrix** | Visual grid of requirements × tests with color-coded verification status. |
+| Capability              | Description                                                                           |
+| ----------------------- | ------------------------------------------------------------------------------------- |
+| **Specs as Code**       | Requirements live in your repo as markdown. Version controlled, reviewable, no drift. |
+| **Test Linking**        | Link tests to requirements with `@pytest.mark.requirement` decorators.                |
+| **Verification Status** | Live dashboard shows which requirements are passing, failing, or untested.            |
+| **Hierarchical**        | Organize requirements in parent-child trees. Efficient materialized path queries.     |
+| **Impact Analysis**     | See which tests are affected when specs change via git diff integration.              |
+| **Traceability Matrix** | Visual grid of requirements × tests with color-coded verification status.             |
 
 ## Why Traceability Matters
 
@@ -53,6 +54,16 @@ Specifications become **executable context**: instructions agents read before wr
 > SpecTrace links specs to tests to verification status.
 
 See [Spec-Driven Development](spec-driven-development.md) for the full methodology.
+
+## When to Spec
+
+Not everything needs a spec. Match format to complexity.
+
+**Skip specs for simple tasks** — UI tweaks, content updates, obvious bug fixes. Plain language in the commit message is enough.
+
+**Use specs for complex work** — Business logic, multi-step flows, integrations, anything with edge cases worth documenting.
+
+**Focus on outcomes, not implementation** — Describe what the system does, not how it does it. Prioritize user-visible behavior over technical recipes.
 
 ## How It Works
 
@@ -136,16 +147,16 @@ python manage.py runserver
 
 ## Advanced Features
 
-| Feature | Description |
-|---------|-------------|
-| **Vendor Coverage** | Track integration validation by vendor. See pass rates per PMS, mobile key provider, or payment gateway. |
-| **In-App Validation** | SDK for validation buttons in production apps. Multi-step validations with granular pass/fail tracking. |
-| **SLO Integration** | Link requirements to Service Level Objectives using OpenSLO YAML. Track operational compliance. |
-| **REST API** | Push validation results from external systems. Submit status updates, retrieve requirement status. |
+| Feature                | Description                                                                                                      |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| **Vendor Coverage**    | Track integration validation by vendor. See pass rates per PMS, mobile key provider, or payment gateway.         |
+| **In-App Validation**  | SDK for validation buttons in production apps. Multi-step validations with granular pass/fail tracking.          |
+| **SLO Integration**    | Link requirements to Service Level Objectives using OpenSLO YAML. Track operational compliance.                  |
+| **REST API**           | Push validation results from external systems. Submit status updates, retrieve requirement status.               |
 | **Conflict Detection** | FRET-inspired structured fields enable condition overlap, timing conflict, and response contradiction detection. |
-| **Linear Integration** | Sync with Linear issues. Track requirement-to-issue mapping with health checks and auto-enrichment. |
-| **Invariant Checks** | Runtime verification that status computations remain consistent. Detect and fix data corruption. |
-| **Drift Detection** | Find stale links, orphan requirements, unmarked tests, and spec files modified after last test run. |
+| **Linear Integration** | Sync with Linear issues. Track requirement-to-issue mapping with health checks and auto-enrichment.              |
+| **Invariant Checks**   | Runtime verification that status computations remain consistent. Detect and fix data corruption.                 |
+| **Drift Detection**    | Find stale links, orphan requirements, unmarked tests, and spec files modified after last test run.              |
 
 ## Tech Stack
 
@@ -199,12 +210,12 @@ python manage.py import_openslo slo.yaml      # Import OpenSLO definitions
 
 Requirements can specify how they should be verified:
 
-| Method | Meaning |
-|--------|---------|
-| `test` | Verified by pytest tests only |
-| `inapp` | Verified by in-app validation only |
-| `both` | Must pass both test and in-app validation |
-| `unspecified` | Use whatever is available (default) |
+| Method        | Meaning                                   |
+| ------------- | ----------------------------------------- |
+| `test`        | Verified by pytest tests only             |
+| `inapp`       | Verified by in-app validation only        |
+| `both`        | Must pass both test and in-app validation |
+| `unspecified` | Use whatever is available (default)       |
 
 ## Status Computation
 
@@ -237,11 +248,11 @@ spectrace/                # Django project
 
 ## API Endpoints
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/requirement/<id>/status/` | GET | Get requirement verification status |
-| `/api/slo/status/` | POST | Update SLO status |
-| `/api/validation/result/` | POST | Submit in-app validation result |
-| `/api/validation-runs/` | GET | List validation runs |
-| `/api/openapi.json` | GET | OpenAPI specification |
-| `/api/docs/` | GET | Swagger UI |
+| Endpoint                        | Method | Description                         |
+| ------------------------------- | ------ | ----------------------------------- |
+| `/api/requirement/<id>/status/` | GET    | Get requirement verification status |
+| `/api/slo/status/`              | POST   | Update SLO status                   |
+| `/api/validation/result/`       | POST   | Submit in-app validation result     |
+| `/api/validation-runs/`         | GET    | List validation runs                |
+| `/api/openapi.json`             | GET    | OpenAPI specification               |
+| `/api/docs/`                    | GET    | Swagger UI                          |
