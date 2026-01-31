@@ -46,7 +46,6 @@ html.dark .about-hero {
 .about-hero__subtitle {
     font-size: 1.125rem;
     opacity: 0.85;
-    max-width: 600px;
     line-height: 1.6;
     position: relative;
 }
@@ -411,22 +410,24 @@ html.dark .wiki-link {
     <div class="about-hero st-animate-in mb-8">
         <h1 class="about-hero__title">SpecTrace</h1>
         <p class="about-hero__subtitle">
-            Modern <a href="https://en.wikipedia.org/wiki/Requirements_traceability" class="wiki-link" target="_blank" style="color: var(--st-accent-400); border-bottom-color: var(--st-accent-400);">requirements traceability</a> for Python teams.
             Connect product specs to verified code.
         </p>
     </div>
 
-    <!-- What is Traceability -->
+    <!-- The Problem -->
     <section class="about-section st-animate-in st-animate-delay-1">
-        <h2 class="about-section__title">What is Requirements Traceability?</h2>
+        <h2 class="about-section__title">The Problem</h2>
+        <p class="st-body" style="max-width: 700px; margin-bottom: var(--st-space-4);">
+            You write specs. You write tests. Over time, they drift apart.<br>
+            Does behavior match the spec? How is the feature supposed to work? Nobody knows.
+        </p>
         <p class="st-body" style="max-width: 700px; margin-bottom: var(--st-space-4);">
             <a href="https://en.wikipedia.org/wiki/Requirements_traceability" class="wiki-link" target="_blank">Requirements traceability</a>
-            tracks requirements through the development lifecycle — from specification through implementation to testing.
-            It answers: "Is this requirement implemented?" "Which tests verify this feature?" "What breaks if I change this spec?"
+            solves this by linking specs to code to tests.
         </p>
         <div style="padding: var(--st-space-4) var(--st-space-5); background: var(--st-accent-bg); border-left: 4px solid var(--st-accent-500); border-radius: var(--st-radius-sm);">
             <p style="color: var(--st-text); font-weight: 500; margin: 0;">
-                SpecTrace brings requirements traceability to Python projects with specs-as-code, pytest integration, and a live verification dashboard.
+                SpecTrace brings this to Python: specs-as-code, pytest integration, live verification dashboard.
             </p>
         </div>
     </section>
@@ -497,8 +498,29 @@ html.dark .wiki-link {
         </div>
     </section>
 
-    <!-- How It Works -->
+    <!-- Spec-Driven Development -->
     <section class="about-section st-animate-in st-animate-delay-4">
+        <h2 class="about-section__title">Spec-Driven Development</h2>
+        <p class="st-body" style="max-width: 700px; margin-bottom: var(--st-space-4);">
+            Agents forget between sessions. They can't infer from incomplete information.
+            Specifications become <strong>executable context</strong> — instructions agents read before writing code.
+        </p>
+        <div style="padding: var(--st-space-5) var(--st-space-6); background: var(--st-surface-sunken); border-radius: var(--st-radius-lg); margin-bottom: var(--st-space-4);">
+            <p style="font-size: 1.125rem; font-weight: 600; color: var(--st-text); margin: 0 0 var(--st-space-3) 0; letter-spacing: -0.01em;">
+                Specs define intent. Agents implement. Tests validate. Humans authorize.
+            </p>
+            <p style="color: var(--st-text-muted); margin: 0; font-size: 0.875rem; line-height: 1.6;">
+                The spec is the source of truth. Code is cheap; design and validation are the bottlenecks.
+                SpecTrace links specs to tests to verification status.
+            </p>
+        </div>
+        <p style="font-size: 0.875rem; color: var(--st-text-muted);">
+            <a href="https://github.com/tslateman/spec-trace/blob/main/spectrace/docs/spec-driven-development.md" class="wiki-link" target="_blank">Read the full methodology →</a>
+        </p>
+    </section>
+
+    <!-- How It Works -->
+    <section class="about-section st-animate-in st-animate-delay-5">
         <h2 class="about-section__title">How It Works</h2>
         <div class="workflow-steps">
             <div class="workflow-step">
@@ -552,7 +574,7 @@ html.dark .wiki-link {
     </section>
 
     <!-- Getting Started -->
-    <section class="about-section st-animate-in st-animate-delay-5">
+    <section class="about-section st-animate-in st-animate-delay-6">
         <h2 class="about-section__title">Getting Started</h2>
 
         <h3 class="st-heading-3" style="margin-bottom: var(--st-space-3);">1. Create a Spec File</h3>
@@ -673,6 +695,7 @@ python manage.py import_results results.xml --links links.json</div>
     <!-- Footer -->
     <footer style="text-align: center; padding: var(--st-space-8) 0; color: var(--st-text-subtle);">
         <p>
+            <a href="{% url 'admin-spec-syntax' %}" class="wiki-link">Spec Syntax Guide</a> ·
             <a href="{% url 'swagger-ui' %}" class="wiki-link">API Documentation</a> ·
             <a href="https://github.com/tslateman/spec-trace" class="wiki-link" target="_blank">GitHub</a>
         </p>

@@ -1,16 +1,15 @@
 # SpecTrace
 
-Modern requirements traceability for Python teams. Connect product specs to verified code.
+Connect product specs to verified code.
 
-## What is Requirements Traceability?
+## The Problem
 
-[Requirements traceability](https://en.wikipedia.org/wiki/Requirements_traceability) tracks requirements through the development lifecycle—from specification through implementation to testing. It answers:
+You write specs. You write tests. Over time, they drift apart.
+Does behavior match the spec? How is the feature supposed to work? Nobody knows.
 
-- "Is this requirement implemented?"
-- "Which tests verify this feature?"
-- "What breaks if I change this spec?"
+[Requirements traceability](https://en.wikipedia.org/wiki/Requirements_traceability) solves this by linking specs to code to tests.
 
-SpecTrace brings requirements traceability to Python projects with specs-as-code, pytest integration, and a live verification dashboard.
+**SpecTrace brings this to Python: specs-as-code, pytest integration, live verification dashboard.**
 
 ## Core Capabilities
 
@@ -42,6 +41,18 @@ SpecTrace brings requirements traceability to Python projects with specs-as-code
 - Explicit requirement ↔ test links
 - Dashboard highlights coverage gaps
 - Specs stay in sync via git workflow
+
+## Spec-Driven Development
+
+Agents forget between sessions. They can't infer from incomplete information.
+Specifications become **executable context**: instructions agents read before writing code.
+
+> **Specs define intent. Agents implement. Tests validate. Humans authorize.**
+>
+> The spec is the source of truth. Code is cheap; design and validation are the bottlenecks.
+> SpecTrace links specs to tests to verification status.
+
+See [Spec-Driven Development](spec-driven-development.md) for the full methodology.
 
 ## How It Works
 
