@@ -717,4 +717,37 @@ html.dark .st-code {
 [x-cloak] {
     display: none !important;
 }
+
+/* ==========================================================================
+   BREADCRUMBS
+   ========================================================================== */
+
+.st-breadcrumbs {
+    display: flex;
+    align-items: center;
+    gap: var(--st-space-2);
+    font-size: 0.875rem;
+    margin-bottom: var(--st-space-6);
+}
+
+.st-breadcrumb-link {
+    color: var(--st-accent-600);
+    text-decoration: none;
+}
+
+html.dark .st-breadcrumb-link {
+    color: var(--st-accent-400);
+}
+
+.st-breadcrumb-link:hover {
+    text-decoration: underline;
+}
+
+.st-breadcrumb-sep {
+    color: var(--st-text-subtle);
+}
+
+.st-breadcrumb-current {
+    color: var(--st-text-muted);
+}
 </style>

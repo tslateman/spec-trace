@@ -1,0 +1,699 @@
+{% extends "unfold/layouts/base.html" %}
+{% load i18n %}
+
+{% block title %}Agent Pipeline Demo | SpecTrace{% endblock %}
+
+{% block breadcrumbs %}
+<nav class="st-breadcrumbs">
+    <a href="{% url 'demo_hub' %}" class="st-breadcrumb-link">Demo Catalog</a>
+    <span class="st-breadcrumb-sep">/</span>
+    <span class="st-breadcrumb-current">Agent Pipeline</span>
+</nav>
+{% endblock %}
+
+{% block content %}
+{% include "admin/requirements/_design_system.html" %}
+
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+<style>
+    .presenter-slide {
+        min-height: calc(100vh - 200px);
+        display: flex;
+        flex-direction: column;
+    }
+
+    .presenter-progress {
+        display: flex;
+        align-items: center;
+        gap: var(--st-space-2);
+        justify-content: center;
+        margin-bottom: var(--st-space-8);
+    }
+
+    .presenter-progress-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: var(--st-border);
+        transition: all 0.3s var(--st-ease-out);
+        cursor: pointer;
+    }
+
+    .presenter-progress-dot:hover {
+        background: var(--st-text-subtle);
+    }
+
+    .presenter-progress-dot--active {
+        background: var(--st-accent-500);
+        transform: scale(1.2);
+    }
+
+    .presenter-progress-dot--completed {
+        background: var(--st-pass);
+    }
+
+    .presenter-progress-line {
+        width: 24px;
+        height: 2px;
+        background: var(--st-border);
+    }
+
+    .presenter-progress-line--completed {
+        background: var(--st-pass);
+    }
+
+    .slide-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .slide-header {
+        text-align: center;
+        margin-bottom: var(--st-space-8);
+    }
+
+    .slide-step-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: var(--st-accent-500);
+        color: #0d0f12;
+        font-family: var(--font-mono);
+        font-weight: 600;
+        font-size: 0.875rem;
+        margin-bottom: var(--st-space-3);
+    }
+
+    .slide-title {
+        font-size: 2.5rem;
+        font-weight: 700;
+        letter-spacing: -0.03em;
+        color: var(--st-text);
+        margin-bottom: var(--st-space-2);
+    }
+
+    .slide-subtitle {
+        font-size: 1.125rem;
+        color: var(--st-text-subtle);
+    }
+
+    .terminal-block {
+        font-family: var(--font-mono);
+        font-size: 0.875rem;
+        background: #0d0f12;
+        color: #e5e7eb;
+        padding: var(--st-space-6);
+        border-radius: var(--st-radius-lg);
+        overflow-x: auto;
+        line-height: 1.7;
+        border: 1px solid #1f2937;
+    }
+
+    .terminal-block .prompt {
+        color: var(--st-accent-400);
+    }
+
+    .terminal-block .comment {
+        color: #6b7280;
+    }
+
+    .terminal-block .success {
+        color: var(--st-pass);
+    }
+
+    .terminal-block .output {
+        color: #9ca3af;
+    }
+
+    .spec-preview {
+        font-family: var(--font-mono);
+        font-size: 0.8125rem;
+        background: var(--st-surface-sunken);
+        padding: var(--st-space-5);
+        border-radius: var(--st-radius-md);
+        border: 1px solid var(--st-border);
+        overflow-x: auto;
+        line-height: 1.6;
+    }
+
+    .spec-preview .yaml-key {
+        color: var(--st-accent-600);
+    }
+
+    html.dark .spec-preview .yaml-key {
+        color: var(--st-accent-400);
+    }
+
+    .spec-preview .yaml-value {
+        color: var(--st-pass);
+    }
+
+    .presenter-nav {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-top: var(--st-space-6);
+        border-top: 1px solid var(--st-border-muted);
+        margin-top: auto;
+    }
+
+    .nav-hint {
+        font-size: 0.8125rem;
+        color: var(--st-text-subtle);
+    }
+
+    .nav-hint kbd {
+        display: inline-block;
+        padding: 0.125rem 0.5rem;
+        font-family: var(--font-mono);
+        font-size: 0.75rem;
+        background: var(--st-surface-sunken);
+        border: 1px solid var(--st-border);
+        border-radius: var(--st-radius-sm);
+        margin: 0 0.125rem;
+    }
+
+    .presenter-notes {
+        margin-top: var(--st-space-6);
+        padding: var(--st-space-4);
+        background: var(--st-accent-bg);
+        border-radius: var(--st-radius-md);
+        border-left: 3px solid var(--st-accent-500);
+    }
+
+    .presenter-notes-label {
+        font-size: 0.6875rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--st-accent-600);
+        margin-bottom: var(--st-space-2);
+    }
+
+    html.dark .presenter-notes-label {
+        color: var(--st-accent-400);
+    }
+
+    .bullet-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .bullet-list li {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--st-space-3);
+        padding: var(--st-space-2) 0;
+    }
+
+    .bullet-list li::before {
+        content: '';
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--st-accent-500);
+        margin-top: 0.5em;
+        flex-shrink: 0;
+    }
+
+    .dashboard-mock {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: var(--st-space-3);
+    }
+
+    .dashboard-mock-item {
+        padding: var(--st-space-4);
+        background: var(--st-surface);
+        border: 1px solid var(--st-border);
+        border-radius: var(--st-radius-md);
+        text-align: center;
+    }
+
+    .dashboard-mock-item--unverified {
+        border-left: 3px solid var(--st-untested);
+    }
+
+    .dashboard-mock-item--verified {
+        border-left: 3px solid var(--st-pass);
+    }
+
+    .mock-req-id {
+        font-family: var(--font-mono);
+        font-size: 0.75rem;
+        color: var(--st-text-subtle);
+    }
+
+    .mock-status {
+        font-size: 0.6875rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        margin-top: var(--st-space-1);
+    }
+
+    .mock-status--unverified { color: var(--st-untested); }
+    .mock-status--verified { color: var(--st-pass); }
+
+    /* Slide transitions */
+    .slide-enter {
+        animation: slideIn 0.4s var(--st-ease-out) forwards;
+    }
+
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateX(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+</style>
+
+<div class="st-page-wrapper" x-data="demoPresenter()" @keydown.window="handleKeydown($event)">
+<div class="st-page st-container">
+
+    <!-- Progress Indicator -->
+    <nav class="presenter-progress st-animate-in">
+        <template x-for="i in totalSteps" :key="i">
+            <div style="display: contents;">
+                <template x-if="i > 1">
+                    <div class="presenter-progress-line"
+                         :class="{ 'presenter-progress-line--completed': step >= i }"></div>
+                </template>
+                <div class="presenter-progress-dot"
+                     :class="{
+                         'presenter-progress-dot--active': step === i,
+                         'presenter-progress-dot--completed': step > i
+                     }"
+                     @click="goToStep(i)"></div>
+            </div>
+        </template>
+    </nav>
+
+    <!-- Slide Container -->
+    <div class="presenter-slide">
+
+        <!-- Step 1: The Problem -->
+        <div class="slide-content slide-enter" x-show="step === 1" x-cloak>
+            <div class="slide-header">
+                <div class="slide-step-badge">1</div>
+                <h1 class="slide-title">The Problem</h1>
+                <p class="slide-subtitle">Requirements exist but aren't linked to proof</p>
+            </div>
+
+            <div class="st-grid-stats" style="grid-template-columns: 1fr 1fr; gap: var(--st-space-6); max-width: 900px; margin: 0 auto;">
+                <!-- Spec File Preview -->
+                <div class="st-card">
+                    <div class="st-card-header">
+                        <span class="st-label">specs/hospitality/REQ-UPGRADE-001.md</span>
+                    </div>
+                    <div class="st-card-body">
+                        <pre class="spec-preview"><span class="yaml-key">id:</span> <span class="yaml-value">REQ-UPGRADE-001</span>
+<span class="yaml-key">title:</span> Guest Room Upgrade Request
+<span class="yaml-key">priority:</span> medium
+<span class="yaml-key">verification_method:</span> test
+
+## Response
+System shall:
+1. Create upgrade request with status=PENDING
+2. Record requested room type
+3. Notify front desk via queue
+4. Return confirmation with request ID</pre>
+                    </div>
+                </div>
+
+                <!-- Dashboard showing unverified -->
+                <div class="st-card">
+                    <div class="st-card-header">
+                        <span class="st-label">Dashboard Status</span>
+                    </div>
+                    <div class="st-card-body">
+                        <div class="dashboard-mock">
+                            <div class="dashboard-mock-item dashboard-mock-item--unverified">
+                                <div class="mock-req-id">REQ-UPGRADE-001</div>
+                                <div class="mock-status mock-status--unverified">Unverified</div>
+                            </div>
+                            <div class="dashboard-mock-item dashboard-mock-item--unverified">
+                                <div class="mock-req-id">REQ-UPGRADE-002</div>
+                                <div class="mock-status mock-status--unverified">Unverified</div>
+                            </div>
+                            <div class="dashboard-mock-item dashboard-mock-item--unverified">
+                                <div class="mock-req-id">REQ-UPGRADE-003</div>
+                                <div class="mock-status mock-status--unverified">Unverified</div>
+                            </div>
+                        </div>
+                        <p class="st-caption" style="margin-top: var(--st-space-4); text-align: center;">
+                            No tests linked. No proof of correctness.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="presenter-notes" x-show="showNotes" x-cloak>
+                <div class="presenter-notes-label">Presenter Notes</div>
+                <p class="st-body">Requirements are defined in markdown. The dashboard shows them all as unverified. There's no automated way to know if they're implemented correctly.</p>
+            </div>
+        </div>
+
+        <!-- Step 2: Agent Claims Work -->
+        <div class="slide-content slide-enter" x-show="step === 2" x-cloak>
+            <div class="slide-header">
+                <div class="slide-step-badge">2</div>
+                <h1 class="slide-title">Agent Claims Work</h1>
+                <p class="slide-subtitle">The agent registers and picks up a task</p>
+            </div>
+
+            <div class="st-card" style="max-width: 800px; margin: 0 auto;">
+                <div class="st-card-body">
+                    <pre class="terminal-block"><span class="comment"># Register the agent with the system</span>
+<span class="prompt">$</span> spectrace agent register my-claude-agent
+<span class="success">Agent registered: my-claude-agent</span>
+
+<span class="comment"># List available tasks (unverified requirements)</span>
+<span class="prompt">$</span> spectrace agent tasks
+<span class="output">┌─────────────────────┬───────────────────────────────┬──────────┐
+│ ID                  │ Title                         │ Priority │
+├─────────────────────┼───────────────────────────────┼──────────┤
+│ REQ-UPGRADE-001     │ Guest Room Upgrade Request    │ medium   │
+│ REQ-UPGRADE-002     │ Upgrade Status Check          │ low      │
+│ REQ-UPGRADE-003     │ Cancel Upgrade Request        │ low      │
+└─────────────────────┴───────────────────────────────┴──────────┘</span>
+
+<span class="comment"># Claim a task to work on</span>
+<span class="prompt">$</span> spectrace agent claim REQ-UPGRADE-001
+<span class="success">Claimed: REQ-UPGRADE-001 - Guest Room Upgrade Request</span>
+
+<span class="comment"># Start working (creates branch, loads context)</span>
+<span class="prompt">$</span> spectrace agent start
+<span class="output">Branch: agent/REQ-UPGRADE-001</span>
+<span class="success">Ready to implement. Spec loaded to context.</span></pre>
+                </div>
+            </div>
+
+            <div class="presenter-notes" x-show="showNotes" x-cloak>
+                <div class="presenter-notes-label">Presenter Notes</div>
+                <p class="st-body">The agent pipeline provides structure: register, claim, start. Each step is atomic and auditable. The branch naming convention makes it easy to track what's in progress.</p>
+            </div>
+        </div>
+
+        <!-- Step 3: Implementation -->
+        <div class="slide-content slide-enter" x-show="step === 3" x-cloak>
+            <div class="slide-header">
+                <div class="slide-step-badge">3</div>
+                <h1 class="slide-title">Implementation</h1>
+                <p class="slide-subtitle">Agent writes tests that reference the requirement</p>
+            </div>
+
+            <div class="st-card" style="max-width: 800px; margin: 0 auto;">
+                <div class="st-card-header">
+                    <span class="st-label">tests/test_upgrade_service.py</span>
+                </div>
+                <div class="st-card-body">
+                    <pre class="terminal-block" style="background: var(--st-surface-sunken); color: var(--st-text);"><span style="color: var(--st-accent-500);">import</span> pytest
+<span style="color: var(--st-accent-500);">from</span> services.upgrade <span style="color: var(--st-accent-500);">import</span> UpgradeService
+
+
+<span style="color: #6b7280;"># The magic: linking test to requirement</span>
+<span style="color: var(--st-warn);">@pytest.mark.requirement</span>(<span style="color: var(--st-pass);">"REQ-UPGRADE-001"</span>)
+<span style="color: var(--st-accent-500);">def</span> <span style="color: #60a5fa;">test_create_upgrade_request__returns_request_id</span>():
+    <span style="color: #6b7280;">"""Returns request_id when upgrade request created."""</span>
+    service = UpgradeService()
+    result = service.create_request(
+        reservation_id=<span style="color: var(--st-pass);">"RES-123"</span>,
+        requested_room_type=<span style="color: var(--st-pass);">"suite"</span>
+    )
+    <span style="color: var(--st-accent-500);">assert</span> result.request_id <span style="color: var(--st-accent-500);">is not</span> <span style="color: var(--st-accent-500);">None</span>
+    <span style="color: var(--st-accent-500);">assert</span> result.status == <span style="color: var(--st-pass);">"PENDING"</span>
+
+
+<span style="color: var(--st-warn);">@pytest.mark.requirement</span>(<span style="color: var(--st-pass);">"REQ-UPGRADE-001"</span>)
+<span style="color: var(--st-accent-500);">def</span> <span style="color: #60a5fa;">test_create_upgrade_request__fails_invalid_reservation</span>():
+    <span style="color: #6b7280;">"""Fails with INVALID_RESERVATION if not found."""</span>
+    service = UpgradeService()
+    <span style="color: var(--st-accent-500);">with</span> pytest.raises(InvalidReservationError):
+        service.create_request(
+            reservation_id=<span style="color: var(--st-pass);">"DOES-NOT-EXIST"</span>,
+            requested_room_type=<span style="color: var(--st-pass);">"suite"</span>
+        )</pre>
+                </div>
+            </div>
+
+            <ul class="bullet-list" style="max-width: 600px; margin: var(--st-space-6) auto 0;">
+                <li><code class="st-mono">@pytest.mark.requirement</code> creates the traceability link</li>
+                <li>Test names follow the <code class="st-mono">test_method__expected_behavior</code> convention</li>
+                <li>Each acceptance criterion gets its own test</li>
+            </ul>
+
+            <div class="presenter-notes" x-show="showNotes" x-cloak>
+                <div class="presenter-notes-label">Presenter Notes</div>
+                <p class="st-body">The pytest marker is the key. It creates a machine-readable link between the test and the requirement. When tests pass, we know the requirement is verified.</p>
+            </div>
+        </div>
+
+        <!-- Step 4: Invariant Checks -->
+        <div class="slide-content slide-enter" x-show="step === 4" x-cloak>
+            <div class="slide-header">
+                <div class="slide-step-badge">4</div>
+                <h1 class="slide-title">Invariant Checks</h1>
+                <p class="slide-subtitle">Automated validation before review</p>
+            </div>
+
+            <div class="st-card" style="max-width: 800px; margin: 0 auto;">
+                <div class="st-card-body">
+                    <pre class="terminal-block"><span class="prompt">$</span> spectrace agent check_invariants
+<span class="output">
+Checking agent invariants for REQ-UPGRADE-001...
+
+</span><span class="success">✓</span> <span class="output">All acceptance criteria have linked tests</span>
+<span class="success">✓</span> <span class="output">Tests follow naming convention</span>
+<span class="success">✓</span> <span class="output">No orphaned test files</span>
+<span class="success">✓</span> <span class="output">Requirement marker present on all tests</span>
+<span class="success">✓</span> <span class="output">Tests pass locally</span>
+<span class="success">✓</span> <span class="output">Coverage threshold met (87% > 80%)</span>
+
+<span class="success">All invariants satisfied. Ready for review.</span></pre>
+                </div>
+            </div>
+
+            <ul class="bullet-list" style="max-width: 700px; margin: var(--st-space-6) auto 0;">
+                <li><strong>Criteria coverage</strong> — Every acceptance criterion has at least one test</li>
+                <li><strong>Naming conventions</strong> — Tests follow project standards</li>
+                <li><strong>Traceability</strong> — All tests have requirement markers</li>
+                <li><strong>Green tests</strong> — Implementation actually works</li>
+            </ul>
+
+            <div class="presenter-notes" x-show="showNotes" x-cloak>
+                <div class="presenter-notes-label">Presenter Notes</div>
+                <p class="st-body">Invariant checks catch common mistakes before review. This saves reviewer time and ensures consistency across all agent work.</p>
+            </div>
+        </div>
+
+        <!-- Step 5: Review & Merge -->
+        <div class="slide-content slide-enter" x-show="step === 5" x-cloak>
+            <div class="slide-header">
+                <div class="slide-step-badge">5</div>
+                <h1 class="slide-title">Review & Merge</h1>
+                <p class="slide-subtitle">Human approval, then automated merge</p>
+            </div>
+
+            <div class="st-card" style="max-width: 800px; margin: 0 auto;">
+                <div class="st-card-body">
+                    <pre class="terminal-block"><span class="comment"># Submit for human review</span>
+<span class="prompt">$</span> spectrace agent submit_for_review
+<span class="output">PR #42 created: "Implement REQ-UPGRADE-001"</span>
+<span class="output">Assigned to: @lead-developer</span>
+<span class="success">Waiting for approval...</span>
+
+<span class="comment"># After human approves...</span>
+<span class="prompt">$</span> spectrace agent merge
+<span class="output">
+Merge checklist:
+</span><span class="success">✓</span> <span class="output">PR approved by lead-developer</span>
+<span class="success">✓</span> <span class="output">CI pipeline passed</span>
+<span class="success">✓</span> <span class="output">No merge conflicts</span>
+<span class="success">✓</span> <span class="output">Invariants still satisfied</span>
+
+<span class="success">Merged to main. REQ-UPGRADE-001 now VERIFIED.</span>
+
+<span class="comment"># Update traceability matrix</span>
+<span class="prompt">$</span> spectrace sync
+<span class="success">Dashboard updated. 1 requirement verified.</span></pre>
+                </div>
+            </div>
+
+            <div class="presenter-notes" x-show="showNotes" x-cloak>
+                <div class="presenter-notes-label">Presenter Notes</div>
+                <p class="st-body">Human stays in the loop for approval. The agent handles the tedious parts (PR creation, merge mechanics) but can't merge without human sign-off.</p>
+            </div>
+        </div>
+
+        <!-- Step 6: The Payoff -->
+        <div class="slide-content slide-enter" x-show="step === 6" x-cloak>
+            <div class="slide-header">
+                <div class="slide-step-badge">6</div>
+                <h1 class="slide-title">The Payoff</h1>
+                <p class="slide-subtitle">Verifiable requirements with full traceability</p>
+            </div>
+
+            <div class="st-grid-stats" style="grid-template-columns: 1fr 1fr; gap: var(--st-space-6); max-width: 900px; margin: 0 auto;">
+                <!-- Dashboard showing verified -->
+                <div class="st-card">
+                    <div class="st-card-header">
+                        <span class="st-label">Dashboard Status</span>
+                        <span class="st-badge st-badge--pass">Updated</span>
+                    </div>
+                    <div class="st-card-body">
+                        <div class="dashboard-mock">
+                            <div class="dashboard-mock-item dashboard-mock-item--verified">
+                                <div class="mock-req-id">REQ-UPGRADE-001</div>
+                                <div class="mock-status mock-status--verified">Verified</div>
+                            </div>
+                            <div class="dashboard-mock-item dashboard-mock-item--unverified">
+                                <div class="mock-req-id">REQ-UPGRADE-002</div>
+                                <div class="mock-status mock-status--unverified">Unverified</div>
+                            </div>
+                            <div class="dashboard-mock-item dashboard-mock-item--unverified">
+                                <div class="mock-req-id">REQ-UPGRADE-003</div>
+                                <div class="mock-status mock-status--unverified">Unverified</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Benefits -->
+                <div class="st-card">
+                    <div class="st-card-header">
+                        <span class="st-label">What You Get</span>
+                    </div>
+                    <div class="st-card-body">
+                        <ul class="bullet-list">
+                            <li><strong>Audit trail</strong> — Every requirement linked to tests</li>
+                            <li><strong>Regression detection</strong> — Failing tests flag requirements</li>
+                            <li><strong>Agent accountability</strong> — Work is tracked and reviewed</li>
+                            <li><strong>Continuous compliance</strong> — Always know your coverage</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="st-card" style="max-width: 600px; margin: var(--st-space-8) auto 0; text-align: center;">
+                <div class="st-card-body">
+                    <p class="st-heading-3" style="margin-bottom: var(--st-space-3);">Try it yourself</p>
+                    <p class="st-body" style="margin-bottom: var(--st-space-4);">
+                        Visit the traceability matrix to see requirements and their test coverage.
+                    </p>
+                    <a href="{% url 'admin-matrix' %}" class="st-btn st-btn--primary">
+                        Open Dashboard
+                    </a>
+                </div>
+            </div>
+
+            <div class="presenter-notes" x-show="showNotes" x-cloak>
+                <div class="presenter-notes-label">Presenter Notes</div>
+                <p class="st-body">This is the payoff: verified requirements with full traceability. When tests pass, you have proof. When they fail, you know immediately which requirements are affected.</p>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="presenter-nav">
+            <button class="st-btn st-btn--secondary"
+                    @click="prevStep"
+                    :disabled="step === 1"
+                    :style="step === 1 ? 'opacity: 0.5; cursor: not-allowed;' : ''">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+                Previous
+            </button>
+
+            <div class="nav-hint">
+                <kbd>&larr;</kbd> <kbd>&rarr;</kbd> to navigate &nbsp;&middot;&nbsp; <kbd>N</kbd> toggle notes
+            </div>
+
+            <button class="st-btn st-btn--primary"
+                    @click="nextStep"
+                    :disabled="step === totalSteps"
+                    :style="step === totalSteps ? 'opacity: 0.5; cursor: not-allowed;' : ''">
+                Next
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+            </button>
+        </nav>
+
+    </div>
+
+</div>
+</div>
+
+<script>
+function demoPresenter() {
+    return {
+        step: 1,
+        totalSteps: 6,
+        showNotes: false,
+
+        nextStep() {
+            if (this.step < this.totalSteps) {
+                this.step++;
+            }
+        },
+
+        prevStep() {
+            if (this.step > 1) {
+                this.step--;
+            }
+        },
+
+        goToStep(n) {
+            if (n >= 1 && n <= this.totalSteps) {
+                this.step = n;
+            }
+        },
+
+        handleKeydown(event) {
+            // Ignore if user is typing in an input
+            if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
+                return;
+            }
+
+            switch (event.key) {
+                case 'ArrowRight':
+                case 'ArrowDown':
+                case ' ':
+                    event.preventDefault();
+                    this.nextStep();
+                    break;
+                case 'ArrowLeft':
+                case 'ArrowUp':
+                    event.preventDefault();
+                    this.prevStep();
+                    break;
+                case 'n':
+                case 'N':
+                    this.showNotes = !this.showNotes;
+                    break;
+                case 'Home':
+                    event.preventDefault();
+                    this.step = 1;
+                    break;
+                case 'End':
+                    event.preventDefault();
+                    this.step = this.totalSteps;
+                    break;
+            }
+        }
+    };
+}
+</script>
+
+{% endblock %}

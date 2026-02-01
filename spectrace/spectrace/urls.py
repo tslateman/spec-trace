@@ -30,6 +30,12 @@ from requirements.views import (
     validation_run_compare_view,
     about_view,
     spec_syntax_help_view,
+    flow_status_list_view,
+    flow_runs_view,
+    flow_run_detail_view,
+    flow_load_demo_view,
+    demo_hub,
+    demo_agent_pipeline,
 )
 
 urlpatterns = [
@@ -45,6 +51,14 @@ urlpatterns = [
     path('admin/validation-runs/<int:run_id>/', validation_run_detail_view, name='admin-validation-run-detail'),
     path('admin/validation-runs/<int:run_id>/steps/', validation_run_steps_view, name='admin-validation-run-steps'),
     path('admin/validation-runs/compare/', validation_run_compare_view, name='admin-validation-run-compare'),
+    # Flow status views
+    path('admin/flow-status/', flow_status_list_view, name='admin-flow-status'),
+    path('admin/flow-status/load-demo/', flow_load_demo_view, name='admin-flow-load-demo'),
+    path('admin/flow-status/run/<int:run_id>/', flow_run_detail_view, name='admin-flow-run-detail'),
+    path('admin/flow-status/<str:flow_name>/', flow_runs_view, name='admin-flow-runs'),
+    # Demo hub and individual demo presenters
+    path('demo/', demo_hub, name='demo_hub'),
+    path('demo/agent-pipeline/', demo_agent_pipeline, name='demo_agent_pipeline'),
     path('admin/', admin.site.urls),
 
     # API endpoints for external systems

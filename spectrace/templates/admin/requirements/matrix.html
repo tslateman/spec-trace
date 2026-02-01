@@ -52,6 +52,17 @@
             <p class="st-caption mt-1">Requirements × Tests verification grid</p>
         </div>
         <div class="st-cluster">
+            <form method="post" action="{% url 'admin-matrix-load-demo' %}" style="display: inline;">
+                {% csrf_token %}
+                <button type="submit" class="st-btn st-btn--secondary">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    Load Demo
+                </button>
+            </form>
             <a href="{% url 'admin-matrix-export' %}?status={{ current_filters.status }}&tags={{ current_filters.tags }}&parent_id={{ current_filters.parent_id }}"
                class="st-btn st-btn--primary">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -62,7 +73,7 @@
                 Export CSV
             </a>
             <a href="{% url 'admin:index' %}" class="st-btn st-btn--secondary">
-                ← Dashboard
+                Dashboard
             </a>
         </div>
     </header>
@@ -209,19 +220,53 @@
         </div>
         {% elif requirements %}
         <div class="st-card-body" style="text-align: center; padding: var(--st-space-12);">
-            <p style="color: var(--st-text-subtle); margin-bottom: var(--st-space-4);">No tests linked to these requirements.</p>
-            <div class="st-code" style="display: inline-block; text-align: left;">python manage.py extract_links</div>
+            <div style="max-width: 500px; margin: 0 auto;">
+                <p class="st-heading-3" style="margin-bottom: var(--st-space-3);">No tests linked yet</p>
+                <p class="st-body" style="margin-bottom: var(--st-space-6);">
+                    Requirements exist but no test results are linked to them.
+                    Import test results or load demo data to see the matrix.
+                </p>
+                <div class="st-cluster" style="justify-content: center; margin-bottom: var(--st-space-6);">
+                    <form method="post" action="{% url 'admin-matrix-load-demo' %}" style="display: inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="st-btn st-btn--primary">Load Demo Data</button>
+                    </form>
+                </div>
+                <div class="st-code" style="text-align: left; font-size: 0.75rem;">
+<span style="color: #6b7280;"># Or import real test results:</span>
+python manage.py import_results results.xml
+python manage.py import_test_links</div>
+            </div>
         </div>
         {% else %}
         <div class="st-card-body" style="text-align: center; padding: var(--st-space-12);">
-            <p style="color: var(--st-text-subtle);">
-                No requirements found{% if current_filters.status or current_filters.tags %} matching filters{% endif %}.
-            </p>
-            {% if current_filters.status or current_filters.tags %}
-            <p style="margin-top: var(--st-space-2);">
-                <a href="?" class="st-btn st-btn--ghost st-btn--sm">Clear filters</a>
-            </p>
-            {% endif %}
+            <div style="max-width: 500px; margin: 0 auto;">
+                {% if current_filters.status or current_filters.tags %}
+                <p style="color: var(--st-text-subtle);">
+                    No requirements found matching filters.
+                </p>
+                <p style="margin-top: var(--st-space-2);">
+                    <a href="?" class="st-btn st-btn--ghost st-btn--sm">Clear filters</a>
+                </p>
+                {% else %}
+                <p class="st-heading-3" style="margin-bottom: var(--st-space-3);">No requirements yet</p>
+                <p class="st-body" style="margin-bottom: var(--st-space-6);">
+                    The traceability matrix shows requirements linked to test results.
+                    Start by parsing spec files or loading demo data.
+                </p>
+                <div class="st-cluster" style="justify-content: center; margin-bottom: var(--st-space-6);">
+                    <form method="post" action="{% url 'admin-matrix-load-demo' %}" style="display: inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="st-btn st-btn--primary">Load Demo Data</button>
+                    </form>
+                </div>
+                <div class="st-code" style="text-align: left; font-size: 0.75rem;">
+<span style="color: #6b7280;"># Or import real specs:</span>
+python manage.py parse_specs specs/
+python manage.py import_results results.xml
+python manage.py import_test_links</div>
+                {% endif %}
+            </div>
         </div>
         {% endif %}
     </div>
