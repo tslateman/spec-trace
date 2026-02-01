@@ -1,4 +1,4 @@
-.PHONY: help install install-dev test migrate makemigrations shell run clean setup demo
+.PHONY: help install install-dev test migrate makemigrations shell run clean setup demo demos
 
 # Use venv Python if it exists, otherwise fall back to system python
 PYTHON := $(shell [ -f .venv/bin/python ] && echo .venv/bin/python || echo python)
@@ -6,7 +6,7 @@ PYTHON := $(shell [ -f .venv/bin/python ] && echo .venv/bin/python || echo pytho
 help:
 	@echo "Available targets:"
 	@echo "  install         Install package in editable mode"
-	@echo "  install-dev     Install with dev dependencies"
+	@echo "  install-dev     Install with dev dependencies + git hooks"
 	@echo "  test            Run tests with pytest"
 	@echo "  migrate         Run Django migrations"
 	@echo "  makemigrations  Create new migrations"
@@ -15,12 +15,14 @@ help:
 	@echo "  clean           Remove caches and build artifacts"
 	@echo "  setup           Create admin user (admin/admin)"
 	@echo "  demo            Run the SpecTrace demo"
+	@echo "  demos           List all available demos"
 
 install:
 	uv pip install -e .
 
 install-dev:
 	uv pip install -e ".[dev]"
+	git config core.hooksPath .githooks
 
 test:
 	$(PYTHON) -m pytest
@@ -47,3 +49,6 @@ setup:
 
 demo:
 	$(PYTHON) scripts/demo.py
+
+demos:
+	$(PYTHON) scripts/list_demos.py

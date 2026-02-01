@@ -1,0 +1,169 @@
+# Demo Catalog for SpecTrace
+#
+# Each demo includes:
+#   - name: Display name
+#   - description: What it demonstrates
+#   - entry_point: How to run it
+#   - duration: Approximate runtime
+#   - audience: Who this demo is for
+#   - prerequisites: What must be set up first
+#   - talking_points: Key things to highlight during the demo
+#
+# This file is the source of truth for the web-based Demo Hub at /demo/
+# The demo_hub view reads this YAML and renders it as clickable cards.
+
+demos:
+  - id: demo-hub
+    name: Demo Hub (Meta)
+    description: >
+      Web-based catalog of all SpecTrace demos. Reads from this demos.yaml file
+      and displays demos as cards with direct links to web-based demos or
+      commands for CLI demos.
+    entry_point: open http://localhost:8000/demo/
+    duration: N/A
+    audience:
+      - Anyone exploring SpecTrace capabilities
+      - Sales engineers preparing demos
+    prerequisites:
+      - Server running (`make run`)
+    talking_points:
+      - Single entry point for all demos
+      - Web demos link directly; CLI demos show the command
+      - Cards show duration, audience, and key talking points
+      - Source of truth is demos.yaml in repo root
+    urls:
+      - http://localhost:8000/demo/
+  - id: spectrace-workflow
+    name: SpecTrace Core Workflow
+    description: >
+      Complete walkthrough of the SpecTrace workflow: parsing requirements from
+      markdown specs, linking them to pytest markers, running tests, and showing
+      verification status in the admin dashboard.
+    entry_point: make demo
+    duration: 5 minutes
+    audience:
+      - Engineering leads
+      - QA teams
+      - Product managers evaluating spec-trace
+    prerequisites:
+      - Run `make setup` first (or `python scripts/setup_demo.py`)
+      - Database migrated and seeded
+    talking_points:
+      - Requirements live in version-controlled markdown, not a separate tool
+      - Pytest markers create explicit test-to-requirement links
+      - Verification status rolls up automatically from test results
+      - Admin dashboard shows coverage gaps at a glance
+
+  - id: document-pipeline
+    name: Document Pipeline Example
+    description: >
+      Realistic 8-step demo showing nested requirement hierarchy (3 levels),
+      multiple verification methods, SLO integration, and various test patterns
+      (parametrized, async, xfail, class-based).
+    entry_point: python scripts/demo_pipeline.py
+    duration: 4 minutes
+    audience:
+      - Developers learning spec-trace patterns
+      - Teams evaluating for complex projects
+    prerequisites:
+      - Run `make setup` first
+    talking_points:
+      - Three-level hierarchy (DOC-001 → DOC-ING-001 → DOC-ING-001.1)
+      - Mix of verification methods (test, inapp, both)
+      - OpenSLO YAML integration for SLOs
+      - Shows passing, failing, skipped, and untested requirements
+    options:
+      --skip-tests: Skip pytest execution, show structure only
+
+  - id: agent-pipeline
+    name: Agent-Assisted Development Pipeline
+    description: >
+      Demonstrates how AI agents claim work from requirements, implement with
+      tests, pass invariant checks, and merge—all tracked against specs.
+      Available as both a CLI walkthrough and interactive web presenter.
+    entry_point: open http://localhost:8000/demo/agent-pipeline/
+    alt_entry_point: Follow docs/demo-agent-pipeline.md
+    duration: 4 minutes
+    audience:
+      - Engineering leads interested in AI-assisted workflows
+      - PMs evaluating agent integration
+    prerequisites:
+      - Database set up with requirements parsed
+      - Agent configuration in place
+      - Review pre-demo checklist in the doc
+    talking_points:
+      - Agents register and claim specific requirements
+      - Work is tracked from claim → implementation → review → merge
+      - Invariant checks run automatically before merge
+      - Full traceability from spec to code to agent
+      - Web presenter has keyboard navigation (arrow keys, space)
+    urls:
+      - http://localhost:8000/demo/agent-pipeline/
+
+  - id: flow-status-dashboard
+    name: Flow Status Dashboard
+    description: >
+      Shows the multi-step verification dashboard for complex flows.
+      Visualizes pipeline steps, early-exit on failure, and drill-down
+      to individual runs.
+    entry_point: open http://localhost:8000/admin/flow-status/
+    duration: 3 minutes
+    audience:
+      - Teams with multi-step integration flows
+      - QA monitoring verification pipelines
+    prerequisites:
+      - Server running (`make run`)
+    talking_points:
+      - Pipeline visualization shows pass/fail per step
+      - Early-exit behavior—stops on first failure
+      - Expandable error details with HTTP status codes
+      - Stats roll up from steps → runs → flows
+      - Load Demo Data button seeds sample runs instantly
+    urls:
+      - http://localhost:8000/admin/flow-status/
+    cli_setup: python manage.py setup_flow_demo
+
+  - id: traceability-matrix
+    name: Traceability Matrix
+    description: >
+      Interactive grid showing all requirements mapped to their verification
+      status. Filter by vendor, search requirements, and export data. The
+      central dashboard for spec-to-test coverage visibility.
+    entry_point: open http://localhost:8000/admin/matrix/
+    duration: 2 minutes
+    audience:
+      - Engineering leads tracking coverage
+      - QA teams monitoring verification
+      - Compliance auditors
+    prerequisites:
+      - Server running (`make run`)
+    talking_points:
+      - Color-coded grid (green=pass, red=fail, gray=untested)
+      - Drill-down to linked tests per requirement
+      - Export to CSV for reporting
+      - Load Demo button seeds sample test results instantly
+    urls:
+      - http://localhost:8000/admin/matrix/
+
+  - id: example-project
+    name: Document Pipeline Example Project
+    description: >
+      Complete working example in examples/document-pipeline/ showing full
+      spec-trace integration with specs, tests, SLOs, and CI workflow.
+    entry_point: Browse examples/document-pipeline/
+    duration: Self-paced
+    audience:
+      - Developers setting up spec-trace in new projects
+      - Reference implementation for patterns
+    prerequisites:
+      - None (self-contained example)
+    talking_points:
+      - Complete project structure to copy/adapt
+      - Specs organized by domain (ingest, transform, storage, delivery)
+      - OpenSLO YAML files for SLO tracking
+      - GitHub Actions workflow example
+    files:
+      - examples/document-pipeline/specs/
+      - examples/document-pipeline/tests/
+      - examples/document-pipeline/slos/
+      - examples/document-pipeline/ci/github-actions.yml

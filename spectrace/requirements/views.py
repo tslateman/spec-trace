@@ -1,6 +1,9 @@
 """Views for requirements app."""
 import csv
 from datetime import datetime
+from pathlib import Path
+
+import yaml
 
 from django.contrib.admin.views.decorators import staff_member_required
 from django.db.models import Prefetch
@@ -8,7 +11,7 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.http import require_http_methods
 
-from .matrix import get_matrix_data, get_cell_color
+from .matrix import get_matrix_data, get_cell_color, setup_matrix_demo
 from .models import (
     Requirement,
     InAppValidation,
@@ -25,6 +28,12 @@ from .validation_runs import (
     get_unique_vendors,
     get_unique_sources,
     get_run_steps_data,
+)
+from .flow_status import (
+    get_flows_overview,
+    get_flow_runs_data,
+    get_run_detail,
+    setup_demo_data,
 )
 
 
@@ -447,3 +456,182 @@ def spec_syntax_help_view(request):
         'title': 'Spec Syntax Guide',
     }
     return render(request, 'admin/requirements/spec_syntax_help.html', context)
+
+
+@staff_member_required
+def flow_status_list_view(request):
+    """List all verification flows with their latest run status.
+
+    Shows flow cards with step pipeline preview, latest run badge,
+    and run statistics.
+    """
+    data = get_flows_overview()
+
+    context = {
+        'title': 'Flow Status',
+        'flows': data['flows'],
+        'summary': data['summary'],
+    }
+
+    return render(request, 'admin/requirements/flow_status.html', context)
+
+
+@staff_member_required
+def flow_runs_view(request, flow_name: str):
+    """List runs for a specific verification flow.
+
+    Query parameters:
+        page: Page number (default: 1)
+        per_page: Items per page (default: 25)
+    """
+    # Parse pagination with bounds validation
+    try:
+        page = max(1, min(int(request.GET.get('page', 1)), 10000))
+    except (ValueError, TypeError):
+        page = 1
+    try:
+        per_page = max(1, min(int(request.GET.get('per_page', 25)), 100))
+    except (ValueError, TypeError):
+        per_page = 25
+
+    data = get_flow_runs_data(flow_name, page=page, per_page=per_page)
+
+    if not data['flow_def']:
+        # Flow not found
+        from django.http import Http404
+        raise Http404(f"Flow '{flow_name}' not found")
+
+    context = {
+        'title': f"{data['flow_def'].display_name} Runs",
+        'flow_def': data['flow_def'],
+        'flow': data['flow'],
+        'runs': data['runs'],
+        'pagination': data['pagination'],
+        'summary': data['summary'],
+    }
+
+    return render(request, 'admin/requirements/flow_runs.html', context)
+
+
+@staff_member_required
+def flow_run_detail_view(request, run_id: int):
+    """Detail view for a single flow run.
+
+    Shows step pipeline with color-coded status, expandable step details,
+    and navigation to adjacent runs.
+    """
+    data = get_run_detail(run_id)
+
+    if not data['run']:
+        from django.http import Http404
+        raise Http404(f"Flow run #{run_id} not found")
+
+    context = {
+        'title': f"Run #{run_id} - {data['run'].flow.display_name}",
+        'run': data['run'],
+        'flow_def': data['flow_def'],
+        'steps': data['steps'],
+        'previous_run': data['previous_run'],
+        'next_run': data['next_run'],
+        'summary': data['summary'],
+    }
+
+    return render(request, 'admin/requirements/flow_run_detail.html', context)
+
+
+@staff_member_required
+@require_http_methods(["POST"])
+def flow_load_demo_view(request):
+    """Load demo data for flow status dashboard.
+
+    Creates sample runs to demonstrate the dashboard features.
+    """
+    from django.contrib import messages
+    from django.shortcuts import redirect
+
+    result = setup_demo_data(clear=True)
+
+    messages.success(
+        request,
+        f"Demo loaded: {len(result['runs_created'])} runs created. "
+        "Click on a flow below to explore."
+    )
+
+    return redirect('admin-flow-status')
+
+
+@staff_member_required
+def demo_hub(request):
+    """Demo catalog showing all available SpecTrace demos.
+
+    Reads from demos.yaml to display demos as cards. Web-based demos
+    link directly; CLI demos show the command to run.
+    """
+    demos_file = Path(__file__).resolve().parent.parent.parent / "demos.yaml"
+
+    demos = []
+    if demos_file.exists():
+        with open(demos_file) as f:
+            data = yaml.safe_load(f)
+            demos = data.get("demos", [])
+
+    # Filter out the demo-hub entry (no need to show the hub in itself)
+    demos = [d for d in demos if d.get("id") != "demo-hub"]
+
+    # Add URL paths for web-based demos
+    web_demo_urls = {
+        "agent-pipeline": "demo_agent_pipeline",
+        "flow-status-dashboard": "admin-flow-status",
+        "traceability-matrix": "admin-matrix",
+    }
+
+    # Demos with instant in-browser demo data loading (no CLI required)
+    instant_demo_ids = {
+        "flow-status-dashboard",
+        "traceability-matrix",
+    }
+
+    for demo in demos:
+        demo["web_url"] = web_demo_urls.get(demo["id"])
+        demo["is_web"] = demo["web_url"] is not None
+        demo["has_instant_demo"] = demo["id"] in instant_demo_ids
+
+    return render(request, "admin/requirements/demo_hub.html", {"demos": demos})
+
+
+@staff_member_required
+def demo_agent_pipeline(request):
+    """Interactive slideshow presenter for the agent pipeline demo.
+
+    A web-based walkthrough of the SpecTrace agent workflow, replacing
+    the CLI demo script with a visual presentation.
+    """
+    return render(request, "admin/requirements/demo_presenter.html")
+
+
+@staff_member_required
+@require_http_methods(["POST"])
+def matrix_load_demo_view(request):
+    """Load demo data for traceability matrix.
+
+    Creates sample test results linked to requirements to demonstrate
+    the matrix grid visualization.
+    """
+    from django.contrib import messages
+    from django.shortcuts import redirect
+
+    result = setup_matrix_demo(clear=True)
+
+    if result['requirements_count'] == 0:
+        messages.warning(
+            request,
+            "No requirements found. Run 'manage.py parse_specs specs/' first."
+        )
+    else:
+        messages.success(
+            request,
+            f"Demo loaded: {result['test_results_created']} test results "
+            f"linked to {result['requirements_count']} requirements."
+        )
+
+    return redirect('admin-matrix')

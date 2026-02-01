@@ -1,0 +1,245 @@
+{% extends "unfold/layouts/base.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} | SpecTrace{% endblock %}
+
+{% block content %}
+{% include "admin/requirements/_design_system.html" %}
+
+<style>
+    .flow-pipeline {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    .flow-pipeline-step {
+        width: 24px;
+        height: 8px;
+        border-radius: 2px;
+        background: var(--st-border);
+        position: relative;
+    }
+    .flow-pipeline-step--passed {
+        background: var(--st-pass);
+    }
+    .flow-pipeline-step--failed {
+        background: var(--st-fail);
+    }
+    .flow-pipeline-step--running {
+        background: var(--st-warn);
+        animation: st-pulse 1.5s ease-in-out infinite;
+    }
+    .flow-pipeline-connector {
+        width: 8px;
+        height: 2px;
+        background: var(--st-border-muted);
+    }
+    .flow-card {
+        transition: border-color 0.2s var(--st-ease-out);
+    }
+    .flow-card:hover {
+        border-color: var(--st-accent-400);
+    }
+</style>
+
+<div class="st-page-wrapper">
+<div class="st-page st-container">
+    <!-- Success/Info Messages -->
+    {% if messages %}
+    {% for message in messages %}
+    <div class="st-card st-animate-in mb-6" style="border-left: 4px solid var(--st-pass); background: var(--st-pass-muted);">
+        <div class="st-card-body" style="display: flex; align-items: center; gap: var(--st-space-3);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--st-pass)" stroke-width="2">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+            <span style="flex: 1; color: var(--st-text);">{{ message }}</span>
+        </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <!-- Header -->
+    <header class="st-flex-between mb-6 st-animate-in" style="flex-wrap: wrap; gap: var(--st-space-4);">
+        <div>
+            <h1 class="st-heading-1">{{ title }}</h1>
+            <p class="st-caption mt-1">Multi-step verification flows for integration testing</p>
+        </div>
+        <div class="st-cluster">
+            <form method="post" action="{% url 'admin-flow-load-demo' %}" style="display: inline;">
+                {% csrf_token %}
+                <button type="submit" class="st-btn st-btn--primary">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    Load Demo Data
+                </button>
+            </form>
+            <a href="{% url 'admin:index' %}" class="st-btn st-btn--secondary">
+                Dashboard
+            </a>
+        </div>
+    </header>
+
+    <!-- Summary Stats -->
+    <div class="st-grid-stats mb-6 st-animate-in st-animate-delay-1">
+        <div class="st-metric st-metric--accent st-lift">
+            <div class="st-metric__label">Total Flows</div>
+            <div class="st-metric__value">{{ summary.total_flows|default:"0" }}</div>
+        </div>
+        <div class="st-metric st-metric--pass st-lift">
+            <div class="st-metric__label">Healthy</div>
+            <div class="st-metric__value" style="color: var(--st-pass);">{{ summary.healthy|default:"0" }}</div>
+        </div>
+        <div class="st-metric st-metric--fail st-lift">
+            <div class="st-metric__label">Failing</div>
+            <div class="st-metric__value" style="color: var(--st-fail);">{{ summary.failing|default:"0" }}</div>
+        </div>
+        <div class="st-metric st-lift">
+            <div class="st-metric__label">Not Run</div>
+            <div class="st-metric__value" style="color: var(--st-text-subtle);">{{ summary.not_run|default:"0" }}</div>
+        </div>
+    </div>
+
+    <!-- Demo Guide (shows when flows have runs, dismissible) -->
+    {% for flow in flows %}
+    {% if flow.total_runs > 0 %}
+    <div x-data="{ dismissed: localStorage.getItem('flow-demo-dismissed') === 'true' }"
+         x-show="!dismissed"
+         x-transition
+         class="st-card st-animate-in st-animate-delay-2 mb-6"
+         style="border: 1px dashed var(--st-accent-400); background: var(--st-accent-bg);">
+        <div class="st-card-body">
+            <div style="display: flex; align-items: flex-start; gap: var(--st-space-4);">
+                <div style="font-size: 1.5rem;">🎯</div>
+                <div style="flex: 1;">
+                    <h3 class="st-heading-3" style="margin-bottom: var(--st-space-2);">Explore the Demo</h3>
+                    <ol style="margin: 0; padding-left: var(--st-space-5); color: var(--st-text-muted);">
+                        <li style="margin-bottom: var(--st-space-2);">
+                            <strong>Click a flow card</strong> below to see run history
+                        </li>
+                        <li style="margin-bottom: var(--st-space-2);">
+                            <strong>Click a run</strong> to see the step pipeline visualization
+                        </li>
+                        <li style="margin-bottom: var(--st-space-2);">
+                            <strong>Expand a failed step</strong> to see error details and API responses
+                        </li>
+                    </ol>
+                    <div style="margin-top: var(--st-space-4);">
+                        <a href="{% url 'admin-flow-runs' flow.name %}" class="st-btn st-btn--primary st-btn--sm">
+                            Start Exploring →
+                        </a>
+                    </div>
+                </div>
+                <button @click="dismissed = true; localStorage.setItem('flow-demo-dismissed', 'true')"
+                        class="st-btn st-btn--ghost st-btn--sm"
+                        style="padding: var(--st-space-2);"
+                        title="Dismiss">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+    {% break %}
+    {% endif %}
+    {% endfor %}
+
+    <!-- Flows Grid -->
+    <div class="st-stack st-animate-in st-animate-delay-2">
+        {% for flow in flows %}
+        <div class="st-card flow-card st-lift">
+            <div class="st-card-body">
+                <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: var(--st-space-4); flex-wrap: wrap;">
+                    <!-- Flow Info -->
+                    <div style="flex: 1; min-width: 300px;">
+                        <div style="display: flex; align-items: center; gap: var(--st-space-3); margin-bottom: var(--st-space-2);">
+                            <h2 class="st-heading-3" style="margin: 0;">
+                                <a href="{% url 'admin-flow-runs' flow.name %}" style="color: inherit; text-decoration: none;">
+                                    {{ flow.display_name }}
+                                </a>
+                            </h2>
+                            <span class="st-badge st-badge--neutral">v{{ flow.version }}</span>
+                            {% if flow.latest_run %}
+                                {% if flow.latest_run.status == 'passed' %}
+                                <span class="st-badge st-badge--pass">Passed</span>
+                                {% elif flow.latest_run.status == 'failed' %}
+                                <span class="st-badge st-badge--fail">Failed</span>
+                                {% elif flow.latest_run.status == 'running' %}
+                                <span class="st-badge st-badge--warn">Running</span>
+                                {% endif %}
+                            {% else %}
+                            <span class="st-badge st-badge--neutral">Not Run</span>
+                            {% endif %}
+                        </div>
+                        <p class="st-caption" style="margin-bottom: var(--st-space-4);">{{ flow.description }}</p>
+
+                        <!-- Step Pipeline Preview -->
+                        <div style="margin-bottom: var(--st-space-4);">
+                            <div class="st-label" style="margin-bottom: var(--st-space-2);">Pipeline</div>
+                            <div class="flow-pipeline">
+                                {% for step in flow.steps %}
+                                {% if not forloop.first %}
+                                <div class="flow-pipeline-connector"></div>
+                                {% endif %}
+                                <div class="flow-pipeline-step" title="{{ step.display_name }}"></div>
+                                {% endfor %}
+                            </div>
+                            <div style="display: flex; gap: var(--st-space-1); flex-wrap: wrap; margin-top: var(--st-space-2);">
+                                {% for step in flow.steps %}
+                                <span class="st-caption" style="font-size: 0.6875rem;">
+                                    {% if not forloop.first %} {% endif %}{{ step.display_name }}{% if not forloop.last %} →{% endif %}
+                                </span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Stats & Actions -->
+                    <div style="display: flex; flex-direction: column; align-items: flex-end; gap: var(--st-space-3);">
+                        <div style="text-align: right;">
+                            <div class="st-caption">
+                                <span class="st-mono">{{ flow.total_runs }}</span> runs
+                                {% if flow.total_runs > 0 %}
+                                · <span style="color: var(--st-pass);">{{ flow.passed_runs }}</span> passed
+                                · <span style="color: var(--st-fail);">{{ flow.failed_runs }}</span> failed
+                                {% endif %}
+                            </div>
+                            {% if flow.latest_run %}
+                            <div class="st-caption" style="margin-top: var(--st-space-1);">
+                                Last run: {{ flow.latest_run.started_at|date:"M j, H:i" }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="st-cluster">
+                            {% if flow.latest_run %}
+                            <a href="{% url 'admin-flow-run-detail' flow.latest_run.id %}" class="st-btn st-btn--secondary st-btn--sm">
+                                View Latest
+                            </a>
+                            {% endif %}
+                            <a href="{% url 'admin-flow-runs' flow.name %}" class="st-btn st-btn--primary st-btn--sm">
+                                All Runs
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="st-card">
+            <div class="st-card-body" style="text-align: center; padding: var(--st-space-10);">
+                <p class="st-caption">No verification flows registered.</p>
+                <p class="st-caption" style="margin-top: var(--st-space-2);">
+                    Define flows in <code class="st-mono">requirements/flows/definitions.py</code>
+                </p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+</div>
+{% endblock %}

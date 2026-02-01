@@ -1,0 +1,177 @@
+#!/usr/bin/env python3
+"""Pre-commit hook to validate demos.yaml stays in sync with implementations.
+
+Only validates FILES BEING COMMITTED - doesn't scan the entire working directory.
+This prevents conflicts when multiple agents work simultaneously.
+
+Checks:
+1. Staged seed_*_demo.py / setup_*_demo.py have a demos.yaml entry
+2. If views.py is staged, web_demo_urls keys have demos.yaml entries
+
+Install: git config core.hooksPath .githooks
+"""
+
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+
+def get_staged_files():
+    """Get list of staged files."""
+    result = subprocess.run(
+        ["git", "diff", "--cached", "--name-only"],
+        capture_output=True,
+        text=True,
+    )
+    return result.stdout.strip().split("\n") if result.stdout.strip() else []
+
+
+def get_staged_content(filepath):
+    """Get file content from git index (staged version)."""
+    result = subprocess.run(
+        ["git", "show", f":{filepath}"],
+        capture_output=True,
+        text=True,
+    )
+    return result.stdout if result.returncode == 0 else None
+
+
+def load_demos_yaml_staged():
+    """Load demo IDs from staged demos.yaml, falling back to working copy."""
+    # Try staged version first
+    content = get_staged_content("demos.yaml")
+
+    # Fall back to working copy
+    if content is None:
+        demos_path = Path("demos.yaml")
+        if not demos_path.exists():
+            return set()
+        content = demos_path.read_text()
+
+    try:
+        import yaml
+        data = yaml.safe_load(content)
+        return {d["id"] for d in data.get("demos", [])}
+    except ImportError:
+        # Fall back to regex if PyYAML not available
+        return set(re.findall(r"^\s+-\s+id:\s+(\S+)", content, re.MULTILINE))
+
+
+def extract_demo_commands_from_staged(staged_files):
+    """Extract demo names from staged command files only."""
+    commands = {}
+    for filepath in staged_files:
+        if "management/commands" not in filepath:
+            continue
+
+        filename = Path(filepath).stem
+        match = re.match(r"(seed|setup)_(.+)_demo", filename)
+        if match:
+            demo_name = match.group(2)
+            commands[demo_name] = filepath
+
+    return commands
+
+
+def extract_web_demo_urls_from_staged(staged_files):
+    """Extract web_demo_urls keys if views.py is staged."""
+    # Only check if views.py is being committed
+    views_files = [f for f in staged_files if f.endswith("views.py")]
+    if not views_files:
+        return {}
+
+    urls = {}
+    for views_path in views_files:
+        content = get_staged_content(views_path)
+        if not content:
+            continue
+
+        # Find the web_demo_urls dict
+        match = re.search(r"web_demo_urls\s*=\s*\{([^}]+)\}", content)
+        if not match:
+            continue
+
+        # Extract keys from the dict
+        dict_content = match.group(1)
+        for line in dict_content.split("\n"):
+            key_match = re.search(r'"([^"]+)":\s*"([^"]+)"', line)
+            if key_match:
+                urls[key_match.group(1)] = key_match.group(2)
+
+    return urls
+
+
+def command_matches_demo(command_name, demo_ids):
+    """Check if a command name matches any demo ID.
+
+    Uses fuzzy matching: command 'flow' matches 'flow-status-dashboard',
+    command 'wallet' matches 'wallet-debug-dashboard'.
+    """
+    # Direct matches
+    possible_ids = [
+        f"{command_name}-dashboard",
+        f"{command_name}-debug-dashboard",
+        f"{command_name}-status-dashboard",
+        command_name,
+        command_name.replace("_", "-"),
+    ]
+    if any(pid in demo_ids for pid in possible_ids):
+        return True
+
+    # Fuzzy match: command name appears in any demo ID
+    for demo_id in demo_ids:
+        if command_name in demo_id or command_name.replace("_", "-") in demo_id:
+            return True
+
+    return False
+
+
+def main():
+    staged_files = get_staged_files()
+    if not staged_files:
+        return 0
+
+    # Extract what's being committed
+    staged_commands = extract_demo_commands_from_staged(staged_files)
+    staged_web_urls = extract_web_demo_urls_from_staged(staged_files)
+
+    # Skip if no demo-related files staged
+    if not staged_commands and not staged_web_urls:
+        return 0
+
+    print("Checking demos.yaml sync...")
+
+    demo_ids = load_demos_yaml_staged()
+    errors = []
+
+    # Check 1: Staged demo commands have demos.yaml entries
+    for demo_name, path in staged_commands.items():
+        if not command_matches_demo(demo_name, demo_ids):
+            errors.append(
+                f"  Staged command '{path}' has no demos.yaml entry.\n"
+                f"    Command name '{demo_name}' doesn't match any demo ID.\n"
+                f"    Add an entry to demos.yaml in this commit."
+            )
+
+    # Check 2: Staged web_demo_urls keys exist in demos.yaml
+    for demo_id, url_name in staged_web_urls.items():
+        if demo_id not in demo_ids:
+            errors.append(
+                f"  Staged web_demo_urls key '{demo_id}' not in demos.yaml.\n"
+                f"    Add an entry to demos.yaml in this commit."
+            )
+
+    if errors:
+        print("\n❌ demos.yaml sync check failed:\n")
+        for error in errors:
+            print(error)
+        print("\nTo bypass: git commit --no-verify")
+        return 1
+
+    print("✓ demos.yaml in sync")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -5,7 +5,7 @@ Provides efficient queries for rendering the requirement-test matrix grid.
 from collections import defaultdict
 from django.db.models import Prefetch
 
-from .models import Requirement, TestResult
+from .models import Requirement, TestResult, TestRun
 
 
 def get_matrix_data(page=1, per_page=25, filters=None):
@@ -233,3 +233,98 @@ def get_cell_color(status):
         'unlinked': 'bg-gray-200',
     }
     return colors.get(status, 'bg-gray-200')
+
+
+def setup_matrix_demo(clear: bool = True) -> dict:
+    """Set up demo data for the traceability matrix.
+
+    Creates sample test results linked to existing requirements. Requirements
+    must already exist in the database (run parse_specs first).
+
+    Args:
+        clear: Whether to clear existing demo test runs first
+
+    Returns:
+        {
+            'requirements_count': int,
+            'test_results_created': int,
+            'test_runs_cleared': int,
+        }
+    """
+    from pathlib import Path
+    from django.conf import settings
+    from .parser import SpecParser
+
+    result = {
+        'requirements_count': 0,
+        'test_results_created': 0,
+        'test_runs_cleared': 0,
+    }
+
+    # Clear existing demo test runs
+    if clear:
+        deleted, _ = TestRun.objects.filter(source_file__startswith='demo://').delete()
+        result['test_runs_cleared'] = deleted
+
+    # Parse specs if no requirements exist
+    if Requirement.objects.count() == 0:
+        specs_dir = Path(settings.BASE_DIR).parent / 'specs'
+        if specs_dir.exists():
+            parser = SpecParser()
+            parser.import_to_database(specs_dir, clear_existing=False)
+
+    # Get requirements to link tests to
+    requirements = list(Requirement.objects.all()[:12])
+    result['requirements_count'] = len(requirements)
+    if not requirements:
+        return result
+
+    # Create a demo test run
+    test_run = TestRun.objects.create(
+        source_file='demo://matrix-demo',
+        git_sha='abc1234',
+        git_branch='main',
+    )
+
+    # Create sample test results with various statuses
+    demo_tests = [
+        ('tests/test_auth.py::test_login_success', 'test_login_success', 'passed'),
+        ('tests/test_auth.py::test_login_invalid_password', 'test_login_invalid_password', 'passed'),
+        ('tests/test_auth.py::test_login_user_not_found', 'test_login_user_not_found', 'failed'),
+        ('tests/test_auth.py::test_logout', 'test_logout', 'passed'),
+        ('tests/test_upgrade.py::test_create_request', 'test_create_request', 'passed'),
+        ('tests/test_upgrade.py::test_request_validation', 'test_request_validation', 'passed'),
+        ('tests/test_upgrade.py::test_duplicate_request', 'test_duplicate_request', 'failed'),
+        ('tests/test_wallet.py::test_provision_pass', 'test_provision_pass', 'passed'),
+        ('tests/test_wallet.py::test_device_registration', 'test_device_registration', 'passed'),
+        ('tests/test_wallet.py::test_bundle_fetch', 'test_bundle_fetch', 'error'),
+        ('tests/test_export.py::test_csv_export', 'test_csv_export', 'passed'),
+        ('tests/test_export.py::test_pdf_export', 'test_pdf_export', 'skipped'),
+    ]
+
+    # Distribute tests across requirements
+    for i, (nodeid, name, status) in enumerate(demo_tests):
+        # Link to requirement(s) in a round-robin fashion
+        req_index = i % len(requirements)
+
+        test_result = TestResult.objects.create(
+            test_run=test_run,
+            test_nodeid=nodeid,
+            name=name,
+            classname=nodeid.split('::')[0].replace('/', '.').replace('.py', ''),
+            status=status,
+            time=0.1 + (i * 0.05),
+        )
+        # Link to primary requirement
+        test_result.requirements.add(requirements[req_index])
+        # Some tests cover multiple requirements
+        if i % 3 == 0 and req_index + 1 < len(requirements):
+            test_result.requirements.add(requirements[req_index + 1])
+
+        result['test_results_created'] += 1
+
+    # Update verification status on all requirements
+    from .status import update_all_verification_statuses
+    update_all_verification_statuses(test_run)
+
+    return result
