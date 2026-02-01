@@ -139,6 +139,20 @@ SpecTrace provides Django management commands for various operations:
 | `import_slos <dir>` | Import SLOs from OpenSLO YAML files |
 | `update_slo_status --from-json <file>` | Update SLO status from observability data |
 | `import_inapp_validations <json>` | Import in-app validation results |
+| `check_invariants` | Validate data consistency (INV-A through INV-K) |
+
+**Agent Task Commands** (see [docs/agent-tasks.md](docs/agent-tasks.md)):
+
+| Command | Description |
+|---------|-------------|
+| `agent_register` | Register an agent with role (planner/coder/reviewer) |
+| `agent_tasks` | List tasks with filtering |
+| `agent_claim` | Claim an unclaimed task with lease |
+| `agent_start` | Begin work on claimed task |
+| `agent_submit` | Submit work for review |
+| `agent_review` | Approve or request changes |
+| `agent_merge` | Mark approved task as merged |
+| `expire_leases` | Release stale task claims (cron) |
 
 All commands are run via: `python spectrace/manage.py <command>`
 

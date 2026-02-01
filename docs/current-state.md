@@ -63,26 +63,31 @@ spectrace/
 
 ## Agent Task Pipeline
 
-The agent coordination system is now implemented with a blackboard architecture:
+The agent coordination system is implemented with a blackboard architecture. See **[docs/agent-tasks.md](agent-tasks.md)** for complete documentation.
 
-**State machine:** `DRAFT → CLAIMED → IN_PROGRESS → PENDING_REVIEW → APPROVED → MERGED`
+**State machine:**
+```
+DRAFT → UNCLAIMED → CLAIMED → IN_PROGRESS → READY_FOR_REVIEW → APPROVED → MERGED
+                ↑                                    ↓
+                └────── CHANGES_REQUESTED ←──────────┘
+```
 
 **CLI commands:**
 ```bash
-python manage.py agent_register <name> --role executor|reviewer  # Register agent
-python manage.py agent_tasks                                      # List available tasks
-python manage.py agent_claim <task_id>                           # Claim with lease
-python manage.py agent_start <task_id>                           # Begin work
-python manage.py agent_submit <task_id> --branch <branch>        # Submit for review
-python manage.py agent_review <task_id> --approve|--changes      # Review submission
-python manage.py agent_merge <task_id> --commit <sha>            # Mark merged
-python manage.py expire_leases                                   # Release stale claims
+python manage.py agent_register <name> --role planner|coder|reviewer
+python manage.py agent_tasks [--status unclaimed]
+python manage.py agent_claim <task_id> --agent <agent_id> [--lease-minutes 30]
+python manage.py agent_start <task_id> --agent <agent_id>
+python manage.py agent_submit <task_id> --agent <agent_id> --commit-sha <sha>
+python manage.py agent_review <task_id> --reviewer <id> --decision approved|changes_requested
+python manage.py agent_merge <task_id>
+python manage.py expire_leases [--dry-run]
 ```
 
 **Invariants (11 checks):**
-- INV-A through INV-K validate data consistency
-- Run via `python manage.py check_invariants`
-- Covers: verification status, SLO breaches, task state integrity, review rules
+- INV-A through INV-F: verification status, SLO breaches, flow completion
+- INV-G through INV-K: agent task integrity (claims, leases, history, reviews, self-review)
+- Run via `python manage.py check_invariants [--check INV-K] [--format json]`
 
 ## What's In Progress
 
@@ -123,9 +128,12 @@ python spectrace/manage.py import_results test_results.xml --links links.json
 # Impact analysis
 python spectrace/manage.py impact_analysis HEAD~5 HEAD
 
-# Agent task workflow
-python spectrace/manage.py agent_tasks              # See what's available
-python spectrace/manage.py agent_claim <task_id>    # Claim a task
+# Agent task workflow (see docs/agent-tasks.md)
+python spectrace/manage.py agent_register coder-1 --role coder
+python spectrace/manage.py agent_tasks --status unclaimed
+python spectrace/manage.py agent_claim task-001 --agent coder-1
+python spectrace/manage.py agent_start task-001 --agent coder-1
+python spectrace/manage.py agent_submit task-001 --agent coder-1 --commit-sha abc123
 python spectrace/manage.py check_invariants         # Validate consistency
 
 # View dashboard
