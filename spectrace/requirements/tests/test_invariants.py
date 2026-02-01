@@ -12,9 +12,21 @@ from requirements.invariants import (
     check_inv_d_link_uniqueness,
     check_inv_e_review_flag,
     check_inv_f_flow_completion,
+    check_inv_g_claimed_has_agent,
+    check_inv_h_claimed_has_lease,
+    check_inv_i_nondraft_has_history,
+    check_inv_j_approved_has_review,
+    check_inv_k_no_self_review,
 )
 from requirements.models import (
+    Agent,
+    AgentRole,
+    AgentTask,
+    AgentTaskHistory,
+    AgentTaskReview,
+    AgentTaskStatus,
     Requirement,
+    ReviewDecision,
     SLOStatus,
     TestRequirementLink,
     TestResult,
@@ -327,3 +339,270 @@ class TestInvariantCheckResult:
         assert data['violations'][0]['code'] == 'INV-A'
         assert data['violations'][0]['fixable'] is True
         assert data['violations'][0]['key'] == 'value'
+
+
+# =============================================================================
+# Agent Task Invariants (INV-G through INV-K)
+# =============================================================================
+
+
+@pytest.fixture
+def coder_agent(db):
+    """Create a coder agent."""
+    return Agent.objects.create(
+        agent_id='coder-1',
+        role=AgentRole.CODER,
+        is_active=True,
+    )
+
+
+@pytest.fixture
+def reviewer_agent(db):
+    """Create a reviewer agent."""
+    return Agent.objects.create(
+        agent_id='reviewer-1',
+        role=AgentRole.REVIEWER,
+        is_active=True,
+    )
+
+
+class TestInvGClaimedHasAgent:
+    """Tests for INV-G: Claimed tasks have claimed_by set."""
+
+    @pytest.mark.django_db
+    def test_check_inv_g__passes_with_agent(self, coder_agent):
+        """No violation when claimed task has claimed_by."""
+        AgentTask.objects.create(
+            external_id='task-001',
+            title='Test',
+            status=AgentTaskStatus.CLAIMED,
+            claimed_by=coder_agent,
+        )
+
+        result = check_inv_g_claimed_has_agent()
+
+        assert not result.has_violations
+
+    @pytest.mark.django_db
+    def test_check_inv_g__detects_orphan_task(self, db):
+        """Violation when claimed task has no claimed_by."""
+        AgentTask.objects.create(
+            external_id='task-orphan',
+            title='Orphan',
+            status=AgentTaskStatus.CLAIMED,
+            claimed_by=None,
+        )
+
+        result = check_inv_g_claimed_has_agent()
+
+        assert result.has_violations
+        assert len(result.violations) == 1
+        assert result.violations[0].code == 'INV-G'
+        assert result.violations[0].requirement_id == 'task-orphan'
+
+    @pytest.mark.django_db
+    def test_check_inv_g__checks_in_progress_too(self, db):
+        """Also checks IN_PROGRESS tasks."""
+        AgentTask.objects.create(
+            external_id='task-in-progress',
+            title='In Progress',
+            status=AgentTaskStatus.IN_PROGRESS,
+            claimed_by=None,
+        )
+
+        result = check_inv_g_claimed_has_agent()
+
+        assert result.has_violations
+        assert result.violations[0].code == 'INV-G'
+
+
+class TestInvHClaimedHasLease:
+    """Tests for INV-H: CLAIMED status has lease_expires."""
+
+    @pytest.mark.django_db
+    def test_check_inv_h__passes_with_lease(self, coder_agent):
+        """No violation when claimed task has lease_expires."""
+        AgentTask.objects.create(
+            external_id='task-001',
+            title='Test',
+            status=AgentTaskStatus.CLAIMED,
+            claimed_by=coder_agent,
+            lease_expires=timezone.now(),
+        )
+
+        result = check_inv_h_claimed_has_lease()
+
+        assert not result.has_violations
+
+    @pytest.mark.django_db
+    def test_check_inv_h__detects_no_lease(self, coder_agent):
+        """Violation when claimed task has no lease_expires."""
+        AgentTask.objects.create(
+            external_id='task-no-lease',
+            title='No Lease',
+            status=AgentTaskStatus.CLAIMED,
+            claimed_by=coder_agent,
+            lease_expires=None,
+        )
+
+        result = check_inv_h_claimed_has_lease()
+
+        assert result.has_violations
+        assert len(result.violations) == 1
+        assert result.violations[0].code == 'INV-H'
+
+
+class TestInvINondraftHasHistory:
+    """Tests for INV-I: Non-draft tasks have history entry."""
+
+    @pytest.mark.django_db
+    def test_check_inv_i__passes_with_history(self, coder_agent):
+        """No violation when non-draft task has history."""
+        task = AgentTask.objects.create(
+            external_id='task-001',
+            title='Test',
+            status=AgentTaskStatus.CLAIMED,
+            claimed_by=coder_agent,
+        )
+        AgentTaskHistory.objects.create(
+            task=task,
+            agent=coder_agent,
+            action='CLAIMED',
+            from_status='unclaimed',
+            to_status='claimed',
+        )
+
+        result = check_inv_i_nondraft_has_history()
+
+        assert not result.has_violations
+
+    @pytest.mark.django_db
+    def test_check_inv_i__detects_no_history(self, db):
+        """Warning when non-draft task has no history."""
+        AgentTask.objects.create(
+            external_id='task-no-history',
+            title='No History',
+            status=AgentTaskStatus.UNCLAIMED,  # Non-draft
+        )
+
+        result = check_inv_i_nondraft_has_history()
+
+        assert result.has_violations
+        assert result.violations[0].code == 'INV-I'
+        assert result.violations[0].severity == 'warning'
+
+    @pytest.mark.django_db
+    def test_check_inv_i__ignores_draft(self, db):
+        """Draft tasks without history are not violations."""
+        AgentTask.objects.create(
+            external_id='task-draft',
+            title='Draft',
+            status=AgentTaskStatus.DRAFT,
+        )
+
+        result = check_inv_i_nondraft_has_history()
+
+        assert not result.has_violations
+
+
+class TestInvJApprovedHasReview:
+    """Tests for INV-J: Approved tasks have approved review."""
+
+    @pytest.mark.django_db
+    def test_check_inv_j__passes_with_review(self, coder_agent, reviewer_agent):
+        """No violation when approved task has approved review."""
+        task = AgentTask.objects.create(
+            external_id='task-approved',
+            title='Approved',
+            status=AgentTaskStatus.APPROVED,
+            claimed_by=coder_agent,
+        )
+        AgentTaskReview.objects.create(
+            task=task,
+            reviewer=reviewer_agent,
+            decision=ReviewDecision.APPROVED,
+            commit_sha='abc123',
+        )
+
+        result = check_inv_j_approved_has_review()
+
+        assert not result.has_violations
+
+    @pytest.mark.django_db
+    def test_check_inv_j__detects_missing_review(self, db):
+        """Violation when approved task has no approved review."""
+        AgentTask.objects.create(
+            external_id='task-no-review',
+            title='No Review',
+            status=AgentTaskStatus.APPROVED,
+        )
+
+        result = check_inv_j_approved_has_review()
+
+        assert result.has_violations
+        assert result.violations[0].code == 'INV-J'
+
+    @pytest.mark.django_db
+    def test_check_inv_j__checks_merged_too(self, db):
+        """Also checks MERGED tasks."""
+        AgentTask.objects.create(
+            external_id='task-merged',
+            title='Merged',
+            status=AgentTaskStatus.MERGED,
+        )
+
+        result = check_inv_j_approved_has_review()
+
+        assert result.has_violations
+        assert result.violations[0].code == 'INV-J'
+
+
+class TestInvKNoSelfReview:
+    """Tests for INV-K: Reviewers can't review own work."""
+
+    @pytest.mark.django_db
+    def test_check_inv_k__passes_different_reviewer(self, coder_agent, reviewer_agent):
+        """No violation when reviewer differs from worker."""
+        task = AgentTask.objects.create(
+            external_id='task-001',
+            title='Test',
+            status=AgentTaskStatus.APPROVED,
+            claimed_by=coder_agent,
+        )
+        AgentTaskReview.objects.create(
+            task=task,
+            reviewer=reviewer_agent,
+            decision=ReviewDecision.APPROVED,
+            commit_sha='abc123',
+        )
+
+        result = check_inv_k_no_self_review()
+
+        assert not result.has_violations
+
+    @pytest.mark.django_db
+    def test_check_inv_k__detects_self_review(self, db):
+        """Violation when reviewer is same as worker."""
+        agent = Agent.objects.create(
+            agent_id='dual-agent',
+            role=AgentRole.REVIEWER,
+            is_active=True,
+        )
+        task = AgentTask.objects.create(
+            external_id='task-self',
+            title='Self Review',
+            status=AgentTaskStatus.APPROVED,
+            claimed_by=agent,
+        )
+        AgentTaskReview.objects.create(
+            task=task,
+            reviewer=agent,  # Same as claimed_by
+            decision=ReviewDecision.APPROVED,
+            commit_sha='abc123',
+        )
+
+        result = check_inv_k_no_self_review()
+
+        assert result.has_violations
+        assert result.violations[0].code == 'INV-K'
+        assert 'dual-agent' in result.violations[0].message

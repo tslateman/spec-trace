@@ -9,13 +9,23 @@ Invariants:
 - INV-D: At most one TestRequirementLink per (test, requirement) pair
 - INV-E: Regression from passed to failed/error sets needs_review flag
 - INV-F: Completed flow runs have completion timestamp
+- INV-G: Claimed tasks have claimed_by set
+- INV-H: CLAIMED status has lease_expires
+- INV-I: Non-draft tasks have history entry
+- INV-J: Approved tasks have approved review
+- INV-K: Reviewers can't review own work
 """
 
 from dataclasses import dataclass, field
 from typing import Literal
 
 from .models import (
+    AgentTask,
+    AgentTaskHistory,
+    AgentTaskReview,
+    AgentTaskStatus,
     Requirement,
+    ReviewDecision,
     SLOStatus,
     TestRequirementLink,
     TestRun,
@@ -338,6 +348,201 @@ def check_inv_f_flow_completion() -> InvariantCheckResult:
     return result
 
 
+def check_inv_g_claimed_has_agent() -> InvariantCheckResult:
+    """Check INV-G: Claimed tasks have claimed_by set.
+
+    ∀ task: task.status ∈ {CLAIMED, IN_PROGRESS} ⟹ task.claimed_by != NULL
+
+    Returns:
+        InvariantCheckResult with any violations found.
+    """
+    result = InvariantCheckResult()
+
+    orphan_tasks = AgentTask.objects.filter(
+        status__in=[AgentTaskStatus.CLAIMED, AgentTaskStatus.IN_PROGRESS],
+        claimed_by__isnull=True,
+    )
+
+    for task in orphan_tasks:
+        result.checks_performed += 1
+        violation = InvariantViolation(
+            code='INV-G',
+            requirement_id=task.external_id,
+            message=(
+                f"Task has status '{task.status}' but no claimed_by agent"
+            ),
+            severity='error',
+            details={
+                'task_status': task.status,
+            },
+            fixable=False,
+        )
+        result.violations.append(violation)
+
+    if not orphan_tasks:
+        result.checks_performed = AgentTask.objects.filter(
+            status__in=[AgentTaskStatus.CLAIMED, AgentTaskStatus.IN_PROGRESS]
+        ).count()
+
+    return result
+
+
+def check_inv_h_claimed_has_lease() -> InvariantCheckResult:
+    """Check INV-H: CLAIMED status has lease_expires.
+
+    ∀ task: task.status == CLAIMED ⟹ task.lease_expires != NULL
+
+    Returns:
+        InvariantCheckResult with any violations found.
+    """
+    result = InvariantCheckResult()
+
+    no_lease_tasks = AgentTask.objects.filter(
+        status=AgentTaskStatus.CLAIMED,
+        lease_expires__isnull=True,
+    )
+
+    for task in no_lease_tasks:
+        result.checks_performed += 1
+        violation = InvariantViolation(
+            code='INV-H',
+            requirement_id=task.external_id,
+            message=(
+                f"Task is CLAIMED but has no lease_expires timestamp"
+            ),
+            severity='error',
+            details={
+                'claimed_by': task.claimed_by.agent_id if task.claimed_by else None,
+            },
+            fixable=False,
+        )
+        result.violations.append(violation)
+
+    if not no_lease_tasks:
+        result.checks_performed = AgentTask.objects.filter(
+            status=AgentTaskStatus.CLAIMED
+        ).count()
+
+    return result
+
+
+def check_inv_i_nondraft_has_history() -> InvariantCheckResult:
+    """Check INV-I: Non-draft tasks have history entry.
+
+    ∀ task: task.status != DRAFT ⟹ |task.history| > 0
+
+    Tasks should have at least one history entry once they leave DRAFT.
+
+    Returns:
+        InvariantCheckResult with any violations found.
+    """
+    result = InvariantCheckResult()
+
+    nondraft_tasks = AgentTask.objects.exclude(status=AgentTaskStatus.DRAFT)
+
+    for task in nondraft_tasks:
+        result.checks_performed += 1
+        history_count = AgentTaskHistory.objects.filter(task=task).count()
+
+        if history_count == 0:
+            violation = InvariantViolation(
+                code='INV-I',
+                requirement_id=task.external_id,
+                message=(
+                    f"Task has status '{task.status}' but no history entries"
+                ),
+                severity='warning',
+                details={
+                    'task_status': task.status,
+                },
+                fixable=False,
+            )
+            result.violations.append(violation)
+
+    return result
+
+
+def check_inv_j_approved_has_review() -> InvariantCheckResult:
+    """Check INV-J: Approved tasks have approved review.
+
+    ∀ task: task.status ∈ {APPROVED, MERGED} ⟹
+            ∃ review: review.task == task ∧ review.decision == APPROVED
+
+    Returns:
+        InvariantCheckResult with any violations found.
+    """
+    result = InvariantCheckResult()
+
+    approved_tasks = AgentTask.objects.filter(
+        status__in=[AgentTaskStatus.APPROVED, AgentTaskStatus.MERGED]
+    )
+
+    for task in approved_tasks:
+        result.checks_performed += 1
+        has_approved_review = AgentTaskReview.objects.filter(
+            task=task,
+            decision=ReviewDecision.APPROVED,
+        ).exists()
+
+        if not has_approved_review:
+            violation = InvariantViolation(
+                code='INV-J',
+                requirement_id=task.external_id,
+                message=(
+                    f"Task has status '{task.status}' but no approved review record"
+                ),
+                severity='error',
+                details={
+                    'task_status': task.status,
+                },
+                fixable=False,
+            )
+            result.violations.append(violation)
+
+    return result
+
+
+def check_inv_k_no_self_review() -> InvariantCheckResult:
+    """Check INV-K: Reviewers can't review own work.
+
+    ∀ review: review.task.claimed_by != review.reviewer
+
+    Returns:
+        InvariantCheckResult with any violations found.
+    """
+    result = InvariantCheckResult()
+
+    reviews = AgentTaskReview.objects.select_related(
+        'task__claimed_by', 'reviewer'
+    ).all()
+
+    for review in reviews:
+        result.checks_performed += 1
+
+        if (
+            review.task.claimed_by
+            and review.reviewer
+            and review.task.claimed_by.agent_id == review.reviewer.agent_id
+        ):
+            violation = InvariantViolation(
+                code='INV-K',
+                requirement_id=review.task.external_id,
+                message=(
+                    f"Agent '{review.reviewer.agent_id}' reviewed their own work"
+                ),
+                severity='error',
+                details={
+                    'reviewer_id': review.reviewer.agent_id,
+                    'review_id': review.id,
+                    'decision': review.decision,
+                },
+                fixable=False,
+            )
+            result.violations.append(violation)
+
+    return result
+
+
 def check_all_invariants(
     latest_run: TestRun | None = None,
     fix: bool = False,
@@ -359,6 +564,11 @@ def check_all_invariants(
         check_inv_d_link_uniqueness(),
         check_inv_e_review_flag(fix),
         check_inv_f_flow_completion(),
+        check_inv_g_claimed_has_agent(),
+        check_inv_h_claimed_has_lease(),
+        check_inv_i_nondraft_has_history(),
+        check_inv_j_approved_has_review(),
+        check_inv_k_no_self_review(),
     ]
 
     for check_result in checks:

@@ -12,6 +12,11 @@ from requirements.invariants import (
     check_inv_d_link_uniqueness,
     check_inv_e_review_flag,
     check_inv_f_flow_completion,
+    check_inv_g_claimed_has_agent,
+    check_inv_h_claimed_has_lease,
+    check_inv_i_nondraft_has_history,
+    check_inv_j_approved_has_review,
+    check_inv_k_no_self_review,
 )
 from requirements.models import TestRun
 
@@ -33,7 +38,10 @@ class Command(BaseCommand):
         )
         parser.add_argument(
             '--check',
-            choices=['all', 'INV-A', 'INV-B', 'INV-D', 'INV-E', 'INV-F'],
+            choices=[
+                'all', 'INV-A', 'INV-B', 'INV-D', 'INV-E', 'INV-F',
+                'INV-G', 'INV-H', 'INV-I', 'INV-J', 'INV-K',
+            ],
             default='all',
             help='Which invariant to check (default: all)',
         )
@@ -63,8 +71,18 @@ class Command(BaseCommand):
             result = check_inv_d_link_uniqueness()
         elif check == 'INV-E':
             result = check_inv_e_review_flag(fix)
-        else:  # INV-F
+        elif check == 'INV-F':
             result = check_inv_f_flow_completion()
+        elif check == 'INV-G':
+            result = check_inv_g_claimed_has_agent()
+        elif check == 'INV-H':
+            result = check_inv_h_claimed_has_lease()
+        elif check == 'INV-I':
+            result = check_inv_i_nondraft_has_history()
+        elif check == 'INV-J':
+            result = check_inv_j_approved_has_review()
+        else:  # INV-K
+            result = check_inv_k_no_self_review()
 
         # Output results
         if output_format == 'json':
