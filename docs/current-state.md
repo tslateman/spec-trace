@@ -135,6 +135,7 @@ python spectrace/manage.py agent_claim task-001 --agent coder-1
 python spectrace/manage.py agent_start task-001 --agent coder-1
 python spectrace/manage.py agent_submit task-001 --agent coder-1 --commit-sha abc123
 python spectrace/manage.py check_invariants         # Validate consistency
+python spectrace/manage.py consolidate              # Update docs + run invariants
 
 # View dashboard
 open http://localhost:8000/admin/
