@@ -18,6 +18,7 @@ from requirements.views import (
     flow_run_detail_view,
     flow_runs_view,
     flow_status_list_view,
+    flow_sync_to_db_view,
     impact_analysis_view,
     matrix_export,
     matrix_load_demo_view,
@@ -52,6 +53,7 @@ admin_urlpatterns = [
     # Flow editor
     path("admin/flow-editor/", flow_editor_list_view, name="admin-flow-editor"),
     path("admin/flow-editor/<path:file_path>/", flow_editor_view, name="admin-flow-editor-edit"),
+    path("admin/flow-editor/<path:file_path>/sync/", flow_sync_to_db_view, name="admin-flow-editor-sync"),
     # Demo
     path("demo/", demo_hub, name="demo_hub"),
     path("demo/agent-pipeline/", demo_agent_pipeline, name="demo_agent_pipeline"),

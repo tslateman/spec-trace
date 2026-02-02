@@ -40,6 +40,7 @@ from .flow_editor import (
     get_flow_files,
     load_flow_for_editing,
     save_flow,
+    validate_flow_path,
     FlowEditorError,
 )
 from requirements.flows.parser import FlowParseError
@@ -723,3 +724,31 @@ def flow_editor_view(request, file_path: str):
     }
 
     return render(request, 'admin/requirements/flow_editor_form.html', context)
+
+
+@staff_member_required
+@require_http_methods(["POST"])
+def flow_sync_to_db_view(request, file_path: str):
+    """Sync a single flow YAML file to the database."""
+    from django.contrib import messages
+    from .flows.sync import sync_yaml_flows_to_db
+    from .flows.parser import YAMLFlowParser
+
+    try:
+        resolved_path = validate_flow_path(file_path)
+    except (PermissionError, ValueError) as e:
+        messages.error(request, str(e))
+        return redirect('admin-flow-editor')
+
+    parser = YAMLFlowParser()
+    try:
+        flow = parser.parse_file(resolved_path)
+        if flow:
+            sync_yaml_flows_to_db([flow])
+            messages.success(request, f"Flow '{flow.display_name}' synced to database.")
+        else:
+            messages.warning(request, f"File is not a valid flow: {file_path}")
+    except Exception as e:
+        messages.error(request, f"Sync failed: {e}")
+
+    return redirect('admin-flow-editor-edit', file_path=file_path)
