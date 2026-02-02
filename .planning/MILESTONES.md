@@ -1,5 +1,35 @@
 # Project Milestones: SpecTrace
 
+## v8 Verification Flows (Shipped: 2026-02-02)
+
+**Delivered:** YAML-based verification flows with Admin UI editor, dashboard for run history and live status, and requirement traceability.
+
+**Phases completed:** 19-23 (5 phases, 12 plans)
+
+**Key accomplishments:**
+
+- YAML flow parser with schema validation (parser.py 234 lines)
+- Pluggable step executors: api_call, assertion, wait
+- Flow execution engine with per-step and per-flow timeouts
+- Admin UI flow editor with ruamel.yaml comment preservation
+- Dashboard: flow run history with status/date filtering
+- Live status view with 5-second Alpine.js polling
+- M2M requirement linking with bidirectional admin display
+
+**Stats:**
+
+- 68 files modified
+- +11,134 lines added
+- 29,759 Python LOC total
+- 5 phases, 12 plans
+- 1 day (2026-02-02)
+
+**Git range:** `2e9e99f` → `3acb18f`
+
+**Archive:** [v8-ROADMAP.md](milestones/v8-ROADMAP.md), [v8-REQUIREMENTS.md](milestones/v8-REQUIREMENTS.md)
+
+---
+
 ## v7 UI Polish & API Documentation (Shipped: 2026-01-25)
 
 **Delivered:** Dark mode consistency, breadcrumb navigation, validation filtering improvements, OpenAPI 3.1 documentation.

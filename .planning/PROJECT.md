@@ -10,17 +10,17 @@ PMs can see, at any moment, which requirements are verified by passing tests —
 
 ## Current Milestone
 
-### v8 Verification Flows
-
-Build a verification flow system where flows are defined in YAML files (source of truth), edited via an Admin UI builder, and visualized in a dashboard showing run history and live status.
-
-**Core deliverables:**
-- YAML-based flow definitions with Admin UI for editing
-- Flow execution engine that runs steps and records results
-- Dashboard views: flow run history + live flow status
-- Requirement linking to flows
+Planning next milestone.
 
 ## What's Shipped
+
+### v8 Verification Flows (Shipped: 2026-02-02)
+
+- **YAML flow parser:** Parse flow definitions from YAML files with schema validation
+- **Step executors:** Pluggable api_call, assertion, wait step types with timeout handling
+- **Admin UI flow editor:** Visual editor with ruamel.yaml comment preservation
+- **Dashboard views:** Flow run history with filtering + live status with 5s polling
+- **Requirement linking:** M2M between flows and requirements with bidirectional admin display
 
 ### v7 UI Polish & API Documentation (Shipped: 2026-01-25)
 
@@ -166,7 +166,33 @@ Build a verification flow system where flows are defined in YAML files (source o
 - ✓ API-02: JSON endpoint for InAppValidationRun detail — v6
 - ✓ API-03: JSON endpoint for validation steps and results — v6
 
-### Future (v7+)
+### Validated (v8)
+
+- ✓ FLOW-01: Parse flow definitions from YAML files — v8
+- ✓ FLOW-02: YAML schema supports id, title, steps[], requirement links — v8
+- ✓ FLOW-03: Each step has name, type (api_call, assertion, wait), config — v8
+- ✓ FLOW-04: Admin UI reads existing YAML files as editable form — v8
+- ✓ FLOW-05: Admin UI writes changes back to YAML files — v8
+- ✓ FLOW-06: Validate YAML syntax and schema on save — v8
+- ✓ EXEC-01: Flow runner executes steps sequentially — v8
+- ✓ EXEC-02: Record VerificationFlowRun with pass/fail status — v8
+- ✓ EXEC-03: Record VerificationFlowStep results for each step — v8
+- ✓ EXEC-04: Support step types: api_call, assertion, wait — v8
+- ✓ EXEC-05: CLI command: manage.py run_flow <flow_id> — v8
+- ✓ EXEC-06: Timeout handling per step and per flow — v8
+- ✓ HIST-01: List all flow runs with status, timestamp, duration — v8
+- ✓ HIST-02: Filter runs by flow, date range, status — v8
+- ✓ HIST-03: Drill down to run detail showing step-by-step results — v8
+- ✓ HIST-04: Show step timing and failure messages — v8
+- ✓ LIVE-01: Real-time view of currently executing flows — v8
+- ✓ LIVE-02: Show current step being executed — v8
+- ✓ LIVE-03: Auto-refresh or polling updates — v8
+- ✓ LIVE-04: Visual progress indicator — v8
+- ✓ LINK-01: Flows can specify linked requirement IDs in YAML — v8
+- ✓ LINK-02: Requirement detail page shows linked flows — v8
+- ✓ LINK-03: Flow dashboard shows which requirements each flow verifies — v8
+
+### Future (v9+)
 
 - [ ] CI-01: Webhooks receive test results from CI pipeline
 - [ ] CI-02: Real-time dashboard updates as CI runs complete
@@ -219,6 +245,12 @@ Build a verification flow system where flows are defined in YAML files (source o
 | Best-effort submission | Never break user code if SpecTrace down | ✓ Good |
 | Multi-source flag extraction | Support Django settings, env vars, model fields | ✓ Good |
 | 5-step PMS / 3-step mobile key | Consistent validation granularity | ✓ Good |
+| YAML as flow source of truth | Version control, reviewable flow changes | ✓ Good |
+| ruamel.yaml for round-trip | Preserve YAML comments during editing | ✓ Good |
+| Executor registry pattern | Pluggable step types without engine changes | ✓ Good |
+| Signal-based timeouts | POSIX SIGALRM for per-step/per-flow timeout | ✓ Good |
+| M2M linking by external_id | Decouple flow sync from requirement existence | ✓ Good |
+| 5-second polling for live status | Balance responsiveness with server load | ✓ Good |
 
 ---
-*Last updated: 2026-01-25 after v7 milestone start*
+*Last updated: 2026-02-02 after v8 milestone completion*

@@ -9,13 +9,13 @@ See: .planning/PROJECT.md (updated 2026-02-02)
 
 ## Current Position
 
-Milestone: v8 Verification Flows — COMPLETE
-Phase: 23 (Requirement Linking) — COMPLETE
-Plan: 23-02 of 2 complete
-Status: **v8 milestone complete**
-Last activity: 2026-02-02 — Completed 23-02-PLAN.md (Admin UI for flow-requirement links)
+Milestone: Planning next milestone
+Phase: —
+Plan: —
+Status: **Ready to plan next milestone**
+Last activity: 2026-02-02 — Completed v8 milestone (archived)
 
-Progress: █████ 5/5 phases (Phases 19-23)
+Progress: Ready for /gsd:new-milestone
 
 ## v8 Summary
 

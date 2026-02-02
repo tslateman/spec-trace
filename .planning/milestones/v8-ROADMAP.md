@@ -1,7 +1,7 @@
 # Milestone v8: Verification Flows
 
-**Status:** In Progress
-**Phases:** 19-23
+**Status:** Complete (2026-02-02)
+**Phases:** 19-23 (all complete)
 **Goal:** YAML-based verification flows with Admin UI builder and dashboard views
 
 ## Overview
@@ -96,53 +96,59 @@ Existing infrastructure: VerificationFlow, VerificationFlowRun, VerificationFlow
 
 ---
 
-### Phase 22: Dashboard - History & Live Status
+### Phase 22: Dashboard - History & Live Status ✓
 
+**Status:** Complete (2026-02-02)
 **Goal:** Dashboard views for flow monitoring.
 
 **Requirements:**
-- HIST-01: List all flow runs with status, timestamp, duration
-- HIST-02: Filter runs by flow, date range, status
-- HIST-03: Drill down to run detail showing step-by-step results
-- HIST-04: Show step timing and failure messages
-- LIVE-01: Real-time view of currently executing flows
-- LIVE-02: Show current step being executed
-- LIVE-03: Auto-refresh or polling updates
-- LIVE-04: Visual progress indicator
+- HIST-01: List all flow runs with status, timestamp, duration ✓
+- HIST-02: Filter runs by flow, date range, status ✓
+- HIST-03: Drill down to run detail showing step-by-step results ✓
+- HIST-04: Show step timing and failure messages ✓
+- LIVE-01: Real-time view of currently executing flows ✓
+- LIVE-02: Show current step being executed ✓
+- LIVE-03: Auto-refresh or polling updates ✓
+- LIVE-04: Visual progress indicator ✓
 
 **Deliverables:**
-- Flow runs list view: `admin/flow_runs.html`
-- Flow run detail view: `admin/flow_run_detail.html`
-- Live status view: `admin/flow_live.html`
-- Filtering by flow, date, status
-- API endpoint for live flow status polling
+- Flow runs list view: `admin/flow_runs.html` (179 lines) ✓
+- Flow run detail view: `admin/flow_run_detail.html` (276 lines) ✓
+- Live status view: `admin/flow_live.html` with 5s polling ✓
+- Filtering by flow, date range, status ✓
+- API endpoint: `/api/flow-runs/running/` ✓
 
-**Plans:** 2 plans
-- [ ] 22-01-PLAN.md — History list and detail views (HIST-01 through HIST-04)
-- [ ] 22-02-PLAN.md — Live status view with polling (LIVE-01 through LIVE-04)
+**Plans:** 2 plans (complete)
+- [x] 22-01-PLAN.md — History list and detail views (HIST-01 through HIST-04)
+- [x] 22-02-PLAN.md — Live status view with polling (LIVE-01 through LIVE-04)
+
+**Commits:** 8 total
 
 ---
 
-### Phase 23: Requirement Linking
+### Phase 23: Requirement Linking ✓
 
+**Status:** Complete (2026-02-02)
 **Goal:** Connect flows to requirements for traceability.
 
 **Requirements:**
-- LINK-01: Flows can specify linked requirement IDs in YAML
-- LINK-02: Requirement detail page shows linked flows
-- LINK-03: Flow dashboard shows which requirements each flow verifies
+- LINK-01: Flows can specify linked requirement IDs in YAML ✓
+- LINK-02: Requirement detail page shows linked flows ✓
+- LINK-03: Flow dashboard shows which requirements each flow verifies ✓
 
 **Deliverables:**
-- M2M field on VerificationFlow model
-- Migration for the M2M table
-- Update sync_yaml_flows_to_db to populate M2M (remove _metadata workaround)
-- VerificationFlowAdmin registration with requirements display
-- RequirementAdmin linked_flows display method
-- Flow list/detail views show linked requirements
+- M2M field: `VerificationFlow.requirements` ✓
+- Migration: `0011_verificationflow_requirements.py` ✓
+- sync_yaml_flows_to_db populates M2M from YAML ✓
+- VerificationFlowAdmin with `filter_horizontal` widget ✓
+- RequirementAdmin.linked_flows display method ✓
+- get_flows_overview returns requirements per flow ✓
 
-**Plans:** 2 plans
-- [ ] 23-01-PLAN.md — Model M2M field, migration, sync logic update
-- [ ] 23-02-PLAN.md — Admin UI updates (VerificationFlowAdmin, RequirementAdmin)
+**Plans:** 2 plans (complete)
+- [x] 23-01-PLAN.md — Model M2M field, migration, sync logic update
+- [x] 23-02-PLAN.md — Admin UI updates (VerificationFlowAdmin, RequirementAdmin)
+
+**Commits:** 8 total
 
 ---
 
@@ -162,26 +168,26 @@ Existing infrastructure: VerificationFlow, VerificationFlowRun, VerificationFlow
 | FLOW-04 | Phase 21 | Complete |
 | FLOW-05 | Phase 21 | Complete |
 | FLOW-06 | Phase 21 | Complete |
-| HIST-01 | Phase 22 | Pending |
-| HIST-02 | Phase 22 | Pending |
-| HIST-03 | Phase 22 | Pending |
-| HIST-04 | Phase 22 | Pending |
-| LIVE-01 | Phase 22 | Pending |
-| LIVE-02 | Phase 22 | Pending |
-| LIVE-03 | Phase 22 | Pending |
-| LIVE-04 | Phase 22 | Pending |
-| LINK-01 | Phase 23 | Pending |
-| LINK-02 | Phase 23 | Pending |
-| LINK-03 | Phase 23 | Pending |
+| HIST-01 | Phase 22 | Complete |
+| HIST-02 | Phase 22 | Complete |
+| HIST-03 | Phase 22 | Complete |
+| HIST-04 | Phase 22 | Complete |
+| LIVE-01 | Phase 22 | Complete |
+| LIVE-02 | Phase 22 | Complete |
+| LIVE-03 | Phase 22 | Complete |
+| LIVE-04 | Phase 22 | Complete |
+| LINK-01 | Phase 23 | Complete |
+| LINK-02 | Phase 23 | Complete |
+| LINK-03 | Phase 23 | Complete |
 
 ## Success Criteria
 
 - [ ] At least 3 example flows defined in YAML
 - [x] Admin UI can load, display, edit, and save flow YAML files
 - [x] CLI can execute a flow and record results
-- [ ] Dashboard shows run history with filtering
-- [ ] Live status view shows executing flows
-- [ ] Requirement pages show linked flows
+- [x] Dashboard shows run history with filtering
+- [x] Live status view shows executing flows
+- [x] Requirement pages show linked flows
 
 ## Out of Scope
 
