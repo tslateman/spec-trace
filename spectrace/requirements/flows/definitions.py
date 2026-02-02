@@ -1,7 +1,47 @@
 """Code-defined verification flow definitions.
 
-Flows are defined here in Python and synced to the database on startup
-for visibility. This is the source of truth for flow structure.
+DESIGN RATIONALE
+================
+Flows are defined in Python code (this file) rather than in the database.
+The database stores a synced copy for visibility and queryability, but code
+remains the source of truth.
+
+Why code-defined:
+- Version control: Flow changes tracked in git with full history
+- Type safety: Dataclass definitions catch errors at development time
+- Testability: Flow definitions available without database setup
+- Deployment: New flows deploy with code, no data migrations needed
+- Review: Flow changes go through normal code review
+
+The database copy enables:
+- Admin UI visibility into available flows
+- Foreign key relationships for VerificationFlowRun records
+- Querying flow metadata without loading Python modules
+
+ADDING A NEW FLOW
+=================
+1. Define your flow as a FlowDef constant (see LINEAR_CONNECTION_FLOW example)
+2. Add handler functions in requirements/flows/handlers/<your_handler>.py
+3. Add the flow to REGISTERED_FLOWS list
+4. Run the app -- sync_flows_to_db() runs on startup via AppConfig.ready()
+
+Handler signature: (context: dict) -> tuple[VerificationCheck, dict]
+- Receives execution context (config, credentials, client instances)
+- Returns (check_result, context_updates_for_next_step)
+
+SYNC MECHANISM
+==============
+On startup, sync_flows_to_db() calls update_or_create for each registered flow:
+- New flows: Created in database
+- Existing flows: Updated with current definition
+- Removed flows: Remain in database (historical runs reference them)
+
+The `version` field tracks intentional schema changes. Bump it when:
+- Step order changes
+- Steps added/removed
+- Handler paths change
+
+The `synced_at` timestamp shows when the DB was last updated from code.
 """
 
 from dataclasses import dataclass, field
