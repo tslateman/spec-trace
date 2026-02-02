@@ -647,6 +647,12 @@ class VerificationFlow(models.Model):
         blank=True,
         help_text="When last synced from code"
     )
+    requirements = models.ManyToManyField(
+        'Requirement',
+        related_name='verification_flows',
+        blank=True,
+        help_text="Requirements this flow verifies"
+    )
 
     class Meta:
         verbose_name = "Verification Flow"
