@@ -1,0 +1,23 @@
+id: linear-connection
+title: Linear Connection Verification
+description: Verify Linear API connection (config -> auth -> permissions)
+version: 1
+requirements: []
+steps:
+  - name: config
+    type: handler
+    display_name: Configuration Check
+    description: Validate API key format and settings presence
+    handler: requirements.flows.handlers.linear.check_configuration
+
+  - name: auth
+    type: handler
+    display_name: Authentication Check
+    description: Verify API key validity with viewer query
+    handler: requirements.flows.handlers.linear.check_authentication
+
+  - name: permissions
+    type: handler
+    display_name: Permissions Check
+    description: Verify read access to issues
+    handler: requirements.flows.handlers.linear.check_permissions

@@ -1,0 +1,25 @@
+id: example-api-check
+title: Example API Health Check
+description: Demonstrates different step types for API verification
+version: 1
+requirements:
+  - REQ-API-001
+  - REQ-API-002
+steps:
+  - name: health_endpoint
+    type: api_call
+    display_name: Health Endpoint Check
+    description: Call the /health endpoint
+    config:
+      method: GET
+      url: "http://localhost:8000/api/health/"
+      expected_status: 200
+
+  - name: response_format
+    type: assertion
+    display_name: Response Format Check
+    description: Verify response is valid JSON with status field
+    config:
+      field: status
+      operator: equals
+      value: ok
