@@ -573,3 +573,23 @@ steps:
         assert "detailed-flow" in output
         assert "steps=2" in output
         assert "requirements=2" in output
+
+    def test_accepts_single_file(self, db, tmp_path):
+        """Command accepts a single YAML file path."""
+        yaml_file = tmp_path / "single-flow.yaml"
+        yaml_file.write_text("""
+id: single-file-flow
+title: Single File Flow
+steps:
+  - name: check
+    type: assertion
+    display_name: Check
+""")
+
+        stdout = io.StringIO()
+        call_command("parse_flows", str(yaml_file), "--dry-run", stdout=stdout)
+
+        output = stdout.getvalue()
+        assert "single-file-flow" in output
+        assert "Found 1 flow(s)" in output
+        assert "Dry run complete" in output
