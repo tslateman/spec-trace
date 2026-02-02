@@ -53,14 +53,24 @@ class FlowStepDef:
 
     Attributes:
         name: Step identifier (e.g., 'config', 'auth')
-        handler: Dotted path to handler function
+        handler: Dotted path to handler function (required for type='handler')
         display_name: Human-readable step name
         description: Step description
+        type: Step type - 'handler' (default), 'api_call', 'assertion', or 'wait'.
+            Type determines execution behavior:
+            - handler: Executes Python function at handler path
+            - api_call: Makes HTTP request based on config
+            - assertion: Validates previous step output
+            - wait: Pauses execution for specified duration
+        config: Type-specific configuration dict (e.g., URL for api_call,
+            condition for assertion). Empty dict by default.
     """
     name: str
     handler: str
     display_name: str
     description: str = ""
+    type: str = "handler"
+    config: dict = field(default_factory=dict)
 
 
 @dataclass
@@ -73,12 +83,19 @@ class FlowDef:
         description: Flow description
         steps: Ordered list of step definitions
         version: Flow version for tracking changes
+        requirements: List of linked requirement IDs (e.g., ['REQ-API-001']).
+            Enables traceability from flows to requirements.
+            Empty list for flows not linked to specific requirements.
+        source_file: Path to source YAML file for YAML-defined flows.
+            Empty string for code-defined flows (this file).
     """
     name: str
     display_name: str
     description: str
     steps: list[FlowStepDef] = field(default_factory=list)
     version: int = 1
+    requirements: list[str] = field(default_factory=list)
+    source_file: str = ""
 
 
 LINEAR_CONNECTION_FLOW = FlowDef(
