@@ -134,8 +134,8 @@ class TestMatrixViewFilters:
 
         # REQ-001 (passing) should be in the matrix table
         assert 'Login Feature' in content
-        # REQ-002 (failing) should NOT be in the matrix table (only 1 requirement showing)
-        assert 'Showing 1 of' in content
+        # REQ-002 (failing) should NOT be in the filtered results
+        assert 'Dashboard Feature' not in content
 
     @pytest.mark.django_db
     def test_filter_by_tags(self, admin_client, sample_data):
@@ -145,8 +145,8 @@ class TestMatrixViewFilters:
 
         # REQ-002 has 'ui' tag
         assert 'Dashboard Feature' in content
-        # Only 1 requirement should show
-        assert 'Showing 1 of' in content
+        # REQ-001 (no 'ui' tag) should NOT be in the filtered results
+        assert 'Login Feature' not in content
 
 
 class TestMatrixExport:

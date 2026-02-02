@@ -54,6 +54,7 @@ def test_data_import():
 
 # Failing test to demonstrate failing status
 @pytest.mark.requirement("REQ-DATA-002")
+@pytest.mark.xfail(reason="Intentional failure for demo purposes")
 def test_data_import_validation():
     """Test that fails to show failing requirement status."""
     # This test intentionally fails to demonstrate the failing state
