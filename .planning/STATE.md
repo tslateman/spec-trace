@@ -11,8 +11,8 @@ See: .planning/PROJECT.md (updated 2026-02-02)
 
 Milestone: v8 Verification Flows — IN PROGRESS
 Phase: 21 (Admin UI Builder) — IN PROGRESS
-Status: **Plan 21-01 complete, ready for 21-02**
-Last activity: 2026-02-02 — Completed 21-01-PLAN.md (flow editor service)
+Status: **Plan 21-02 complete, ready for 21-03**
+Last activity: 2026-02-02 — Completed 21-02-PLAN.md (flow editor UI views)
 
 Progress: ██▓░░ 2/5 phases (Phases 19-23)
 
@@ -109,6 +109,9 @@ Two features implemented outside the GSD workflow (ad-hoc development):
 - Exit code 1 via sys.exit(1) for failed flows (20-02)
 - Extension check before path traversal check in validate_flow_path (21-01)
 - load_flow_for_editing returns raw dict (not FlowDef) for form editing flexibility (21-01)
+- Flow ID readonly in form to prevent breaking references (21-02)
+- Requirements input as comma-separated string, parsed to array (21-02)
+- Config field as JSON textarea for non-handler step types (21-02)
 
 ### Blockers/Concerns
 
@@ -116,7 +119,7 @@ None.
 
 ### Next Steps
 
-Continue with Plan 21-02 (Flow List API).
+Continue with Plan 21-03 (Flow edit API endpoint).
 
 ## Phase 21 Plan Summary
 
@@ -126,13 +129,18 @@ Continue with Plan 21-02 (Flow List API).
 | Plan | Wave | Status | Objective |
 |------|------|--------|-----------|
 | 21-01 | 1 | COMPLETE | Flow editor service (list, load, save) |
-| 21-02 | 2 | PENDING | Flow list API endpoint |
+| 21-02 | 2 | COMPLETE | Flow editor UI views and templates |
 | 21-03 | 3 | PENDING | Flow edit API endpoint |
 
 **Commits (Plan 21-01):**
 - 417a0ff: chore(21-01): add ruamel.yaml dependency
 - 71a2c39: feat(21-01): add flow editor service for Admin UI YAML management
 - aa0900b: test(21-01): add unit tests for flow editor service
+
+**Commits (Plan 21-02):**
+- 18081d9: feat(21-02): add flow editor views and URL routes
+- 452e665: feat(21-02): add flow editor list template
+- a5d018b: feat(21-02): add flow editor form template with Alpine.js
 
 ## Phase 20 Plan Summary
 
@@ -147,5 +155,5 @@ Continue with Plan 21-02 (Flow List API).
 ## Session Continuity
 
 Last session: 2026-02-02
-Stopped at: Completed 21-01-PLAN.md
+Stopped at: Completed 21-02-PLAN.md
 Resume file: None
