@@ -77,6 +77,7 @@ class Command(BaseCommand):
             "changed_requirements": result.changed_requirements,
             "affected_tests": result.affected_tests,
             "hierarchy_expansion": result.hierarchy_expansion,
+            "dependency_expansion": result.dependency_expansion,
             "summary": {
                 "requirements_changed": len(result.changed_requirements),
                 "tests_affected": len(result.affected_tests),
@@ -106,6 +107,12 @@ class Command(BaseCommand):
             self.stdout.write("\nHierarchy Expansion:\n")
             for parent_id, child_ids in result.hierarchy_expansion.items():
                 self.stdout.write(f"  {parent_id} → {', '.join(child_ids)}\n")
+
+        # Dependency expansion
+        if result.dependency_expansion:
+            self.stdout.write("\nDependency Expansion:\n")
+            for req_id, dependent_ids in result.dependency_expansion.items():
+                self.stdout.write(f"  {req_id} ← {', '.join(dependent_ids)}\n")
 
         # Affected tests
         if result.affected_tests:

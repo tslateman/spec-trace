@@ -28,6 +28,8 @@ class RequirementData(TypedDict, total=False):
     component: str
     timing: str
     response: str
+    # Dependencies (separate from parent-child hierarchy)
+    depends_on: list[str]
 
 
 def normalize_verification_method(value: str | None) -> str:
@@ -150,6 +152,26 @@ def import_requirements_to_database(
             existing[external_id] = req
             created_count += 1
 
+    # Third pass: establish dependency relationships
+    for req_data in requirements:
+        depends_on_ids = req_data.get('depends_on', [])
+        if not depends_on_ids:
+            continue
+
+        req = existing.get(req_data['external_id'])
+        if not req:
+            continue
+
+        valid_deps = []
+        for dep_id in depends_on_ids:
+            dep_req = existing.get(dep_id)
+            if dep_req:
+                valid_deps.append(dep_req)
+            else:
+                print(f"Warning: {req_data['external_id']} depends on {dep_id}, but {dep_id} not found")
+
+        req.depends_on.set(valid_deps)
+
     return created_count
 
 
@@ -205,6 +227,11 @@ class SpecParser:
         Returns:
             Requirement dictionary
         """
+        # Handle depends_on as string or list
+        depends_on_raw = post.metadata.get('depends_on', [])
+        if isinstance(depends_on_raw, str):
+            depends_on_raw = [depends_on_raw]
+
         return {
             'external_id': post.metadata['id'],
             'title': post.metadata.get('title', ''),
@@ -221,6 +248,8 @@ class SpecParser:
             'component': post.metadata.get('component', ''),
             'timing': post.metadata.get('timing', ''),
             'response': post.metadata.get('response', ''),
+            # Dependencies
+            'depends_on': depends_on_raw,
         }
 
     def _parse_multi(self, post: frontmatter.Post, file_path: Path) -> list[dict[str, Any]]:
@@ -257,6 +286,11 @@ class SpecParser:
         shared_component = post.metadata.get('component', '')
         shared_timing = post.metadata.get('timing', '')
         shared_response = post.metadata.get('response', '')
+        # Dependencies - shared across all requirements in file
+        shared_depends_on_raw = post.metadata.get('depends_on', [])
+        if isinstance(shared_depends_on_raw, str):
+            shared_depends_on_raw = [shared_depends_on_raw]
+        shared_depends_on = shared_depends_on_raw
 
         # Track the first requirement as root for implicit hierarchy
         first_req_id = None
@@ -294,6 +328,8 @@ class SpecParser:
                 'component': shared_component,
                 'timing': shared_timing,
                 'response': shared_response,
+                # Dependencies (shared from frontmatter for multi-req files)
+                'depends_on': shared_depends_on,
             })
 
         return requirements

@@ -45,6 +45,7 @@ class ImpactResult:
     changed_requirements: list[str]  # External IDs of changed requirements
     affected_tests: list[str]  # Test nodeids affected by changes
     hierarchy_expansion: dict[str, list[str]]  # Parent ID -> child IDs included
+    dependency_expansion: dict[str, list[str]]  # Req ID -> dependent IDs included
 
 
 class ImpactAnalyzer:
@@ -142,19 +143,24 @@ class ImpactAnalyzer:
         return ids
 
     def get_affected_tests(
-        self, requirement_ids: list[str], include_hierarchy: bool = True
-    ) -> tuple[list[str], dict[str, list[str]]]:
+        self,
+        requirement_ids: list[str],
+        include_hierarchy: bool = True,
+        include_dependents: bool = True,
+    ) -> tuple[list[str], dict[str, list[str]], dict[str, list[str]]]:
         """Get tests affected by changes to given requirements.
 
         Args:
             requirement_ids: List of requirement external IDs
             include_hierarchy: If True, include tests for child requirements
+            include_dependents: If True, include tests for requirements that depend on changed ones
 
         Returns:
-            Tuple of (test nodeids, hierarchy expansion dict)
+            Tuple of (test nodeids, hierarchy expansion dict, dependency expansion dict)
         """
         all_ids = set(requirement_ids)
         hierarchy_expansion: dict[str, list[str]] = {}
+        dependency_expansion: dict[str, list[str]] = {}
 
         if include_hierarchy:
             for req_id in requirement_ids:
@@ -168,16 +174,33 @@ class ImpactAnalyzer:
                 except Requirement.DoesNotExist:
                     continue
 
+        if include_dependents:
+            for req_id in requirement_ids:
+                try:
+                    req = Requirement.objects.get(external_id=req_id)
+                    # Get requirements that depend on this one (depended_by is the reverse relation)
+                    dependents = req.depended_by.all()
+                    dependent_ids = [d.external_id for d in dependents]
+                    if dependent_ids:
+                        dependency_expansion[req_id] = dependent_ids
+                        all_ids.update(dependent_ids)
+                except Requirement.DoesNotExist:
+                    continue
+
         # Get all linked tests
         links = TestRequirementLink.objects.filter(
             requirement__external_id__in=all_ids
         ).select_related("requirement")
 
         tests = list(set(link.test_nodeid for link in links))
-        return tests, hierarchy_expansion
+        return tests, hierarchy_expansion, dependency_expansion
 
     def analyze(
-        self, base_ref: str, head_ref: str, include_hierarchy: bool = True
+        self,
+        base_ref: str,
+        head_ref: str,
+        include_hierarchy: bool = True,
+        include_dependents: bool = True,
     ) -> ImpactResult:
         """Perform full impact analysis between two git refs.
 
@@ -185,6 +208,7 @@ class ImpactAnalyzer:
             base_ref: Base git ref
             head_ref: Head git ref
             include_hierarchy: Include child requirements' tests
+            include_dependents: Include tests for requirements that depend on changed ones
 
         Returns:
             ImpactResult with changed requirements and affected tests.
@@ -197,6 +221,7 @@ class ImpactAnalyzer:
                 changed_requirements=[],
                 affected_tests=[],
                 hierarchy_expansion={},
+                dependency_expansion={},
             )
 
         # Extract IDs from changed files (union of base and head)
@@ -205,10 +230,13 @@ class ImpactAnalyzer:
         changed_ids = list(base_ids | head_ids)  # Any file that was added, modified, or deleted
 
         # Get affected tests
-        tests, hierarchy = self.get_affected_tests(changed_ids, include_hierarchy)
+        tests, hierarchy, dependencies = self.get_affected_tests(
+            changed_ids, include_hierarchy, include_dependents
+        )
 
         return ImpactResult(
             changed_requirements=changed_ids,
             affected_tests=tests,
             hierarchy_expansion=hierarchy,
+            dependency_expansion=dependencies,
         )

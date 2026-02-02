@@ -71,13 +71,14 @@ class TestImpactAnalyzerGetAffectedTests:
         )
 
         analyzer = ImpactAnalyzer()
-        tests, hierarchy = analyzer.get_affected_tests(["REQ-001"])
+        tests, hierarchy, deps = analyzer.get_affected_tests(["REQ-001"])
 
         assert set(tests) == {
             "tests/test_auth.py::test_login",
             "tests/test_auth.py::test_logout",
         }
         assert hierarchy == {}
+        assert deps == {}
 
     def test_get_affected_tests__includes_hierarchy(self, db):
         """Includes tests from child requirements when hierarchy enabled."""
@@ -97,10 +98,11 @@ class TestImpactAnalyzerGetAffectedTests:
         )
 
         analyzer = ImpactAnalyzer()
-        tests, hierarchy = analyzer.get_affected_tests(["REQ-PARENT"], include_hierarchy=True)
+        tests, hierarchy, deps = analyzer.get_affected_tests(["REQ-PARENT"], include_hierarchy=True)
 
         assert "tests/test_child.py::test_feature" in tests
         assert hierarchy == {"REQ-PARENT": ["REQ-CHILD"]}
+        assert deps == {}
 
     def test_get_affected_tests__skips_hierarchy_when_disabled(self, db):
         """Does not include child tests when hierarchy disabled."""
@@ -120,18 +122,20 @@ class TestImpactAnalyzerGetAffectedTests:
         )
 
         analyzer = ImpactAnalyzer()
-        tests, hierarchy = analyzer.get_affected_tests(["REQ-P2"], include_hierarchy=False)
+        tests, hierarchy, deps = analyzer.get_affected_tests(["REQ-P2"], include_hierarchy=False)
 
         assert tests == []
         assert hierarchy == {}
+        assert deps == {}
 
     def test_get_affected_tests__handles_missing_requirement(self, db):
         """Handles gracefully when requirement doesn't exist."""
         analyzer = ImpactAnalyzer()
-        tests, hierarchy = analyzer.get_affected_tests(["NONEXISTENT-REQ"])
+        tests, hierarchy, deps = analyzer.get_affected_tests(["NONEXISTENT-REQ"])
 
         assert tests == []
         assert hierarchy == {}
+        assert deps == {}
 
 
 class TestImpactAnalyzerAnalyze:
@@ -208,8 +212,10 @@ class TestImpactResult:
             changed_requirements=["REQ-001", "REQ-002"],
             affected_tests=["test_a", "test_b"],
             hierarchy_expansion={"REQ-001": ["REQ-001-A"]},
+            dependency_expansion={"REQ-002": ["REQ-003"]},
         )
 
         assert result.changed_requirements == ["REQ-001", "REQ-002"]
         assert result.affected_tests == ["test_a", "test_b"]
         assert result.hierarchy_expansion == {"REQ-001": ["REQ-001-A"]}
+        assert result.dependency_expansion == {"REQ-002": ["REQ-003"]}

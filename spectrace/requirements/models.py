@@ -188,6 +188,15 @@ class Requirement(MP_Node):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    # Dependencies (separate from parent-child hierarchy)
+    depends_on = models.ManyToManyField(
+        'self',
+        symmetrical=False,
+        blank=True,
+        related_name='depended_by',
+        help_text="Requirements that must be satisfied before this one"
+    )
+
     # treebeard settings - ordering for siblings
     node_order_by = ['external_id']
 

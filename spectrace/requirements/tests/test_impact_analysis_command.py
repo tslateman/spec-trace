@@ -20,6 +20,7 @@ class TestImpactAnalysisCommand:
             changed_requirements=["REQ-001"],
             affected_tests=["tests/test_foo.py::test_bar"],
             hierarchy_expansion={},
+            dependency_expansion={},
         )
 
         with patch(
@@ -49,6 +50,7 @@ class TestImpactAnalysisCommand:
             changed_requirements=["REQ-001", "REQ-002"],
             affected_tests=["tests/test_foo.py::test_bar"],
             hierarchy_expansion={"REQ-001": ["REQ-001-A"]},
+            dependency_expansion={},
         )
 
         with patch(
@@ -74,6 +76,7 @@ class TestImpactAnalysisCommand:
             changed_requirements=["REQ-001"],
             affected_tests=[],
             hierarchy_expansion={},
+            dependency_expansion={},
         )
 
         with patch(
@@ -93,6 +96,7 @@ class TestImpactAnalysisCommand:
             changed_requirements=[],
             affected_tests=[],
             hierarchy_expansion={},
+            dependency_expansion={},
         )
 
         with patch(
@@ -124,6 +128,7 @@ class TestImpactAnalysisCommand:
             changed_requirements=["REQ-001"],
             affected_tests=[],
             hierarchy_expansion={},
+            dependency_expansion={},
         )
 
         with patch(
@@ -145,6 +150,7 @@ class TestImpactAnalysisCommand:
             changed_requirements=[],
             affected_tests=[],
             hierarchy_expansion={},
+            dependency_expansion={},
         )
 
         with patch(

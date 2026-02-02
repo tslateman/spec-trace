@@ -134,8 +134,10 @@ class RequirementAdmin(ModelAdmin):
     readonly_fields = [
         'verification_status', 'slo_status', 'created_at', 'updated_at',
         'linked_tests', 'linked_slos', 'linked_inapp_validations',
-        'structure_completeness', 'completeness_badge'
+        'structure_completeness', 'completeness_badge',
+        'linked_dependencies', 'linked_depended_by'
     ]
+    filter_horizontal = ['depends_on']
 
     fieldsets = (
         (None, {
@@ -153,6 +155,11 @@ class RequirementAdmin(ModelAdmin):
         }),
         ('Verification Status', {
             'fields': ('verification_status', 'slo_status', 'linked_tests', 'linked_inapp_validations', 'linked_slos')
+        }),
+        ('Dependencies', {
+            'fields': ('depends_on', 'linked_dependencies', 'linked_depended_by'),
+            'description': 'Requirements that must be satisfied before this one (depends_on) '
+                          'and requirements that depend on this one (depended_by).'
         }),
         ('Timestamps', {
             'fields': ('created_at', 'updated_at'),
@@ -225,6 +232,32 @@ class RequirementAdmin(ModelAdmin):
         )
 
     linked_inapp_validations.short_description = "In-App Validations"
+
+    def linked_dependencies(self, obj):
+        """Display requirements this one depends on with verification status badges."""
+        dependencies = obj.depends_on.all().order_by('external_id')
+        return _render_badge_list(
+            dependencies, STATUS_BADGE_COLORS,
+            get_status=lambda r: r.verification_status,
+            get_url=lambda r: reverse('admin:requirements_requirement_change', args=[r.pk]),
+            get_label=lambda r: f"{r.external_id}: {r.title}",
+            empty_message='No dependencies'
+        )
+
+    linked_dependencies.short_description = "Depends On (Display)"
+
+    def linked_depended_by(self, obj):
+        """Display requirements that depend on this one with verification status badges."""
+        dependents = obj.depended_by.all().order_by('external_id')
+        return _render_badge_list(
+            dependents, STATUS_BADGE_COLORS,
+            get_status=lambda r: r.verification_status,
+            get_url=lambda r: reverse('admin:requirements_requirement_change', args=[r.pk]),
+            get_label=lambda r: f"{r.external_id}: {r.title}",
+            empty_message='No dependents'
+        )
+
+    linked_depended_by.short_description = "Depended By (Display)"
 
 
 @admin.register(TestRun)
