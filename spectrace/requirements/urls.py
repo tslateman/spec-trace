@@ -72,6 +72,8 @@ api_urlpatterns = [
     path("api/validation-runs/", api.list_validation_runs, name="api-validation-runs"),
     path("api/validation-runs/<int:run_id>/", api.get_validation_run, name="api-validation-run-detail"),
     path("api/validation-runs/<int:run_id>/steps/", api.get_validation_run_steps, name="api-validation-run-steps"),
+    # Flow runs
+    path("api/flow-runs/running/", api.get_running_flow_runs, name="api-flow-runs-running"),
     # OpenAPI
     path("api/openapi.json", openapi_spec, name="openapi-spec"),
     path("api/docs/", swagger_ui, name="swagger-ui"),

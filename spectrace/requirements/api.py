@@ -586,6 +586,36 @@ def get_validation_run_steps(request, run_id, data=None):
 
 @require_http_methods(["GET"])
 @ratelimit(key='ip', rate=RATE_LIMIT_READ, block=True)
+def get_running_flow_runs(request):
+    """Get currently running flow runs for live monitoring."""
+    from .models import VerificationFlowRun, VerificationFlowStatus
+
+    runs = VerificationFlowRun.objects.filter(
+        status=VerificationFlowStatus.RUNNING
+    ).select_related('flow').prefetch_related('steps').order_by('-started_at')
+
+    runs_data = []
+    for run in runs:
+        steps = list(run.steps.order_by('step_order'))
+        completed_steps = [s for s in steps if s.completed_at]
+        current_step = next((s for s in steps if not s.completed_at), None)
+
+        runs_data.append({
+            'id': run.id,
+            'flow_name': run.flow.name,
+            'flow_display_name': run.flow.display_name,
+            'started_at': run.started_at.isoformat(),
+            'total_steps': len(steps),
+            'completed_steps': len(completed_steps),
+            'current_step': current_step.name if current_step else None,
+            'current_step_order': current_step.step_order if current_step else None,
+        })
+
+    return JsonResponse({'runs': runs_data})
+
+
+@require_http_methods(["GET"])
+@ratelimit(key='ip', rate=RATE_LIMIT_READ, block=True)
 @validate_request(
     response_schema=LinearHealthResponse,
     tags=["Integrations"],
