@@ -12,6 +12,8 @@ from requirements.views import (
     about_view,
     demo_agent_pipeline,
     demo_hub,
+    flow_editor_list_view,
+    flow_editor_view,
     flow_load_demo_view,
     flow_run_detail_view,
     flow_runs_view,
@@ -47,6 +49,9 @@ admin_urlpatterns = [
     path("admin/flow-status/load-demo/", flow_load_demo_view, name="admin-flow-load-demo"),
     path("admin/flow-status/run/<int:run_id>/", flow_run_detail_view, name="admin-flow-run-detail"),
     path("admin/flow-status/<str:flow_name>/", flow_runs_view, name="admin-flow-runs"),
+    # Flow editor
+    path("admin/flow-editor/", flow_editor_list_view, name="admin-flow-editor"),
+    path("admin/flow-editor/<path:file_path>/", flow_editor_view, name="admin-flow-editor-edit"),
     # Demo
     path("demo/", demo_hub, name="demo_hub"),
     path("demo/agent-pipeline/", demo_agent_pipeline, name="demo_agent_pipeline"),

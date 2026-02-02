@@ -1,5 +1,6 @@
 """Views for requirements app."""
 import csv
+import json
 from datetime import datetime
 from pathlib import Path
 
@@ -7,8 +8,8 @@ import yaml
 
 from django.contrib.admin.views.decorators import staff_member_required
 from django.db.models import Prefetch
-from django.http import HttpResponse, JsonResponse
-from django.shortcuts import get_object_or_404, render
+from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods
 
 from .matrix import get_matrix_data, get_cell_color, setup_matrix_demo
@@ -35,6 +36,13 @@ from .flow_status import (
     get_run_detail,
     setup_demo_data,
 )
+from .flow_editor import (
+    get_flow_files,
+    load_flow_for_editing,
+    save_flow,
+    FlowEditorError,
+)
+from requirements.flows.parser import FlowParseError
 
 
 def _build_matrix_filters(request) -> dict:
@@ -635,3 +643,83 @@ def matrix_load_demo_view(request):
         )
 
     return redirect('admin-matrix')
+
+
+@staff_member_required
+def flow_editor_list_view(request):
+    """List all flow YAML files for editing.
+
+    Displays files from the flows/ directory with validation status
+    and links to the edit form.
+    """
+    flows = get_flow_files()
+
+    # Calculate summary
+    total = len(flows)
+    valid = sum(1 for f in flows if f['valid'])
+    invalid = total - valid
+
+    context = {
+        'title': 'Flow Editor',
+        'flows': flows,
+        'summary': {
+            'total': total,
+            'valid': valid,
+            'invalid': invalid,
+        },
+    }
+
+    return render(request, 'admin/requirements/flow_editor_list.html', context)
+
+
+@staff_member_required
+@require_http_methods(["GET", "POST"])
+def flow_editor_view(request, file_path: str):
+    """Edit a flow YAML file.
+
+    GET: Load and display the flow for editing
+    POST: Save changes to the flow file
+    """
+    from django.contrib import messages
+
+    error = None
+
+    if request.method == "POST":
+        try:
+            flow_data_json = request.POST.get('flow_data', '{}')
+            flow_data = json.loads(flow_data_json)
+            save_flow(file_path, flow_data)
+            messages.success(request, f"Flow '{file_path}' saved successfully.")
+            return redirect('admin-flow-editor-edit', file_path=file_path)
+        except json.JSONDecodeError as e:
+            error = f"Invalid JSON: {e}"
+        except FlowParseError as e:
+            error = f"Validation error: {e.message}"
+        except FlowEditorError as e:
+            error = str(e)
+        except PermissionError:
+            return HttpResponseForbidden("Access denied: invalid file path")
+
+    # Load flow for editing (GET or POST with error)
+    try:
+        flow_data = load_flow_for_editing(file_path)
+    except FileNotFoundError:
+        from django.http import Http404
+        raise Http404(f"Flow file not found: {file_path}")
+    except PermissionError:
+        return HttpResponseForbidden("Access denied: invalid file path")
+    except ValueError as e:
+        from django.http import Http404
+        raise Http404(str(e))
+
+    # Get flow title for display
+    flow_title = flow_data.get('title', flow_data.get('id', file_path))
+
+    context = {
+        'title': f'Edit: {flow_title}',
+        'file_path': file_path,
+        'flow_data': json.dumps(flow_data),
+        'error': error,
+    }
+
+    return render(request, 'admin/requirements/flow_editor_form.html', context)
