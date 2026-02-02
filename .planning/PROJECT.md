@@ -8,6 +8,18 @@ A requirements traceability system that connects product specs to verified code.
 
 PMs can see, at any moment, which requirements are verified by passing tests — eliminating the gap between "what we think we built" and "what we actually built."
 
+## Current Milestone
+
+### v8 Verification Flows
+
+Build a verification flow system where flows are defined in YAML files (source of truth), edited via an Admin UI builder, and visualized in a dashboard showing run history and live status.
+
+**Core deliverables:**
+- YAML-based flow definitions with Admin UI for editing
+- Flow execution engine that runs steps and records results
+- Dashboard views: flow run history + live flow status
+- Requirement linking to flows
+
 ## What's Shipped
 
 ### v7 UI Polish & API Documentation (Shipped: 2026-01-25)
