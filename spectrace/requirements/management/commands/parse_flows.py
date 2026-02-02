@@ -11,15 +11,21 @@ class Command(BaseImportCommand):
     """Parse YAML flow definitions and sync to database."""
 
     help = 'Parse YAML flow definitions and sync to database'
-    path_argument_name = 'flows_dir'
-    path_argument_help = 'Path to directory containing flow YAML files'
+    path_argument_name = 'flows_path'
+    path_argument_help = 'Path to a YAML file or directory containing flow YAML files'
+    path_must_be_dir = False
 
     def do_import(self, path: Path, options: dict):
         """Execute the parse and sync workflow."""
         self.stdout.write(f"Parsing flow files from {path}...")
 
         parser = YAMLFlowParser()
-        flows = parser.parse_directory(path)
+
+        if path.is_file():
+            flow = parser.parse_file(path)
+            flows = [flow] if flow is not None else []
+        else:
+            flows = parser.parse_directory(path)
 
         if not flows:
             self.stdout.write(self.style.WARNING("No flow files found"))
