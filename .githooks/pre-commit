@@ -7,6 +7,7 @@ This prevents conflicts when multiple agents work simultaneously.
 Checks:
 1. Staged seed_*_demo.py / setup_*_demo.py have a demos.yaml entry
 2. If views.py is staged, web_demo_urls keys have demos.yaml entries
+3. If demos.yaml or urls.py changed, URLs in demos.yaml resolve to valid Django routes
 
 Install: git config core.hooksPath .githooks
 """
@@ -15,6 +16,7 @@ import re
 import subprocess
 import sys
 from pathlib import Path
+from urllib.parse import urlparse
 
 
 def get_staged_files():
@@ -127,6 +129,124 @@ def command_matches_demo(command_name, demo_ids):
     return False
 
 
+def extract_demo_urls_from_staged():
+    """Extract URLs from staged demos.yaml, falling back to working copy.
+
+    Returns dict mapping demo_id to list of URL paths.
+    """
+    content = get_staged_content("demos.yaml")
+
+    if content is None:
+        demos_path = Path("demos.yaml")
+        if not demos_path.exists():
+            return {}
+        content = demos_path.read_text()
+
+    try:
+        import yaml
+
+        data = yaml.safe_load(content)
+        result = {}
+        for demo in data.get("demos", []):
+            demo_id = demo.get("id")
+            urls = demo.get("urls", [])
+            if urls:
+                # Extract path from full URLs
+                paths = []
+                for url in urls:
+                    parsed = urlparse(url)
+                    paths.append(parsed.path)
+                result[demo_id] = paths
+        return result
+    except ImportError:
+        # Fall back to regex if PyYAML not available
+        # Match urls: blocks and extract http://... URLs
+        result = {}
+        current_demo = None
+        for line in content.split("\n"):
+            id_match = re.match(r"\s+-\s+id:\s+(\S+)", line)
+            if id_match:
+                current_demo = id_match.group(1)
+            url_match = re.match(r"\s+-\s+(https?://[^\s]+)", line)
+            if url_match and current_demo:
+                parsed = urlparse(url_match.group(1))
+                if current_demo not in result:
+                    result[current_demo] = []
+                result[current_demo].append(parsed.path)
+        return result
+
+
+def validate_django_urls(url_paths):
+    """Validate URL paths exist in Django's URL configuration.
+
+    Returns list of (path, error_message) tuples for invalid paths.
+    """
+    # Find project root (where manage.py lives)
+    project_root = Path(__file__).parent.parent / "spectrace"
+    manage_py = project_root / "manage.py"
+
+    if not manage_py.exists():
+        # Try alternate location
+        project_root = Path(__file__).parent.parent
+        manage_py = project_root / "manage.py"
+        if not manage_py.exists():
+            return []  # Can't validate without manage.py
+
+    # Create a script to validate URLs using Django's resolver
+    validation_script = '''
+import sys
+import os
+import django
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "spectrace.settings")
+sys.path.insert(0, "{project_root}")
+django.setup()
+
+from django.urls import resolve, Resolver404
+
+paths = {paths!r}
+errors = []
+for path in paths:
+    try:
+        resolve(path)
+    except Resolver404:
+        errors.append(path)
+
+if errors:
+    print("INVALID:" + ",".join(errors))
+else:
+    print("OK")
+'''.format(project_root=str(project_root), paths=list(url_paths))
+
+    result = subprocess.run(
+        [sys.executable, "-c", validation_script],
+        capture_output=True,
+        text=True,
+        cwd=str(project_root),
+    )
+
+    if result.returncode != 0:
+        # Django setup failed, skip validation
+        return []
+
+    output = result.stdout.strip()
+    if output.startswith("INVALID:"):
+        invalid_paths = output[8:].split(",")
+        return [(p, "URL path does not resolve to any Django route") for p in invalid_paths]
+
+    return []
+
+
+def should_validate_urls(staged_files):
+    """Check if URL validation should run based on staged files."""
+    for f in staged_files:
+        if f == "demos.yaml":
+            return True
+        if f.endswith("urls.py"):
+            return True
+    return False
+
+
 def main():
     staged_files = get_staged_files()
     if not staged_files:
@@ -135,9 +255,10 @@ def main():
     # Extract what's being committed
     staged_commands = extract_demo_commands_from_staged(staged_files)
     staged_web_urls = extract_web_demo_urls_from_staged(staged_files)
+    validate_urls = should_validate_urls(staged_files)
 
     # Skip if no demo-related files staged
-    if not staged_commands and not staged_web_urls:
+    if not staged_commands and not staged_web_urls and not validate_urls:
         return 0
 
     print("Checking demos.yaml sync...")
@@ -161,6 +282,27 @@ def main():
                 f"  Staged web_demo_urls key '{demo_id}' not in demos.yaml.\n"
                 f"    Add an entry to demos.yaml in this commit."
             )
+
+    # Check 3: URLs in demos.yaml resolve to valid Django routes
+    if validate_urls:
+        print("Validating demo URLs against Django routes...")
+        demo_urls = extract_demo_urls_from_staged()
+        all_paths = set()
+        path_to_demo = {}
+        for demo_id, paths in demo_urls.items():
+            for path in paths:
+                all_paths.add(path)
+                path_to_demo[path] = demo_id
+
+        if all_paths:
+            invalid = validate_django_urls(all_paths)
+            for path, msg in invalid:
+                demo_id = path_to_demo.get(path, "unknown")
+                errors.append(
+                    f"  Demo '{demo_id}' has invalid URL: {path}\n"
+                    f"    {msg}\n"
+                    f"    Verify the path exists in urls.py or fix demos.yaml."
+                )
 
     if errors:
         print("\n❌ demos.yaml sync check failed:\n")
