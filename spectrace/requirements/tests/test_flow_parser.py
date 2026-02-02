@@ -19,7 +19,7 @@ from django.core.management.base import CommandError
 from requirements.flows.definitions import FlowDef, FlowStepDef
 from requirements.flows.parser import FlowParseError, YAMLFlowParser
 from requirements.flows.sync import sync_yaml_flows_to_db
-from requirements.models import VerificationFlow
+from requirements.models import Requirement, VerificationFlow
 
 
 # ============================================================================
@@ -389,7 +389,7 @@ class TestSyncYAMLFlowsToDb:
         assert flow.synced_at is not None
 
     def test_stores_metadata_in_steps(self, db, sample_flow):
-        """Stores source_file and requirements in steps JSON."""
+        """Stores source_file in steps JSON (requirements via M2M)."""
         sync_yaml_flows_to_db([sample_flow])
 
         flow = VerificationFlow.objects.get(name="test-flow")
@@ -397,7 +397,8 @@ class TestSyncYAMLFlowsToDb:
         metadata = flow.steps[0]
         assert "_metadata" in metadata
         assert metadata["_metadata"]["source_file"] == "/path/to/flow.yaml"
-        assert metadata["_metadata"]["requirements"] == ["REQ-001", "REQ-002"]
+        # Requirements no longer stored in metadata (now via M2M)
+        assert "requirements" not in metadata["_metadata"]
         # Steps follow metadata
         assert len(flow.steps) == 2  # 1 metadata + 1 step
         assert flow.steps[1]["name"] == "step1"
@@ -455,6 +456,85 @@ class TestSyncYAMLFlowsToDb:
         assert result["flow-1"] == "created"
         assert result["flow-2"] == "created"
         assert VerificationFlow.objects.count() == 2
+
+    def test_links_requirements_via_m2m(self, db):
+        """Links requirements to flows via M2M relationship."""
+        # Create requirements using treebeard's add_root (MP_Node)
+        req1 = Requirement.add_root(external_id="REQ-001", title="Req 1")
+        req2 = Requirement.add_root(external_id="REQ-002", title="Req 2")
+
+        flow_def = FlowDef(
+            name="linked-flow",
+            display_name="Linked Flow",
+            description="Flow with requirements",
+            steps=[FlowStepDef(name="step1", handler="h", display_name="Step 1")],
+            requirements=["REQ-001", "REQ-002"],
+            source_file="/path/to/flow.yaml",
+        )
+
+        sync_yaml_flows_to_db([flow_def])
+
+        flow = VerificationFlow.objects.get(name="linked-flow")
+        # Requirements should be linked via M2M
+        assert flow.requirements.count() == 2
+        assert set(flow.requirements.values_list("external_id", flat=True)) == {
+            "REQ-001",
+            "REQ-002",
+        }
+        # Reverse access should also work
+        assert req1.verification_flows.filter(name="linked-flow").exists()
+        assert req2.verification_flows.filter(name="linked-flow").exists()
+
+    def test_warns_on_missing_requirements(self, db, caplog):
+        """Logs warnings for requirements that don't exist."""
+        # Only create one requirement (using treebeard's add_root)
+        Requirement.add_root(external_id="REQ-001", title="Req 1")
+
+        flow_def = FlowDef(
+            name="partial-flow",
+            display_name="Partial Flow",
+            description="Flow with some missing requirements",
+            steps=[FlowStepDef(name="step1", handler="h", display_name="Step 1")],
+            requirements=["REQ-001", "REQ-MISSING"],
+            source_file="/path/to/flow.yaml",
+        )
+
+        sync_yaml_flows_to_db([flow_def])
+
+        flow = VerificationFlow.objects.get(name="partial-flow")
+        # Only the existing requirement should be linked
+        assert flow.requirements.count() == 1
+        assert flow.requirements.first().external_id == "REQ-001"
+        # Warning should be logged for missing requirement
+        assert "REQ-MISSING" in caplog.text
+        assert "not found" in caplog.text
+
+    def test_clears_requirements_when_none(self, db):
+        """Clears M2M when flow has no requirements."""
+        # Create requirement using treebeard's add_root
+        req = Requirement.add_root(external_id="REQ-001", title="Req 1")
+        flow = VerificationFlow.objects.create(
+            name="clear-flow",
+            display_name="Clear Flow",
+            steps=[],
+        )
+        flow.requirements.add(req)
+        assert flow.requirements.count() == 1
+
+        # Sync with no requirements
+        flow_def = FlowDef(
+            name="clear-flow",
+            display_name="Clear Flow Updated",
+            description="",
+            steps=[FlowStepDef(name="step1", handler="h", display_name="Step 1")],
+            requirements=[],  # Empty list
+            source_file="/path/to/flow.yaml",
+        )
+
+        sync_yaml_flows_to_db([flow_def])
+
+        flow.refresh_from_db()
+        assert flow.requirements.count() == 0
 
 
 # ============================================================================

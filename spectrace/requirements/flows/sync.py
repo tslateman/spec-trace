@@ -13,7 +13,7 @@ from dataclasses import asdict
 from django.utils import timezone
 
 from requirements.flows.definitions import REGISTERED_FLOWS, FlowDef
-from requirements.models import VerificationFlow
+from requirements.models import Requirement, VerificationFlow
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +67,45 @@ def sync_flows_safe() -> dict[str, str] | None:
         return None
 
 
+def _sync_flow_requirements(
+    flow: VerificationFlow,
+    requirement_ids: list[str],
+) -> dict[str, list[str]]:
+    """Link requirements to a flow via M2M relationship.
+
+    Looks up requirements by external_id and links them to the flow.
+    Missing requirements are logged as warnings (not errors).
+
+    Args:
+        flow: The VerificationFlow to link requirements to
+        requirement_ids: List of requirement external_ids (e.g., ['REQ-001', 'REQ-002'])
+
+    Returns:
+        Dict with 'linked' and 'missing' lists of requirement IDs
+    """
+    if not requirement_ids:
+        flow.requirements.clear()
+        return {'linked': [], 'missing': []}
+
+    linked = []
+    missing = []
+    requirements_to_link = []
+
+    for req_id in requirement_ids:
+        try:
+            req = Requirement.objects.get(external_id=req_id)
+            requirements_to_link.append(req)
+            linked.append(req_id)
+        except Requirement.DoesNotExist:
+            missing.append(req_id)
+            logger.warning(f"Requirement '{req_id}' not found for flow '{flow.name}'")
+
+    # Atomic replacement of requirements
+    flow.requirements.set(requirements_to_link)
+
+    return {'linked': linked, 'missing': missing}
+
+
 def sync_yaml_flows_to_db(
     flows: list[FlowDef],
     clear_existing: bool = False,
@@ -74,8 +113,8 @@ def sync_yaml_flows_to_db(
     """Sync YAML-defined flows to database.
 
     Creates or updates VerificationFlow records from FlowDef objects.
-    Stores metadata (source_file, requirements) in the steps JSONField
-    as a `_metadata` key in the first step position.
+    Links requirements via M2M relationship using external_id lookup.
+    Stores source_file metadata in the steps JSONField as a `_metadata` key.
 
     Args:
         flows: List of FlowDef objects from YAMLFlowParser
@@ -98,17 +137,17 @@ def sync_yaml_flows_to_db(
         for name in flow_names:
             results[name] = 'deleted'
 
+    all_missing_requirements = []
+
     for flow_def in flows:
         # Convert step definitions to dicts for JSON storage
         steps_data = [asdict(step) for step in flow_def.steps]
 
-        # Store metadata as first element with _metadata key
-        # This allows us to store source_file and requirements
-        # without schema changes. Phase 23 will add proper M2M linking.
+        # Store source_file metadata as first element with _metadata key
+        # Requirements are now linked via M2M relationship
         metadata = {
             '_metadata': {
                 'source_file': flow_def.source_file,
-                'requirements': flow_def.requirements,
             }
         }
         steps_with_metadata = [metadata] + steps_data
@@ -124,8 +163,24 @@ def sync_yaml_flows_to_db(
             }
         )
 
+        # Link requirements via M2M (after flow exists)
+        req_result = _sync_flow_requirements(flow, flow_def.requirements)
+        if req_result['missing']:
+            all_missing_requirements.extend(req_result['missing'])
+
         action = 'created' if created else 'updated'
         results[flow_def.name] = action
-        logger.info(f"Flow '{flow_def.name}' {action} (v{flow_def.version})")
+        linked_count = len(req_result['linked'])
+        logger.info(
+            f"Flow '{flow_def.name}' {action} (v{flow_def.version}, "
+            f"{linked_count} requirements linked)"
+        )
+
+    # Summary logging for missing requirements
+    if all_missing_requirements:
+        unique_missing = sorted(set(all_missing_requirements))
+        logger.warning(
+            f"Missing requirements during sync: {', '.join(unique_missing)}"
+        )
 
     return results
