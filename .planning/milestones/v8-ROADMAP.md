@@ -43,6 +43,7 @@ Existing infrastructure: VerificationFlow, VerificationFlowRun, VerificationFlow
 
 ### Phase 20: Flow Execution Engine
 
+**Status:** Planned (2026-02-02)
 **Goal:** Execute flows and record results.
 
 **Requirements:**
@@ -54,10 +55,14 @@ Existing infrastructure: VerificationFlow, VerificationFlowRun, VerificationFlow
 - EXEC-06: Timeout handling per step and per flow
 
 **Deliverables:**
-- Flow runner service: `services/flow_runner.py`
-- Step executors for each type (api_call, assertion, wait)
+- Step executors module: `flows/executors/` (api_call.py, assertion.py, wait.py)
+- Extended SequentialFlowEngine with step type dispatcher and timeouts
 - Management command: `run_flow`
-- Tests for execution engine
+- Tests for execution engine (~30 tests)
+
+**Plans:** 2 plans
+- [ ] 20-01-PLAN.md - Step executors + engine extension (Wave 1)
+- [ ] 20-02-PLAN.md - run_flow command + integration tests (Wave 2)
 
 ---
 
