@@ -1,0 +1,127 @@
+{% extends "unfold/layouts/base.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} | SpecTrace{% endblock %}
+
+{% block content %}
+{% include "admin/requirements/_design_system.html" %}
+
+<div class="st-page-wrapper">
+<div class="st-page st-container">
+    <!-- Header -->
+    <header class="st-flex-between mb-6 st-animate-in" style="flex-wrap: wrap; gap: var(--st-space-4);">
+        <div>
+            <h1 class="st-heading-1">{{ title }}</h1>
+            <p class="st-caption mt-1">Edit verification flow YAML files</p>
+        </div>
+        <div class="st-cluster">
+            <a href="{% url 'admin-flow-status' %}" class="st-btn st-btn--secondary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 12h18M3 6h18M3 18h18"></path>
+                </svg>
+                Flow Status
+            </a>
+            <a href="{% url 'admin:index' %}" class="st-btn st-btn--secondary">
+                Dashboard
+            </a>
+        </div>
+    </header>
+
+    <!-- Summary Stats -->
+    <div class="st-grid-stats mb-6 st-animate-in st-animate-delay-1">
+        <div class="st-metric st-metric--accent st-lift">
+            <div class="st-metric__label">Total Files</div>
+            <div class="st-metric__value">{{ summary.total|default:"0" }}</div>
+        </div>
+        <div class="st-metric st-metric--pass st-lift">
+            <div class="st-metric__label">Valid</div>
+            <div class="st-metric__value" style="color: var(--st-pass);">{{ summary.valid|default:"0" }}</div>
+        </div>
+        <div class="st-metric st-metric--fail st-lift">
+            <div class="st-metric__label">Invalid</div>
+            <div class="st-metric__value" style="color: var(--st-fail);">{{ summary.invalid|default:"0" }}</div>
+        </div>
+    </div>
+
+    <!-- Flow Files Table -->
+    <div class="st-card st-animate-in st-animate-delay-2">
+        <div class="st-card-header">
+            <h2 class="st-heading-3" style="margin: 0;">Flow Files</h2>
+        </div>
+        <div class="st-card-body" style="padding: 0;">
+            {% if flows %}
+            <table class="st-table">
+                <thead>
+                    <tr>
+                        <th>File Path</th>
+                        <th>Flow Title</th>
+                        <th>Status</th>
+                        <th>Steps</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for flow in flows %}
+                    <tr>
+                        <td>
+                            <code class="st-mono" style="font-size: 0.8125rem;">{{ flow.path }}</code>
+                        </td>
+                        <td>
+                            {% if flow.valid %}
+                            {{ flow.title }}
+                            {% else %}
+                            <span style="color: var(--st-text-subtle);">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if flow.valid %}
+                            <span class="st-badge st-badge--pass">Valid</span>
+                            {% else %}
+                            <span class="st-badge st-badge--fail">Invalid</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if flow.valid %}
+                            <span class="st-mono">{{ flow.step_count }}</span>
+                            {% else %}
+                            <span style="color: var(--st-text-subtle);">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'admin-flow-editor-edit' flow.path %}" class="st-btn st-btn--primary st-btn--sm">
+                                Edit
+                            </a>
+                        </td>
+                    </tr>
+                    {% if not flow.valid %}
+                    <tr>
+                        <td colspan="5" style="background: var(--st-fail-muted); padding: var(--st-space-3) var(--st-space-4);">
+                            <div style="display: flex; align-items: flex-start; gap: var(--st-space-2);">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--st-fail)" stroke-width="2" style="flex-shrink: 0; margin-top: 2px;">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                </svg>
+                                <span class="st-caption" style="color: var(--st-fail-dark);">{{ flow.error }}</span>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div style="text-align: center; padding: var(--st-space-10);">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--st-text-subtle)" stroke-width="1.5" style="margin-bottom: var(--st-space-4);">
+                    <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
+                    <polyline points="13 2 13 9 20 9"></polyline>
+                </svg>
+                <p class="st-body" style="margin-bottom: var(--st-space-2);">No YAML files found in flows/ directory</p>
+                <p class="st-caption">Create <code class="st-mono">flows/*.yaml</code> files to define verification flows</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+</div>
+{% endblock %}
