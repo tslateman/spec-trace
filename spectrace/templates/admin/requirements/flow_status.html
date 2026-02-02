@@ -77,6 +77,14 @@
                     Load Demo Data
                 </button>
             </form>
+            <a href="{% url 'admin-flow-live' %}" class="st-btn st-btn--secondary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="12" x2="16" y2="12"></line>
+                </svg>
+                Live Status
+            </a>
             <a href="{% url 'admin:index' %}" class="st-btn st-btn--secondary">
                 Dashboard
             </a>
@@ -97,6 +105,10 @@
             <div class="st-metric__label">Failing</div>
             <div class="st-metric__value" style="color: var(--st-fail);">{{ summary.failing|default:"0" }}</div>
         </div>
+        <a href="{% url 'admin-flow-live' %}" class="st-metric st-lift" style="text-decoration: none; cursor: pointer;">
+            <div class="st-metric__label">Running</div>
+            <div class="st-metric__value" style="color: var(--st-warn);">{{ summary.running|default:"0" }}</div>
+        </a>
         <div class="st-metric st-lift">
             <div class="st-metric__label">Not Run</div>
             <div class="st-metric__value" style="color: var(--st-text-subtle);">{{ summary.not_run|default:"0" }}</div>
