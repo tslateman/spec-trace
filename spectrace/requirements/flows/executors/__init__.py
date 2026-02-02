@@ -37,19 +37,8 @@ def execute_handler_step(step_def: dict, context: dict) -> tuple[VerificationChe
             passed=False,
             error_message="Handler step missing 'handler' field",
         ), {}
-    except ImportError as e:
-        return VerificationCheck(
-            name=step_name,
-            passed=False,
-            error_message=f"Handler import error: {e}",
-        ), {}
-    except AttributeError as e:
-        return VerificationCheck(
-            name=step_name,
-            passed=False,
-            error_message=f"Handler not found: {e}",
-        ), {}
     except Exception as e:
+        # Match original engine error format for backward compatibility
         return VerificationCheck(
             name=step_name,
             passed=False,
