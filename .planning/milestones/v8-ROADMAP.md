@@ -68,28 +68,31 @@ Existing infrastructure: VerificationFlow, VerificationFlowRun, VerificationFlow
 
 ---
 
-### Phase 21: Admin UI Builder
+### Phase 21: Admin UI Builder ✓
 
-**Status:** Planned
+**Status:** Complete (2026-02-02)
 **Goal:** Visual editor for YAML flow files.
 
 **Requirements:**
-- FLOW-04: Admin UI reads existing YAML files and displays as editable form
-- FLOW-05: Admin UI writes changes back to YAML files (not database)
-- FLOW-06: Validate YAML syntax and schema on save
+- FLOW-04: Admin UI reads existing YAML files and displays as editable form ✓
+- FLOW-05: Admin UI writes changes back to YAML files (not database) ✓
+- FLOW-06: Validate YAML syntax and schema on save ✓
 
 **Deliverables:**
-- Flow editor service: `flow_editor.py` (ruamel.yaml for round-trip)
-- Flow list view: `/admin/flow-editor/`
-- Flow edit form with Alpine.js step management
-- Save action writes to YAML file
-- Sync to DB button for database update
-- Validation errors shown in UI
+- Flow editor service: `flow_editor.py` (170 lines, ruamel.yaml for round-trip) ✓
+- Flow list view: `/admin/flow-editor/` ✓
+- Flow edit form with Alpine.js step management ✓
+- Save action writes to YAML file ✓
+- Sync to DB button for database update ✓
+- Validation errors shown in UI ✓
 
-**Plans:** 3 plans
-- [ ] 21-01-PLAN.md — Backend service layer (ruamel.yaml, path validation, CRUD)
-- [ ] 21-02-PLAN.md — Admin views and templates (list + edit form)
-- [ ] 21-03-PLAN.md — Sync to DB button + human verification
+**Plans:** 3 plans (complete)
+- [x] 21-01-PLAN.md — Backend service layer (ruamel.yaml, path validation, CRUD)
+- [x] 21-02-PLAN.md — Admin views and templates (list + edit form)
+- [x] 21-03-PLAN.md — Sync to DB button + human verification
+
+**Tests:** 17 unit tests
+**Commits:** 10 total
 
 ---
 
@@ -145,9 +148,9 @@ Existing infrastructure: VerificationFlow, VerificationFlowRun, VerificationFlow
 | EXEC-04 | Phase 20 | Complete |
 | EXEC-05 | Phase 20 | Complete |
 | EXEC-06 | Phase 20 | Complete |
-| FLOW-04 | Phase 21 | Pending |
-| FLOW-05 | Phase 21 | Pending |
-| FLOW-06 | Phase 21 | Pending |
+| FLOW-04 | Phase 21 | Complete |
+| FLOW-05 | Phase 21 | Complete |
+| FLOW-06 | Phase 21 | Complete |
 | HIST-01 | Phase 22 | Pending |
 | HIST-02 | Phase 22 | Pending |
 | HIST-03 | Phase 22 | Pending |
@@ -163,7 +166,7 @@ Existing infrastructure: VerificationFlow, VerificationFlowRun, VerificationFlow
 ## Success Criteria
 
 - [ ] At least 3 example flows defined in YAML
-- [ ] Admin UI can load, display, edit, and save flow YAML files
+- [x] Admin UI can load, display, edit, and save flow YAML files
 - [x] CLI can execute a flow and record results
 - [ ] Dashboard shows run history with filtering
 - [ ] Live status view shows executing flows

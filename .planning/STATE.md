@@ -120,7 +120,7 @@ None.
 
 ### Next Steps
 
-Continue with Phase 22 (Flow Dashboard).
+Run `/gsd:plan-phase 22` to plan Phase 22 (Dashboard - History & Live Status).
 
 ## Phase 21 Plan Summary
 
