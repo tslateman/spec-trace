@@ -37,9 +37,8 @@ class Command(BaseCommand):
                 self.stdout.write(
                     self.style.SUCCESS(f"✓ {result.message}")
                 )
-
-            # Run consolidation after successful merge
-            call_command('consolidate', stdout=self.stdout, stderr=self.stderr)
+                # Run consolidation after successful merge (text output only)
+                call_command('consolidate', stdout=self.stdout, stderr=self.stderr)
 
         except TransitionError as e:
             if options['format'] == 'json':

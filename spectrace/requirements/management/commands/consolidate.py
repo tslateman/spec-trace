@@ -123,7 +123,7 @@ class Command(BaseCommand):
                 'draft': AgentTask.objects.filter(status=AgentTaskStatus.DRAFT).count(),
                 'claimed': AgentTask.objects.filter(status=AgentTaskStatus.CLAIMED).count(),
                 'in_progress': AgentTask.objects.filter(status=AgentTaskStatus.IN_PROGRESS).count(),
-                'pending_review': AgentTask.objects.filter(status=AgentTaskStatus.PENDING_REVIEW).count(),
+                'pending_review': AgentTask.objects.filter(status=AgentTaskStatus.READY_FOR_REVIEW).count(),
                 'merged': AgentTask.objects.filter(status=AgentTaskStatus.MERGED).count(),
             }
 

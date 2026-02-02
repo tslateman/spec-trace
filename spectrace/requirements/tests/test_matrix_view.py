@@ -120,7 +120,7 @@ class TestMatrixViewContent:
         response = admin_client.get('/admin/matrix/')
         content = response.content.decode()
 
-        assert 'No requirements found' in content
+        assert 'No requirements yet' in content
 
 
 class TestMatrixViewFilters:
