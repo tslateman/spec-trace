@@ -1,0 +1,369 @@
+{% extends "unfold/layouts/base.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} | SpecTrace{% endblock %}
+
+{% block content %}
+{% include "admin/requirements/_design_system.html" %}
+
+<style>
+    .step-card {
+        border: 1px solid var(--st-border);
+        border-radius: var(--st-radius-md);
+        margin-bottom: var(--st-space-4);
+        background: var(--st-surface);
+    }
+    .step-card-header {
+        padding: var(--st-space-3) var(--st-space-4);
+        border-bottom: 1px solid var(--st-border-muted);
+        background: var(--st-surface-sunken);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--st-space-3);
+        border-radius: var(--st-radius-md) var(--st-radius-md) 0 0;
+    }
+    .step-card-body {
+        padding: var(--st-space-4);
+    }
+    .step-number {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: var(--st-accent-500);
+        color: #0d0f12;
+        font-family: var(--font-mono);
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    .step-actions {
+        display: flex;
+        gap: var(--st-space-2);
+    }
+    .step-action-btn {
+        padding: var(--st-space-1);
+        border: none;
+        background: transparent;
+        color: var(--st-text-subtle);
+        cursor: pointer;
+        border-radius: var(--st-radius-sm);
+        transition: all 0.15s var(--st-ease-out);
+    }
+    .step-action-btn:hover {
+        background: var(--st-surface-sunken);
+        color: var(--st-text);
+    }
+    .step-action-btn:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+    }
+    .step-action-btn--danger:hover {
+        background: var(--st-fail-muted);
+        color: var(--st-fail);
+    }
+    .form-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: var(--st-space-4);
+        margin-bottom: var(--st-space-4);
+    }
+    .form-group {
+        margin-bottom: var(--st-space-4);
+    }
+    .form-group:last-child {
+        margin-bottom: 0;
+    }
+    .st-textarea {
+        width: 100%;
+        padding: 0.625rem 0.875rem;
+        font-family: var(--font-display);
+        font-size: 0.875rem;
+        color: var(--st-text);
+        background: var(--st-surface-elevated);
+        border: 1px solid var(--st-border);
+        border-radius: var(--st-radius-md);
+        transition: border-color 0.15s var(--st-ease-out), box-shadow 0.15s var(--st-ease-out);
+        resize: vertical;
+        min-height: 80px;
+    }
+    .st-textarea:focus {
+        outline: none;
+        border-color: var(--st-accent-500);
+        box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.15);
+    }
+    .st-textarea--mono {
+        font-family: var(--font-mono);
+        font-size: 0.8125rem;
+    }
+</style>
+
+<div class="st-page-wrapper" x-data="flowEditor()">
+<div class="st-page st-container">
+    <!-- Breadcrumb -->
+    <nav class="st-breadcrumbs">
+        <a href="{% url 'admin-flow-editor' %}" class="st-breadcrumb-link">Flow Editor</a>
+        <span class="st-breadcrumb-sep">/</span>
+        <span class="st-breadcrumb-current">{{ file_path }}</span>
+    </nav>
+
+    <!-- Error Alert -->
+    {% if error %}
+    <div class="st-card mb-6" style="border-left: 4px solid var(--st-fail); background: var(--st-fail-muted);">
+        <div class="st-card-body" style="display: flex; align-items: flex-start; gap: var(--st-space-3);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--st-fail)" stroke-width="2" style="flex-shrink: 0;">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            <div>
+                <div class="st-heading-3" style="color: var(--st-fail-dark); margin-bottom: var(--st-space-2);">Validation Error</div>
+                <p class="st-body" style="color: var(--st-fail-dark);">{{ error }}</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Header -->
+    <header class="st-flex-between mb-6" style="flex-wrap: wrap; gap: var(--st-space-4);">
+        <div>
+            <h1 class="st-heading-1">{{ title }}</h1>
+            <p class="st-caption mt-1">{{ file_path }}</p>
+        </div>
+    </header>
+
+    <form method="post" @submit="prepareSubmit()">
+        {% csrf_token %}
+        <input type="hidden" name="flow_data" x-ref="flowData">
+
+        <!-- Flow Metadata -->
+        <div class="st-card mb-6">
+            <div class="st-card-header">
+                <h2 class="st-heading-3" style="margin: 0;">Flow Metadata</h2>
+            </div>
+            <div class="st-card-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="st-input-label">ID (read-only)</label>
+                        <input type="text" class="st-input st-mono" x-model="flow.id" readonly
+                               style="background: var(--st-surface-sunken); cursor: not-allowed;"
+                               title="ID cannot be changed as it would break references">
+                    </div>
+                    <div class="form-group">
+                        <label class="st-input-label">Version</label>
+                        <input type="number" class="st-input" x-model.number="flow.version" min="1">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="st-input-label">Title</label>
+                    <input type="text" class="st-input" x-model="flow.title">
+                </div>
+                <div class="form-group">
+                    <label class="st-input-label">Description</label>
+                    <textarea class="st-textarea" x-model="flow.description" rows="2"></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="st-input-label">Requirements (comma-separated IDs)</label>
+                    <input type="text" class="st-input st-mono" x-model="requirementsString"
+                           placeholder="REQ-001, REQ-002">
+                </div>
+            </div>
+        </div>
+
+        <!-- Steps Section -->
+        <div class="st-card mb-6">
+            <div class="st-card-header">
+                <h2 class="st-heading-3" style="margin: 0;">Steps</h2>
+                <button type="button" @click="addStep()" class="st-btn st-btn--primary st-btn--sm">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    Add Step
+                </button>
+            </div>
+            <div class="st-card-body">
+                <template x-if="flow.steps.length === 0">
+                    <div style="text-align: center; padding: var(--st-space-6); color: var(--st-text-subtle);">
+                        No steps defined. Click "Add Step" to create one.
+                    </div>
+                </template>
+
+                <template x-for="(step, index) in flow.steps" :key="step._uid">
+                    <div class="step-card">
+                        <div class="step-card-header">
+                            <div style="display: flex; align-items: center; gap: var(--st-space-3);">
+                                <span class="step-number" x-text="index + 1"></span>
+                                <span class="st-heading-3" style="margin: 0;" x-text="step.display_name || step.name || 'New Step'"></span>
+                                <span class="st-badge st-badge--neutral" x-text="step.type"></span>
+                            </div>
+                            <div class="step-actions">
+                                <button type="button" class="step-action-btn" @click="moveUp(index)" :disabled="index === 0" title="Move up">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="18 15 12 9 6 15"></polyline>
+                                    </svg>
+                                </button>
+                                <button type="button" class="step-action-btn" @click="moveDown(index)" :disabled="index === flow.steps.length - 1" title="Move down">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="6 9 12 15 18 9"></polyline>
+                                    </svg>
+                                </button>
+                                <button type="button" class="step-action-btn step-action-btn--danger" @click="removeStep(index)" title="Remove step">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="3 6 5 6 21 6"></polyline>
+                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="step-card-body">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="st-input-label">Name (identifier)</label>
+                                    <input type="text" class="st-input st-mono" x-model="step.name" placeholder="step_name">
+                                </div>
+                                <div class="form-group">
+                                    <label class="st-input-label">Display Name</label>
+                                    <input type="text" class="st-input" x-model="step.display_name" placeholder="Human-readable name">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="st-input-label">Type</label>
+                                    <select class="st-select" x-model="step.type">
+                                        <option value="handler">Handler</option>
+                                        <option value="api_call">API Call</option>
+                                        <option value="assertion">Assertion</option>
+                                        <option value="wait">Wait</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" x-show="step.type === 'handler'">
+                                    <label class="st-input-label">Handler</label>
+                                    <input type="text" class="st-input st-mono" x-model="step.handler"
+                                           placeholder="module.path.function">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="st-input-label">Description</label>
+                                <textarea class="st-textarea" x-model="step.description" rows="2"></textarea>
+                            </div>
+                            <div class="form-group" x-show="step.type !== 'handler'">
+                                <label class="st-input-label">Config (JSON)</label>
+                                <textarea class="st-textarea st-textarea--mono"
+                                          :value="JSON.stringify(step.config || {}, null, 2)"
+                                          @change="updateStepConfig(index, $event.target.value)"
+                                          rows="4"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="st-flex-between" style="flex-wrap: wrap; gap: var(--st-space-4);">
+            <a href="{% url 'admin-flow-editor' %}" class="st-btn st-btn--secondary">
+                Cancel
+            </a>
+            <button type="submit" class="st-btn st-btn--primary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                    <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                    <polyline points="7 3 7 8 15 8"></polyline>
+                </svg>
+                Save Changes
+            </button>
+        </div>
+    </form>
+</div>
+</div>
+
+<script>
+function flowEditor() {
+    return {
+        flow: {{ flow_data|safe }},
+        nextUid: 0,
+
+        // Computed property for requirements as comma-separated string
+        get requirementsString() {
+            return (this.flow.requirements || []).join(', ');
+        },
+        set requirementsString(value) {
+            if (!value || value.trim() === '') {
+                this.flow.requirements = [];
+            } else {
+                this.flow.requirements = value.split(',').map(s => s.trim()).filter(s => s);
+            }
+        },
+
+        init() {
+            // Assign unique IDs to steps for x-for tracking
+            if (this.flow.steps) {
+                this.flow.steps.forEach(s => s._uid = this.nextUid++);
+            } else {
+                this.flow.steps = [];
+            }
+        },
+
+        addStep() {
+            this.flow.steps.push({
+                _uid: this.nextUid++,
+                name: '',
+                display_name: '',
+                type: 'handler',
+                handler: '',
+                description: '',
+                config: {}
+            });
+        },
+
+        removeStep(index) {
+            this.flow.steps.splice(index, 1);
+        },
+
+        moveUp(index) {
+            if (index > 0) {
+                const temp = this.flow.steps[index];
+                this.flow.steps[index] = this.flow.steps[index - 1];
+                this.flow.steps[index - 1] = temp;
+            }
+        },
+
+        moveDown(index) {
+            if (index < this.flow.steps.length - 1) {
+                const temp = this.flow.steps[index];
+                this.flow.steps[index] = this.flow.steps[index + 1];
+                this.flow.steps[index + 1] = temp;
+            }
+        },
+
+        updateStepConfig(index, jsonStr) {
+            try {
+                this.flow.steps[index].config = JSON.parse(jsonStr);
+            } catch (e) {
+                // Keep invalid JSON for now, server will validate
+            }
+        },
+
+        prepareSubmit() {
+            // Clean up _uid before submitting
+            const cleaned = JSON.parse(JSON.stringify(this.flow));
+            cleaned.steps.forEach(s => {
+                delete s._uid;
+                // Remove empty handler for non-handler types
+                if (s.type !== 'handler' && !s.handler) {
+                    delete s.handler;
+                }
+                // Remove empty config for handler types
+                if (s.type === 'handler' && Object.keys(s.config || {}).length === 0) {
+                    delete s.config;
+                }
+            });
+            this.$refs.flowData.value = JSON.stringify(cleaned);
+        }
+    };
+}
+</script>
+{% endblock %}
