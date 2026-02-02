@@ -31,6 +31,7 @@ def get_flows_overview() -> dict:
                     'total_runs': int,
                     'passed_runs': int,
                     'failed_runs': int,
+                    'requirements': list[dict],  # [{external_id, title, verification_status}]
                 },
                 ...
             ],
@@ -64,6 +65,9 @@ def get_flows_overview() -> dict:
             failed_runs = runs.filter(status=VerificationFlowStatus.FAILED).count()
             latest_run = runs.order_by('-started_at').first()
 
+            # Get linked requirements
+            requirements = list(flow.requirements.values('external_id', 'title', 'verification_status'))
+
             # Update summary based on latest run status
             if latest_run:
                 if latest_run.status == VerificationFlowStatus.PASSED:
@@ -79,6 +83,7 @@ def get_flows_overview() -> dict:
             passed_runs = 0
             failed_runs = 0
             latest_run = None
+            requirements = []
             summary['not_run'] += 1
 
         flows_data.append({
@@ -91,6 +96,7 @@ def get_flows_overview() -> dict:
             'total_runs': total_runs,
             'passed_runs': passed_runs,
             'failed_runs': failed_runs,
+            'requirements': requirements,
         })
 
     return {
