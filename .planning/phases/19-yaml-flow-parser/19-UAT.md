@@ -1,9 +1,9 @@
 ---
-status: complete
+status: diagnosed
 phase: 19-yaml-flow-parser
 source: [19-01-SUMMARY.md, 19-02-SUMMARY.md]
 started: 2026-02-02T15:00:00Z
-updated: 2026-02-02T15:05:00Z
+updated: 2026-02-02T15:08:00Z
 ---
 
 ## Current Test
@@ -53,7 +53,14 @@ skipped: 0
   reason: "User reported: CommandError: Path is not a directory: flows/linear-connection.yaml"
   severity: major
   test: 2
-  root_cause: ""
-  artifacts: []
-  missing: []
+  root_cause: "BaseImportCommand has path_must_be_dir=True default, parse_flows inherits this without override. Command only calls parse_directory(), not parse_file()."
+  artifacts:
+    - path: "spectrace/requirements/management/commands/parse_flows.py"
+      issue: "Missing path_must_be_dir=False override and file vs directory detection"
+    - path: "spectrace/requirements/management/commands/base.py"
+      issue: "path_must_be_dir=True is default (not a bug, just context)"
+  missing:
+    - "Set path_must_be_dir = False in parse_flows.py"
+    - "Add file vs directory detection in do_import"
+    - "Call parse_file() for single files, parse_directory() for directories"
   debug_session: ""
