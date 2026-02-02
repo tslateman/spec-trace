@@ -41,28 +41,30 @@ Existing infrastructure: VerificationFlow, VerificationFlowRun, VerificationFlow
 
 ---
 
-### Phase 20: Flow Execution Engine
+### Phase 20: Flow Execution Engine ✓
 
-**Status:** Planned (2026-02-02)
+**Status:** Complete (2026-02-02)
 **Goal:** Execute flows and record results.
 
 **Requirements:**
-- EXEC-01: Flow runner executes steps sequentially
-- EXEC-02: Record VerificationFlowRun with overall pass/fail status
-- EXEC-03: Record VerificationFlowStep results for each step
-- EXEC-04: Support step types: api_call (HTTP request), assertion, wait
-- EXEC-05: CLI command to run a specific flow: `manage.py run_flow <flow_id>`
-- EXEC-06: Timeout handling per step and per flow
+- EXEC-01: Flow runner executes steps sequentially ✓
+- EXEC-02: Record VerificationFlowRun with overall pass/fail status ✓
+- EXEC-03: Record VerificationFlowStep results for each step ✓
+- EXEC-04: Support step types: api_call (HTTP request), assertion, wait ✓
+- EXEC-05: CLI command to run a specific flow: `manage.py run_flow <flow_id>` ✓
+- EXEC-06: Timeout handling per step and per flow ✓
 
 **Deliverables:**
-- Step executors module: `flows/executors/` (api_call.py, assertion.py, wait.py)
-- Extended SequentialFlowEngine with step type dispatcher and timeouts
-- Management command: `run_flow`
-- Tests for execution engine (~30 tests)
+- Step executors module: `flows/executors/` (api_call.py, assertion.py, wait.py) ✓
+- Extended SequentialFlowEngine with step type dispatcher and timeouts ✓
+- Management command: `run_flow` (154 lines) ✓
+- Tests for execution engine: 42 tests ✓
 
-**Plans:** 2 plans
-- [ ] 20-01-PLAN.md - Step executors + engine extension (Wave 1)
-- [ ] 20-02-PLAN.md - run_flow command + integration tests (Wave 2)
+**Plans:** 2 plans (complete)
+- [x] 20-01-PLAN.md - Step executors + engine extension (Wave 1)
+- [x] 20-02-PLAN.md - run_flow command + integration tests (Wave 2)
+
+**Commits:** 8 total
 
 ---
 
@@ -130,12 +132,12 @@ Existing infrastructure: VerificationFlow, VerificationFlowRun, VerificationFlow
 | FLOW-01 | Phase 19 | Complete |
 | FLOW-02 | Phase 19 | Complete |
 | FLOW-03 | Phase 19 | Complete |
-| EXEC-01 | Phase 20 | Pending |
-| EXEC-02 | Phase 20 | Pending |
-| EXEC-03 | Phase 20 | Pending |
-| EXEC-04 | Phase 20 | Pending |
-| EXEC-05 | Phase 20 | Pending |
-| EXEC-06 | Phase 20 | Pending |
+| EXEC-01 | Phase 20 | Complete |
+| EXEC-02 | Phase 20 | Complete |
+| EXEC-03 | Phase 20 | Complete |
+| EXEC-04 | Phase 20 | Complete |
+| EXEC-05 | Phase 20 | Complete |
+| EXEC-06 | Phase 20 | Complete |
 | FLOW-04 | Phase 21 | Pending |
 | FLOW-05 | Phase 21 | Pending |
 | FLOW-06 | Phase 21 | Pending |
@@ -155,7 +157,7 @@ Existing infrastructure: VerificationFlow, VerificationFlowRun, VerificationFlow
 
 - [ ] At least 3 example flows defined in YAML
 - [ ] Admin UI can load, display, edit, and save flow YAML files
-- [ ] CLI can execute a flow and record results
+- [x] CLI can execute a flow and record results
 - [ ] Dashboard shows run history with filtering
 - [ ] Live status view shows executing flows
 - [ ] Requirement pages show linked flows

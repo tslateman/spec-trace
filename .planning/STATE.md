@@ -114,7 +114,7 @@ None.
 
 ### Next Steps
 
-Execute Phase 21: Admin UI for flow management.
+Run `/gsd:plan-phase 21` to plan Phase 21 (Admin UI Builder).
 
 ## Phase 20 Plan Summary
 
