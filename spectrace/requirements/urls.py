@@ -6,7 +6,7 @@ Include in your project's urls.py:
 
 from django.urls import path
 
-from requirements import api
+from requirements import api, webhooks
 from requirements.openapi.views import openapi_spec, swagger_ui
 from requirements.views import (
     about_view,
@@ -61,6 +61,11 @@ admin_urlpatterns = [
     path("demo/agent-pipeline/", demo_agent_pipeline, name="demo_agent_pipeline"),
 ]
 
+# Webhook endpoints
+webhook_urlpatterns = [
+    path("api/webhooks/github/", webhooks.github_webhook, name="api-github-webhook"),
+]
+
 # REST API endpoints
 api_urlpatterns = [
     # External system integration
@@ -76,10 +81,12 @@ api_urlpatterns = [
     path("api/validation-runs/<int:run_id>/steps/", api.get_validation_run_steps, name="api-validation-run-steps"),
     # Flow runs
     path("api/flow-runs/running/", api.get_running_flow_runs, name="api-flow-runs-running"),
+    # Test runs (CI/CD integration)
+    path("api/test-runs/latest/", api.get_latest_test_run, name="api-test-runs-latest"),
     # OpenAPI
     path("api/openapi.json", openapi_spec, name="openapi-spec"),
     path("api/docs/", swagger_ui, name="swagger-ui"),
 ]
 
 # Combined patterns for simple include
-urlpatterns = admin_urlpatterns + api_urlpatterns
+urlpatterns = admin_urlpatterns + api_urlpatterns + webhook_urlpatterns

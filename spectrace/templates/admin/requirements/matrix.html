@@ -146,6 +146,15 @@
             <div class="st-matrix-cell st-matrix-cell--unlinked" style="width: 16px; height: 16px; cursor: default;"></div>
             <span class="st-caption">Not Linked</span>
         </div>
+        <!-- Last Updated Indicator -->
+        <div id="last-updated-indicator" style="margin-left: auto; display: flex; align-items: center; gap: var(--st-space-2);">
+            <span id="update-status" class="st-caption" style="color: var(--st-text-subtle);">
+                Checking for updates...
+            </span>
+            <span id="new-results-badge" class="st-badge st-badge--info" style="display: none; cursor: pointer;" onclick="location.reload()">
+                New results available - click to refresh
+            </span>
+        </div>
     </div>
 
     <!-- Matrix -->
@@ -272,4 +281,94 @@ python manage.py import_test_links</div>
     </div>
 </div>
 </div>
+
+<script>
+(function() {
+    // Configuration
+    const POLL_INTERVAL = 30000; // 30 seconds
+    const API_ENDPOINT = '{% url "api-test-runs-latest" %}';
+
+    // State
+    let lastKnownRunId = null;
+    let pageLoadTime = new Date().toISOString();
+
+    // DOM elements
+    const statusEl = document.getElementById('update-status');
+    const badgeEl = document.getElementById('new-results-badge');
+
+    // Format relative time
+    function formatRelativeTime(isoString) {
+        const date = new Date(isoString);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffSecs = Math.floor(diffMs / 1000);
+        const diffMins = Math.floor(diffSecs / 60);
+        const diffHours = Math.floor(diffMins / 60);
+
+        if (diffSecs < 60) return 'just now';
+        if (diffMins < 60) return `${diffMins}m ago`;
+        if (diffHours < 24) return `${diffHours}h ago`;
+        return date.toLocaleDateString();
+    }
+
+    // Check for new test runs
+    async function checkForUpdates() {
+        try {
+            const url = lastKnownRunId
+                ? `${API_ENDPOINT}?since=${pageLoadTime}`
+                : API_ENDPOINT;
+
+            const response = await fetch(url);
+
+            if (response.status === 204) {
+                // No new updates
+                return;
+            }
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            if (data.test_run) {
+                const run = data.test_run;
+
+                // First load - just record the ID
+                if (lastKnownRunId === null) {
+                    lastKnownRunId = run.id;
+                    statusEl.textContent = `Last import: ${formatRelativeTime(run.imported_at)}`;
+                    statusEl.title = `${run.total_tests} tests (${run.passed} passed, ${run.failed} failed)`;
+                    return;
+                }
+
+                // New run detected
+                if (run.id !== lastKnownRunId) {
+                    lastKnownRunId = run.id;
+
+                    // Show the badge
+                    badgeEl.style.display = 'inline-flex';
+                    badgeEl.textContent = `New results: ${run.passed}✓ ${run.failed}✗ - click to refresh`;
+
+                    // Update status
+                    statusEl.textContent = 'New import available!';
+                    statusEl.style.color = 'var(--st-accent)';
+                }
+            } else {
+                statusEl.textContent = 'No test runs yet';
+            }
+        } catch (error) {
+            console.warn('Failed to check for updates:', error);
+            statusEl.textContent = 'Update check failed';
+            statusEl.style.color = 'var(--st-text-subtle)';
+        }
+    }
+
+    // Initial check
+    checkForUpdates();
+
+    // Start polling
+    setInterval(checkForUpdates, POLL_INTERVAL);
+})();
+</script>
 {% endblock %}

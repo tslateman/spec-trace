@@ -85,6 +85,7 @@ from .models import (
     Requirement,
     SLO,
     SLOStatus,
+    TestRun,
 )
 from .openapi.decorators import validate_request
 from .openapi.schemas import (
@@ -648,4 +649,63 @@ def get_linear_health(request, data=None):
         'checks': None,
         'error_details': None,
         'cached': False,
+    })
+
+
+@require_http_methods(["GET"])
+@ratelimit(key='ip', rate=RATE_LIMIT_READ, block=True)
+def get_latest_test_run(request):
+    """Get the latest test run for dashboard polling.
+
+    Returns summary of the most recent test run, used by dashboard
+    to check for new CI/CD imports without full page refresh.
+
+    Query Parameters:
+        since: ISO datetime - only return run if newer than this timestamp
+        repo: Filter by repository (e.g., 'owner/repo')
+
+    Returns:
+        200 with test run data if new run exists
+        204 if no new run since 'since' timestamp
+        200 with null data if no runs exist
+    """
+    since = request.GET.get('since')
+    repo = request.GET.get('repo')
+
+    queryset = TestRun.objects.all()
+
+    if repo:
+        queryset = queryset.filter(repository=repo)
+
+    if since:
+        try:
+            since_dt = timezone.datetime.fromisoformat(since.replace('Z', '+00:00'))
+            queryset = queryset.filter(imported_at__gt=since_dt)
+        except (ValueError, TypeError):
+            return JsonResponse({'error': 'Invalid since parameter'}, status=400)
+
+    latest = queryset.order_by('-imported_at').first()
+
+    if not latest:
+        if since:
+            # No new runs since the timestamp - return 204
+            return JsonResponse({}, status=204)
+        return JsonResponse({'test_run': None})
+
+    return JsonResponse({
+        'test_run': {
+            'id': latest.id,
+            'imported_at': latest.imported_at.isoformat(),
+            'source_file': latest.source_file,
+            'git_sha': latest.git_sha,
+            'git_branch': latest.git_branch,
+            'workflow_name': latest.workflow_name,
+            'workflow_run_id': latest.workflow_run_id,
+            'repository': latest.repository,
+            'total_tests': latest.total_tests,
+            'passed': latest.passed,
+            'failed': latest.failed,
+            'errors': latest.errors,
+            'skipped': latest.skipped,
+        }
     })

@@ -43,6 +43,20 @@ ALLOWED_HOSTS = [
 # Required for /api/update-slo-status, /api/submit-validation-result, etc.
 SPECTRACE_API_KEY = os.environ.get('SPECTRACE_API_KEY', '')
 
+# GitHub App configuration for CI/CD integration
+# Create a GitHub App at https://github.com/settings/apps
+GITHUB_APP_ID = os.environ.get('GITHUB_APP_ID', '')
+GITHUB_PRIVATE_KEY = os.environ.get('GITHUB_PRIVATE_KEY', '')  # PEM format
+GITHUB_WEBHOOK_SECRET = os.environ.get('GITHUB_WEBHOOK_SECRET', '')
+
+# Optional: restrict webhooks to specific repositories (comma-separated)
+# Leave empty to allow all repositories where the app is installed
+GITHUB_ALLOWED_REPOS = [
+    r.strip()
+    for r in os.environ.get('GITHUB_ALLOWED_REPOS', '').split(',')
+    if r.strip()
+]
+
 
 # Application definition
 

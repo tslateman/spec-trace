@@ -249,6 +249,24 @@ class TestRun(models.Model):
         blank=True,
         help_text="URL to CI job that produced this test run"
     )
+    # GitHub Actions specific metadata
+    workflow_name = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="GitHub Actions workflow name"
+    )
+    workflow_run_id = models.BigIntegerField(
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text="GitHub Actions workflow run ID"
+    )
+    repository = models.CharField(
+        max_length=200,
+        blank=True,
+        db_index=True,
+        help_text="Repository full name (owner/repo)"
+    )
     started_at = models.DateTimeField(
         null=True,
         blank=True,
@@ -1461,3 +1479,102 @@ class AgentTaskReview(models.Model):
 
     def __str__(self):
         return f"Review of {self.task.external_id}: {self.decision}"
+
+
+# =============================================================================
+# CI/CD Integration Models
+# =============================================================================
+
+
+class WebhookEventStatus(models.TextChoices):
+    """Status of webhook event processing."""
+    RECEIVED = 'received', 'Received'
+    PROCESSING = 'processing', 'Processing'
+    SUCCESS = 'success', 'Success'
+    FAILED = 'failed', 'Failed'
+    SKIPPED = 'skipped', 'Skipped'
+
+
+class WebhookEvent(models.Model):
+    """Audit log for incoming webhook events.
+
+    Records all webhook deliveries for debugging and compliance.
+    """
+    # Identity
+    delivery_id = models.CharField(
+        max_length=100,
+        unique=True,
+        db_index=True,
+        help_text="GitHub delivery ID from X-GitHub-Delivery header"
+    )
+    event_type = models.CharField(
+        max_length=50,
+        db_index=True,
+        help_text="Event type (e.g., 'workflow_run')"
+    )
+    action = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Event action (e.g., 'completed')"
+    )
+
+    # Source
+    repository = models.CharField(
+        max_length=200,
+        db_index=True,
+        help_text="Repository full name (owner/repo)"
+    )
+    sender = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="GitHub username that triggered the event"
+    )
+
+    # Payload
+    payload = models.JSONField(
+        default=dict,
+        help_text="Full webhook payload (sanitized)"
+    )
+
+    # Processing status
+    status = models.CharField(
+        max_length=20,
+        choices=WebhookEventStatus.choices,
+        default=WebhookEventStatus.RECEIVED,
+        db_index=True,
+        help_text="Processing status"
+    )
+    error_message = models.TextField(
+        blank=True,
+        help_text="Error details if processing failed"
+    )
+
+    # Result tracking
+    test_run = models.ForeignKey(
+        'TestRun',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='webhook_events',
+        help_text="TestRun created from this webhook"
+    )
+
+    # Timestamps
+    received_at = models.DateTimeField(
+        auto_now_add=True,
+        db_index=True,
+        help_text="When webhook was received"
+    )
+    processed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When processing completed"
+    )
+
+    class Meta:
+        verbose_name = "Webhook Event"
+        verbose_name_plural = "Webhook Events"
+        ordering = ['-received_at']
+
+    def __str__(self):
+        return f"{self.event_type}.{self.action} from {self.repository} ({self.status})"
