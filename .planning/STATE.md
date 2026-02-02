@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-02)
 ## Current Position
 
 Milestone: v8 Verification Flows — IN PROGRESS
-Phase: 19 (YAML Flow Parser) — COMPLETE
-Status: **PHASE COMPLETE**
-Last activity: 2026-02-02 — Phase 19 executed and verified
+Phase: 20 (Flow Execution Engine) — PLANNED
+Status: **READY FOR EXECUTION**
+Last activity: 2026-02-02 — Phase 20 planning complete
 
 Progress: 1/5 phases complete (Phases 19-23)
 
@@ -85,10 +85,20 @@ None.
 
 ### Next Steps
 
-Run `/gsd:plan-phase 20` to plan Phase 20 (Flow Execution Engine).
+Run `/gsd:execute-phase 20` to execute Phase 20 (Flow Execution Engine).
+
+## Phase 20 Plan Summary
+
+**Plans:** 2 plans in 2 waves
+**Requirements:** EXEC-01 through EXEC-06
+
+| Plan | Wave | Objective |
+|------|------|-----------|
+| 20-01 | 1 | Step executors (api_call, assertion, wait) + engine timeout handling |
+| 20-02 | 2 | run_flow management command + integration tests |
 
 ## Session Continuity
 
 Last session: 2026-02-02
-Stopped at: Phase 19 complete
+Stopped at: Phase 20 planned, ready for execution
 Resume file: None
