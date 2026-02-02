@@ -9,13 +9,13 @@ See: .planning/PROJECT.md (updated 2026-02-02)
 
 ## Current Position
 
-Milestone: v8 Verification Flows — IN PROGRESS
-Phase: 23 (Requirement Linking) — IN PROGRESS
-Plan: 23-01 of 2 complete
-Status: **Plan 23-01 complete, ready for 23-02**
-Last activity: 2026-02-02 — Completed 23-01-PLAN.md (M2M relationship)
+Milestone: v8 Verification Flows — COMPLETE
+Phase: 23 (Requirement Linking) — COMPLETE
+Plan: 23-02 of 2 complete
+Status: **v8 milestone complete**
+Last activity: 2026-02-02 — Completed 23-02-PLAN.md (Admin UI for flow-requirement links)
 
-Progress: ████░ 4.5/5 phases (Phases 19-23)
+Progress: █████ 5/5 phases (Phases 19-23)
 
 ## v8 Summary
 
@@ -69,7 +69,7 @@ See: .planning/v8/REQUIREMENTS.md
 
 | Milestone | Shipped | Phases | Summary |
 |-----------|---------|--------|---------|
-| v8 Flows | In progress | 19-23 | YAML-based verification flows with Admin UI and dashboard |
+| v8 Flows | 2026-02-02 | 19-23 | YAML-based verification flows with Admin UI and dashboard |
 | v7 UI Polish | 2026-01-25 | 15-18 | Dark mode, breadcrumbs, filtering, OpenAPI docs |
 | v6 Impact | 2026-01-25 | 12-14 | Impact analysis and validation API (29 tests) |
 | v4 SDK | 2026-01-21 | 8-11 | In-app validation SDK with vendor tracking, feature flags, examples, docs |
@@ -117,6 +117,7 @@ Two features implemented outside the GSD workflow (ad-hoc development):
 - 5-second polling interval balances responsiveness with server load (22-02)
 - Pause/resume control allows users to freeze view for inspection (22-02)
 - M2M linking by external_id lookup; warn on missing requirements, don't fail sync (23-01)
+- Flow badges use 'unknown' status since VerificationFlow model doesn't track run status directly (23-02)
 
 ### Blockers/Concerns
 
@@ -124,7 +125,7 @@ None.
 
 ### Next Steps
 
-Run `/gsd:execute-plan 23-02` to complete Phase 23 (Requirement Linking).
+v8 milestone complete. Ready for next milestone planning.
 
 ## Phase 21 Plan Summary
 
@@ -214,15 +215,33 @@ Run `/gsd:execute-plan 23-02` to complete Phase 23 (Requirement Linking).
 | Plan | Wave | Status | Objective |
 |------|------|--------|-----------|
 | 23-01 | 1 | COMPLETE | M2M relationship + sync linking |
-| 23-02 | 2 | PENDING | API/view updates for requirement links |
+| 23-02 | 2 | COMPLETE | Admin UI for flow-requirement links |
 
 **Commits (Plan 23-01):**
 - d85ace5: feat(23-01): add requirements M2M field to VerificationFlow model
 - e17d8b0: chore(23-01): add migration for VerificationFlow requirements M2M
 - f82ea77: feat(23-01): update sync_yaml_flows_to_db to link requirements via M2M
 
+**Commits (Plan 23-02):**
+- 63492b4: feat(23-02): add VerificationFlowAdmin with requirements display
+- 91ef916: feat(23-02): add linked_flows to RequirementAdmin
+- 2d7530b: feat(23-02): add requirements to get_flows_overview return data
+
+## Phase 23 Completion
+
+**Plans executed:** 2/2
+**Tests:** 487 total passing
+**Verification:** LINK-02, LINK-03 satisfied
+
+**Key deliverables:**
+- VerificationFlow.requirements M2M field with migration
+- sync_yaml_flows_to_db links requirements by external_id
+- VerificationFlowAdmin with filter_horizontal and badge display
+- RequirementAdmin.linked_flows shows reverse M2M
+- get_flows_overview returns requirements for dashboard
+
 ## Session Continuity
 
 Last session: 2026-02-02
-Stopped at: Completed 23-01-PLAN.md
+Stopped at: Completed 23-02-PLAN.md (v8 milestone complete)
 Resume file: None
