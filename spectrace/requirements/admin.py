@@ -134,7 +134,7 @@ class RequirementAdmin(ModelAdmin):
     search_fields = ['external_id', 'title', 'description', 'component', 'condition', 'response']
     readonly_fields = [
         'verification_status', 'slo_status', 'created_at', 'updated_at',
-        'linked_tests', 'linked_slos', 'linked_inapp_validations',
+        'linked_tests', 'linked_slos', 'linked_inapp_validations', 'linked_flows',
         'structure_completeness', 'completeness_badge',
         'linked_dependencies', 'linked_depended_by'
     ]
@@ -155,7 +155,7 @@ class RequirementAdmin(ModelAdmin):
                           'Response: what must happen?'
         }),
         ('Verification Status', {
-            'fields': ('verification_status', 'slo_status', 'linked_tests', 'linked_inapp_validations', 'linked_slos')
+            'fields': ('verification_status', 'slo_status', 'linked_tests', 'linked_inapp_validations', 'linked_slos', 'linked_flows')
         }),
         ('Dependencies', {
             'fields': ('depends_on', 'linked_dependencies', 'linked_depended_by'),
@@ -259,6 +259,19 @@ class RequirementAdmin(ModelAdmin):
         )
 
     linked_depended_by.short_description = "Depended By (Display)"
+
+    def linked_flows(self, obj):
+        """Display linked verification flows."""
+        flows = obj.verification_flows.all().order_by('name')
+        return _render_badge_list(
+            flows, FLOW_STATUS_COLORS,
+            get_status=lambda f: 'unknown',  # No run status on flow model
+            get_url=lambda f: reverse('admin:requirements_verificationflow_change', args=[f.pk]),
+            get_label=lambda f: f.display_name,
+            empty_message='No linked flows'
+        )
+
+    linked_flows.short_description = "Linked Flows"
 
 
 @admin.register(TestRun)
