@@ -1,0 +1,276 @@
+{% extends "unfold/layouts/base.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} | SpecTrace{% endblock %}
+
+{% block content %}
+{% include "admin/requirements/_design_system.html" %}
+
+<style>
+    .flow-pipeline {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    .flow-pipeline-step {
+        flex: 1;
+        height: 8px;
+        border-radius: 2px;
+        background: var(--st-border);
+        position: relative;
+        min-width: 40px;
+    }
+    .flow-pipeline-step--passed {
+        background: var(--st-pass);
+    }
+    .flow-pipeline-step--failed {
+        background: var(--st-fail);
+    }
+    .flow-pipeline-step--running {
+        background: var(--st-warn);
+        animation: st-pulse 1.5s ease-in-out infinite;
+    }
+    .flow-pipeline-connector {
+        width: 8px;
+        height: 2px;
+        background: var(--st-border-muted);
+    }
+    .step-timeline {
+        position: relative;
+        padding-left: 24px;
+    }
+    .step-timeline::before {
+        content: '';
+        position: absolute;
+        left: 8px;
+        top: 4px;
+        bottom: 4px;
+        width: 2px;
+        background: var(--st-border);
+    }
+    .step-item {
+        position: relative;
+        padding: var(--st-space-3) 0;
+    }
+    .step-dot {
+        position: absolute;
+        left: -20px;
+        top: 18px;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+    }
+    .step-dot--passed { background: var(--st-pass); }
+    .step-dot--failed { background: var(--st-fail); }
+    [x-cloak] {
+        display: none !important;
+    }
+</style>
+
+<div class="st-page-wrapper" x-data="{ expandAll: false }">
+<div class="st-page st-container">
+    <!-- Breadcrumbs -->
+    <nav class="st-breadcrumbs st-animate-in">
+        <a href="{% url 'admin:index' %}" class="st-breadcrumb-link">Dashboard</a>
+        <span class="st-breadcrumb-sep">/</span>
+        <a href="{% url 'admin-flow-status' %}" class="st-breadcrumb-link">Flow Status</a>
+        <span class="st-breadcrumb-sep">/</span>
+        <a href="{% url 'admin-flow-runs' run.flow.name %}" class="st-breadcrumb-link">{{ run.flow.display_name }}</a>
+        <span class="st-breadcrumb-sep">/</span>
+        <span class="st-breadcrumb-current">Run #{{ run.id }}</span>
+    </nav>
+
+    <!-- Header with Navigation -->
+    <header class="st-flex-between mb-6 st-animate-in" style="flex-wrap: wrap; gap: var(--st-space-4);">
+        <div>
+            <div style="display: flex; align-items: center; gap: var(--st-space-3);">
+                <h1 class="st-heading-1">Run #{{ run.id }}</h1>
+                {% if run.status == 'passed' %}
+                <span class="st-badge st-badge--pass">Passed</span>
+                {% elif run.status == 'failed' %}
+                <span class="st-badge st-badge--fail">Failed</span>
+                {% elif run.status == 'running' %}
+                <span class="st-badge st-badge--warn">Running</span>
+                {% else %}
+                <span class="st-badge st-badge--neutral">{{ run.status }}</span>
+                {% endif %}
+            </div>
+            <p class="st-caption mt-1">
+                Source: {{ run.source }} | {{ run.started_at|date:"M j, Y H:i:s" }}
+            </p>
+        </div>
+        <div class="st-cluster">
+            {% if previous_run %}
+            <a href="{% url 'admin-flow-run-detail' previous_run.id %}"
+               class="st-btn st-btn--secondary st-btn--sm"
+               title="Previous Run #{{ previous_run.id }}">
+                <- Previous
+            </a>
+            {% endif %}
+            {% if next_run %}
+            <a href="{% url 'admin-flow-run-detail' next_run.id %}"
+               class="st-btn st-btn--secondary st-btn--sm"
+               title="Next Run #{{ next_run.id }}">
+                Next ->
+            </a>
+            {% endif %}
+            <a href="{% url 'admin-flow-runs' run.flow.name %}" class="st-btn st-btn--secondary">
+                <- Back to Runs
+            </a>
+        </div>
+    </header>
+
+    <!-- Summary Stats -->
+    <div class="st-grid-stats mb-6 st-animate-in st-animate-delay-1">
+        <div class="st-metric st-metric--accent st-lift">
+            <div class="st-metric__label">Total Steps</div>
+            <div class="st-metric__value">{{ summary.total_steps|default:"0" }}</div>
+        </div>
+        <div class="st-metric st-metric--pass st-lift">
+            <div class="st-metric__label">Passed</div>
+            <div class="st-metric__value" style="color: var(--st-pass);">{{ summary.passed|default:"0" }}</div>
+        </div>
+        <div class="st-metric st-metric--fail st-lift">
+            <div class="st-metric__label">Failed</div>
+            <div class="st-metric__value" style="color: var(--st-fail);">{{ summary.failed|default:"0" }}</div>
+        </div>
+        <div class="st-metric st-lift">
+            <div class="st-metric__label">Duration</div>
+            <div class="st-metric__value">{% if run.duration_ms %}{{ run.duration_ms }}<span style="font-size: 1rem;">ms</span>{% else %}-{% endif %}</div>
+        </div>
+    </div>
+
+    <!-- Step Pipeline Visualization -->
+    <div class="st-card st-animate-in st-animate-delay-2 mb-6">
+        <div class="st-card-header">
+            <h2 class="st-heading-3">Pipeline Overview</h2>
+        </div>
+        <div class="st-card-body">
+            <div class="flow-pipeline" style="margin-bottom: var(--st-space-4);">
+                {% for step in steps %}
+                {% if not forloop.first %}
+                <div class="flow-pipeline-connector"></div>
+                {% endif %}
+                <div class="flow-pipeline-step {% if step.passed %}flow-pipeline-step--passed{% else %}flow-pipeline-step--failed{% endif %}"
+                     title="{{ step.display_name }}: {% if step.passed %}Passed{% else %}Failed{% endif %}"></div>
+                {% endfor %}
+            </div>
+            <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: var(--st-space-2);">
+                {% for step in steps %}
+                <span class="st-caption" style="font-size: 0.6875rem; text-align: center; flex: 1; min-width: 60px;">
+                    {{ step.display_name }}
+                </span>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Step Timeline -->
+    <div class="st-card st-animate-in st-animate-delay-3">
+        <div class="st-card-header">
+            <h2 class="st-heading-3">Step Timeline</h2>
+            <button @click="expandAll = !expandAll" class="st-btn st-btn--ghost st-btn--sm">
+                <span x-text="expandAll ? 'Collapse All' : 'Expand All'"></span>
+            </button>
+        </div>
+        <div class="st-card-body">
+            <div class="step-timeline">
+                {% for step in steps %}
+                <div class="step-item" x-data="{ expanded: false }" x-init="$watch('expandAll', value => expanded = value)">
+                    <div class="step-dot {% if step.passed %}step-dot--passed{% else %}step-dot--failed{% endif %}"></div>
+
+                    <!-- Step Header -->
+                    <button @click="expanded = !expanded"
+                            style="width: 100%; text-align: left; background: none; border: none; cursor: pointer; padding: var(--st-space-2); margin: calc(-1 * var(--st-space-2)); border-radius: var(--st-radius-md);"
+                            class="st-lift">
+                        <div style="display: flex; align-items: center; justify-content: space-between; gap: var(--st-space-3);">
+                            <div style="display: flex; align-items: center; gap: var(--st-space-3);">
+                                <svg style="width: 16px; height: 16px; transition: transform 0.2s; color: var(--st-text-subtle);"
+                                     :style="expanded ? 'transform: rotate(90deg)' : ''"
+                                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                </svg>
+                                <span style="font-weight: 600; color: var(--st-text);">{{ step.display_name }}</span>
+                                <span class="st-mono" style="font-size: 0.75rem; color: var(--st-text-subtle);">({{ step.name }})</span>
+                                {% if step.passed %}
+                                <span class="st-badge st-badge--pass">Passed</span>
+                                {% else %}
+                                <span class="st-badge st-badge--fail">Failed</span>
+                                {% endif %}
+                            </div>
+                            <div class="st-cluster" style="gap: var(--st-space-4);">
+                                {% if step.response_status %}
+                                <span class="st-mono" style="font-size: 0.75rem; color: var(--st-text-subtle);">
+                                    HTTP {{ step.response_status }}
+                                </span>
+                                {% endif %}
+                                {% if step.duration_ms %}
+                                <span class="st-mono" style="font-size: 0.75rem; color: var(--st-text-muted);">
+                                    {{ step.duration_ms }}ms
+                                </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </button>
+
+                    <!-- Step Details (Expandable) -->
+                    <div x-show="expanded" x-collapse x-cloak style="margin-top: var(--st-space-4); padding-left: var(--st-space-6);">
+                        {% if step.details %}
+                        <div style="margin-bottom: var(--st-space-3);">
+                            <span class="st-label">Details</span>
+                            <p class="st-body" style="margin-top: var(--st-space-1);">{{ step.details }}</p>
+                        </div>
+                        {% endif %}
+
+                        {% if step.error_message %}
+                        <div style="margin-bottom: var(--st-space-3); padding: var(--st-space-3); background: var(--st-fail-muted); border-radius: var(--st-radius-md); border-left: 3px solid var(--st-fail);">
+                            <span class="st-label" style="color: var(--st-fail);">Error</span>
+                            <p style="margin-top: var(--st-space-1); color: var(--st-fail-dark);">{{ step.error_message }}</p>
+                        </div>
+                        {% endif %}
+
+                        {% if step.response_body %}
+                        <div x-data="{ showBody: false }">
+                            <button @click="showBody = !showBody" class="st-btn st-btn--ghost st-btn--sm" style="margin-bottom: var(--st-space-2);">
+                                <span x-text="showBody ? 'Hide Response' : 'Show Response'"></span>
+                            </button>
+                            <div x-show="showBody" x-collapse x-cloak>
+                                <pre class="st-code" style="max-height: 300px; overflow: auto; font-size: 0.75rem;">{{ step.response_body }}</pre>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if step.started_at %}
+                        <div class="st-caption" style="margin-top: var(--st-space-3);">
+                            Started: {{ step.started_at|date:"H:i:s" }}
+                            {% if step.completed_at %} | Completed: {{ step.completed_at|date:"H:i:s" }}{% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% empty %}
+                <div style="text-align: center; padding: var(--st-space-8); color: var(--st-text-subtle);">
+                    No steps recorded for this run.
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Run Context (if present) -->
+    {% if run.context %}
+    <div class="st-card st-animate-in st-animate-delay-4 mt-6" x-data="{ showContext: false }">
+        <div class="st-card-header">
+            <h2 class="st-heading-3">Run Context</h2>
+            <button @click="showContext = !showContext" class="st-btn st-btn--ghost st-btn--sm">
+                <span x-text="showContext ? 'Hide' : 'Show'"></span>
+            </button>
+        </div>
+        <div x-show="showContext" x-collapse x-cloak class="st-card-body">
+            <pre class="st-code" style="max-height: 400px; overflow: auto;">{{ run.context|pprint }}</pre>
+        </div>
+    </div>
+    {% endif %}
+</div>
+</div>
+{% endblock %}
