@@ -10,12 +10,12 @@ See: .planning/PROJECT.md (updated 2026-02-02)
 ## Current Position
 
 Milestone: v8 Verification Flows — IN PROGRESS
-Phase: 22 (Dashboard History & Live Status) — IN PROGRESS
-Plan: 22-01 of 2 complete
-Status: **Plan 22-01 complete, ready for 22-02**
-Last activity: 2026-02-02 — Completed 22-01-PLAN.md (Flow runs history list and detail views)
+Phase: 22 (Dashboard History & Live Status) — COMPLETE
+Plan: 22-02 of 2 complete
+Status: **Phase 22 complete, ready for Phase 23**
+Last activity: 2026-02-02 — Completed 22-02-PLAN.md (Live flow status with polling)
 
-Progress: ███░░ 3/5 phases (Phases 19-23)
+Progress: ████░ 4/5 phases (Phases 19-23)
 
 ## v8 Summary
 
@@ -114,6 +114,8 @@ Two features implemented outside the GSD workflow (ad-hoc development):
 - Requirements input as comma-separated string, parsed to array (21-02)
 - Config field as JSON textarea for non-handler step types (21-02)
 - Sync endpoint handles single file, redirects to edit form (21-03)
+- 5-second polling interval balances responsiveness with server load (22-02)
+- Pause/resume control allows users to freeze view for inspection (22-02)
 
 ### Blockers/Concerns
 
@@ -121,7 +123,7 @@ None.
 
 ### Next Steps
 
-Run `/gsd:execute-phase 22-02` to continue Phase 22 (Live Flow Status).
+Run `/gsd:plan-phase 23` to plan Phase 23 (Flow-Requirement Linking).
 
 ## Phase 21 Plan Summary
 
@@ -179,15 +181,32 @@ Run `/gsd:execute-phase 22-02` to continue Phase 22 (Live Flow Status).
 | Plan | Wave | Status | Objective |
 |------|------|--------|-----------|
 | 22-01 | 1 | COMPLETE | Flow runs history list and detail views |
-| 22-02 | 1 | PENDING | Live flow status with polling |
+| 22-02 | 1 | COMPLETE | Live flow status with polling |
 
 **Commits (Plan 22-01):**
 - b263325: feat(22-01): add filtering to flow_runs_view and data layer
 - 3516f54: feat(22-01): add flow runs list template with filtering
 - 462a9e1: feat(22-01): add flow run detail template with step timeline
 
+**Commits (Plan 22-02):**
+- 780da5d: feat(22-02): add API endpoint for running flow runs
+- 03d17a2: feat(22-02): add live flow status view with polling
+- 1e0e191: feat(22-02): add Live Status link to Flow Status page
+
+## Phase 22 Completion
+
+**Plans executed:** 2/2
+**Verification:** LIVE-01 through LIVE-04 verified
+
+**Key deliverables:**
+- Flow runs history list with filtering (date, status)
+- Flow run detail view with step timeline
+- Live status dashboard at /admin/flow-status/live/
+- API endpoint at /api/flow-runs/running/
+- 5-second polling with pause/resume control
+
 ## Session Continuity
 
 Last session: 2026-02-02
-Stopped at: Completed 22-01-PLAN.md (Flow runs history)
+Stopped at: Completed 22-02-PLAN.md (Phase 22 complete)
 Resume file: None
