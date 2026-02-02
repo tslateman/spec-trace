@@ -10,9 +10,10 @@ See: .planning/PROJECT.md (updated 2026-02-02)
 ## Current Position
 
 Milestone: v8 Verification Flows — IN PROGRESS
-Phase: 21 (Admin UI Builder) — COMPLETE
-Status: **Phase 21 complete, ready for Phase 22**
-Last activity: 2026-02-02 — Completed 21-03-PLAN.md (Sync to DB endpoint)
+Phase: 22 (Dashboard History & Live Status) — IN PROGRESS
+Plan: 22-01 of 2 complete
+Status: **Plan 22-01 complete, ready for 22-02**
+Last activity: 2026-02-02 — Completed 22-01-PLAN.md (Flow runs history list and detail views)
 
 Progress: ███░░ 3/5 phases (Phases 19-23)
 
@@ -120,7 +121,7 @@ None.
 
 ### Next Steps
 
-Run `/gsd:plan-phase 22` to plan Phase 22 (Dashboard - History & Live Status).
+Run `/gsd:execute-phase 22-02` to continue Phase 22 (Live Flow Status).
 
 ## Phase 21 Plan Summary
 
@@ -170,8 +171,23 @@ Run `/gsd:plan-phase 22` to plan Phase 22 (Dashboard - History & Live Status).
 - Sync to DB button for database persistence
 - Path traversal security protection
 
+## Phase 22 Plan Summary
+
+**Plans:** 2 plans in 1 wave
+**Objective:** Dashboard for flow run history and live status
+
+| Plan | Wave | Status | Objective |
+|------|------|--------|-----------|
+| 22-01 | 1 | COMPLETE | Flow runs history list and detail views |
+| 22-02 | 1 | PENDING | Live flow status with polling |
+
+**Commits (Plan 22-01):**
+- b263325: feat(22-01): add filtering to flow_runs_view and data layer
+- 3516f54: feat(22-01): add flow runs list template with filtering
+- 462a9e1: feat(22-01): add flow run detail template with step timeline
+
 ## Session Continuity
 
 Last session: 2026-02-02
-Stopped at: Completed 21-03-PLAN.md (Phase 21 complete)
+Stopped at: Completed 22-01-PLAN.md (Flow runs history)
 Resume file: None
