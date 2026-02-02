@@ -59,6 +59,16 @@ urlpatterns = [
     # Demo hub and individual demo presenters
     path('demo/', demo_hub, name='demo_hub'),
     path('demo/agent-pipeline/', demo_agent_pipeline, name='demo_agent_pipeline'),
+]
+
+# Conditionally include hospitality app URLs if installed (must be before admin catch-all)
+try:
+    from hospitality import urls as hospitality_urls
+    urlpatterns += hospitality_urls.urlpatterns
+except ImportError:
+    pass  # Hospitality app not installed
+
+urlpatterns += [
     path('admin/', admin.site.urls),
 
     # API endpoints for external systems
