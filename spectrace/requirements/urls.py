@@ -14,6 +14,7 @@ from requirements.views import (
     demo_hub,
     flow_editor_list_view,
     flow_editor_view,
+    flow_live_status_view,
     flow_load_demo_view,
     flow_run_detail_view,
     flow_runs_view,
@@ -47,6 +48,7 @@ admin_urlpatterns = [
     path("admin/validation-runs/compare/", validation_run_compare_view, name="admin-validation-run-compare"),
     # Flow status
     path("admin/flow-status/", flow_status_list_view, name="admin-flow-status"),
+    path("admin/flow-status/live/", flow_live_status_view, name="admin-flow-live"),
     path("admin/flow-status/load-demo/", flow_load_demo_view, name="admin-flow-load-demo"),
     path("admin/flow-status/run/<int:run_id>/", flow_run_detail_view, name="admin-flow-run-detail"),
     path("admin/flow-status/<str:flow_name>/", flow_runs_view, name="admin-flow-runs"),

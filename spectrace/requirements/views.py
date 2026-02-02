@@ -468,6 +468,15 @@ def spec_syntax_help_view(request):
 
 
 @staff_member_required
+def flow_live_status_view(request):
+    """Live monitoring view for currently running flows."""
+    context = {
+        'title': 'Live Flow Status',
+    }
+    return render(request, 'admin/requirements/flow_live.html', context)
+
+
+@staff_member_required
 def flow_status_list_view(request):
     """List all verification flows with their latest run status.
 

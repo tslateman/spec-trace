@@ -1,0 +1,316 @@
+{% extends "unfold/layouts/base.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} | SpecTrace{% endblock %}
+
+{% block content %}
+{% include "admin/requirements/_design_system.html" %}
+
+<style>
+    .flow-pipeline {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    .flow-pipeline-step {
+        width: 24px;
+        height: 8px;
+        border-radius: 2px;
+        background: var(--st-border);
+        position: relative;
+    }
+    .flow-pipeline-step--passed {
+        background: var(--st-pass);
+    }
+    .flow-pipeline-step--failed {
+        background: var(--st-fail);
+    }
+    .flow-pipeline-step--running {
+        background: var(--st-warn);
+        animation: st-pulse 1.5s ease-in-out infinite;
+    }
+    .flow-pipeline-connector {
+        width: 8px;
+        height: 2px;
+        background: var(--st-border-muted);
+    }
+    .live-card {
+        transition: border-color 0.2s var(--st-ease-out);
+    }
+    .live-card:hover {
+        border-color: var(--st-accent-400);
+    }
+    .live-indicator {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--st-pass);
+        animation: st-pulse 2s var(--st-ease-out) infinite;
+    }
+    .live-indicator--paused {
+        background: var(--st-slate-400);
+        animation: none;
+    }
+    .progress-bar {
+        height: 6px;
+        background: var(--st-border);
+        border-radius: 3px;
+        overflow: hidden;
+    }
+    .progress-bar__fill {
+        height: 100%;
+        background: var(--st-warn);
+        border-radius: 3px;
+        transition: width 0.3s var(--st-ease-out);
+    }
+    .current-step-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--st-space-2);
+        padding: var(--st-space-2) var(--st-space-3);
+        background: var(--st-warn-muted);
+        border-radius: var(--st-radius-md);
+        color: var(--st-warn-dark);
+    }
+    .current-step-indicator__dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--st-warn);
+        animation: st-pulse 1.5s ease-in-out infinite;
+    }
+    .empty-state {
+        text-align: center;
+        padding: var(--st-space-12);
+    }
+    .empty-state__icon {
+        width: 64px;
+        height: 64px;
+        margin: 0 auto var(--st-space-4);
+        opacity: 0.5;
+    }
+    .empty-pulse {
+        animation: empty-pulse 3s ease-in-out infinite;
+    }
+    @keyframes empty-pulse {
+        0%, 100% { opacity: 0.4; }
+        50% { opacity: 0.7; }
+    }
+</style>
+
+<div class="st-page-wrapper" x-data="liveFlowMonitor()">
+<div class="st-page st-container">
+
+    <!-- Breadcrumbs -->
+    <nav class="st-breadcrumb mb-4 st-animate-in">
+        <a href="{% url 'admin:index' %}">Dashboard</a>
+        <span class="st-breadcrumb__sep">/</span>
+        <a href="{% url 'admin-flow-status' %}">Flow Status</a>
+        <span class="st-breadcrumb__sep">/</span>
+        <span>Live</span>
+    </nav>
+
+    <!-- Header -->
+    <header class="st-flex-between mb-6 st-animate-in" style="flex-wrap: wrap; gap: var(--st-space-4);">
+        <div>
+            <h1 class="st-heading-1">{{ title }}</h1>
+            <p class="st-caption mt-1">Watching for running flows</p>
+        </div>
+        <div class="st-cluster">
+            <a href="{% url 'admin-flow-status' %}" class="st-btn st-btn--secondary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+                Back to Flows
+            </a>
+        </div>
+    </header>
+
+    <!-- Status Bar -->
+    <div class="st-card mb-6 st-animate-in st-animate-delay-1">
+        <div class="st-card-body" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--st-space-4);">
+            <div style="display: flex; align-items: center; gap: var(--st-space-3);">
+                <div class="live-indicator" :class="{ 'live-indicator--paused': !isPolling }"></div>
+                <span class="st-text" x-text="isPolling ? 'Polling active' : 'Polling paused'"></span>
+                <span class="st-caption" style="margin-left: var(--st-space-4);">
+                    Last updated: <span x-text="formatRelativeTime(lastUpdate)"></span>
+                </span>
+            </div>
+            <button @click="togglePolling()" class="st-btn st-btn--secondary st-btn--sm">
+                <template x-if="isPolling">
+                    <span style="display: flex; align-items: center; gap: var(--st-space-2);">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="6" y="4" width="4" height="16"></rect>
+                            <rect x="14" y="4" width="4" height="16"></rect>
+                        </svg>
+                        Pause
+                    </span>
+                </template>
+                <template x-if="!isPolling">
+                    <span style="display: flex; align-items: center; gap: var(--st-space-2);">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                        </svg>
+                        Resume
+                    </span>
+                </template>
+            </button>
+        </div>
+    </div>
+
+    <!-- Running Flows List -->
+    <div class="st-stack st-animate-in st-animate-delay-2">
+        <template x-if="runningFlows.length > 0">
+            <div class="st-stack">
+                <template x-for="flow in runningFlows" :key="flow.id">
+                    <div class="st-card live-card st-lift">
+                        <div class="st-card-body">
+                            <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: var(--st-space-4); flex-wrap: wrap;">
+                                <!-- Flow Info -->
+                                <div style="flex: 1; min-width: 300px;">
+                                    <div style="display: flex; align-items: center; gap: var(--st-space-3); margin-bottom: var(--st-space-2);">
+                                        <h2 class="st-heading-3" style="margin: 0;" x-text="flow.flow_display_name"></h2>
+                                        <span class="st-badge st-badge--warn">Running</span>
+                                    </div>
+                                    <p class="st-caption" style="margin-bottom: var(--st-space-4);">
+                                        Started <span x-text="formatRelativeTime(flow.started_at)"></span>
+                                    </p>
+
+                                    <!-- Progress Bar -->
+                                    <div style="margin-bottom: var(--st-space-3);">
+                                        <div class="progress-bar">
+                                            <div class="progress-bar__fill" :style="{ width: (flow.completed_steps / flow.total_steps * 100) + '%' }"></div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Current Step -->
+                                    <div class="current-step-indicator" x-show="flow.current_step">
+                                        <span class="current-step-indicator__dot"></span>
+                                        <span class="st-mono" style="font-size: 0.875rem;" x-text="flow.current_step"></span>
+                                    </div>
+                                </div>
+
+                                <!-- Stats & Actions -->
+                                <div style="display: flex; flex-direction: column; align-items: flex-end; gap: var(--st-space-3);">
+                                    <div style="text-align: right;">
+                                        <div class="st-caption">
+                                            Step <span class="st-mono" x-text="flow.current_step_order || flow.completed_steps"></span>
+                                            of <span class="st-mono" x-text="flow.total_steps"></span>
+                                        </div>
+                                        <div class="st-caption" style="margin-top: var(--st-space-1); color: var(--st-pass);">
+                                            <span class="st-mono" x-text="flow.completed_steps"></span> completed
+                                        </div>
+                                    </div>
+                                    <a :href="'/admin/flow-status/run/' + flow.id + '/'" class="st-btn st-btn--primary st-btn--sm">
+                                        View Run
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </template>
+
+        <!-- Empty State -->
+        <template x-if="runningFlows.length === 0">
+            <div class="st-card">
+                <div class="st-card-body empty-state">
+                    <div class="empty-state__icon empty-pulse">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="12" x2="16" y2="12"></line>
+                        </svg>
+                    </div>
+                    <h3 class="st-heading-3" style="margin-bottom: var(--st-space-2);">No flows currently running</h3>
+                    <p class="st-caption" style="margin-bottom: var(--st-space-4);">
+                        This view updates automatically when flows start executing.
+                    </p>
+                    <a href="{% url 'admin-flow-status' %}" class="st-btn st-btn--secondary">
+                        View All Flows
+                    </a>
+                </div>
+            </div>
+        </template>
+    </div>
+
+</div>
+</div>
+
+<script>
+function liveFlowMonitor() {
+    return {
+        runningFlows: [],
+        lastUpdate: null,
+        isPolling: true,
+        timer: null,
+
+        init() {
+            this.fetchRunningFlows();
+            this.startPolling();
+        },
+
+        destroy() {
+            this.stopPolling();
+        },
+
+        startPolling() {
+            this.stopPolling();
+            this.timer = setInterval(() => {
+                if (this.isPolling) {
+                    this.fetchRunningFlows();
+                }
+            }, 5000);
+        },
+
+        stopPolling() {
+            if (this.timer) {
+                clearInterval(this.timer);
+                this.timer = null;
+            }
+        },
+
+        togglePolling() {
+            this.isPolling = !this.isPolling;
+            if (this.isPolling) {
+                this.fetchRunningFlows();
+            }
+        },
+
+        async fetchRunningFlows() {
+            try {
+                const response = await fetch('/api/flow-runs/running/');
+                const data = await response.json();
+                this.runningFlows = data.runs || [];
+                this.lastUpdate = new Date().toISOString();
+            } catch (error) {
+                console.error('Failed to fetch running flows:', error);
+            }
+        },
+
+        formatRelativeTime(isoString) {
+            if (!isoString) return 'never';
+
+            const date = new Date(isoString);
+            const now = new Date();
+            const diffMs = now - date;
+            const diffSeconds = Math.floor(diffMs / 1000);
+
+            if (diffSeconds < 5) return 'just now';
+            if (diffSeconds < 60) return diffSeconds + ' seconds ago';
+
+            const diffMinutes = Math.floor(diffSeconds / 60);
+            if (diffMinutes < 60) return diffMinutes + ' minute' + (diffMinutes !== 1 ? 's' : '') + ' ago';
+
+            const diffHours = Math.floor(diffMinutes / 60);
+            if (diffHours < 24) return diffHours + ' hour' + (diffHours !== 1 ? 's' : '') + ' ago';
+
+            const diffDays = Math.floor(diffHours / 24);
+            return diffDays + ' day' + (diffDays !== 1 ? 's' : '') + ' ago';
+        }
+    };
+}
+</script>
+
+{% endblock %}
