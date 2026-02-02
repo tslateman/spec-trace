@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-02)
 ## Current Position
 
 Milestone: v8 Verification Flows — IN PROGRESS
-Phase: 20 (Flow Execution Engine) — IN PROGRESS
-Status: **Plan 20-01 complete, ready for 20-02**
-Last activity: 2026-02-02 — Completed 20-01-PLAN.md (step executors)
+Phase: 20 (Flow Execution Engine) — COMPLETE
+Status: **Phase 20 complete, ready for Phase 21**
+Last activity: 2026-02-02 — Completed 20-02-PLAN.md (run_flow command)
 
-Progress: ██░░░ 1.5/5 phases (Phases 19-23)
+Progress: ██▓░░ 2/5 phases (Phases 19-23)
 
 ## v8 Summary
 
@@ -27,19 +27,28 @@ Build a verification flow system where:
 See: .planning/milestones/v8-ROADMAP.md
 See: .planning/v8/REQUIREMENTS.md
 
-## Phase 20 Progress
+## Phase 20 Completion
 
-**Plan 20-01 complete:**
+**Plans executed:** 2/2
+**Tests:** 80 total tests passing (27 executor + 38 existing flow tests + 15 command tests)
+**Verification:** All must-haves verified
+
+**Key deliverables:**
 - Step executors module (api_call, assertion, wait)
 - STEP_EXECUTORS registry with execute_step dispatcher
 - Engine extended with step_timeout/flow_timeout parameters
+- run_flow management command for CLI execution
 - Metadata filtering (skips _metadata entries)
-- 27 new tests, 65 total tests passing
 
-**Commits:**
+**Commits (Plan 20-01):**
 - 404f0bb: feat(20-01): add step executors for api_call, assertion, wait
 - 37cb2fb: feat(20-01): extend engine with step dispatcher and timeout handling
 - fa27012: test(20-01): add comprehensive executor tests
+
+**Commits (Plan 20-02):**
+- 6d1bbaa: feat(20-02): add run_flow management command for CLI flow execution
+- bfc63be: test(20-02): add comprehensive tests for run_flow command
+- 831f86f: test(20-02): add integration tests for end-to-end flow execution
 
 ## Phase 19 Completion
 
@@ -96,6 +105,8 @@ Two features implemented outside the GSD workflow (ad-hoc development):
 - Executor registry pattern: STEP_EXECUTORS dict maps type -> function (20-01)
 - last_response context key for passing data between api_call and assertion steps (20-01)
 - Response body truncation at 1000 chars to prevent DB bloat (20-01)
+- Flow lookup: try int() first, then name, then CommandError (20-02)
+- Exit code 1 via sys.exit(1) for failed flows (20-02)
 
 ### Blockers/Concerns
 
@@ -103,7 +114,7 @@ None.
 
 ### Next Steps
 
-Execute plan 20-02: run_flow management command + integration tests.
+Execute Phase 21: Admin UI for flow management.
 
 ## Phase 20 Plan Summary
 
@@ -113,10 +124,10 @@ Execute plan 20-02: run_flow management command + integration tests.
 | Plan | Wave | Status | Objective |
 |------|------|--------|-----------|
 | 20-01 | 1 | COMPLETE | Step executors (api_call, assertion, wait) + engine timeout handling |
-| 20-02 | 2 | PENDING | run_flow management command + integration tests |
+| 20-02 | 2 | COMPLETE | run_flow management command + integration tests |
 
 ## Session Continuity
 
 Last session: 2026-02-02
-Stopped at: Completed 20-01-PLAN.md
+Stopped at: Completed 20-02-PLAN.md
 Resume file: None
