@@ -128,10 +128,16 @@ Existing infrastructure: VerificationFlow, VerificationFlowRun, VerificationFlow
 - LINK-03: Flow dashboard shows which requirements each flow verifies
 
 **Deliverables:**
-- `requirements` field in YAML schema
-- Update parser to create M2M relationships
-- Requirement admin shows linked flows
-- Flow list shows linked requirements
+- M2M field on VerificationFlow model
+- Migration for the M2M table
+- Update sync_yaml_flows_to_db to populate M2M (remove _metadata workaround)
+- VerificationFlowAdmin registration with requirements display
+- RequirementAdmin linked_flows display method
+- Flow list/detail views show linked requirements
+
+**Plans:** 2 plans
+- [ ] 23-01-PLAN.md — Model M2M field, migration, sync logic update
+- [ ] 23-02-PLAN.md — Admin UI updates (VerificationFlowAdmin, RequirementAdmin)
 
 ---
 
