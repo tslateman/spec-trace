@@ -99,13 +99,19 @@ def get_flows_overview() -> dict:
     }
 
 
-def get_flow_runs_data(flow_name: str, page: int = 1, per_page: int = 25) -> dict:
+def get_flow_runs_data(
+    flow_name: str, page: int = 1, per_page: int = 25, filters: dict | None = None
+) -> dict:
     """Get paginated runs for a specific flow.
 
     Args:
         flow_name: The flow name to get runs for
         page: Page number (1-indexed)
         per_page: Items per page
+        filters: Optional dict with keys:
+            - status: Filter by run status (passed, failed, running)
+            - date_from: Filter runs started on or after this date
+            - date_to: Filter runs started on or before this date
 
     Returns:
         {
@@ -175,7 +181,18 @@ def get_flow_runs_data(flow_name: str, page: int = 1, per_page: int = 25) -> dic
         total_steps_count=Count('steps'),
         steps_passed_count=Count('steps', filter=Q(steps__passed=True)),
         steps_failed_count=Count('steps', filter=Q(steps__passed=False)),
-    ).order_by('-started_at')
+    )
+
+    # Apply filters
+    if filters:
+        if filters.get('status'):
+            queryset = queryset.filter(status=filters['status'])
+        if filters.get('date_from'):
+            queryset = queryset.filter(started_at__date__gte=filters['date_from'])
+        if filters.get('date_to'):
+            queryset = queryset.filter(started_at__date__lte=filters['date_to'])
+
+    queryset = queryset.order_by('-started_at')
 
     # Calculate summary stats
     total_runs = queryset.count()

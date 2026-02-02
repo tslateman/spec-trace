@@ -485,6 +485,24 @@ def flow_status_list_view(request):
     return render(request, 'admin/requirements/flow_status.html', context)
 
 
+def _build_flow_run_filters(request) -> dict:
+    """Build filter dict from request query parameters for flow runs."""
+    filters = {}
+    if request.GET.get('status'):
+        filters['status'] = request.GET['status']
+    if request.GET.get('date_from'):
+        try:
+            filters['date_from'] = datetime.strptime(request.GET['date_from'], '%Y-%m-%d')
+        except ValueError:
+            pass
+    if request.GET.get('date_to'):
+        try:
+            filters['date_to'] = datetime.strptime(request.GET['date_to'], '%Y-%m-%d')
+        except ValueError:
+            pass
+    return filters
+
+
 @staff_member_required
 def flow_runs_view(request, flow_name: str):
     """List runs for a specific verification flow.
@@ -492,6 +510,9 @@ def flow_runs_view(request, flow_name: str):
     Query parameters:
         page: Page number (default: 1)
         per_page: Items per page (default: 25)
+        status: Filter by run status (passed, failed, running)
+        date_from: Filter runs started on or after this date (YYYY-MM-DD)
+        date_to: Filter runs started on or before this date (YYYY-MM-DD)
     """
     # Parse pagination with bounds validation
     try:
@@ -503,7 +524,8 @@ def flow_runs_view(request, flow_name: str):
     except (ValueError, TypeError):
         per_page = 25
 
-    data = get_flow_runs_data(flow_name, page=page, per_page=per_page)
+    filters = _build_flow_run_filters(request)
+    data = get_flow_runs_data(flow_name, page=page, per_page=per_page, filters=filters)
 
     if not data['flow_def']:
         # Flow not found
@@ -517,6 +539,12 @@ def flow_runs_view(request, flow_name: str):
         'runs': data['runs'],
         'pagination': data['pagination'],
         'summary': data['summary'],
+        'current_filters': {
+            'status': request.GET.get('status', ''),
+            'date_from': request.GET.get('date_from', ''),
+            'date_to': request.GET.get('date_to', ''),
+            'per_page': per_page,
+        },
     }
 
     return render(request, 'admin/requirements/flow_runs.html', context)
