@@ -23,6 +23,7 @@ from .models import (
     TestRequirementLink,
     TestResult,
     TestRun,
+    VerificationFlow,
 )
 
 
@@ -584,6 +585,63 @@ class ConflictLogAdmin(ModelAdmin):
             json.dumps(obj.details, indent=2)
         )
     details_display.short_description = 'Details'  # type: ignore[attr-defined]
+
+
+# =============================================================================
+# Verification Flow Admin Classes
+# =============================================================================
+
+FLOW_STATUS_COLORS = {
+    'passed': '#22c55e',
+    'failed': '#ef4444',
+    'running': '#f59e0b',
+    'unknown': '#6b7280',
+}
+
+
+@admin.register(VerificationFlow)
+class VerificationFlowAdmin(ModelAdmin):
+    """Admin interface for VerificationFlow."""
+
+    list_display = ['name', 'display_name', 'version', 'synced_at', 'requirements_count']
+    list_filter = ['version']
+    search_fields = ['name', 'display_name', 'description']
+    readonly_fields = ['synced_at', 'linked_requirements_display']
+    filter_horizontal = ['requirements']
+
+    fieldsets = (
+        (None, {
+            'fields': ('name', 'display_name', 'description')
+        }),
+        ('Definition', {
+            'fields': ('steps', 'version', 'synced_at')
+        }),
+        ('Requirements', {
+            'fields': ('requirements', 'linked_requirements_display')
+        }),
+    )
+
+    def get_queryset(self, request):
+        """Prefetch requirements to avoid N+1 queries."""
+        return super().get_queryset(request).prefetch_related('requirements')
+
+    def requirements_count(self, obj):
+        """Display count of linked requirements."""
+        count = obj.requirements.count()
+        return count if count > 0 else '-'
+    requirements_count.short_description = 'Requirements'  # type: ignore[attr-defined]
+
+    def linked_requirements_display(self, obj):
+        """Display linked requirements with verification status badges."""
+        requirements = obj.requirements.all().order_by('external_id')
+        return _render_badge_list(
+            requirements, STATUS_BADGE_COLORS,
+            get_status=lambda r: r.verification_status,
+            get_url=lambda r: reverse('admin:requirements_requirement_change', args=[r.pk]),
+            get_label=lambda r: f"{r.external_id}: {r.title}",
+            empty_message='No linked requirements'
+        )
+    linked_requirements_display.short_description = 'Linked Requirements'  # type: ignore[attr-defined]
 
 
 # =============================================================================
