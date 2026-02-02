@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-02)
 ## Current Position
 
 Milestone: v8 Verification Flows — IN PROGRESS
-Phase: 21 (Admin UI Builder) — IN PROGRESS
-Status: **Plan 21-02 complete, ready for 21-03**
-Last activity: 2026-02-02 — Completed 21-02-PLAN.md (flow editor UI views)
+Phase: 21 (Admin UI Builder) — COMPLETE
+Status: **Phase 21 complete, ready for Phase 22**
+Last activity: 2026-02-02 — Completed 21-03-PLAN.md (Sync to DB endpoint)
 
-Progress: ██▓░░ 2/5 phases (Phases 19-23)
+Progress: ███░░ 3/5 phases (Phases 19-23)
 
 ## v8 Summary
 
@@ -112,6 +112,7 @@ Two features implemented outside the GSD workflow (ad-hoc development):
 - Flow ID readonly in form to prevent breaking references (21-02)
 - Requirements input as comma-separated string, parsed to array (21-02)
 - Config field as JSON textarea for non-handler step types (21-02)
+- Sync endpoint handles single file, redirects to edit form (21-03)
 
 ### Blockers/Concerns
 
@@ -119,7 +120,7 @@ None.
 
 ### Next Steps
 
-Continue with Plan 21-03 (Flow edit API endpoint).
+Continue with Phase 22 (Flow Dashboard).
 
 ## Phase 21 Plan Summary
 
@@ -130,7 +131,7 @@ Continue with Plan 21-03 (Flow edit API endpoint).
 |------|------|--------|-----------|
 | 21-01 | 1 | COMPLETE | Flow editor service (list, load, save) |
 | 21-02 | 2 | COMPLETE | Flow editor UI views and templates |
-| 21-03 | 3 | PENDING | Flow edit API endpoint |
+| 21-03 | 3 | COMPLETE | Sync to DB endpoint |
 
 **Commits (Plan 21-01):**
 - 417a0ff: chore(21-01): add ruamel.yaml dependency
@@ -142,6 +143,10 @@ Continue with Plan 21-03 (Flow edit API endpoint).
 - 452e665: feat(21-02): add flow editor list template
 - a5d018b: feat(21-02): add flow editor form template with Alpine.js
 
+**Commits (Plan 21-03):**
+- 4836d16: feat(21-03): add flow sync to database endpoint
+- 8f45fb8: feat(21-03): add Sync to DB button to flow editor form
+
 ## Phase 20 Plan Summary
 
 **Plans:** 2 plans in 2 waves
@@ -152,8 +157,21 @@ Continue with Plan 21-03 (Flow edit API endpoint).
 | 20-01 | 1 | COMPLETE | Step executors (api_call, assertion, wait) + engine timeout handling |
 | 20-02 | 2 | COMPLETE | run_flow management command + integration tests |
 
+## Phase 21 Completion
+
+**Plans executed:** 3/3
+**Tests:** 484 total passing
+**Verification:** Human-verified complete workflow
+
+**Key deliverables:**
+- Flow editor service (list, load, save with comment preservation)
+- Admin UI at /admin/flow-editor/ with list and edit views
+- Alpine.js-powered step management (add/remove/reorder)
+- Sync to DB button for database persistence
+- Path traversal security protection
+
 ## Session Continuity
 
 Last session: 2026-02-02
-Stopped at: Completed 21-02-PLAN.md
+Stopped at: Completed 21-03-PLAN.md (Phase 21 complete)
 Resume file: None
