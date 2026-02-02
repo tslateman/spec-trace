@@ -250,3 +250,152 @@ def test_run_flow__uses_default_timeouts(mock_execute, flow_with_wait_step):
     call_kwargs = mock_execute.call_args.kwargs
     assert call_kwargs['flow_timeout'] == 300  # default
     assert call_kwargs['step_timeout'] == 60   # default
+
+
+# ============================================================================
+# Integration tests
+# ============================================================================
+
+
+@pytest.mark.django_db
+@responses.activate
+def test_run_flow__executes_yaml_flow_with_api_call_and_assertion():
+    """Execute multi-step flow with api_call and assertion, verify database records."""
+    flow = VerificationFlow.objects.create(
+        name="integration-test",
+        display_name="Integration Test",
+        steps=[
+            {
+                'name': 'health_endpoint',
+                'type': 'api_call',
+                'display_name': 'Health Endpoint Check',
+                'config': {
+                    'method': 'GET',
+                    'url': 'http://testserver/api/health/',
+                    'expected_status': 200,
+                }
+            },
+            {
+                'name': 'response_format',
+                'type': 'assertion',
+                'display_name': 'Response Format Check',
+                'config': {
+                    'field': 'status',
+                    'operator': 'equals',
+                    'value': 'ok',
+                }
+            },
+        ],
+        version=1,
+    )
+
+    # Mock API response
+    responses.add(
+        responses.GET,
+        'http://testserver/api/health/',
+        json={'status': 'ok'},
+        status=200,
+    )
+
+    stdout = StringIO()
+    call_command('run_flow', flow.name, stdout=stdout)
+
+    # Verify output
+    output = stdout.getvalue()
+    assert 'Status: passed' in output
+
+    # Verify database records
+    run = VerificationFlowRun.objects.filter(flow=flow).first()
+    assert run is not None
+    assert run.status == VerificationFlowStatus.PASSED
+    assert run.source == VerificationFlowSource.MANUAL
+
+    # Verify both steps recorded
+    steps = list(run.steps.order_by('step_order'))
+    assert len(steps) == 2
+    assert steps[0].name == 'health_endpoint'
+    assert steps[0].passed is True
+    assert steps[1].name == 'response_format'
+    assert steps[1].passed is True
+
+
+@pytest.mark.django_db
+@responses.activate
+def test_run_flow__records_run_in_database():
+    """Verify flow execution creates proper database records."""
+    flow = VerificationFlow.objects.create(
+        name="db-record-test",
+        display_name="DB Record Test",
+        steps=[
+            {
+                'name': 'step_one',
+                'type': 'api_call',
+                'display_name': 'Step One',
+                'config': {
+                    'method': 'GET',
+                    'url': 'http://example.com/api/',
+                    'expected_status': 200,
+                }
+            },
+        ],
+        version=1,
+    )
+
+    responses.add(
+        responses.GET,
+        'http://example.com/api/',
+        json={'result': 'success'},
+        status=200,
+    )
+
+    stdout = StringIO()
+    call_command('run_flow', flow.name, stdout=stdout)
+
+    # Query run
+    runs = VerificationFlowRun.objects.filter(flow=flow)
+    assert runs.count() == 1
+
+    run = runs.first()
+    assert run.status == VerificationFlowStatus.PASSED
+    assert run.source == VerificationFlowSource.MANUAL
+    assert run.started_at is not None
+    assert run.completed_at is not None
+
+    # Verify step
+    steps = list(run.steps.all())
+    assert len(steps) == 1
+    assert steps[0].step_order == 0
+    assert steps[0].name == 'step_one'
+    assert steps[0].passed is True
+
+
+@pytest.mark.django_db
+def test_run_flow__handles_metadata_in_steps():
+    """Flow with _metadata entry executes correctly, metadata filtered out."""
+    flow = VerificationFlow.objects.create(
+        name="metadata-test",
+        display_name="Metadata Test",
+        steps=[
+            {'_metadata': {'source_file': 'test.yaml', 'requirements': []}},
+            {
+                'name': 'actual_step',
+                'type': 'wait',
+                'display_name': 'Actual Step',
+                'config': {'seconds': 0.01}
+            },
+        ],
+        version=1,
+    )
+
+    stdout = StringIO()
+    call_command('run_flow', flow.name, stdout=stdout)
+
+    output = stdout.getvalue()
+    assert 'Status: passed' in output
+
+    # Verify only one step recorded (metadata filtered)
+    run = VerificationFlowRun.objects.filter(flow=flow).first()
+    assert run is not None
+    steps = list(run.steps.all())
+    assert len(steps) == 1
+    assert steps[0].name == 'actual_step'
