@@ -10,12 +10,12 @@ See: .planning/PROJECT.md (updated 2026-02-02)
 ## Current Position
 
 Milestone: v8 Verification Flows — IN PROGRESS
-Phase: 22 (Dashboard History & Live Status) — COMPLETE
-Plan: 22-02 of 2 complete
-Status: **Phase 22 complete, ready for Phase 23**
-Last activity: 2026-02-02 — Completed 22-02-PLAN.md (Live flow status with polling)
+Phase: 23 (Requirement Linking) — IN PROGRESS
+Plan: 23-01 of 2 complete
+Status: **Plan 23-01 complete, ready for 23-02**
+Last activity: 2026-02-02 — Completed 23-01-PLAN.md (M2M relationship)
 
-Progress: ████░ 4/5 phases (Phases 19-23)
+Progress: ████░ 4.5/5 phases (Phases 19-23)
 
 ## v8 Summary
 
@@ -100,7 +100,7 @@ Two features implemented outside the GSD workflow (ad-hoc development):
 - Full stack scope (backend + UI)
 - Handler field required only for type=handler steps (19-01)
 - Return None for non-flow YAML, raise FlowParseError for malformed (19-01)
-- Store metadata (source_file, requirements) in steps JSON as _metadata key (19-02)
+- Store source_file metadata in steps JSON as _metadata key; requirements via M2M (19-02, 23-01)
 - clear_existing deletes only flows matching provided names, not all YAML-sourced flows (19-02)
 - Signal-based timeout using SIGALRM for POSIX, skip on Windows (20-01)
 - Executor registry pattern: STEP_EXECUTORS dict maps type -> function (20-01)
@@ -116,6 +116,7 @@ Two features implemented outside the GSD workflow (ad-hoc development):
 - Sync endpoint handles single file, redirects to edit form (21-03)
 - 5-second polling interval balances responsiveness with server load (22-02)
 - Pause/resume control allows users to freeze view for inspection (22-02)
+- M2M linking by external_id lookup; warn on missing requirements, don't fail sync (23-01)
 
 ### Blockers/Concerns
 
@@ -123,7 +124,7 @@ None.
 
 ### Next Steps
 
-Run `/gsd:plan-phase 23` to plan Phase 23 (Flow-Requirement Linking).
+Run `/gsd:execute-plan 23-02` to complete Phase 23 (Requirement Linking).
 
 ## Phase 21 Plan Summary
 
@@ -205,8 +206,23 @@ Run `/gsd:plan-phase 23` to plan Phase 23 (Flow-Requirement Linking).
 - API endpoint at /api/flow-runs/running/
 - 5-second polling with pause/resume control
 
+## Phase 23 Plan Summary
+
+**Plans:** 2 plans in 2 waves
+**Objective:** Requirement traceability for verification flows
+
+| Plan | Wave | Status | Objective |
+|------|------|--------|-----------|
+| 23-01 | 1 | COMPLETE | M2M relationship + sync linking |
+| 23-02 | 2 | PENDING | API/view updates for requirement links |
+
+**Commits (Plan 23-01):**
+- d85ace5: feat(23-01): add requirements M2M field to VerificationFlow model
+- e17d8b0: chore(23-01): add migration for VerificationFlow requirements M2M
+- f82ea77: feat(23-01): update sync_yaml_flows_to_db to link requirements via M2M
+
 ## Session Continuity
 
 Last session: 2026-02-02
-Stopped at: Completed 22-02-PLAN.md (Phase 22 complete)
+Stopped at: Completed 23-01-PLAN.md
 Resume file: None
