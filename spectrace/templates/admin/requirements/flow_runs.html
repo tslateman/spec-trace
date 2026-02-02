@@ -1,0 +1,179 @@
+{% extends "unfold/layouts/base.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} | SpecTrace{% endblock %}
+
+{% block content %}
+{% include "admin/requirements/_design_system.html" %}
+
+<div class="st-page-wrapper">
+<div class="st-page st-container">
+    <!-- Breadcrumbs -->
+    <nav class="st-breadcrumbs st-animate-in">
+        <a href="{% url 'admin:index' %}" class="st-breadcrumb-link">Dashboard</a>
+        <span class="st-breadcrumb-sep">/</span>
+        <a href="{% url 'admin-flow-status' %}" class="st-breadcrumb-link">Flow Status</a>
+        <span class="st-breadcrumb-sep">/</span>
+        <span class="st-breadcrumb-current">{{ flow_def.display_name }}</span>
+    </nav>
+
+    <!-- Header -->
+    <header class="st-flex-between mb-6 st-animate-in" style="flex-wrap: wrap; gap: var(--st-space-4);">
+        <div>
+            <h1 class="st-heading-1">{{ flow_def.display_name }}</h1>
+            <p class="st-caption mt-1">{{ flow_def.description }}</p>
+        </div>
+        <div class="st-cluster">
+            <a href="{% url 'admin-flow-status' %}" class="st-btn st-btn--secondary">
+                <- All Flows
+            </a>
+        </div>
+    </header>
+
+    <!-- Summary Stats -->
+    <div class="st-grid-stats mb-6 st-animate-in st-animate-delay-1">
+        <div class="st-metric st-metric--accent st-lift">
+            <div class="st-metric__label">Total Runs</div>
+            <div class="st-metric__value">{{ summary.total_runs|default:"0" }}</div>
+        </div>
+        <div class="st-metric st-metric--pass st-lift">
+            <div class="st-metric__label">Passed</div>
+            <div class="st-metric__value" style="color: var(--st-pass);">{{ summary.passed|default:"0" }}</div>
+        </div>
+        <div class="st-metric st-metric--fail st-lift">
+            <div class="st-metric__label">Failed</div>
+            <div class="st-metric__value" style="color: var(--st-fail);">{{ summary.failed|default:"0" }}</div>
+        </div>
+        <div class="st-metric st-lift">
+            <div class="st-metric__label">Pass Rate</div>
+            <div class="st-metric__value">{{ summary.pass_rate|default:"0" }}%</div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="st-card st-animate-in st-animate-delay-2 mb-6">
+        <div class="st-card-header">
+            <h2 class="st-heading-3">Filters</h2>
+        </div>
+        <form method="get" class="st-card-body">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--st-space-4); align-items: end;">
+                <div>
+                    <label class="st-input-label">Status</label>
+                    <select name="status" class="st-select">
+                        <option value="">All Statuses</option>
+                        <option value="passed" {% if current_filters.status == 'passed' %}selected{% endif %}>Passed</option>
+                        <option value="failed" {% if current_filters.status == 'failed' %}selected{% endif %}>Failed</option>
+                        <option value="running" {% if current_filters.status == 'running' %}selected{% endif %}>Running</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="st-input-label">Date From</label>
+                    <input type="date" name="date_from" value="{{ current_filters.date_from }}" class="st-input">
+                </div>
+                <div>
+                    <label class="st-input-label">Date To</label>
+                    <input type="date" name="date_to" value="{{ current_filters.date_to }}" class="st-input">
+                </div>
+                <div class="st-cluster">
+                    <button type="submit" class="st-btn st-btn--primary">Apply</button>
+                    <a href="{% url 'admin-flow-runs' flow_def.name %}" class="st-btn st-btn--ghost">Clear</a>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Runs Table -->
+    <div class="st-card st-animate-in st-animate-delay-3">
+        <div class="st-card-header">
+            <h2 class="st-heading-3">Flow Runs</h2>
+        </div>
+        <div style="overflow-x: auto;">
+            <table class="st-table">
+                <thead>
+                    <tr>
+                        <th>Run ID</th>
+                        <th>Status</th>
+                        <th>Started</th>
+                        <th style="text-align: right;">Duration</th>
+                        <th style="text-align: right;">Steps</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for run in runs %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'admin-flow-run-detail' run.id %}"
+                               style="color: var(--st-accent-600); text-decoration: none; font-weight: 600;">
+                                <span class="st-mono">#{{ run.id }}</span>
+                            </a>
+                        </td>
+                        <td>
+                            {% if run.status == 'passed' %}
+                            <span class="st-badge st-badge--pass">Passed</span>
+                            {% elif run.status == 'failed' %}
+                            <span class="st-badge st-badge--fail">Failed</span>
+                            {% elif run.status == 'running' %}
+                            <span class="st-badge st-badge--warn">Running</span>
+                            {% else %}
+                            <span class="st-badge st-badge--neutral">{{ run.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="st-mono" style="font-size: 0.8125rem; color: var(--st-text-subtle);">
+                                {{ run.started_at|date:"M j, H:i" }}
+                            </span>
+                        </td>
+                        <td style="text-align: right;">
+                            <span class="st-mono" style="color: var(--st-text-muted);">
+                                {% if run.duration_ms %}{{ run.duration_ms }}ms{% else %}-{% endif %}
+                            </span>
+                        </td>
+                        <td style="text-align: right;">
+                            <span class="st-mono" style="color: var(--st-pass);">{{ run.steps_passed }}</span>
+                            <span style="color: var(--st-text-subtle);">/</span>
+                            <span class="st-mono" style="color: var(--st-fail);">{{ run.steps_failed }}</span>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" style="text-align: center; padding: var(--st-space-10); color: var(--st-text-subtle);">
+                            No flow runs found.
+                            {% if current_filters.status or current_filters.date_from or current_filters.date_to %}
+                            <br><a href="{% url 'admin-flow-runs' flow_def.name %}" class="st-btn st-btn--ghost st-btn--sm" style="margin-top: var(--st-space-3);">Clear filters</a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if pagination.total_pages > 1 %}
+        <div class="st-card-body" style="border-top: 1px solid var(--st-border);">
+            <div class="st-flex-between">
+                <span class="st-caption">
+                    Page <strong>{{ pagination.current_page }}</strong> of <strong>{{ pagination.total_pages }}</strong>
+                    - {{ pagination.total_items }} total runs
+                </span>
+                <div class="st-cluster">
+                    {% if pagination.has_previous %}
+                    <a href="?page={{ pagination.previous_page }}{% if current_filters.status %}&status={{ current_filters.status }}{% endif %}{% if current_filters.date_from %}&date_from={{ current_filters.date_from }}{% endif %}{% if current_filters.date_to %}&date_to={{ current_filters.date_to }}{% endif %}"
+                       class="st-btn st-btn--secondary st-btn--sm">
+                        <- Previous
+                    </a>
+                    {% endif %}
+                    {% if pagination.has_next %}
+                    <a href="?page={{ pagination.next_page }}{% if current_filters.status %}&status={{ current_filters.status }}{% endif %}{% if current_filters.date_from %}&date_from={{ current_filters.date_from }}{% endif %}{% if current_filters.date_to %}&date_to={{ current_filters.date_to }}{% endif %}"
+                       class="st-btn st-btn--secondary st-btn--sm">
+                        Next ->
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+</div>
+{% endblock %}
