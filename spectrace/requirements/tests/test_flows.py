@@ -87,6 +87,8 @@ class TestFlowStepDef:
             'handler': 'module.function',
             'display_name': 'Test',
             'description': 'Description',
+            'type': 'handler',
+            'config': {},
         }
 
 
