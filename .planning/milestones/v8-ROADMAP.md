@@ -115,6 +115,11 @@ Existing infrastructure: VerificationFlow, VerificationFlowRun, VerificationFlow
 - Flow run detail view: `admin/flow_run_detail.html`
 - Live status view: `admin/flow_live.html`
 - Filtering by flow, date, status
+- API endpoint for live flow status polling
+
+**Plans:** 2 plans
+- [ ] 22-01-PLAN.md — History list and detail views (HIST-01 through HIST-04)
+- [ ] 22-02-PLAN.md — Live status view with polling (LIVE-01 through LIVE-04)
 
 ---
 
