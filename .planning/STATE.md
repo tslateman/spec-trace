@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-02)
 ## Current Position
 
 Milestone: v8 Verification Flows — IN PROGRESS
-Phase: 20 (Flow Execution Engine) — COMPLETE
-Status: **Phase 20 complete, ready for Phase 21**
-Last activity: 2026-02-02 — Completed 20-02-PLAN.md (run_flow command)
+Phase: 21 (Admin UI Builder) — IN PROGRESS
+Status: **Plan 21-01 complete, ready for 21-02**
+Last activity: 2026-02-02 — Completed 21-01-PLAN.md (flow editor service)
 
 Progress: ██▓░░ 2/5 phases (Phases 19-23)
 
@@ -107,6 +107,8 @@ Two features implemented outside the GSD workflow (ad-hoc development):
 - Response body truncation at 1000 chars to prevent DB bloat (20-01)
 - Flow lookup: try int() first, then name, then CommandError (20-02)
 - Exit code 1 via sys.exit(1) for failed flows (20-02)
+- Extension check before path traversal check in validate_flow_path (21-01)
+- load_flow_for_editing returns raw dict (not FlowDef) for form editing flexibility (21-01)
 
 ### Blockers/Concerns
 
@@ -114,7 +116,23 @@ None.
 
 ### Next Steps
 
-Run `/gsd:plan-phase 21` to plan Phase 21 (Admin UI Builder).
+Continue with Plan 21-02 (Flow List API).
+
+## Phase 21 Plan Summary
+
+**Plans:** 3 plans in 3 waves
+**Objective:** Admin UI backend for flow YAML editing
+
+| Plan | Wave | Status | Objective |
+|------|------|--------|-----------|
+| 21-01 | 1 | COMPLETE | Flow editor service (list, load, save) |
+| 21-02 | 2 | PENDING | Flow list API endpoint |
+| 21-03 | 3 | PENDING | Flow edit API endpoint |
+
+**Commits (Plan 21-01):**
+- 417a0ff: chore(21-01): add ruamel.yaml dependency
+- 71a2c39: feat(21-01): add flow editor service for Admin UI YAML management
+- aa0900b: test(21-01): add unit tests for flow editor service
 
 ## Phase 20 Plan Summary
 
@@ -129,5 +147,5 @@ Run `/gsd:plan-phase 21` to plan Phase 21 (Admin UI Builder).
 ## Session Continuity
 
 Last session: 2026-02-02
-Stopped at: Completed 20-02-PLAN.md
+Stopped at: Completed 21-01-PLAN.md
 Resume file: None
