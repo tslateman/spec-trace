@@ -70,6 +70,7 @@ Existing infrastructure: VerificationFlow, VerificationFlowRun, VerificationFlow
 
 ### Phase 21: Admin UI Builder
 
+**Status:** Planned
 **Goal:** Visual editor for YAML flow files.
 
 **Requirements:**
@@ -78,11 +79,17 @@ Existing infrastructure: VerificationFlow, VerificationFlowRun, VerificationFlow
 - FLOW-06: Validate YAML syntax and schema on save
 
 **Deliverables:**
-- Custom admin view: `admin/flow_editor.html`
-- Flow list view showing all YAML files
-- Flow edit form with step management
+- Flow editor service: `flow_editor.py` (ruamel.yaml for round-trip)
+- Flow list view: `/admin/flow-editor/`
+- Flow edit form with Alpine.js step management
 - Save action writes to YAML file
+- Sync to DB button for database update
 - Validation errors shown in UI
+
+**Plans:** 3 plans
+- [ ] 21-01-PLAN.md — Backend service layer (ruamel.yaml, path validation, CRUD)
+- [ ] 21-02-PLAN.md — Admin views and templates (list + edit form)
+- [ ] 21-03-PLAN.md — Sync to DB button + human verification
 
 ---
 
