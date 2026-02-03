@@ -32,10 +32,10 @@ Requirements for Demo & Marketing Polish milestone.
 
 ### Onboarding
 
-- [ ] **ONBD-01**: Getting started guide accessible from landing page
-- [ ] **ONBD-02**: Guide explains: what SpecTrace is, how to add specs, how to link tests
-- [ ] **ONBD-03**: Guide includes code examples for pytest markers
-- [ ] **ONBD-04**: Guide shows expected dashboard result after setup
+- [x] **ONBD-01**: Getting started guide accessible from landing page
+- [x] **ONBD-02**: Guide explains: what SpecTrace is, how to add specs, how to link tests
+- [x] **ONBD-03**: Guide includes code examples for pytest markers
+- [x] **ONBD-04**: Guide shows expected dashboard result after setup
 
 ## Future Requirements
 
@@ -82,10 +82,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DEMO-04 | Phase 26 | Complete |
 | DEMO-05 | Phase 27 | Complete |
 | DEMO-06 | Phase 27 | Complete |
-| ONBD-01 | Phase 28 | Pending |
-| ONBD-02 | Phase 28 | Pending |
-| ONBD-03 | Phase 28 | Pending |
-| ONBD-04 | Phase 28 | Pending |
+| ONBD-01 | Phase 28 | Complete |
+| ONBD-02 | Phase 28 | Complete |
+| ONBD-03 | Phase 28 | Complete |
+| ONBD-04 | Phase 28 | Complete |
 
 **Coverage:**
 - v9 requirements: 18 total
