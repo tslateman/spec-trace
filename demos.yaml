@@ -37,6 +37,29 @@ demos:
     urls:
       - http://localhost:8000/demo/spectrace-overview/
 
+  - id: qa-ecosystem
+    name: QA Ecosystem Integration
+    description: >
+      Explains how SpecTrace fits alongside other QA initiatives like PR smoke
+      tests, mutation testing, and ephemeral environments. Shows SpecTrace as
+      the traceability layer connecting test execution to business requirements.
+    entry_point: open http://localhost:8000/demo/qa-ecosystem/
+    duration: 3 minutes
+    audience:
+      - Engineering leads planning QA strategy
+      - Teams evaluating where SpecTrace fits
+      - Anyone comparing SpecTrace to other tools
+    prerequisites:
+      - Server running (`make run`)
+    talking_points:
+      - SpecTrace components (specs parser, test linking, in-app validation)
+      - Integration with PR smoke tests (defines critical paths)
+      - Integration with ephemeral environments (validates readiness)
+      - Integration with mutation testing (prioritizes coverage)
+      - Complementary metrics (code coverage vs mutation score vs requirement coverage)
+    urls:
+      - http://localhost:8000/demo/qa-ecosystem/
+
   - id: demo-hub
     name: Demo Hub (Meta)
     description: >

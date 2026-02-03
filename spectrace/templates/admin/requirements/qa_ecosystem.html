@@ -1,0 +1,742 @@
+{% extends "unfold/layouts/base.html" %}
+{% load i18n %}
+
+{% block title %}QA Ecosystem | SpecTrace{% endblock %}
+
+{% block breadcrumbs %}
+<nav class="st-breadcrumbs">
+    <a href="{% url 'demo_hub' %}" class="st-breadcrumb-link">Demo Catalog</a>
+    <span class="st-breadcrumb-sep">/</span>
+    <span class="st-breadcrumb-current">QA Ecosystem</span>
+</nav>
+{% endblock %}
+
+{% block content %}
+{% include "admin/requirements/_design_system.html" %}
+
+<style>
+    /* Hide empty Unfold header container on demo pages */
+    #content > header,
+    .container.h-16 {
+        display: none !important;
+    }
+
+    .ecosystem-hero {
+        background: linear-gradient(135deg, var(--st-slate-900) 0%, var(--st-slate-800) 100%);
+        border-radius: var(--st-radius-xl);
+        padding: var(--st-space-10) var(--st-space-8);
+        margin-bottom: var(--st-space-8);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .ecosystem-hero::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 500px;
+        height: 500px;
+        background: radial-gradient(circle at center, rgba(251, 191, 36, 0.12) 0%, transparent 70%);
+        transform: translate(30%, -30%);
+    }
+
+    .ecosystem-hero-content {
+        position: relative;
+        z-index: 1;
+        max-width: 700px;
+    }
+
+    .ecosystem-hero-label {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--st-space-2);
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--st-accent-400);
+        margin-bottom: var(--st-space-3);
+    }
+
+    .ecosystem-hero-title {
+        font-size: 2.25rem;
+        font-weight: 700;
+        letter-spacing: -0.03em;
+        color: #fff;
+        margin: 0 0 var(--st-space-3) 0;
+        line-height: 1.2;
+    }
+
+    .ecosystem-hero-subtitle {
+        font-size: 1.0625rem;
+        color: var(--st-slate-400);
+        line-height: 1.6;
+        margin: 0;
+    }
+
+    .section {
+        margin-bottom: var(--st-space-10);
+    }
+
+    .section-header {
+        margin-bottom: var(--st-space-6);
+    }
+
+    .section-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        color: var(--st-text);
+        margin-bottom: var(--st-space-2);
+    }
+
+    .section-subtitle {
+        font-size: 0.9375rem;
+        color: var(--st-text-muted);
+    }
+
+    /* Component table */
+    .component-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.875rem;
+    }
+
+    .component-table th {
+        text-align: left;
+        padding: var(--st-space-3) var(--st-space-4);
+        background: var(--st-surface-sunken);
+        font-weight: 600;
+        color: var(--st-text);
+        border-bottom: 1px solid var(--st-border);
+    }
+
+    .component-table td {
+        padding: var(--st-space-3) var(--st-space-4);
+        border-bottom: 1px solid var(--st-border);
+        vertical-align: top;
+        color: var(--st-text);
+    }
+
+    .component-table tbody tr {
+        background: var(--st-surface);
+    }
+
+    .component-table tbody tr:nth-child(even) {
+        background: var(--st-surface-sunken);
+    }
+
+    .component-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .component-name {
+        font-weight: 600;
+        color: var(--st-accent-600);
+    }
+
+    html.dark .component-name {
+        color: var(--st-accent-300);
+    }
+
+    html.dark .component-table td {
+        color: var(--st-slate-200);
+    }
+
+    /* Architecture diagram */
+    .architecture-diagram {
+        background: var(--st-surface-sunken);
+        border: 1px solid var(--st-border);
+        border-radius: var(--st-radius-lg);
+        padding: var(--st-space-6);
+        font-family: var(--font-mono);
+        font-size: 0.8125rem;
+        line-height: 1.6;
+        overflow-x: auto;
+        white-space: pre;
+        color: var(--st-text-muted);
+    }
+
+    .diagram-highlight {
+        color: var(--st-accent-500);
+        font-weight: 600;
+    }
+
+    .diagram-box {
+        color: var(--st-text);
+    }
+
+    /* Workflow code block */
+    .workflow-code {
+        background: var(--st-surface-sunken);
+        border: 1px solid var(--st-border);
+        border-radius: var(--st-radius-md);
+        padding: var(--st-space-4);
+        font-family: var(--font-mono);
+        font-size: 0.8125rem;
+        color: var(--st-text-muted);
+    }
+
+    /* Integration cards */
+    .integration-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: var(--st-space-5);
+    }
+
+    .integration-card {
+        background: var(--st-surface);
+        border: 1px solid var(--st-border);
+        border-radius: var(--st-radius-lg);
+        padding: var(--st-space-5);
+    }
+
+    .integration-card:hover {
+        border-color: var(--st-accent-400);
+    }
+
+    .integration-card-header {
+        display: flex;
+        align-items: center;
+        gap: var(--st-space-3);
+        margin-bottom: var(--st-space-4);
+    }
+
+    .integration-card-icon {
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--st-accent-bg);
+        border-radius: var(--st-radius-md);
+        color: var(--st-accent-500);
+    }
+
+    html.dark .integration-card-icon {
+        background: rgba(251, 191, 36, 0.12);
+    }
+
+    .integration-card-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--st-text);
+    }
+
+    .integration-table {
+        width: 100%;
+        font-size: 0.8125rem;
+    }
+
+    .integration-table td {
+        padding: var(--st-space-2) 0;
+        vertical-align: top;
+    }
+
+    .integration-table td:first-child {
+        color: var(--st-text-muted);
+        width: 45%;
+    }
+
+    .integration-table td:last-child {
+        color: var(--st-text);
+    }
+
+    html.dark .integration-table td:first-child {
+        color: var(--st-slate-400);
+    }
+
+    html.dark .integration-table td:last-child {
+        color: var(--st-slate-200);
+    }
+
+    /* Metrics comparison */
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: var(--st-space-4);
+    }
+
+    @media (max-width: 768px) {
+        .metrics-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .metric-card {
+        background: var(--st-surface);
+        border: 1px solid var(--st-border);
+        border-radius: var(--st-radius-lg);
+        padding: var(--st-space-5);
+        text-align: center;
+    }
+
+    .metric-card--accent {
+        border-color: var(--st-accent-400);
+        background: var(--st-accent-bg);
+    }
+
+    html.dark .metric-card--accent {
+        background: rgba(251, 191, 36, 0.08);
+    }
+
+    html.dark .metric-card {
+        background: var(--st-surface);
+    }
+
+    .metric-tool {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--st-text-subtle);
+        margin-bottom: var(--st-space-2);
+    }
+
+    .metric-name {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: var(--st-text);
+        margin-bottom: var(--st-space-2);
+    }
+
+    .metric-question {
+        font-size: 0.8125rem;
+        color: var(--st-text-muted);
+        font-style: italic;
+    }
+
+    /* Summary table */
+    .summary-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.875rem;
+    }
+
+    .summary-table th {
+        text-align: left;
+        padding: var(--st-space-3) var(--st-space-4);
+        background: var(--st-surface-sunken);
+        font-weight: 600;
+        color: var(--st-text);
+        border-bottom: 1px solid var(--st-border);
+    }
+
+    .summary-table td {
+        padding: var(--st-space-3) var(--st-space-4);
+        border-bottom: 1px solid var(--st-border);
+        vertical-align: top;
+        color: var(--st-text);
+    }
+
+    .summary-table tbody tr {
+        background: var(--st-surface);
+    }
+
+    .summary-table tbody tr:nth-child(even) {
+        background: var(--st-surface-sunken);
+    }
+
+    .summary-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .summary-table tr:last-child {
+        background: var(--st-accent-bg) !important;
+    }
+
+    html.dark .summary-table tr:last-child {
+        background: rgba(251, 191, 36, 0.12) !important;
+    }
+
+    .summary-table tr:last-child td {
+        font-weight: 600;
+        color: var(--st-accent-600);
+    }
+
+    html.dark .summary-table tr:last-child td {
+        color: var(--st-accent-300);
+    }
+
+    html.dark .summary-table td {
+        color: var(--st-slate-200);
+    }
+
+    /* Callout */
+    .callout {
+        background: var(--st-accent-bg);
+        border-left: 4px solid var(--st-accent-500);
+        border-radius: var(--st-radius-md);
+        padding: var(--st-space-5);
+        margin-top: var(--st-space-8);
+    }
+
+    html.dark .callout {
+        background: rgba(251, 191, 36, 0.08);
+    }
+
+    .callout-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--st-text);
+        margin-bottom: var(--st-space-2);
+    }
+
+    .callout-text {
+        font-size: 0.9375rem;
+        color: var(--st-text-muted);
+        line-height: 1.6;
+    }
+
+    /* CTA */
+    .cta-section {
+        text-align: center;
+        padding: var(--st-space-8);
+        background: var(--st-surface);
+        border: 1px solid var(--st-border);
+        border-radius: var(--st-radius-xl);
+        margin-top: var(--st-space-8);
+    }
+
+    .cta-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--st-text);
+        margin-bottom: var(--st-space-2);
+    }
+
+    .cta-subtitle {
+        font-size: 0.9375rem;
+        color: var(--st-text-muted);
+        margin-bottom: var(--st-space-6);
+    }
+
+    .cta-buttons {
+        display: flex;
+        justify-content: center;
+        gap: var(--st-space-3);
+        flex-wrap: wrap;
+    }
+</style>
+
+<div class="st-page-wrapper">
+<div class="st-page st-container" style="max-width: 960px;">
+
+    <!-- Hero -->
+    <div class="ecosystem-hero st-animate-in">
+        <div class="ecosystem-hero-content">
+            <div class="ecosystem-hero-label">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path>
+                    <path d="M2 12h20"></path>
+                </svg>
+                QA Ecosystem
+            </div>
+            <h1 class="ecosystem-hero-title">How SpecTrace Fits</h1>
+            <p class="ecosystem-hero-subtitle">
+                SpecTrace answers a single question: which requirements pass, which fail, and which remain untested?
+            </p>
+        </div>
+    </div>
+
+    <!-- What SpecTrace Does -->
+    <section class="section st-animate-in" style="animation-delay: 0.05s;">
+        <div class="section-header">
+            <h2 class="section-title">What SpecTrace Does</h2>
+            <p class="section-subtitle">The six components that trace requirements to tests</p>
+        </div>
+
+        <div class="st-card">
+            <div class="st-card-body" style="padding: 0; overflow: hidden;">
+                <table class="component-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 30%;">Component</th>
+                            <th>Purpose</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="component-name">Specs Parser</span></td>
+                            <td>Reads requirements from markdown with YAML frontmatter</td>
+                        </tr>
+                        <tr>
+                            <td><span class="component-name">Test Linking</span></td>
+                            <td>Connects tests to requirements via <code class="st-mono" style="font-size: 0.75rem;">@pytest.mark.requirement("REQ-XXX")</code></td>
+                        </tr>
+                        <tr>
+                            <td><span class="component-name">In-App Validation SDK</span></td>
+                            <td>Verifies integrations in production (e.g., "Test PMS Connection")</td>
+                        </tr>
+                        <tr>
+                            <td><span class="component-name">SLO Integration</span></td>
+                            <td>Imports OpenSLO definitions and tracks compliance</td>
+                        </tr>
+                        <tr>
+                            <td><span class="component-name">Verification Status</span></td>
+                            <td>Computes requirement status from test results: passing, failing, untested</td>
+                        </tr>
+                        <tr>
+                            <td><span class="component-name">Risk Classification</span></td>
+                            <td>Marks requirements as critical, high, medium, or low</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div style="margin-top: var(--st-space-5);">
+            <p class="st-caption" style="margin-bottom: var(--st-space-2);">Core workflow:</p>
+            <div class="workflow-code">
+Specs (markdown) → Test markers → JUnit results → SpecTrace → Coverage matrix
+            </div>
+        </div>
+    </section>
+
+    <!-- The Combined Picture -->
+    <section class="section st-animate-in" style="animation-delay: 0.1s;">
+        <div class="section-header">
+            <h2 class="section-title">The Combined Picture</h2>
+            <p class="section-subtitle">SpecTrace connects to other QA initiatives</p>
+        </div>
+
+        <div class="architecture-diagram"><span class="diagram-box">┌───────────────────────────────────────────────────────────────────────────────────────┐
+│                              REQUIREMENT SPECS                                        │
+│  "Guest can complete check-in"    "Hotels conform to portfolio configuration"         │
+└───────────────────────────────────────────────────────────────────────────────────────┘</span>
+                                            │
+                                            ▼
+<span class="diagram-box">┌───────────────────────────────────────────────────────────────────────────────────────┐
+│                                 <span class="diagram-highlight">SPEC-TRACE</span>                                            │
+│            Tracks requirement verification: method and current status                 │
+└───────────────────────────────────────────────────────────────────────────────────────┘</span>
+        │                    │                    │                    │
+        ▼                    ▼                    ▼                    ▼
+<span class="diagram-box">┌───────────────────┐ ┌───────────────────┐ ┌───────────────────┐ ┌───────────────────┐
+│  PR SMOKE TESTS   │ │ MUTATION TESTING  │ │  EPHEMERAL ENVS   │ │ CONFIG CONFORMITY │
+│  (Playwright)     │ │ (mutmut)          │ │ (EBS Snapshots)   │ │ (Portfolio rules) │
+│                   │ │                   │ │                   │ │                   │
+│  Fast signal on   │ │ "Do tests catch   │ │ Stable test data  │ │ Consistency and   │
+│  critical paths   │ │  bugs?"           │ │ Fast spin-up      │ │ drift detection   │
+└───────────────────┘ └───────────────────┘ └───────────────────┘ └───────────────────┘</span></div>
+    </section>
+
+    <!-- Integration Points -->
+    <section class="section st-animate-in" style="animation-delay: 0.15s;">
+        <div class="section-header">
+            <h2 class="section-title">Integration Points</h2>
+            <p class="section-subtitle">SpecTrace adds value to each initiative</p>
+        </div>
+
+        <div class="integration-grid">
+            <!-- PR Smoke Tests -->
+            <div class="integration-card">
+                <div class="integration-card-header">
+                    <div class="integration-card-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="integration-card-title">PR Smoke Tests</h3>
+                </div>
+                <table class="integration-table">
+                    <tr>
+                        <td>Run tests on critical paths</td>
+                        <td>Specs define criticality via <code class="st-mono" style="font-size: 0.6875rem;">risk: critical</code></td>
+                    </tr>
+                    <tr>
+                        <td>5-10 smoke scenarios</td>
+                        <td>Maps scenarios to requirements</td>
+                    </tr>
+                    <tr>
+                        <td>Actionable PR feedback</td>
+                        <td>Links failures to business requirements</td>
+                    </tr>
+                </table>
+            </div>
+
+            <!-- Ephemeral Environments -->
+            <div class="integration-card">
+                <div class="integration-card-header">
+                    <div class="integration-card-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
+                            <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
+                            <line x1="6" y1="6" x2="6.01" y2="6"></line>
+                            <line x1="6" y1="18" x2="6.01" y2="18"></line>
+                        </svg>
+                    </div>
+                    <h3 class="integration-card-title">Ephemeral Environments</h3>
+                </div>
+                <table class="integration-table">
+                    <tr>
+                        <td>QA seed data in snapshots</td>
+                        <td>In-app validation confirms seed data meets test prerequisites</td>
+                    </tr>
+                    <tr>
+                        <td>Consistent environment setup</td>
+                        <td>Health checks verify environment before tests run</td>
+                    </tr>
+                </table>
+            </div>
+
+            <!-- Mutation Testing -->
+            <div class="integration-card">
+                <div class="integration-card-header">
+                    <div class="integration-card-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path>
+                        </svg>
+                    </div>
+                    <h3 class="integration-card-title">Mutation Testing</h3>
+                </div>
+                <table class="integration-table">
+                    <tr>
+                        <td>Which code to mutation test?</td>
+                        <td>Prioritizes code backing critical requirements</td>
+                    </tr>
+                    <tr>
+                        <td>Track test effectiveness</td>
+                        <td>Correlates mutation scores with requirement coverage</td>
+                    </tr>
+                </table>
+            </div>
+
+            <!-- Configuration Conformity -->
+            <div class="integration-card">
+                <div class="integration-card-header">
+                    <div class="integration-card-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                            <path d="M2 17l10 5 10-5"></path>
+                            <path d="M2 12l10 5 10-5"></path>
+                        </svg>
+                    </div>
+                    <h3 class="integration-card-title">Configuration Conformity</h3>
+                </div>
+                <table class="integration-table">
+                    <tr>
+                        <td>Validate config changes</td>
+                        <td>Express consistency predicates as requirements</td>
+                    </tr>
+                    <tr>
+                        <td>Enforce portfolio rules</td>
+                        <td>Track conformity status per hotel</td>
+                    </tr>
+                    <tr>
+                        <td>Detect drift</td>
+                        <td>Flag hotels diverging from portfolio settings</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- Complementary Metrics -->
+    <section class="section st-animate-in" style="animation-delay: 0.2s;">
+        <div class="section-header">
+            <h2 class="section-title">Complementary Metrics</h2>
+            <p class="section-subtitle">Each tool answers a distinct question</p>
+        </div>
+
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-tool">pytest-cov</div>
+                <div class="metric-name">Code Coverage</div>
+                <div class="metric-question">"Did this code run?"</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-tool">mutmut</div>
+                <div class="metric-name">Mutation Score</div>
+                <div class="metric-question">"Do tests catch bugs here?"</div>
+            </div>
+            <div class="metric-card metric-card--accent">
+                <div class="metric-tool">SpecTrace</div>
+                <div class="metric-name">Requirement Coverage</div>
+                <div class="metric-question">"Which business requirements are verified?"</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Summary -->
+    <section class="section st-animate-in" style="animation-delay: 0.25s;">
+        <div class="section-header">
+            <h2 class="section-title">Summary</h2>
+            <p class="section-subtitle">SpecTrace as connective tissue</p>
+        </div>
+
+        <div class="st-card">
+            <div class="st-card-body" style="padding: 0; overflow: hidden;">
+                <table class="summary-table">
+                    <thead>
+                        <tr>
+                            <th>Initiative</th>
+                            <th>Problem Solved</th>
+                            <th>SpecTrace Integration</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>PR Smoke Tests</td>
+                            <td>Critical flows lack fast feedback</td>
+                            <td>Defines critical, tracks coverage by requirement</td>
+                        </tr>
+                        <tr>
+                            <td>Ephemeral Envs</td>
+                            <td>Slow spin-up, inconsistent data</td>
+                            <td>Validates env readiness via in-app validation SDK</td>
+                        </tr>
+                        <tr>
+                            <td>Mutation Testing</td>
+                            <td>Coverage measures execution, not effectiveness</td>
+                            <td>Prioritizes which code paths to mutation test</td>
+                        </tr>
+                        <tr>
+                            <td>Config Conformity</td>
+                            <td>Hotels drift from portfolio settings</td>
+                            <td>Tracks conformity, flags drift as regressions</td>
+                        </tr>
+                        <tr>
+                            <td>SpecTrace</td>
+                            <td>Requirement verification status unknown</td>
+                            <td>Connective tissue between all four</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="callout">
+            <div class="callout-title">The Bottom Line</div>
+            <p class="callout-text">
+                SpecTrace connects test execution to business requirements: "tests passed" becomes "requirements verified."
+            </p>
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <div class="cta-section st-animate-in" style="animation-delay: 0.3s;">
+        <h2 class="cta-title">Explore SpecTrace</h2>
+        <p class="cta-subtitle">See traceability in action</p>
+        <div class="cta-buttons">
+            <a href="{% url 'admin-matrix' %}" class="st-btn st-btn--primary">
+                Traceability Matrix
+            </a>
+            <a href="{% url 'admin-vendor-coverage' %}" class="st-btn st-btn--secondary">
+                Vendor Coverage
+            </a>
+            <a href="{% url 'admin-high-risk' %}" class="st-btn st-btn--secondary">
+                High-Risk Dashboard
+            </a>
+            <a href="{% url 'spectrace_overview' %}" class="st-btn st-btn--secondary">
+                Deep Dive
+            </a>
+        </div>
+    </div>
+
+</div>
+</div>
+
+{% endblock %}

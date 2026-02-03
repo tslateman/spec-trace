@@ -616,6 +616,7 @@ def demo_hub(request):
     # Add URL paths for web-based demos
     web_demo_urls = {
         "spectrace-overview": "spectrace_overview",
+        "qa-ecosystem": "qa_ecosystem",
         "agent-pipeline": "demo_agent_pipeline",
         "flow-status-dashboard": "admin-flow-status",
         "traceability-matrix": "admin-matrix",
@@ -655,6 +656,16 @@ def spectrace_overview(request):
     benefits of SpecTrace with links to try each feature.
     """
     return render(request, "admin/requirements/spectrace_overview.html")
+
+
+@staff_member_required
+def qa_ecosystem_view(request):
+    """How SpecTrace fits in the QA ecosystem.
+
+    Explains how SpecTrace connects to other QA initiatives like PR smoke
+    tests, mutation testing, and ephemeral environments.
+    """
+    return render(request, "admin/requirements/qa_ecosystem.html")
 
 
 @staff_member_required
