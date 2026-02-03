@@ -10,12 +10,12 @@ See: .planning/PROJECT.md (updated 2026-02-03)
 ## Current Position
 
 Milestone: v9 Demo & Marketing Polish
-Phase: 27 of 28 (Guided Tour)
+Phase: 28 of 28 (Onboarding Guide)
 Plan: 01 COMPLETE
-Status: Phase complete, ready for Phase 28
-Last activity: 2026-02-03 — Completed 27-01-PLAN.md (Driver.js guided tour)
+Status: In progress
+Last activity: 2026-02-03 — Completed 28-01-PLAN.md (Getting Started guide)
 
-Progress: [███████░░░] 70%
+Progress: [████████░░] 80%
 
 ## Milestone History
 
@@ -38,7 +38,7 @@ Progress: [███████░░░] 70%
 - Phase 25: Landing Page (LAND-01 to LAND-04) - COMPLETE
 - Phase 26: Demo Data & Hub (DEMO-01 to DEMO-04) - COMPLETE
 - Phase 27: Guided Tour (DEMO-05, DEMO-06) - COMPLETE
-- Phase 28: Onboarding Guide (ONBD-01 to ONBD-04) - getting started
+- Phase 28: Onboarding Guide (ONBD-01 to ONBD-04) - 01 COMPLETE
 
 ## Accumulated Context
 
@@ -46,9 +46,10 @@ Progress: [███████░░░] 70%
 
 Decisions logged in PROJECT.md Key Decisions table.
 
-Phase 27 decisions:
-- Driver.js loaded from CDN (no npm install) for minimal footprint
-- SessionStorage pattern for cross-page tour triggering
+Phase 28 decisions:
+- Progressive disclosure structure: What > Workflow > Steps > Next Steps
+- Alpine.js x-data pattern for copy-to-clipboard (consistent with spectrace_overview.html)
+- Book icon for Getting Started card (represents documentation/learning)
 
 ### Blockers/Concerns
 
@@ -57,5 +58,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-03
-Stopped at: Completed 27-01-PLAN.md, Phase 27 complete
+Stopped at: Completed 28-01-PLAN.md
 Resume file: None
