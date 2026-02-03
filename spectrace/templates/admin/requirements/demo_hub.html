@@ -7,6 +7,12 @@
 {% include "admin/requirements/_design_system.html" %}
 
 <style>
+    /* Hide empty Unfold header container on demo pages */
+    #content > header,
+    .container.h-16 {
+        display: none !important;
+    }
+
     .demo-hero {
         background: linear-gradient(135deg, var(--st-slate-900) 0%, var(--st-slate-800) 100%);
         border-radius: var(--st-radius-xl);

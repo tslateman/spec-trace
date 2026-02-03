@@ -1,7 +1,7 @@
 {% comment %}
 SpecTrace Design System
 =======================
-A technical-precision aesthetic with warm accents.
+A technical-precision aesthetic with cool indigo accents.
 Inspired by mission control dashboards meets modern fintech.
 
 Include this partial at the top of {% block content %}:
@@ -18,7 +18,7 @@ Include this partial at the top of {% block content %}:
     --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
     --font-display: 'DM Sans', 'Inter', system-ui, sans-serif;
 
-    /* Core palette - Warm slate with amber accents */
+    /* Core palette - Cool slate with indigo accents */
     --st-slate-50: #f8f9fa;
     --st-slate-100: #f1f3f5;
     --st-slate-200: #e9ecef;
@@ -31,15 +31,15 @@ Include this partial at the top of {% block content %}:
     --st-slate-900: #16191d;
     --st-slate-950: #0d0f12;
 
-    /* Accent - Warm amber/gold */
-    --st-accent-50: #fff9eb;
-    --st-accent-100: #fef0c7;
-    --st-accent-200: #fde68a;
-    --st-accent-300: #fcd34d;
-    --st-accent-400: #fbbf24;
-    --st-accent-500: #f59e0b;
-    --st-accent-600: #d97706;
-    --st-accent-700: #b45309;
+    /* Accent - Indigo */
+    --st-accent-50: #eef2ff;
+    --st-accent-100: #e0e7ff;
+    --st-accent-200: #c7d2fe;
+    --st-accent-300: #a5b4fc;
+    --st-accent-400: #818cf8;
+    --st-accent-500: #6366f1;
+    --st-accent-600: #4f46e5;
+    --st-accent-700: #4338ca;
 
     /* Status colors - Refined, not neon */
     --st-pass: #10b981;
@@ -69,7 +69,7 @@ Include this partial at the top of {% block content %}:
     --st-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
     --st-shadow-md: 0 2px 4px rgba(0, 0, 0, 0.04), 0 4px 8px rgba(0, 0, 0, 0.04);
     --st-shadow-lg: 0 4px 8px rgba(0, 0, 0, 0.04), 0 8px 16px rgba(0, 0, 0, 0.06), 0 16px 32px rgba(0, 0, 0, 0.04);
-    --st-shadow-glow: 0 0 0 3px rgba(251, 191, 36, 0.15);
+    --st-shadow-glow: 0 0 0 3px rgba(99, 102, 241, 0.2);
 
     /* Transitions */
     --st-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
@@ -96,7 +96,7 @@ Include this partial at the top of {% block content %}:
     --st-border-muted: #e9ecef;
 
     /* Accent backgrounds - light mode */
-    --st-accent-bg: #fef3c7;
+    --st-accent-bg: #e0e7ff;
 }
 
 /* Dark mode overrides - DON'T invert slate scale, use semantic vars instead */
@@ -125,7 +125,7 @@ html.dark {
     --st-border-muted: #252a31;
 
     /* Accent backgrounds - dark mode */
-    --st-accent-bg: #451a03;
+    --st-accent-bg: #312e81;
 }
 
 /* ==========================================================================
@@ -158,6 +158,7 @@ html.dark #container,
 html.dark .container {
     background: #16191d !important;
 }
+
 
 /* Ensure text is readable - force semantic vars */
 html.dark .st-page,
@@ -503,7 +504,7 @@ html.dark .st-btn--primary:hover {
 .st-select:focus {
     outline: none;
     border-color: var(--st-accent-500);
-    box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.15);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
 }
 
 .st-input-label {

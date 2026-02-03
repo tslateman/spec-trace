@@ -17,6 +17,12 @@
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
 <style>
+    /* Hide empty Unfold header container on demo pages */
+    #content > header,
+    .container.h-16 {
+        display: none !important;
+    }
+
     .presenter-slide {
         min-height: calc(100vh - 200px);
         display: flex;
@@ -82,7 +88,7 @@
         height: 32px;
         border-radius: 50%;
         background: var(--st-accent-500);
-        color: #0d0f12;
+        color: white;
         font-family: var(--font-mono);
         font-weight: 600;
         font-size: 0.875rem;

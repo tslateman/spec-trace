@@ -7,6 +7,12 @@
 {% include "admin/requirements/_design_system.html" %}
 
 <style>
+/* Hide empty Unfold header container on landing page */
+#content > header,
+.container.h-16 {
+    display: none !important;
+}
+
 .landing {
     min-height: calc(100vh - 120px);
     display: flex;
@@ -92,6 +98,31 @@
     color: var(--st-text-muted);
     text-align: center;
     line-height: 1.5;
+}
+
+/* Dark mode: ensure text contrast */
+html.dark .landing-logo {
+    color: #f1f3f5;
+}
+
+html.dark .landing-tagline {
+    color: #adb5bd;
+}
+
+html.dark .landing-path__title {
+    color: #f1f3f5;
+}
+
+html.dark .landing-path__desc {
+    color: #adb5bd;
+}
+
+html.dark .landing-stat__label {
+    color: #868e96;
+}
+
+html.dark .landing-footer {
+    color: #868e96;
 }
 
 .landing-stats {
@@ -193,7 +224,7 @@
     {% endif %}
 
     <div class="landing-paths">
-        <a href="{% url 'admin-matrix' %}" class="landing-path st-animate-in st-animate-delay-2">
+        <a href="/admin/" class="landing-path st-animate-in st-animate-delay-2">
             <div class="landing-path__icon">
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
