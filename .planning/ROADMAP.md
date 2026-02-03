@@ -11,7 +11,7 @@ Make SpecTrace's value immediately clear to engineering leads evaluating the too
 
 ## Phases
 
-- [ ] **Phase 24: Visual Consistency** - Design system audit and dark mode verification
+- [x] **Phase 24: Visual Consistency** - Design system audit and dark mode verification ✓
 - [ ] **Phase 25: Landing Page** - Compelling value proposition and feature highlights
 - [ ] **Phase 26: Demo Data & Hub** - Realistic sample data and vendor scenarios
 - [ ] **Phase 27: Guided Tour** - Step-by-step SpecTrace workflow walkthrough
@@ -30,8 +30,8 @@ Make SpecTrace's value immediately clear to engineering leads evaluating the too
 **Plans**: 2 plans
 
 Plans:
-- [ ] 24-01-PLAN.md - Enhance design system .st-table with alternating rows and dark mode text
-- [ ] 24-02-PLAN.md - Migrate templates to .st-table and verify demo pages
+- [x] 24-01-PLAN.md - Enhance design system .st-table with alternating rows and dark mode text
+- [x] 24-02-PLAN.md - Migrate templates to .st-table and verify demo pages
 
 ### Phase 25: Landing Page
 **Goal**: Visitors immediately understand what SpecTrace does and why they need it
@@ -92,7 +92,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 24. Visual Consistency | 0/2 | Planned | - |
+| 24. Visual Consistency | 2/2 | ✓ Complete | 2026-02-03 |
 | 25. Landing Page | 0/? | Not started | - |
 | 26. Demo Data & Hub | 0/? | Not started | - |
 | 27. Guided Tour | 0/? | Not started | - |

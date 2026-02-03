@@ -25,10 +25,10 @@ Requirements for Demo & Marketing Polish milestone.
 
 ### Visual Consistency
 
-- [ ] **VIS-01**: All templates with tables use .st-table or custom dark-mode-aware class
-- [ ] **VIS-02**: No inline style= attributes on table elements
-- [ ] **VIS-03**: All demo pages verified working in dark mode
-- [ ] **VIS-04**: Design system includes alternating row pattern for data tables
+- [x] **VIS-01**: All templates with tables use .st-table or custom dark-mode-aware class
+- [x] **VIS-02**: No inline style= attributes on table elements
+- [x] **VIS-03**: All demo pages verified working in dark mode
+- [x] **VIS-04**: Design system includes alternating row pattern for data tables
 
 ### Onboarding
 
@@ -68,10 +68,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| VIS-01 | Phase 24 | Pending |
-| VIS-02 | Phase 24 | Pending |
-| VIS-03 | Phase 24 | Pending |
-| VIS-04 | Phase 24 | Pending |
+| VIS-01 | Phase 24 | Complete |
+| VIS-02 | Phase 24 | Complete |
+| VIS-03 | Phase 24 | Complete |
+| VIS-04 | Phase 24 | Complete |
 | LAND-01 | Phase 25 | Pending |
 | LAND-02 | Phase 25 | Pending |
 | LAND-03 | Phase 25 | Pending |

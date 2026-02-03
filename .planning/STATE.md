@@ -5,15 +5,15 @@
 See: .planning/PROJECT.md (updated 2026-02-03)
 
 **Core value:** PMs can see, at any moment, which requirements are verified by passing tests
-**Current focus:** v9 Demo & Marketing Polish - Phase 24 Visual Consistency
+**Current focus:** v9 Demo & Marketing Polish - Phase 25 Landing Page
 
 ## Current Position
 
 Milestone: v9 Demo & Marketing Polish
-Phase: 24 of 28 (Visual Consistency)
-Plan: 2 of 2 complete
-Status: Phase complete
-Last activity: 2026-02-03 — Completed 24-02-PLAN.md
+Phase: 25 of 28 (Landing Page)
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-02-03 — Phase 24 Visual Consistency complete
 
 Progress: [██░░░░░░░░] 20%
 
@@ -34,8 +34,8 @@ Progress: [██░░░░░░░░] 20%
 **Goal:** Make SpecTrace's value immediately clear to engineering leads evaluating the tool
 
 **Phases:**
-- Phase 24: Visual Consistency (VIS-01 to VIS-04) - COMPLETE
-- Phase 25: Landing Page (LAND-01 to LAND-04) - first impression
+- Phase 24: Visual Consistency (VIS-01 to VIS-04) - ✓ COMPLETE
+- Phase 25: Landing Page (LAND-01 to LAND-04) - IN PROGRESS
 - Phase 26: Demo Data & Hub (DEMO-01 to DEMO-04) - realistic scenarios
 - Phase 27: Guided Tour (DEMO-05, DEMO-06) - walkthrough
 - Phase 28: Onboarding Guide (ONBD-01 to ONBD-04) - getting started
@@ -52,6 +52,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-03T16:13:00Z
-Stopped at: Completed 24-02-PLAN.md (table migration to design system)
+Last session: 2026-02-03
+Stopped at: Phase 24 complete, ready to plan Phase 25
 Resume file: None
