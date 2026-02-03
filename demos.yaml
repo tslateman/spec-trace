@@ -145,6 +145,28 @@ demos:
     urls:
       - http://localhost:8000/admin/matrix/
 
+  - id: vendor-coverage
+    name: Vendor Coverage Dashboard
+    description: >
+      Dashboard showing validation coverage by integration vendor. Track pass
+      rates, detect regressions, and monitor feature flag usage across vendors.
+      Essential for teams integrating with multiple third-party systems.
+    entry_point: open http://localhost:8000/admin/vendor-coverage/
+    duration: 2 minutes
+    audience:
+      - Integration teams managing multiple vendors
+      - QA monitoring vendor-specific validation
+      - Engineering leads tracking integration health
+    prerequisites:
+      - Server running (`make run`)
+    talking_points:
+      - Per-vendor pass rate with color-coded thresholds
+      - Regression detection flags pass→fail transitions
+      - Feature flag tracking shows which flags are active per vendor
+      - Load Demo button creates 4 sample vendors with varied pass rates
+    urls:
+      - http://localhost:8000/admin/vendor-coverage/
+
   - id: example-project
     name: Document Pipeline Example Project
     description: >

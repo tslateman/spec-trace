@@ -591,12 +591,14 @@ def demo_hub(request):
         "agent-pipeline": "demo_agent_pipeline",
         "flow-status-dashboard": "admin-flow-status",
         "traceability-matrix": "admin-matrix",
+        "vendor-coverage": "admin-vendor-coverage",
     }
 
     # Demos with instant in-browser demo data loading (no CLI required)
     instant_demo_ids = {
         "flow-status-dashboard",
         "traceability-matrix",
+        "vendor-coverage",
     }
 
     for demo in demos:
