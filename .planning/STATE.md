@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-02-03)
 
 **Core value:** PMs can see, at any moment, which requirements are verified by passing tests
-**Current focus:** v9 Demo & Marketing Polish - Phase 26 Demo Data & Hub
+**Current focus:** v9 Demo & Marketing Polish - Phase 27 Guided Tour
 
 ## Current Position
 
 Milestone: v9 Demo & Marketing Polish
-Phase: 26 of 28 (Demo Data & Hub)
-Plan: 02 of 04 complete
-Status: In progress
-Last activity: 2026-02-03 — Completed 26-02-PLAN.md (Demo Data Linkage)
+Phase: 27 of 28 (Guided Tour)
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-02-03 — Phase 26 Demo Data & Hub complete
 
-Progress: [████░░░░░░] 42%
+Progress: [██████░░░░] 60%
 
 ## Milestone History
 
@@ -36,7 +36,7 @@ Progress: [████░░░░░░] 42%
 **Phases:**
 - Phase 24: Visual Consistency (VIS-01 to VIS-04) - ✓ COMPLETE
 - Phase 25: Landing Page (LAND-01 to LAND-04) - ✓ COMPLETE
-- Phase 26: Demo Data & Hub (DEMO-01 to DEMO-04) - realistic scenarios
+- Phase 26: Demo Data & Hub (DEMO-01 to DEMO-04) - ✓ COMPLETE
 - Phase 27: Guided Tour (DEMO-05, DEMO-06) - walkthrough
 - Phase 28: Onboarding Guide (ONBD-01 to ONBD-04) - getting started
 
@@ -52,6 +52,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-03 16:38:00Z
-Stopped at: Completed 26-02-PLAN.md - Demo Data Linkage
+Last session: 2026-02-03
+Stopped at: Phase 26 complete, ready to plan Phase 27
 Resume file: None

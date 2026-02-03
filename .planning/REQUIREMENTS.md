@@ -16,10 +16,10 @@ Requirements for Demo & Marketing Polish milestone.
 
 ### Demo Experience
 
-- [ ] **DEMO-01**: Demo Hub removes unused YAML fields (options, talking_points already done)
-- [ ] **DEMO-02**: Sample data includes realistic requirement hierarchy (3+ levels)
-- [ ] **DEMO-03**: Sample data includes mix of passing, failing, and untested requirements
-- [ ] **DEMO-04**: Sample validation runs show realistic vendor scenarios
+- [x] **DEMO-01**: Demo Hub removes unused YAML fields (options, talking_points already done)
+- [x] **DEMO-02**: Sample data includes realistic requirement hierarchy (3+ levels)
+- [x] **DEMO-03**: Sample data includes mix of passing, failing, and untested requirements
+- [x] **DEMO-04**: Sample validation runs show realistic vendor scenarios
 - [ ] **DEMO-05**: Guided tour explains SpecTrace workflow step-by-step
 - [ ] **DEMO-06**: Tour is accessible from landing page and demo hub
 
@@ -76,10 +76,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | LAND-02 | Phase 25 | Complete |
 | LAND-03 | Phase 25 | Complete |
 | LAND-04 | Phase 25 | Complete |
-| DEMO-01 | Phase 26 | Pending |
-| DEMO-02 | Phase 26 | Pending |
-| DEMO-03 | Phase 26 | Pending |
-| DEMO-04 | Phase 26 | Pending |
+| DEMO-01 | Phase 26 | Complete |
+| DEMO-02 | Phase 26 | Complete |
+| DEMO-03 | Phase 26 | Complete |
+| DEMO-04 | Phase 26 | Complete |
 | DEMO-05 | Phase 27 | Pending |
 | DEMO-06 | Phase 27 | Pending |
 | ONBD-01 | Phase 28 | Pending |
