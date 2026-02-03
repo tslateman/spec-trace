@@ -4,17 +4,20 @@
 {% block title %}{{ title }} | SpecTrace{% endblock %}
 
 {% block content %}
+{% include "admin/requirements/_design_system.html" %}
+
 <style>
+    /* Status-specific row colors for comparison table */
     .change-improved { background: #dcfce7; color: #166534; }
-    .dark .change-improved { background: #052e16; color: #4ade80; }
+    html.dark .change-improved { background: #052e16; color: #4ade80; }
     .change-regressed { background: #fee2e2; color: #991b1b; }
-    .dark .change-regressed { background: #450a0a; color: #f87171; }
+    html.dark .change-regressed { background: #450a0a; color: #f87171; }
     .change-unchanged { background: #f3f4f6; color: #6b7280; }
-    .dark .change-unchanged { background: #1f2937; color: #9ca3af; }
+    html.dark .change-unchanged { background: #1f2937; color: #9ca3af; }
     .change-new { background: #dbeafe; color: #1e40af; }
-    .dark .change-new { background: #1e3a5f; color: #60a5fa; }
+    html.dark .change-new { background: #1e3a5f; color: #60a5fa; }
     .change-removed { background: #f5f5f5; color: #737373; text-decoration: line-through; }
-    .dark .change-removed { background: #262626; color: #737373; }
+    html.dark .change-removed { background: #262626; color: #737373; }
 </style>
 
 <div class="p-6 bg-base-50 dark:bg-base-950 min-h-screen">
@@ -131,22 +134,22 @@
             <h2 class="text-lg font-semibold text-base-900 dark:text-white">Validation Changes</h2>
         </div>
         <div class="overflow-x-auto">
-            <table class="w-full">
-                <thead class="bg-base-50 dark:bg-base-800">
+            <table class="st-table">
+                <thead>
                     <tr>
-                        <th class="px-4 py-3 text-left text-sm font-medium text-base-700 dark:text-base-300">Change</th>
-                        <th class="px-4 py-3 text-left text-sm font-medium text-base-700 dark:text-base-300">Validation</th>
-                        <th class="px-4 py-3 text-left text-sm font-medium text-base-700 dark:text-base-300">Vendor</th>
-                        <th class="px-4 py-3 text-left text-sm font-medium text-base-700 dark:text-base-300">Requirement</th>
-                        <th class="px-4 py-3 text-center text-sm font-medium text-base-700 dark:text-base-300">Run A</th>
-                        <th class="px-4 py-3 text-center text-sm font-medium text-base-700 dark:text-base-300">Run B</th>
+                        <th>Change</th>
+                        <th>Validation</th>
+                        <th>Vendor</th>
+                        <th>Requirement</th>
+                        <th style="text-align: center;">Run A</th>
+                        <th style="text-align: center;">Run B</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-base-200 dark:divide-base-700">
+                <tbody>
                     {% for change in comparison.changes %}
                     <tr x-show="filter === 'all' || filter === '{{ change.change_type }}'"
-                        class="hover:bg-base-50 dark:hover:bg-base-800 change-{{ change.change_type }}">
-                        <td class="px-4 py-3">
+                        class="change-{{ change.change_type }}">
+                        <td>
                             <span class="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium
                                 {% if change.change_type == 'improved' %}bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400
                                 {% elif change.change_type == 'regressed' %}bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400
@@ -157,12 +160,12 @@
                                 {{ change.change_type|title }}
                             </span>
                         </td>
-                        <td class="px-4 py-3 text-base-900 dark:text-white {% if change.change_type == 'removed' %}line-through opacity-50{% endif %}">
+                        <td class="{% if change.change_type == 'removed' %}line-through opacity-50{% endif %}">
                             {{ change.validation_name }}
                         </td>
-                        <td class="px-4 py-3 text-base-600 dark:text-base-400">{{ change.vendor }}</td>
-                        <td class="px-4 py-3 text-base-500 dark:text-base-400 font-mono text-sm">{{ change.requirement_id }}</td>
-                        <td class="px-4 py-3 text-center">
+                        <td>{{ change.vendor }}</td>
+                        <td class="st-mono" style="font-size: 0.875rem;">{{ change.requirement_id }}</td>
+                        <td style="text-align: center;">
                             {% if change.status_a %}
                             <span class="inline-block px-2 py-1 rounded text-xs font-medium
                                 {% if change.status_a == 'success' %}bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400
@@ -174,7 +177,7 @@
                             <span class="text-base-400">—</span>
                             {% endif %}
                         </td>
-                        <td class="px-4 py-3 text-center">
+                        <td style="text-align: center;">
                             {% if change.status_b %}
                             <span class="inline-block px-2 py-1 rounded text-xs font-medium
                                 {% if change.status_b == 'success' %}bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400
@@ -189,7 +192,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="6" class="px-4 py-8 text-center text-base-500 dark:text-base-400">
+                        <td colspan="6" style="text-align: center; padding: var(--st-space-8);">
                             No changes between these runs.
                         </td>
                     </tr>
