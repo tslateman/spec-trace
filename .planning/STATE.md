@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-02-03)
 
 **Core value:** PMs can see, at any moment, which requirements are verified by passing tests
-**Current focus:** v9 Demo & Marketing Polish - Phase 28 Onboarding Guide
+**Current focus:** v9 Demo & Marketing Polish - COMPLETE
 
 ## Current Position
 
 Milestone: v9 Demo & Marketing Polish
 Phase: 28 of 28 (Onboarding Guide)
 Plan: 01 COMPLETE
-Status: In progress
+Status: Milestone complete, ready for audit
 Last activity: 2026-02-03 — Completed 28-01-PLAN.md (Getting Started guide)
 
-Progress: [████████░░] 80%
+Progress: [██████████] 100%
 
 ## Milestone History
 
@@ -38,7 +38,7 @@ Progress: [████████░░] 80%
 - Phase 25: Landing Page (LAND-01 to LAND-04) - COMPLETE
 - Phase 26: Demo Data & Hub (DEMO-01 to DEMO-04) - COMPLETE
 - Phase 27: Guided Tour (DEMO-05, DEMO-06) - COMPLETE
-- Phase 28: Onboarding Guide (ONBD-01 to ONBD-04) - 01 COMPLETE
+- Phase 28: Onboarding Guide (ONBD-01 to ONBD-04) - COMPLETE
 
 ## Accumulated Context
 
@@ -58,5 +58,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-03
-Stopped at: Completed 28-01-PLAN.md
+Stopped at: Completed Phase 28, v9 milestone complete
 Resume file: None

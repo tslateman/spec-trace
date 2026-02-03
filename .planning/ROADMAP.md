@@ -7,7 +7,7 @@ Make SpecTrace's value immediately clear to engineering leads evaluating the too
 ## Milestones
 
 - v1-v8: See .planning/MILESTONES.md
-- v9 Demo & Marketing Polish: Phases 24-28 (in progress)
+- v9 Demo & Marketing Polish: Phases 24-28 (complete)
 
 ## Phases
 
@@ -15,7 +15,7 @@ Make SpecTrace's value immediately clear to engineering leads evaluating the too
 - [x] **Phase 25: Landing Page** - Compelling value proposition and feature highlights ✓
 - [x] **Phase 26: Demo Data & Hub** - Realistic sample data and vendor scenarios ✓
 - [x] **Phase 27: Guided Tour** - Step-by-step SpecTrace workflow walkthrough ✓
-- [ ] **Phase 28: Onboarding Guide** - Getting started documentation
+- [x] **Phase 28: Onboarding Guide** - Getting started documentation ✓
 
 ## Phase Details
 
@@ -87,7 +87,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 28-01-PLAN.md — Create getting started guide with progressive disclosure, copy-paste examples, and landing page link
+- [x] 28-01-PLAN.md — Create getting started guide with progressive disclosure, copy-paste examples, and landing page link
 
 ## Progress
 
@@ -97,7 +97,7 @@ Plans:
 | 25. Landing Page | 1/1 | ✓ Complete | 2026-02-03 |
 | 26. Demo Data & Hub | 2/2 | ✓ Complete | 2026-02-03 |
 | 27. Guided Tour | 1/1 | ✓ Complete | 2026-02-03 |
-| 28. Onboarding Guide | 0/1 | Not started | - |
+| 28. Onboarding Guide | 1/1 | ✓ Complete | 2026-02-03 |
 
 ---
 *Roadmap created: 2026-02-03*
