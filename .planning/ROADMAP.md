@@ -70,10 +70,10 @@ Plans:
   1. User can start guided tour from landing page
   2. User can start guided tour from demo hub
   3. Tour explains write specs -> link tests -> view dashboard workflow
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 27-01: TBD
+- [ ] 27-01-PLAN.md - Add Driver.js tour to landing page and demo hub entry point
 
 ### Phase 28: Onboarding Guide
 **Goal**: New teams have clear documentation to integrate SpecTrace into their workflow
@@ -96,7 +96,7 @@ Plans:
 | 24. Visual Consistency | 2/2 | ✓ Complete | 2026-02-03 |
 | 25. Landing Page | 1/1 | ✓ Complete | 2026-02-03 |
 | 26. Demo Data & Hub | 2/2 | ✓ Complete | 2026-02-03 |
-| 27. Guided Tour | 0/? | Not started | - |
+| 27. Guided Tour | 0/1 | Planned | - |
 | 28. Onboarding Guide | 0/? | Not started | - |
 
 ---
