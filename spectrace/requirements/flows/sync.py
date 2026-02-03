@@ -12,7 +12,9 @@ from dataclasses import asdict
 
 from django.utils import timezone
 
-from requirements.flows.definitions import REGISTERED_FLOWS, FlowDef
+from spectrace_flows import FlowDef
+
+from requirements.flows.definitions import REGISTERED_FLOWS, register_django_flows
 from requirements.models import Requirement, VerificationFlow
 
 logger = logging.getLogger(__name__)
@@ -61,6 +63,8 @@ def sync_flows_safe() -> dict[str, str] | None:
         Dict of results if successful, None if sync failed
     """
     try:
+        # Register Django flows with the standalone package
+        register_django_flows()
         return sync_flows_to_db()
     except Exception as e:
         logger.warning(f"Could not sync flows to database: {e}")

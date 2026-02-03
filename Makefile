@@ -18,10 +18,10 @@ help:
 	@echo "  demos           List all available demos"
 
 install:
-	uv pip install -e .
+	uv pip install -e ./spectrace-flows -e .
 
 install-dev:
-	uv pip install -e ".[dev]"
+	uv pip install -e ./spectrace-flows -e ".[dev]"
 	git config core.hooksPath .githooks
 
 test:

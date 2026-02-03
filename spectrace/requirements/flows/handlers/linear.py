@@ -5,12 +5,13 @@ engine's context-based protocol. Each handler receives a context dict
 and returns a VerificationCheck plus context updates.
 """
 
+from spectrace_flows import VerificationCheck
+
 from requirements.health import (
     check_authentication as health_check_auth,
     check_configuration as health_check_config,
     check_permissions as health_check_perms,
 )
-from requirements.health_types import VerificationCheck
 from requirements.linear import LinearClient
 
 

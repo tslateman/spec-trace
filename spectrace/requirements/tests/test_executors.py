@@ -352,7 +352,7 @@ class TestExecuteAssertionStep:
 class TestExecuteWaitStep:
     """Tests for execute_wait_step."""
 
-    @patch("requirements.flows.executors.wait.time.sleep", autospec=True)
+    @patch("spectrace_flows.executors.wait.time.sleep", autospec=True)
     def test_execute_wait_step__waits_correct_duration(self, mock_sleep):
         """Wait calls time.sleep with configured seconds."""
         step_def = {
@@ -366,7 +366,7 @@ class TestExecuteWaitStep:
         mock_sleep.assert_called_once_with(5)
         assert check.passed is True
 
-    @patch("requirements.flows.executors.wait.time.sleep", autospec=True)
+    @patch("spectrace_flows.executors.wait.time.sleep", autospec=True)
     def test_execute_wait_step__always_passes(self, mock_sleep):
         """Wait steps always return passed=True."""
         step_def = {"name": "wait", "type": "wait", "config": {}}

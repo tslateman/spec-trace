@@ -1,4 +1,4 @@
-"""Flow step handlers package.
+"""Flow step handlers package for Django integration.
 
 Handlers are functions that execute individual verification steps.
 Each handler follows the protocol:
@@ -23,7 +23,7 @@ from requirements.flows.handlers.linear import (
 )
 
 __all__ = [
-    'check_configuration',
-    'check_authentication',
-    'check_permissions',
+    "check_configuration",
+    "check_authentication",
+    "check_permissions",
 ]
