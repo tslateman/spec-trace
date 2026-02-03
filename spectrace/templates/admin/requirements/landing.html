@@ -187,6 +187,67 @@ html.dark .landing-footer {
     text-decoration: underline;
 }
 
+.feature-highlights {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--st-space-4);
+    max-width: 900px;
+    width: 100%;
+    margin-bottom: var(--st-space-10);
+}
+
+.feature-highlight {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: var(--st-space-5);
+    background: var(--st-surface);
+    border: 1px solid var(--st-border);
+    border-radius: var(--st-radius-lg);
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.2s ease;
+    text-align: center;
+}
+
+.feature-highlight:hover {
+    border-color: var(--st-accent-500);
+    transform: translateY(-2px);
+}
+
+.feature-highlight__icon {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--st-accent-bg);
+    border-radius: var(--st-radius-md);
+    color: var(--st-accent-500);
+    margin-bottom: var(--st-space-3);
+}
+
+.feature-highlight__title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: var(--st-space-1);
+}
+
+.feature-highlight__desc {
+    font-size: 0.8125rem;
+    color: var(--st-text-muted);
+    line-height: 1.4;
+}
+
+/* Dark mode for feature highlights */
+html.dark .feature-highlight__title {
+    color: #f1f3f5;
+}
+
+html.dark .feature-highlight__desc {
+    color: #adb5bd;
+}
+
 @media (max-width: 640px) {
     .landing-paths {
         grid-template-columns: 1fr;
@@ -196,13 +257,18 @@ html.dark .landing-footer {
         flex-direction: column;
         gap: var(--st-space-4);
     }
+
+    .feature-highlights {
+        grid-template-columns: repeat(2, 1fr);
+    }
 }
 </style>
 
 <div class="landing">
     <header class="landing-header st-animate-in">
         <h1 class="landing-logo">Spec<span>Trace</span></h1>
-        <p class="landing-tagline">Requirements as code, automatically verified</p>
+        <p class="landing-tagline" style="font-size: 1.5rem; font-weight: 600; margin-bottom: var(--st-space-2); color: var(--st-text);">See which requirements are verified by passing tests</p>
+        <p class="landing-tagline" style="font-size: 1rem;">Requirements as code, automatically verified</p>
     </header>
 
     {% if stats.total_requirements > 0 %}
@@ -253,7 +319,57 @@ html.dark .landing-footer {
         </a>
     </div>
 
-    <footer class="landing-footer st-animate-in st-animate-delay-4">
+    <div class="feature-highlights">
+        <a href="{% url 'admin-matrix' %}" class="feature-highlight st-animate-in st-animate-delay-4">
+            <div class="feature-highlight__icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="14" width="7" height="7"></rect>
+                    <rect x="3" y="14" width="7" height="7"></rect>
+                </svg>
+            </div>
+            <div class="feature-highlight__title">Traceability Matrix</div>
+            <div class="feature-highlight__desc">See every requirement and its test coverage at a glance</div>
+        </a>
+
+        <a href="{% url 'admin-flow-status' %}" class="feature-highlight st-animate-in st-animate-delay-5">
+            <div class="feature-highlight__icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                </svg>
+            </div>
+            <div class="feature-highlight__title">Verification Flows</div>
+            <div class="feature-highlight__desc">Multi-step verification pipelines with live status</div>
+        </a>
+
+        <a href="{% url 'admin-vendor-coverage' %}" class="feature-highlight st-animate-in st-animate-delay-6">
+            <div class="feature-highlight__icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+            </div>
+            <div class="feature-highlight__title">Vendor Coverage</div>
+            <div class="feature-highlight__desc">Track pass rates across all your integrations</div>
+        </a>
+
+        <a href="{% url 'admin-impact-analysis' %}" class="feature-highlight st-animate-in st-animate-delay-7">
+            <div class="feature-highlight__icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+            </div>
+            <div class="feature-highlight__title">Impact Analysis</div>
+            <div class="feature-highlight__desc">Know which tests to run when specs change</div>
+        </a>
+    </div>
+
+    <footer class="landing-footer st-animate-in st-animate-delay-8">
         <a href="{% url 'admin-about' %}">About SpecTrace</a>
     </footer>
 </div>
