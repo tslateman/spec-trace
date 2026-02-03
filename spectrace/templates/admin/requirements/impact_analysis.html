@@ -9,15 +9,80 @@
     <!-- Header -->
     <header class="st-flex-between mb-6 st-animate-in" style="flex-wrap: wrap; gap: var(--st-space-4);">
         <div>
-            <h1 class="st-heading-1">Impact Analysis</h1>
+            <h1 class="st-heading-1" style="display: flex; align-items: center; gap: var(--st-space-3);">
+                Impact Analysis
+                <button
+                    @click="showHelp = !showHelp"
+                    :style="showHelp ? 'background: var(--st-accent-500); color: white;' : ''"
+                    style="display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; border: 1.5px solid var(--st-border); background: var(--st-surface); color: var(--st-text-muted); cursor: pointer; transition: all 0.15s ease;"
+                    title="How it works"
+                    onmouseover="if (!this.classList.contains('active')) this.style.borderColor='var(--st-accent-500)'; this.style.color='var(--st-accent-500)';"
+                    onmouseout="if (!this.classList.contains('active')) this.style.borderColor='var(--st-border)'; this.style.color='var(--st-text-muted)';"
+                >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                        <circle cx="12" cy="17" r="0.5" fill="currentColor"></circle>
+                    </svg>
+                </button>
+            </h1>
             <p class="st-caption mt-1">Compare git refs to see which requirements changed and which tests are affected</p>
         </div>
         <div class="st-cluster">
+            <form method="post" action="{% url 'admin-impact-load-demo' %}" style="display: inline;">
+                {% csrf_token %}
+                <button type="submit" class="st-btn st-btn--secondary">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    Load Demo
+                </button>
+            </form>
             <a href="{% url 'admin:index' %}" class="st-btn st-btn--secondary">
                 ← Dashboard
             </a>
         </div>
     </header>
+
+    <!-- Help Panel -->
+    <div x-show="showHelp" x-collapse class="st-card mb-6 st-animate-in" style="background: var(--st-surface-sunken); border-left: 3px solid var(--st-accent-500);">
+        <div class="st-card-body">
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--st-space-3);">
+                <h3 class="st-heading-3" style="margin: 0;">How Impact Analysis Works</h3>
+                <button @click="showHelp = false" class="st-btn st-btn--ghost" style="padding: 4px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div style="display: grid; gap: var(--st-space-4); font-size: 0.875rem; color: var(--st-text-muted);">
+                <div>
+                    <strong style="color: var(--st-text);">1. Git Diff</strong><br>
+                    Compares spec files between two git refs (branches, commits, or tags) to find which <code>.md</code> files changed.
+                </div>
+                <div>
+                    <strong style="color: var(--st-text);">2. Extract Requirements</strong><br>
+                    Parses changed spec files to extract requirement IDs from YAML frontmatter.
+                </div>
+                <div>
+                    <strong style="color: var(--st-text);">3. Hierarchy Expansion</strong><br>
+                    If "Include child requirements" is checked, finds all descendant requirements. A change to a parent affects all children.
+                </div>
+                <div>
+                    <strong style="color: var(--st-text);">4. Test Lookup</strong><br>
+                    Queries <code>TestRequirementLink</code> to find all tests linked to affected requirements via <code>@pytest.mark.requirement()</code>.
+                </div>
+                <div style="background: var(--st-surface); padding: var(--st-space-3); border-radius: var(--st-radius-sm); margin-top: var(--st-space-2);">
+                    <strong style="color: var(--st-text);">CI Usage:</strong>
+                    <code style="display: block; margin-top: var(--st-space-2);">./manage.py impact_analysis main HEAD --format json</code>
+                    <span style="font-size: 0.8125rem;">Exit code 1 if tests are affected — use to gate PR merges or trigger targeted test runs.</span>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Input Form -->
     <div class="st-card st-animate-in st-animate-delay-1 mb-6">
@@ -160,13 +225,17 @@ python manage.py impact_analysis main HEAD --format json
 {% block page_scripts %}
 <script>
 function impactAnalysisWidget() {
+    // Read query params for pre-filled values
+    const params = new URLSearchParams(window.location.search);
+
     return {
-        baseRef: '',
-        headRef: '',
+        baseRef: params.get('base_ref') || '',
+        headRef: params.get('head_ref') || '',
         includeHierarchy: true,
         isLoading: false,
         error: null,
         result: null,
+        showHelp: false,
 
         async analyze() {
             if (!this.baseRef || !this.headRef) return;

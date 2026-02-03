@@ -240,3 +240,170 @@ class ImpactAnalyzer:
             hierarchy_expansion=hierarchy,
             dependency_expansion=dependencies,
         )
+
+
+def setup_impact_demo(repo_path: Optional[Path] = None) -> dict:
+    """Set up demo data for impact analysis.
+
+    Creates:
+    1. Commits specs to git if not tracked
+    2. Test links for existing requirements
+    3. A demo branch with modified specs
+
+    Args:
+        repo_path: Path to git repository root. Defaults to current directory.
+
+    Returns:
+        {
+            'specs_committed': bool,
+            'test_links_created': int,
+            'demo_branch': str,
+            'base_ref': str,
+            'head_ref': str,
+        }
+    """
+    from requirements.models import Requirement, TestRequirementLink, TestRun, TestResult
+
+    repo_path = repo_path or Path.cwd()
+    specs_dir = repo_path / "specs"
+    result = {
+        "specs_committed": False,
+        "test_links_created": 0,
+        "demo_branch": "demo/impact-analysis",
+        "base_ref": "main",
+        "head_ref": "demo/impact-analysis",
+    }
+
+    # Step 1: Check if specs are tracked, commit if not
+    try:
+        check = subprocess.run(
+            ["git", "ls-files", "--error-unmatch", "specs/"],
+            cwd=repo_path,
+            capture_output=True,
+            timeout=10,
+        )
+        specs_tracked = check.returncode == 0
+    except subprocess.SubprocessError:
+        specs_tracked = False
+
+    if not specs_tracked and specs_dir.exists():
+        try:
+            subprocess.run(
+                ["git", "add", "specs/"],
+                cwd=repo_path,
+                check=True,
+                timeout=30,
+            )
+            subprocess.run(
+                ["git", "commit", "-m", "chore: add spec files for impact analysis demo"],
+                cwd=repo_path,
+                check=True,
+                timeout=30,
+            )
+            result["specs_committed"] = True
+        except subprocess.SubprocessError as e:
+            logger.warning("Failed to commit specs: %s", e)
+
+    # Step 2: Create test links for requirements that don't have them
+    requirements = Requirement.objects.filter(test_links__isnull=True)[:8]
+
+    if requirements:
+        # Create a demo test run
+        test_run, _ = TestRun.objects.get_or_create(
+            source_file="demo://impact-analysis",
+            defaults={"git_sha": "demo123", "git_branch": "main"},
+        )
+
+        for i, req in enumerate(requirements):
+            # Create a fake test result and link
+            test_nodeid = f"tests/test_{req.external_id.lower().replace('-', '_')}.py::test_verify_{i}"
+            TestResult.objects.get_or_create(
+                test_run=test_run,
+                test_nodeid=test_nodeid,
+                defaults={
+                    "name": f"test_verify_{i}",
+                    "status": "passed" if i % 3 != 0 else "failed",
+                    "time": 0.1 + (i * 0.05),
+                },
+            )
+            _, created = TestRequirementLink.objects.get_or_create(
+                test_nodeid=test_nodeid,
+                requirement=req,
+            )
+            if created:
+                result["test_links_created"] += 1
+
+    # Step 3: Create demo branch with modified spec
+    demo_branch = result["demo_branch"]
+
+    # Clean up any existing demo branch
+    subprocess.run(
+        ["git", "branch", "-D", demo_branch],
+        cwd=repo_path,
+        capture_output=True,
+        timeout=10,
+    )
+
+    # Get current branch to return to
+    try:
+        current = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=10,
+        )
+        original_branch = current.stdout.strip()
+    except subprocess.SubprocessError:
+        original_branch = "main"
+
+    try:
+        # Create demo branch from main
+        subprocess.run(
+            ["git", "checkout", "-b", demo_branch, "main"],
+            cwd=repo_path,
+            check=True,
+            capture_output=True,
+            timeout=30,
+        )
+
+        # Find a spec file to modify
+        spec_file = None
+        for f in specs_dir.rglob("*.md"):
+            if f.name != "legacy.md":
+                spec_file = f
+                break
+
+        if spec_file:
+            # Append a demo change to the spec
+            content = spec_file.read_text()
+            if "## Demo Change" not in content:
+                demo_addition = "\n\n## Demo Change\n\nThis section was added to demonstrate impact analysis.\n"
+                spec_file.write_text(content + demo_addition)
+
+                subprocess.run(
+                    ["git", "add", str(spec_file.relative_to(repo_path))],
+                    cwd=repo_path,
+                    check=True,
+                    timeout=10,
+                )
+                subprocess.run(
+                    ["git", "commit", "-m", "demo: modify spec for impact analysis"],
+                    cwd=repo_path,
+                    check=True,
+                    timeout=30,
+                )
+
+    except subprocess.SubprocessError as e:
+        logger.warning("Failed to create demo branch: %s", e)
+    finally:
+        # Return to original branch
+        subprocess.run(
+            ["git", "checkout", original_branch],
+            cwd=repo_path,
+            capture_output=True,
+            timeout=30,
+        )
+
+    return result

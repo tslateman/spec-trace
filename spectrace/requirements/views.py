@@ -265,6 +265,34 @@ def impact_analysis_view(request):
 
 
 @staff_member_required
+@require_http_methods(["POST"])
+def impact_load_demo_view(request):
+    """Load demo data for impact analysis.
+
+    Creates specs in git, test links, and a demo branch with changes.
+    """
+    from django.contrib import messages
+    from .services.impact_analyzer import setup_impact_demo
+
+    result = setup_impact_demo()
+
+    parts = []
+    if result["specs_committed"]:
+        parts.append("specs committed to git")
+    if result["test_links_created"]:
+        parts.append(f"{result['test_links_created']} test links created")
+    parts.append(f"demo branch '{result['demo_branch']}' ready")
+
+    messages.success(
+        request,
+        f"Demo loaded: {', '.join(parts)}."
+    )
+
+    # Redirect with pre-filled refs
+    return redirect(f"/admin/impact-analysis/?base_ref={result['base_ref']}&head_ref={result['head_ref']}")
+
+
+@staff_member_required
 def validation_run_list_view(request):
     """List view for validation runs with filtering and pagination.
 
