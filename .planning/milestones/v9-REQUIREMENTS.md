@@ -1,3 +1,13 @@
+# Requirements Archive: v9 Demo & Marketing Polish
+
+**Archived:** 2026-02-03
+**Status:** SHIPPED
+
+This is the archived requirements specification for v9.
+For current requirements, see `.planning/REQUIREMENTS.md` (created for next milestone).
+
+---
+
 # Requirements: SpecTrace v9
 
 **Defined:** 2026-02-03
@@ -37,34 +47,7 @@ Requirements for Demo & Marketing Polish milestone.
 - [x] **ONBD-03**: Guide includes code examples for pytest markers
 - [x] **ONBD-04**: Guide shows expected dashboard result after setup
 
-## Future Requirements
-
-Deferred to later milestones.
-
-### Analytics (v10+)
-
-- **ANLYT-01**: Historical coverage trends chart
-- **ANLYT-02**: Coverage change over time visualization
-
-### CI Integration (v10+)
-
-- **CI-01**: Webhooks receive test results from CI pipeline
-- **CI-02**: Real-time dashboard updates as CI runs complete
-
-## Out of Scope
-
-Explicitly excluded from v9.
-
-| Feature | Reason |
-|---------|--------|
-| Video tutorials | Text/interactive demos sufficient for v9 |
-| Marketing site separate from app | Keep demo integrated with actual product |
-| A/B testing landing variants | Premature optimization |
-| Analytics tracking (GA, etc.) | Privacy concerns, not needed for evaluation |
-
 ## Traceability
-
-Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
@@ -87,11 +70,15 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ONBD-03 | Phase 28 | Complete |
 | ONBD-04 | Phase 28 | Complete |
 
-**Coverage:**
-- v9 requirements: 18 total
-- Mapped to phases: 18
-- Unmapped: 0
+---
+
+## Milestone Summary
+
+**Shipped:** 18 of 18 v9 requirements
+**Adjusted:** None
+**Dropped:** None
+
+All v9 requirements were implemented as originally specified.
 
 ---
-*Requirements defined: 2026-02-03*
-*Last updated: 2026-02-03 after roadmap creation*
+*Archived: 2026-02-03 as part of v9 milestone completion*

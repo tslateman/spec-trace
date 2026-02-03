@@ -8,15 +8,11 @@ A requirements traceability system that connects product specs to verified code.
 
 PMs can see, at any moment, which requirements are verified by passing tests — eliminating the gap between "what we think we built" and "what we actually built."
 
-## Current Milestone: v9 Demo & Marketing Polish
+## Current Milestone: Planning v10
 
-**Goal:** Make SpecTrace's value immediately clear to engineering leads evaluating the tool.
+**Goal:** TBD — run `/gsd:new-milestone` to start next milestone cycle.
 
-**Target features:**
-- Landing page refinement — sharper copy, clearer value prop, better visuals
-- Demo improvements — better sample data, realistic scenarios, smoother tours
-- Visual consistency — design system audit, dark mode fixes, table styling cleanup
-- Onboarding clarity — what does "getting started" look like for a new team?
+**v9 shipped:** Demo & Marketing Polish — clear value prop, guided tour, onboarding guide
 
 ## What's Shipped
 
@@ -198,7 +194,28 @@ PMs can see, at any moment, which requirements are verified by passing tests —
 - ✓ LINK-02: Requirement detail page shows linked flows — v8
 - ✓ LINK-03: Flow dashboard shows which requirements each flow verifies — v8
 
-### Future (v9+)
+### Validated (v9)
+
+- ✓ VIS-01: All templates with tables use .st-table or dark-mode-aware class — v9
+- ✓ VIS-02: No inline style= attributes on table elements — v9
+- ✓ VIS-03: All demo pages verified working in dark mode — v9
+- ✓ VIS-04: Design system includes alternating row pattern for tables — v9
+- ✓ LAND-01: Landing page has compelling one-line value proposition — v9
+- ✓ LAND-02: Landing page shows 3-4 key feature highlights with icons — v9
+- ✓ LAND-03: Feature highlights link to relevant demos or dashboard views — v9
+- ✓ LAND-04: Landing page works correctly in dark mode — v9
+- ✓ DEMO-01: Demo Hub removes unused YAML fields — v9
+- ✓ DEMO-02: Sample data includes realistic requirement hierarchy (3+ levels) — v9
+- ✓ DEMO-03: Sample data includes mix of passing, failing, and untested requirements — v9
+- ✓ DEMO-04: Sample validation runs show realistic vendor scenarios — v9
+- ✓ DEMO-05: Guided tour explains SpecTrace workflow step-by-step — v9
+- ✓ DEMO-06: Tour is accessible from landing page and demo hub — v9
+- ✓ ONBD-01: Getting started guide accessible from landing page — v9
+- ✓ ONBD-02: Guide explains what SpecTrace is, how to add specs, how to link tests — v9
+- ✓ ONBD-03: Guide includes code examples for pytest markers — v9
+- ✓ ONBD-04: Guide shows expected dashboard result after setup — v9
+
+### Future (v10+)
 
 - [ ] CI-01: Webhooks receive test results from CI pipeline
 - [ ] CI-02: Real-time dashboard updates as CI runs complete
@@ -259,4 +276,4 @@ PMs can see, at any moment, which requirements are verified by passing tests —
 | 5-second polling for live status | Balance responsiveness with server load | ✓ Good |
 
 ---
-*Last updated: 2026-02-03 after v9 milestone start*
+*Last updated: 2026-02-03 after v9 milestone shipped*

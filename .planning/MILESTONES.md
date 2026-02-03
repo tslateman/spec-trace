@@ -1,5 +1,34 @@
 # Project Milestones: SpecTrace
 
+## v9 Demo & Marketing Polish (Shipped: 2026-02-03)
+
+**Delivered:** Clear value proposition, guided onboarding, and polished demo experience for engineering leads evaluating SpecTrace.
+
+**Phases completed:** 24-28 (5 phases, 7 plans)
+
+**Key accomplishments:**
+
+- Design system enhancement: alternating row colors, dark mode text support for .st-table
+- Landing page: PM-focused value prop "See which requirements are verified by passing tests" with 4 feature cards
+- Demo data: 7 sample specs with 3-level hierarchy (Epic → Feature → Story), mixed test outcomes
+- Driver.js guided tour: 3-step workflow explanation with cross-page sessionStorage trigger
+- Getting started guide: 679-line progressive disclosure onboarding with copy-paste code examples
+
+**Stats:**
+
+- 58 commits
+- 39 files modified
+- +5,700 lines added
+- 42,374 lines total (Python + HTML)
+- 5 phases, 7 plans
+- 1 day (2026-02-03)
+
+**Git range:** `feat(24-01)` → `docs(v9)`
+
+**Archive:** [v9-ROADMAP.md](milestones/v9-ROADMAP.md), [v9-REQUIREMENTS.md](milestones/v9-REQUIREMENTS.md)
+
+---
+
 ## v8 Verification Flows (Shipped: 2026-02-02)
 
 **Delivered:** YAML-based verification flows with Admin UI editor, dashboard for run history and live status, and requirement traceability.
