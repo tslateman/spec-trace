@@ -84,10 +84,10 @@ Plans:
   2. Guide explains what SpecTrace is, how to add specs, and how to link tests
   3. Guide includes copy-paste code examples for pytest markers
   4. Guide shows screenshot of expected dashboard after setup
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 28-01: TBD
+- [ ] 28-01-PLAN.md — Create getting started guide with progressive disclosure, copy-paste examples, and landing page link
 
 ## Progress
 
@@ -97,7 +97,7 @@ Plans:
 | 25. Landing Page | 1/1 | ✓ Complete | 2026-02-03 |
 | 26. Demo Data & Hub | 2/2 | ✓ Complete | 2026-02-03 |
 | 27. Guided Tour | 1/1 | ✓ Complete | 2026-02-03 |
-| 28. Onboarding Guide | 0/? | Not started | - |
+| 28. Onboarding Guide | 0/1 | Not started | - |
 
 ---
 *Roadmap created: 2026-02-03*
