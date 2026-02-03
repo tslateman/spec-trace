@@ -156,13 +156,20 @@ html.dark .regression-alert__title {
 }
 
 .regression-item {
-    padding: var(--st-space-2) 0;
+    padding: var(--st-space-2) var(--st-space-2);
+    margin: 0 calc(-1 * var(--st-space-2));
     border-bottom: 1px solid rgba(239, 68, 68, 0.2);
+    border-radius: var(--st-radius-sm);
+    transition: background 0.15s ease;
+}
+
+.regression-item:hover {
+    background: rgba(239, 68, 68, 0.1);
 }
 
 .regression-item:last-child {
     border-bottom: none;
-    padding-bottom: 0;
+    padding-bottom: var(--st-space-2);
 }
 
 .regression-item__name {
@@ -349,10 +356,13 @@ html.dark .regression-alert__title {
                     {{ vendor.regressions|length }} Recent Regression{{ vendor.regressions|length|pluralize }}
                 </div>
                 {% for regression in vendor.regressions %}
-                <div class="regression-item">
+                <a href="{% url 'admin-validation-run-detail' regression.run_id %}" class="regression-item" style="display: block; text-decoration: none; color: inherit;">
                     <div class="regression-item__name">{{ regression.name }}</div>
-                    <div class="regression-item__time">{{ regression.regressed_at|date:"Y-m-d H:i" }}</div>
-                </div>
+                    <div class="regression-item__time">
+                        {{ regression.regressed_at|date:"Y-m-d H:i" }}
+                        <span style="margin-left: var(--st-space-2); opacity: 0.7;">→ View Run</span>
+                    </div>
+                </a>
                 {% endfor %}
             </div>
             {% endif %}

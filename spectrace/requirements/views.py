@@ -215,6 +215,7 @@ def vendor_coverage_view(request):
                 vendors[vendor]['regressions'].append({
                     'name': validation.name,
                     'regressed_at': current.checked_at,
+                    'run_id': current.validation_run_id,
                 })
 
         # Collect feature flags
