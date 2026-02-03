@@ -8,9 +8,15 @@ A requirements traceability system that connects product specs to verified code.
 
 PMs can see, at any moment, which requirements are verified by passing tests — eliminating the gap between "what we think we built" and "what we actually built."
 
-## Current Milestone
+## Current Milestone: v9 Demo & Marketing Polish
 
-Planning next milestone.
+**Goal:** Make SpecTrace's value immediately clear to engineering leads evaluating the tool.
+
+**Target features:**
+- Landing page refinement — sharper copy, clearer value prop, better visuals
+- Demo improvements — better sample data, realistic scenarios, smoother tours
+- Visual consistency — design system audit, dark mode fixes, table styling cleanup
+- Onboarding clarity — what does "getting started" look like for a new team?
 
 ## What's Shipped
 
@@ -253,4 +259,4 @@ Planning next milestone.
 | 5-second polling for live status | Balance responsiveness with server load | ✓ Good |
 
 ---
-*Last updated: 2026-02-02 after v8 milestone completion*
+*Last updated: 2026-02-03 after v9 milestone start*

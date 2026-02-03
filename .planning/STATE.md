@@ -2,20 +2,18 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-02-02)
+See: .planning/PROJECT.md (updated 2026-02-03)
 
 **Core value:** PMs can see, at any moment, which requirements are verified by passing tests
-**Current focus:** v8 Verification Flows
+**Current focus:** v9 Demo & Marketing Polish
 
 ## Current Position
 
-Milestone: Planning next milestone
-Phase: —
+Milestone: v9 Demo & Marketing Polish
+Phase: Not started (defining requirements)
 Plan: —
-Status: **Ready to plan next milestone**
-Last activity: 2026-02-02 — Completed v8 milestone (archived)
-
-Progress: Ready for /gsd:new-milestone
+Status: Defining requirements
+Last activity: 2026-02-03 — Milestone v9 started
 
 ## v8 Summary
 
