@@ -33,6 +33,7 @@ from requirements.views import (
     validation_run_list_view,
     validation_run_steps_view,
     vendor_coverage_view,
+    vendor_load_demo_view,
 )
 
 # Admin views (place before admin.site.urls in your urlpatterns)
@@ -41,6 +42,7 @@ admin_urlpatterns = [
     path("admin/matrix/export/", matrix_export, name="admin-matrix-export"),
     path("admin/matrix/load-demo/", matrix_load_demo_view, name="admin-matrix-load-demo"),
     path("admin/vendor-coverage/", vendor_coverage_view, name="admin-vendor-coverage"),
+    path("admin/vendor-coverage/load-demo/", vendor_load_demo_view, name="admin-vendor-load-demo"),
     path("admin/impact-analysis/", impact_analysis_view, name="admin-impact-analysis"),
     path("admin/impact-analysis/load-demo/", impact_load_demo_view, name="admin-impact-load-demo"),
     path("admin/high-risk/", high_risk_dashboard_view, name="admin-high-risk"),

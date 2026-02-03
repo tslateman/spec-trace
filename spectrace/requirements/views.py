@@ -134,6 +134,30 @@ def matrix_export(request):
 
 
 @staff_member_required
+@require_http_methods(["POST"])
+def vendor_load_demo_view(request):
+    """Load demo data for vendor coverage.
+
+    Creates sample vendors with validations and results to demonstrate
+    the vendor coverage dashboard features.
+    """
+    from django.contrib import messages
+
+    from .services.vendor_demo import setup_vendor_demo
+
+    result = setup_vendor_demo()
+
+    messages.success(
+        request,
+        f"Demo loaded: {result['vendors_created']} vendors, "
+        f"{result['validations_created']} validations, "
+        f"{result['results_created']} results."
+    )
+
+    return redirect("admin-vendor-coverage")
+
+
+@staff_member_required
 def vendor_coverage_view(request):
     """Dashboard showing validation coverage by vendor.
 

@@ -6,6 +6,8 @@
 {% block content %}
 {% include "admin/requirements/_design_system.html" %}
 
+<div x-data="{ showHelp: false }" x-cloak>
+
 <style>
 /* Vendor-specific styles */
 .vendor-grid {
@@ -182,10 +184,37 @@ html.dark .regression-alert__title {
     <!-- Header -->
     <header class="st-flex-between mb-6 st-animate-in" style="flex-wrap: wrap; gap: var(--st-space-4);">
         <div>
-            <h1 class="st-heading-1">{{ title }}</h1>
+            <h1 class="st-heading-1" style="display: flex; align-items: center; gap: var(--st-space-3);">
+                {{ title }}
+                <button
+                    @click="showHelp = !showHelp"
+                    :style="showHelp ? 'background: var(--st-accent-500); color: white;' : ''"
+                    style="display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; border: 1.5px solid var(--st-border); background: var(--st-surface); color: var(--st-text-muted); cursor: pointer; transition: all 0.15s ease;"
+                    title="How it works"
+                    onmouseover="if (!this.classList.contains('active')) this.style.borderColor='var(--st-accent-500)'; this.style.color='var(--st-accent-500)';"
+                    onmouseout="if (!this.classList.contains('active')) this.style.borderColor='var(--st-border)'; this.style.color='var(--st-text-muted)';"
+                >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                        <circle cx="12" cy="17" r="0.5" fill="currentColor"></circle>
+                    </svg>
+                </button>
+            </h1>
             <p class="st-caption mt-1">Validation coverage by integration vendor</p>
         </div>
         <div class="st-cluster">
+            <form method="post" action="{% url 'admin-vendor-load-demo' %}" style="display: inline;">
+                {% csrf_token %}
+                <button type="submit" class="st-btn st-btn--secondary">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    Load Demo
+                </button>
+            </form>
             <a href="{% url 'admin-validation-runs' %}" class="st-btn st-btn--primary">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
@@ -197,6 +226,44 @@ html.dark .regression-alert__title {
             </a>
         </div>
     </header>
+
+    <!-- Help Panel -->
+    <div x-show="showHelp" x-collapse class="st-card mb-6 st-animate-in" style="background: var(--st-surface-sunken); border-left: 3px solid var(--st-accent-500);">
+        <div class="st-card-body">
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--st-space-3);">
+                <h3 class="st-heading-3" style="margin: 0;">How Vendor Coverage Works</h3>
+                <button @click="showHelp = false" class="st-btn st-btn--ghost" style="padding: 4px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div style="display: grid; gap: var(--st-space-4); font-size: 0.875rem; color: var(--st-text-muted);">
+                <div>
+                    <strong style="color: var(--st-text);">1. Validation Submission</strong><br>
+                    In-app validations are submitted via the SpecTrace SDK. Each validation includes a vendor name, requirement link, and optional feature flags.
+                </div>
+                <div>
+                    <strong style="color: var(--st-text);">2. Pass Rate Calculation</strong><br>
+                    Pass rates are calculated from the latest validation result for each vendor's validations. Green (≥90%), yellow (≥70%), red (&lt;70%).
+                </div>
+                <div>
+                    <strong style="color: var(--st-text);">3. Regression Detection</strong><br>
+                    A regression is flagged when a validation that passed in a previous run now fails. This helps catch integration breakages early.
+                </div>
+                <div>
+                    <strong style="color: var(--st-text);">4. Feature Flag Tracking</strong><br>
+                    Feature flags submitted with validations are aggregated per vendor, showing which flags are active across which validations.
+                </div>
+                <div style="background: var(--st-surface); padding: var(--st-space-3); border-radius: var(--st-radius-sm); margin-top: var(--st-space-2);">
+                    <strong style="color: var(--st-text);">SDK Usage:</strong>
+                    <code style="display: block; margin-top: var(--st-space-2);">spectrace.submit_validation(req_id, vendor="Opera", flags={"use_new_auth": True})</code>
+                    <span style="font-size: 0.8125rem;">See the SDK documentation for full integration details.</span>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Summary Stats -->
     <div class="st-grid-stats mb-8 st-animate-in st-animate-delay-1">
@@ -306,6 +373,7 @@ html.dark .regression-alert__title {
         </div>
     </div>
     {% endif %}
+</div>
 </div>
 </div>
 {% endblock %}
