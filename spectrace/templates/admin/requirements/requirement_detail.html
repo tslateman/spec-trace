@@ -1,0 +1,348 @@
+{% extends "admin/requirements/_base.html" %}
+{% load i18n %}
+
+{% block breadcrumbs %}
+<nav class="st-breadcrumbs st-animate-in">
+    <a href="{% url 'admin:index' %}" class="st-breadcrumb-link">Dashboard</a>
+    <span class="st-breadcrumb-sep">/</span>
+    <a href="{% url 'admin-matrix' %}" class="st-breadcrumb-link">Matrix</a>
+    <span class="st-breadcrumb-sep">/</span>
+    <span class="st-breadcrumb-current">{{ requirement.external_id }}</span>
+</nav>
+{% endblock %}
+
+{% block page_content %}
+    <!-- Header -->
+    <header class="st-flex-between mb-6 st-animate-in" style="flex-wrap: wrap; gap: var(--st-space-4);">
+        <div>
+            <h1 class="st-heading-1">{{ requirement.external_id }}</h1>
+            <p class="st-caption mt-1">{{ requirement.title }}</p>
+        </div>
+        <div class="st-cluster">
+            {% if requirement.is_high_risk %}
+            <span class="st-badge st-badge--fail">{{ requirement.get_risk_level_display }}</span>
+            {% else %}
+            <span class="st-badge st-badge--neutral">{{ requirement.get_risk_level_display }}</span>
+            {% endif %}
+            <span class="st-badge {% if requirement.verification_status == 'passing' %}st-badge--pass{% elif requirement.verification_status == 'failing' %}st-badge--fail{% else %}st-badge--neutral{% endif %}">
+                {{ requirement.get_verification_status_display }}
+            </span>
+            <a href="{% url 'admin:index' %}" class="st-btn st-btn--secondary">
+                <- Dashboard
+            </a>
+        </div>
+    </header>
+
+    <!-- Health Summary -->
+    <div class="st-grid-stats mb-6 st-animate-in st-animate-delay-1">
+        <div class="st-metric st-lift {% if health.has_tests %}st-metric--pass{% else %}st-metric--fail{% endif %}">
+            <div class="st-metric__label">Test Coverage</div>
+            <div class="st-metric__value">{% if health.has_tests %}Covered{% else %}No Tests{% endif %}</div>
+        </div>
+        <div class="st-metric st-lift {% if health.has_passing_tests %}st-metric--pass{% elif health.has_tests %}st-metric--fail{% else %}st-metric--neutral{% endif %}">
+            <div class="st-metric__label">Test Status</div>
+            <div class="st-metric__value">{% if health.has_passing_tests %}Passing{% elif health.has_tests %}Failing{% else %}N/A{% endif %}</div>
+        </div>
+        <div class="st-metric st-lift {% if health.has_slos %}st-metric--accent{% else %}st-metric--neutral{% endif %}">
+            <div class="st-metric__label">SLO Status</div>
+            <div class="st-metric__value">{{ requirement.get_slo_status_display }}</div>
+        </div>
+        <div class="st-metric st-lift">
+            <div class="st-metric__label">Last Test Run</div>
+            <div class="st-metric__value st-mono" style="font-size: 0.875rem;">
+                {% if health.last_test_run %}{{ health.last_test_run|date:"Y-m-d H:i" }}{% else %}Never{% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: var(--st-space-6);">
+        <!-- Description -->
+        <div class="st-card st-animate-in st-animate-delay-2">
+            <div class="st-card-header">
+                <h2 class="st-heading-3">Description</h2>
+            </div>
+            <div class="st-card-body">
+                {% if requirement.description %}
+                <p style="white-space: pre-wrap;">{{ requirement.description }}</p>
+                {% else %}
+                <p class="st-text-subtle">No description provided.</p>
+                {% endif %}
+
+                {% if requirement.scope or requirement.condition or requirement.component or requirement.timing or requirement.response %}
+                <div style="margin-top: var(--st-space-4); padding-top: var(--st-space-4); border-top: 1px solid var(--st-border);">
+                    <h4 class="st-heading-4 mb-2">Structured Fields</h4>
+                    <dl style="display: grid; gap: var(--st-space-2);">
+                        {% if requirement.scope %}<dt class="st-text-subtle">Scope:</dt><dd class="st-mono">{{ requirement.scope }}</dd>{% endif %}
+                        {% if requirement.condition %}<dt class="st-text-subtle">Condition:</dt><dd class="st-mono">{{ requirement.condition }}</dd>{% endif %}
+                        {% if requirement.component %}<dt class="st-text-subtle">Component:</dt><dd class="st-mono">{{ requirement.component }}</dd>{% endif %}
+                        {% if requirement.timing %}<dt class="st-text-subtle">Timing:</dt><dd class="st-mono">{{ requirement.timing }}</dd>{% endif %}
+                        {% if requirement.response %}<dt class="st-text-subtle">Response:</dt><dd class="st-mono">{{ requirement.response }}</dd>{% endif %}
+                    </dl>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Metadata -->
+        <div class="st-card st-animate-in st-animate-delay-2">
+            <div class="st-card-header">
+                <h2 class="st-heading-3">Metadata</h2>
+            </div>
+            <div class="st-card-body">
+                <dl style="display: grid; grid-template-columns: auto 1fr; gap: var(--st-space-2) var(--st-space-4);">
+                    <dt class="st-text-subtle">Status:</dt>
+                    <dd><span class="st-badge st-badge--neutral">{{ requirement.status }}</span></dd>
+
+                    <dt class="st-text-subtle">Risk Level:</dt>
+                    <dd><span class="st-badge {% if requirement.is_high_risk %}st-badge--fail{% else %}st-badge--neutral{% endif %}">{{ requirement.get_risk_level_display }}</span></dd>
+
+                    <dt class="st-text-subtle">Priority:</dt>
+                    <dd>{{ requirement.priority|default:"-" }}</dd>
+
+                    <dt class="st-text-subtle">Verification Method:</dt>
+                    <dd>{{ requirement.get_verification_method_display }}</dd>
+
+                    <dt class="st-text-subtle">Source File:</dt>
+                    <dd class="st-mono" style="font-size: 0.8125rem;">{{ requirement.source_file }}</dd>
+
+                    {% if requirement.tags %}
+                    <dt class="st-text-subtle">Tags:</dt>
+                    <dd>
+                        {% for tag in requirement.tags %}
+                        <span class="st-badge st-badge--neutral">{{ tag }}</span>
+                        {% endfor %}
+                    </dd>
+                    {% endif %}
+                </dl>
+            </div>
+        </div>
+    </div>
+
+    <!-- Linked Tests -->
+    <div class="st-card st-animate-in st-animate-delay-3 mt-6">
+        <div class="st-card-header">
+            <h2 class="st-heading-3">Linked Tests ({{ test_links|length }})</h2>
+        </div>
+        {% if test_links %}
+        <div style="overflow-x: auto;">
+            <table class="st-table">
+                <thead>
+                    <tr>
+                        <th>Test</th>
+                        <th>Status</th>
+                        <th>Last Run</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for link in test_links %}
+                    <tr>
+                        <td class="st-mono" style="font-size: 0.8125rem;">{{ link.test_nodeid }}</td>
+                        <td>
+                            <span class="st-badge {% if link.last_status == 'passed' %}st-badge--pass{% elif link.last_status == 'failed' or link.last_status == 'error' %}st-badge--fail{% else %}st-badge--neutral{% endif %}">
+                                {{ link.last_status|default:"unknown" }}
+                            </span>
+                        </td>
+                        <td class="st-mono" style="font-size: 0.8125rem; color: var(--st-text-subtle);">
+                            {{ link.last_run_at|date:"Y-m-d H:i"|default:"-" }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="st-card-body st-text-subtle">No linked tests.</div>
+        {% endif %}
+    </div>
+
+    <!-- In-App Validations -->
+    {% if validations %}
+    <div class="st-card st-animate-in st-animate-delay-3 mt-6">
+        <div class="st-card-header">
+            <h2 class="st-heading-3">In-App Validations ({{ validations|length }})</h2>
+        </div>
+        <div style="overflow-x: auto;">
+            <table class="st-table">
+                <thead>
+                    <tr>
+                        <th>Validation</th>
+                        <th>Vendor</th>
+                        <th>Status</th>
+                        <th>Last Checked</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for v in validations %}
+                    <tr>
+                        <td>{{ v.validation.name }}</td>
+                        <td><span class="st-badge st-badge--neutral">{{ v.validation.vendor|default:"-" }}</span></td>
+                        <td>
+                            <span class="st-badge {% if v.status == 'success' %}st-badge--pass{% elif v.status == 'failure' %}st-badge--fail{% else %}st-badge--neutral{% endif %}">
+                                {{ v.status }}
+                            </span>
+                        </td>
+                        <td class="st-mono" style="font-size: 0.8125rem; color: var(--st-text-subtle);">
+                            {% if v.latest_result %}{{ v.latest_result.checked_at|date:"Y-m-d H:i" }}{% else %}-{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Linked SLOs -->
+    {% if slos %}
+    <div class="st-card st-animate-in st-animate-delay-3 mt-6">
+        <div class="st-card-header">
+            <h2 class="st-heading-3">Linked SLOs ({{ slos|length }})</h2>
+        </div>
+        <div style="overflow-x: auto;">
+            <table class="st-table">
+                <thead>
+                    <tr>
+                        <th>SLO Name</th>
+                        <th>Target</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for slo in slos %}
+                    <tr>
+                        <td>{{ slo.name }}</td>
+                        <td class="st-mono">{{ slo.target_value }}{{ slo.target_unit }}</td>
+                        <td>
+                            <span class="st-badge {% if slo.status == 'met' %}st-badge--pass{% elif slo.status == 'breached' %}st-badge--fail{% elif slo.status == 'at_risk' %}st-badge--warn{% else %}st-badge--neutral{% endif %}">
+                                {{ slo.get_status_display }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Verification Flows -->
+    {% if flows %}
+    <div class="st-card st-animate-in st-animate-delay-3 mt-6">
+        <div class="st-card-header">
+            <h2 class="st-heading-3">Verification Flows ({{ flows|length }})</h2>
+        </div>
+        <div style="overflow-x: auto;">
+            <table class="st-table">
+                <thead>
+                    <tr>
+                        <th>Flow</th>
+                        <th>Latest Run Status</th>
+                        <th>Last Run</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for f in flows %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'admin-flow-runs' f.flow.name %}" style="color: var(--st-accent-600); text-decoration: none;">
+                                {{ f.flow.display_name }}
+                            </a>
+                        </td>
+                        <td>
+                            {% if f.latest_run %}
+                            <span class="st-badge {% if f.latest_run.status == 'passed' %}st-badge--pass{% elif f.latest_run.status == 'failed' %}st-badge--fail{% else %}st-badge--neutral{% endif %}">
+                                {{ f.latest_run.status }}
+                            </span>
+                            {% else %}
+                            <span class="st-badge st-badge--neutral">No runs</span>
+                            {% endif %}
+                        </td>
+                        <td class="st-mono" style="font-size: 0.8125rem; color: var(--st-text-subtle);">
+                            {% if f.latest_run %}{{ f.latest_run.started_at|date:"Y-m-d H:i" }}{% else %}-{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Relationships -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--st-space-6); margin-top: var(--st-space-6);">
+        <!-- Parent/Children -->
+        <div class="st-card st-animate-in st-animate-delay-3">
+            <div class="st-card-header">
+                <h2 class="st-heading-3">Hierarchy</h2>
+            </div>
+            <div class="st-card-body">
+                {% if parent %}
+                <div class="mb-3">
+                    <span class="st-text-subtle">Parent:</span>
+                    <a href="{% url 'admin-requirement-detail' parent.external_id %}" style="color: var(--st-accent-600); text-decoration: none; margin-left: var(--st-space-2);">
+                        {{ parent.external_id }}
+                    </a>
+                </div>
+                {% endif %}
+                {% if children %}
+                <div>
+                    <span class="st-text-subtle">Children:</span>
+                    <ul style="margin-top: var(--st-space-2); padding-left: var(--st-space-4);">
+                        {% for child in children %}
+                        <li>
+                            <a href="{% url 'admin-requirement-detail' child.external_id %}" style="color: var(--st-accent-600); text-decoration: none;">
+                                {{ child.external_id }}
+                            </a>
+                            <span class="st-text-subtle" style="margin-left: var(--st-space-2);">{{ child.title|truncatechars:40 }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+                {% if not parent and not children %}
+                <p class="st-text-subtle">No parent or children.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Dependencies -->
+        <div class="st-card st-animate-in st-animate-delay-3">
+            <div class="st-card-header">
+                <h2 class="st-heading-3">Dependencies</h2>
+            </div>
+            <div class="st-card-body">
+                {% if depends_on %}
+                <div class="mb-3">
+                    <span class="st-text-subtle">Depends on:</span>
+                    <ul style="margin-top: var(--st-space-2); padding-left: var(--st-space-4);">
+                        {% for dep in depends_on %}
+                        <li>
+                            <a href="{% url 'admin-requirement-detail' dep.external_id %}" style="color: var(--st-accent-600); text-decoration: none;">
+                                {{ dep.external_id }}
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+                {% if depended_by %}
+                <div>
+                    <span class="st-text-subtle">Depended by:</span>
+                    <ul style="margin-top: var(--st-space-2); padding-left: var(--st-space-4);">
+                        {% for dep in depended_by %}
+                        <li>
+                            <a href="{% url 'admin-requirement-detail' dep.external_id %}" style="color: var(--st-accent-600); text-decoration: none;">
+                                {{ dep.external_id }}
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+                {% if not depends_on and not depended_by %}
+                <p class="st-text-subtle">No dependencies.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+{% endblock %}

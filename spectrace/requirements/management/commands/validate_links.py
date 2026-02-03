@@ -8,7 +8,7 @@ from pathlib import Path
 
 from django.core.management.base import BaseCommand, CommandError
 
-from ...validator import validate_links
+from ...validator import validate_links, validate_high_risk_requirements
 
 
 class Command(BaseCommand):
@@ -37,12 +37,18 @@ class Command(BaseCommand):
             default=["active"],
             help="Requirement statuses that must have test coverage (default: active)",
         )
+        parser.add_argument(
+            "--check-high-risk",
+            action="store_true",
+            help="Also validate high-risk requirements have passing tests",
+        )
 
     def handle(self, *args, **options):
         links_file = Path(options["links_file"])
         strict = options["strict"]
         output_format = options["format"]
         require_coverage = options["require_coverage"]
+        check_high_risk = options["check_high_risk"]
 
         # Validate links file exists
         if not links_file.exists():
@@ -58,11 +64,19 @@ class Command(BaseCommand):
         # Run validation
         result = validate_links(links_data, require_coverage_for=require_coverage)
 
+        # Run high-risk validation if requested
+        high_risk_result = None
+        if check_high_risk:
+            high_risk_result = validate_high_risk_requirements()
+            # Merge results
+            result.errors.extend(high_risk_result.errors)
+            result.warnings.extend(high_risk_result.warnings)
+
         # Output results
         if output_format == "json":
             self.stdout.write(json.dumps(result.to_dict(), indent=2))
         else:
-            self._output_text(result, links_file)
+            self._output_text(result, links_file, high_risk_result)
 
         # Determine exit code
         if result.has_errors:
@@ -70,9 +84,12 @@ class Command(BaseCommand):
         elif strict and result.has_warnings:
             sys.exit(1)
 
-    def _output_text(self, result, links_file):
+    def _output_text(self, result, links_file, high_risk_result=None):
         """Output human-readable validation results."""
         self.stdout.write(f"Validating {links_file} against requirements database...\n")
+
+        if high_risk_result:
+            self.stdout.write(f"Also checking {high_risk_result.items_checked} high-risk requirements...\n")
 
         if result.errors:
             self.stdout.write(self.style.ERROR(f"\nERRORS ({len(result.errors)}):"))
@@ -84,6 +101,10 @@ class Command(BaseCommand):
                         msg += f" (in {tests[0]})"
                     else:
                         msg += f" (in {len(tests)} tests)"
+                elif error.type in ("high_risk_failing_tests", "pr_impacts_failing_high_risk"):
+                    failing = error.details.get("failing_tests", [])
+                    if failing:
+                        msg += f" ({len(failing)} failing)"
                 self.stdout.write(self.style.ERROR(msg))
 
         if result.warnings:

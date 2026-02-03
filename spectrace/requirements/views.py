@@ -19,6 +19,10 @@ from .models import (
     InAppValidationResult,
     InAppValidationStatus,
     InAppValidationRun,
+    TestRequirementLink,
+    SLO,
+    VerificationFlow,
+    RiskLevel,
 )
 from .services.impact_analyzer import ImpactAnalyzer, validate_git_ref
 from .validation_runs import (
@@ -789,3 +793,148 @@ def flow_sync_to_db_view(request, file_path: str):
         messages.error(request, f"Sync failed: {e}")
 
     return redirect('admin-flow-editor-edit', file_path=file_path)
+
+
+@staff_member_required
+def requirement_detail_view(request, external_id: str):
+    """Detailed view for a single requirement.
+
+    Shows all linked items:
+    - Test links with last run status
+    - In-app validations with latest results
+    - Linked SLOs with compliance status
+    - Verification flows
+    - Child requirements (if any)
+    """
+    from django.db.models import Max
+
+    requirement = get_object_or_404(Requirement, external_id=external_id)
+
+    # Get test links with last status
+    test_links = TestRequirementLink.objects.filter(
+        requirement=requirement
+    ).select_related('requirement').order_by('-last_run_at')
+
+    # Get in-app validations with latest results
+    validations = InAppValidation.objects.filter(
+        requirement=requirement
+    ).prefetch_related('results').order_by('name')
+
+    validations_with_status = []
+    for validation in validations:
+        results = list(validation.results.order_by('-checked_at')[:1])
+        latest = results[0] if results else None
+        validations_with_status.append({
+            'validation': validation,
+            'latest_result': latest,
+            'status': latest.status if latest else InAppValidationStatus.NOT_RUN,
+        })
+
+    # Get linked SLOs
+    slos = SLO.objects.filter(requirement=requirement).order_by('name')
+
+    # Get verification flows
+    flows = VerificationFlow.objects.filter(
+        requirements=requirement
+    ).prefetch_related('runs').order_by('display_name')
+
+    flows_with_status = []
+    for flow in flows:
+        latest_run = flow.runs.order_by('-started_at').first()
+        flows_with_status.append({
+            'flow': flow,
+            'latest_run': latest_run,
+        })
+
+    # Get child requirements
+    children = requirement.get_children().order_by('external_id')
+
+    # Get parent requirement
+    parent = requirement.get_parent()
+
+    # Get dependencies
+    depends_on = requirement.depends_on.all().order_by('external_id')
+    depended_by = requirement.depended_by.all().order_by('external_id')
+
+    # Calculate health indicators
+    has_tests = test_links.exists()
+    has_passing_tests = test_links.filter(last_status='passed').exists()
+    last_test_run = test_links.aggregate(last_run=Max('last_run_at'))['last_run']
+
+    context = {
+        'title': f'{requirement.external_id}: {requirement.title}',
+        'requirement': requirement,
+        'test_links': test_links,
+        'validations': validations_with_status,
+        'slos': slos,
+        'flows': flows_with_status,
+        'children': children,
+        'parent': parent,
+        'depends_on': depends_on,
+        'depended_by': depended_by,
+        'health': {
+            'has_tests': has_tests,
+            'has_passing_tests': has_passing_tests,
+            'last_test_run': last_test_run,
+            'has_slos': slos.exists(),
+            'has_validations': validations.exists(),
+        },
+    }
+
+    return render(request, 'admin/requirements/requirement_detail.html', context)
+
+
+@staff_member_required
+def high_risk_dashboard_view(request):
+    """Dashboard showing high-risk requirements with health indicators.
+
+    Shows critical and high-risk requirements with:
+    - Test coverage status
+    - Last test run date
+    - SLO compliance
+    - Verification status
+    """
+    from django.db.models import Count, Max, Q
+
+    # Get high-risk requirements (critical or high)
+    high_risk_reqs = Requirement.objects.filter(
+        risk_level__in=[RiskLevel.CRITICAL, RiskLevel.HIGH]
+    ).annotate(
+        test_count=Count('test_links'),
+        passing_test_count=Count('test_links', filter=Q(test_links__last_status='passed')),
+        failing_test_count=Count('test_links', filter=Q(test_links__last_status__in=['failed', 'error'])),
+        last_test_run=Max('test_links__last_run_at'),
+        slo_count=Count('slos'),
+        validation_count=Count('inapp_validations'),
+    ).order_by('risk_level', 'external_id')
+
+    # Calculate summary stats
+    total = high_risk_reqs.count()
+    with_tests = high_risk_reqs.filter(test_count__gt=0).count()
+    with_passing = high_risk_reqs.filter(passing_test_count__gt=0, failing_test_count=0).count()
+    with_failing = high_risk_reqs.filter(failing_test_count__gt=0).count()
+    with_slos = high_risk_reqs.filter(slo_count__gt=0).count()
+    untested = high_risk_reqs.filter(test_count=0).count()
+
+    # Group by risk level
+    critical = [r for r in high_risk_reqs if r.risk_level == RiskLevel.CRITICAL]
+    high = [r for r in high_risk_reqs if r.risk_level == RiskLevel.HIGH]
+
+    context = {
+        'title': 'High-Risk Requirements',
+        'requirements': high_risk_reqs,
+        'critical_requirements': critical,
+        'high_requirements': high,
+        'summary': {
+            'total': total,
+            'with_tests': with_tests,
+            'with_passing': with_passing,
+            'with_failing': with_failing,
+            'with_slos': with_slos,
+            'untested': untested,
+            'coverage_percent': round((with_tests / total * 100) if total > 0 else 0, 1),
+            'passing_percent': round((with_passing / total * 100) if total > 0 else 0, 1),
+        },
+    }
+
+    return render(request, 'admin/requirements/high_risk_dashboard.html', context)
