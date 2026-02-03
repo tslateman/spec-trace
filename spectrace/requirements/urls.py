@@ -6,7 +6,7 @@ Include in your project's urls.py:
 
 from django.urls import path
 
-from requirements import api, webhooks
+from requirements import api
 from requirements.openapi.views import openapi_spec, swagger_ui
 from requirements.views import (
     about_view,
@@ -61,10 +61,27 @@ admin_urlpatterns = [
     path("demo/agent-pipeline/", demo_agent_pipeline, name="demo_agent_pipeline"),
 ]
 
-# Webhook endpoints
-webhook_urlpatterns = [
-    path("api/webhooks/github/", webhooks.github_webhook, name="api-github-webhook"),
-]
+def _get_webhook_urlpatterns():
+    """Return webhook URLs only if GitHub dependencies are available and configured."""
+    try:
+        import jwt  # noqa: F401
+    except ImportError:
+        return []
+
+    from django.conf import settings
+
+    if not getattr(settings, "GITHUB_WEBHOOK_SECRET", ""):
+        return []
+
+    from requirements import webhooks
+
+    return [
+        path("api/webhooks/github/", webhooks.github_webhook, name="api-github-webhook"),
+    ]
+
+
+# Webhook endpoints (conditionally registered)
+webhook_urlpatterns = _get_webhook_urlpatterns()
 
 # REST API endpoints
 api_urlpatterns = [

@@ -9,7 +9,6 @@ from dataclasses import dataclass
 from functools import wraps
 from typing import Any, TypeVar
 
-import jwt
 import requests
 from django.conf import settings
 
@@ -171,7 +170,16 @@ class GitHubClient:
 
         Raises:
             GitHubAuthError: If app_id or private_key is not configured.
+            ImportError: If PyJWT is not installed.
         """
+        try:
+            import jwt
+        except ImportError:
+            raise ImportError(
+                "GitHub integration requires extra dependencies. "
+                "Install with: pip install spectrace[github]"
+            )
+
         if not self.app_id or not self.private_key:
             raise GitHubAuthError(
                 "GitHub App credentials not configured. "
