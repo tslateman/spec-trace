@@ -13,6 +13,30 @@
 # The demo_hub view reads this YAML and renders it as clickable cards.
 
 demos:
+  - id: spectrace-overview
+    name: SpecTrace Deep Dive
+    description: >
+      Interactive slideshow explaining what SpecTrace is and how it works.
+      Covers the core problem, solution architecture, and key features with
+      links to try each one. Perfect for onboarding or stakeholder demos.
+    entry_point: open http://localhost:8000/demo/spectrace-overview/
+    duration: 5 minutes
+    audience:
+      - New team members learning SpecTrace
+      - Stakeholders evaluating the tool
+      - Anyone wanting a comprehensive overview
+    prerequisites:
+      - Server running (`make run`)
+    talking_points:
+      - The gap between requirements and tests
+      - Requirements as code with automated verification
+      - Traceability matrix for coverage visibility
+      - Vendor coverage for multi-vendor integrations
+      - Verification flows for complex pipelines
+      - Impact analysis for targeted testing
+    urls:
+      - http://localhost:8000/demo/spectrace-overview/
+
   - id: demo-hub
     name: Demo Hub (Meta)
     description: >

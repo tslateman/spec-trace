@@ -589,6 +589,7 @@ def demo_hub(request):
 
     # Add URL paths for web-based demos
     web_demo_urls = {
+        "spectrace-overview": "spectrace_overview",
         "agent-pipeline": "demo_agent_pipeline",
         "flow-status-dashboard": "admin-flow-status",
         "traceability-matrix": "admin-matrix",
@@ -618,6 +619,16 @@ def demo_agent_pipeline(request):
     the CLI demo script with a visual presentation.
     """
     return render(request, "admin/requirements/demo_presenter.html")
+
+
+@staff_member_required
+def spectrace_overview(request):
+    """Interactive deep dive into SpecTrace features.
+
+    A web-based slideshow explaining the core concepts, features, and
+    benefits of SpecTrace with links to try each feature.
+    """
+    return render(request, "admin/requirements/spectrace_overview.html")
 
 
 @staff_member_required

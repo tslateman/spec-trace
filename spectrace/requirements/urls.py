@@ -28,6 +28,7 @@ from requirements.views import (
     matrix_view,
     requirement_detail_view,
     spec_syntax_help_view,
+    spectrace_overview,
     validation_run_compare_view,
     validation_run_detail_view,
     validation_run_list_view,
@@ -67,6 +68,7 @@ admin_urlpatterns = [
     # Demo
     path("demo/", demo_hub, name="demo_hub"),
     path("demo/agent-pipeline/", demo_agent_pipeline, name="demo_agent_pipeline"),
+    path("demo/spectrace-overview/", spectrace_overview, name="spectrace_overview"),
 ]
 
 def _get_webhook_urlpatterns():
