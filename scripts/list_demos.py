@@ -68,11 +68,6 @@ def print_demo_detail(demo):
         for url in demo["urls"]:
             print(f"  • {url}")
 
-    if demo.get("options"):
-        print("\nOptions:")
-        for opt, desc in demo["options"].items():
-            print(f"  {opt}: {desc}")
-
     if demo.get("files"):
         print("\nKey Files:")
         for f in demo["files"]:

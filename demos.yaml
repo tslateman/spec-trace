@@ -92,8 +92,6 @@ demos:
       - Teams evaluating for complex projects
     prerequisites:
       - Run `make setup` first
-    options:
-      --skip-tests: Skip pytest execution, show structure only
 
   - id: agent-pipeline
     name: Agent-Assisted Development Pipeline
