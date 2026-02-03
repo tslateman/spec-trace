@@ -42,10 +42,10 @@ Plans:
   2. Visitor sees 3-4 key features with icons that explain capabilities at a glance
   3. Visitor can click feature highlights to navigate to relevant demos
   4. Landing page renders correctly in dark mode
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 25-01: TBD
+- [ ] 25-01-PLAN.md - Add value proposition, feature highlight cards, verify dark mode
 
 ### Phase 26: Demo Data & Hub
 **Goal**: Demo shows realistic scenarios that mirror production usage patterns
@@ -93,7 +93,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 24. Visual Consistency | 2/2 | ✓ Complete | 2026-02-03 |
-| 25. Landing Page | 0/? | Not started | - |
+| 25. Landing Page | 0/1 | Not started | - |
 | 26. Demo Data & Hub | 0/? | Not started | - |
 | 27. Guided Tour | 0/? | Not started | - |
 | 28. Onboarding Guide | 0/? | Not started | - |
