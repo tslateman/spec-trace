@@ -1,13 +1,9 @@
-{% extends "unfold/layouts/base.html" %}
+{% extends "admin/requirements/_base.html" %}
 {% load i18n %}
 
-{% block title %}Impact Analysis | SpecTrace{% endblock %}
+{% block container_attrs %}x-data="impactAnalysisWidget()" x-cloak{% endblock %}
 
-{% block content %}
-{% include "admin/requirements/_design_system.html" %}
-
-<div class="st-page-wrapper">
-<div class="st-page st-container" x-data="impactAnalysisWidget()" x-cloak>
+{% block page_content %}
     {% csrf_token %}
 
     <!-- Header -->
@@ -159,9 +155,9 @@ python manage.py impact_analysis main HEAD --format json
 # Exit code: 0 = no impact, 1 = tests affected</div>
         </div>
     </div>
-</div>
-</div>
+{% endblock %}
 
+{% block page_scripts %}
 <script>
 function impactAnalysisWidget() {
     return {

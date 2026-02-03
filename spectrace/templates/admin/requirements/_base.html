@@ -1,0 +1,17 @@
+{% extends "unfold/layouts/base.html" %}
+
+{% block title %}{{ title }} | SpecTrace{% endblock %}
+
+{% block content %}
+{% include "admin/requirements/_design_system.html" %}
+
+<div class="st-page-wrapper">
+<div class="st-page st-container" {% block container_attrs %}{% endblock %}>
+    {% block breadcrumbs %}{% endblock %}
+
+    {% block page_content %}{% endblock %}
+</div>
+</div>
+
+{% block page_scripts %}{% endblock %}
+{% endblock %}
