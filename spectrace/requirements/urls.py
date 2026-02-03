@@ -5,6 +5,7 @@ Include in your project's urls.py:
 """
 
 from django.urls import path
+from django.views.generic import TemplateView
 
 from requirements import api
 from requirements.openapi.views import openapi_spec, swagger_ui
@@ -53,6 +54,9 @@ admin_urlpatterns = [
     path("admin/requirement/<str:external_id>/", requirement_detail_view, name="admin-requirement-detail"),
     path("admin/about/", about_view, name="admin-about"),
     path("admin/spec-syntax/", spec_syntax_help_view, name="admin-spec-syntax"),
+    path("getting-started/", TemplateView.as_view(
+        template_name="admin/requirements/getting_started.html"
+    ), name="getting-started"),
     # Validation runs
     path("admin/validation-runs/", validation_run_list_view, name="admin-validation-runs"),
     path("admin/validation-runs/<int:run_id>/", validation_run_detail_view, name="admin-validation-run-detail"),
