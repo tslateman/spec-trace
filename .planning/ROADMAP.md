@@ -27,10 +27,11 @@ Make SpecTrace's value immediately clear to engineering leads evaluating the too
   1. Every table in the codebase uses .st-table or dark-mode-aware classes (no inline styles)
   2. User can toggle dark mode on any demo page without visual artifacts
   3. Data tables display alternating row colors in both light and dark mode
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 24-01: TBD
+- [ ] 24-01-PLAN.md - Enhance design system .st-table with alternating rows and dark mode text
+- [ ] 24-02-PLAN.md - Migrate templates to .st-table and verify demo pages
 
 ### Phase 25: Landing Page
 **Goal**: Visitors immediately understand what SpecTrace does and why they need it
@@ -91,7 +92,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 24. Visual Consistency | 0/? | Not started | - |
+| 24. Visual Consistency | 0/2 | Planned | - |
 | 25. Landing Page | 0/? | Not started | - |
 | 26. Demo Data & Hub | 0/? | Not started | - |
 | 27. Guided Tour | 0/? | Not started | - |
