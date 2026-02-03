@@ -316,6 +316,58 @@
         line-height: 1.5;
     }
 
+    /* Demo matrix table */
+    .demo-matrix-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.875rem;
+    }
+
+    .demo-matrix-table th {
+        padding: var(--st-space-3) var(--st-space-4);
+        text-align: left;
+        font-weight: 600;
+        background: var(--st-surface-sunken);
+        color: var(--st-text);
+    }
+
+    .demo-matrix-table th:nth-child(3),
+    .demo-matrix-table th:nth-child(4) {
+        text-align: center;
+    }
+
+    .demo-matrix-table td {
+        padding: var(--st-space-3) var(--st-space-4);
+        border-top: 1px solid var(--st-border-muted);
+        color: var(--st-text);
+    }
+
+    .demo-matrix-table td:nth-child(3),
+    .demo-matrix-table td:nth-child(4) {
+        text-align: center;
+    }
+
+    .demo-matrix-table tbody tr {
+        background: var(--st-surface);
+    }
+
+    .demo-matrix-table tbody tr:nth-child(even) {
+        background: var(--st-surface-sunken);
+    }
+
+    .demo-matrix-table .req-id {
+        font-family: var(--font-mono);
+        color: var(--st-accent-500);
+    }
+
+    html.dark .demo-matrix-table td {
+        color: var(--st-slate-200);
+    }
+
+    html.dark .demo-matrix-table .req-id {
+        color: var(--st-accent-400);
+    }
+
     .big-stat {
         text-align: center;
         padding: var(--st-space-6);
@@ -526,33 +578,33 @@ accessing protected resources.</pre>
 
             <div class="st-card" style="max-width: 900px; margin: 0 auto;">
                 <div class="st-card-body" style="padding: 0; overflow: hidden; border-radius: var(--st-radius-lg);">
-                    <table style="width: 100%; border-collapse: collapse; font-size: 0.875rem;">
+                    <table class="demo-matrix-table">
                         <thead>
-                            <tr style="background: var(--st-surface-sunken);">
-                                <th style="padding: var(--st-space-3) var(--st-space-4); text-align: left; font-weight: 600;">Requirement</th>
-                                <th style="padding: var(--st-space-3) var(--st-space-4); text-align: left; font-weight: 600;">Title</th>
-                                <th style="padding: var(--st-space-3) var(--st-space-4); text-align: center; font-weight: 600;">Tests</th>
-                                <th style="padding: var(--st-space-3) var(--st-space-4); text-align: center; font-weight: 600;">Status</th>
+                            <tr>
+                                <th>Requirement</th>
+                                <th>Title</th>
+                                <th>Tests</th>
+                                <th>Status</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr style="border-top: 1px solid var(--st-border-muted);">
-                                <td style="padding: var(--st-space-3) var(--st-space-4); font-family: var(--font-mono); color: var(--st-accent-500);">REQ-AUTH-001</td>
-                                <td style="padding: var(--st-space-3) var(--st-space-4);">User Login</td>
-                                <td style="padding: var(--st-space-3) var(--st-space-4); text-align: center;">3</td>
-                                <td style="padding: var(--st-space-3) var(--st-space-4); text-align: center;"><span class="st-badge st-badge--pass">Passing</span></td>
+                            <tr>
+                                <td class="req-id">REQ-AUTH-001</td>
+                                <td>User Login</td>
+                                <td>3</td>
+                                <td><span class="st-badge st-badge--pass">Passing</span></td>
                             </tr>
-                            <tr style="border-top: 1px solid var(--st-border-muted);">
-                                <td style="padding: var(--st-space-3) var(--st-space-4); font-family: var(--font-mono); color: var(--st-accent-500);">REQ-AUTH-002</td>
-                                <td style="padding: var(--st-space-3) var(--st-space-4);">Password Reset</td>
-                                <td style="padding: var(--st-space-3) var(--st-space-4); text-align: center;">2</td>
-                                <td style="padding: var(--st-space-3) var(--st-space-4); text-align: center;"><span class="st-badge st-badge--fail">Failing</span></td>
+                            <tr>
+                                <td class="req-id">REQ-AUTH-002</td>
+                                <td>Password Reset</td>
+                                <td>2</td>
+                                <td><span class="st-badge st-badge--fail">Failing</span></td>
                             </tr>
-                            <tr style="border-top: 1px solid var(--st-border-muted);">
-                                <td style="padding: var(--st-space-3) var(--st-space-4); font-family: var(--font-mono); color: var(--st-accent-500);">REQ-AUTH-003</td>
-                                <td style="padding: var(--st-space-3) var(--st-space-4);">Session Timeout</td>
-                                <td style="padding: var(--st-space-3) var(--st-space-4); text-align: center;">0</td>
-                                <td style="padding: var(--st-space-3) var(--st-space-4); text-align: center;"><span class="st-badge st-badge--muted">Untested</span></td>
+                            <tr>
+                                <td class="req-id">REQ-AUTH-003</td>
+                                <td>Session Timeout</td>
+                                <td>0</td>
+                                <td><span class="st-badge st-badge--muted">Untested</span></td>
                             </tr>
                         </tbody>
                     </table>

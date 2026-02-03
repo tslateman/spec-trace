@@ -7,7 +7,8 @@
 #   - duration: Approximate runtime
 #   - audience: Who this demo is for
 #   - prerequisites: What must be set up first
-#   - talking_points: Key things to highlight during the demo
+#
+# Note: Presenter notes are in each demo page (toggle with 'N' key).
 #
 # This file is the source of truth for the web-based Demo Hub at /demo/
 # The demo_hub view reads this YAML and renders it as clickable cards.
@@ -27,13 +28,6 @@ demos:
       - Anyone wanting a comprehensive overview
     prerequisites:
       - Server running (`make run`)
-    talking_points:
-      - The gap between requirements and tests
-      - Requirements as code with automated verification
-      - Traceability matrix for coverage visibility
-      - Vendor coverage for multi-vendor integrations
-      - Verification flows for complex pipelines
-      - Impact analysis for targeted testing
     urls:
       - http://localhost:8000/demo/spectrace-overview/
 
@@ -51,12 +45,6 @@ demos:
       - Anyone comparing SpecTrace to other tools
     prerequisites:
       - Server running (`make run`)
-    talking_points:
-      - SpecTrace components (specs parser, test linking, in-app validation)
-      - Integration with PR smoke tests (defines critical paths)
-      - Integration with ephemeral environments (validates readiness)
-      - Integration with mutation testing (prioritizes coverage)
-      - Complementary metrics (code coverage vs mutation score vs requirement coverage)
     urls:
       - http://localhost:8000/demo/qa-ecosystem/
 
@@ -73,11 +61,6 @@ demos:
       - Sales engineers preparing demos
     prerequisites:
       - Server running (`make run`)
-    talking_points:
-      - Single entry point for all demos
-      - Web demos link directly; CLI demos show the command
-      - Cards show duration, audience, and key talking points
-      - Source of truth is demos.yaml in repo root
     urls:
       - http://localhost:8000/demo/
   - id: spectrace-workflow
@@ -95,11 +78,6 @@ demos:
     prerequisites:
       - Run `make setup` first (or `python scripts/setup_demo.py`)
       - Database migrated and seeded
-    talking_points:
-      - Requirements live in version-controlled markdown, not a separate tool
-      - Pytest markers create explicit test-to-requirement links
-      - Verification status rolls up automatically from test results
-      - Admin dashboard shows coverage gaps at a glance
 
   - id: document-pipeline
     name: Document Pipeline Example
@@ -114,11 +92,6 @@ demos:
       - Teams evaluating for complex projects
     prerequisites:
       - Run `make setup` first
-    talking_points:
-      - Three-level hierarchy (DOC-001 → DOC-ING-001 → DOC-ING-001.1)
-      - Mix of verification methods (test, inapp, both)
-      - OpenSLO YAML integration for SLOs
-      - Shows passing, failing, skipped, and untested requirements
     options:
       --skip-tests: Skip pytest execution, show structure only
 
@@ -138,12 +111,6 @@ demos:
       - Database set up with requirements parsed
       - Agent configuration in place
       - Review pre-demo checklist in the doc
-    talking_points:
-      - Agents register and claim specific requirements
-      - Work is tracked from claim → implementation → review → merge
-      - Invariant checks run automatically before merge
-      - Full traceability from spec to code to agent
-      - Web presenter has keyboard navigation (arrow keys, space)
     urls:
       - http://localhost:8000/demo/agent-pipeline/
 
@@ -160,12 +127,6 @@ demos:
       - QA monitoring verification pipelines
     prerequisites:
       - Server running (`make run`)
-    talking_points:
-      - Pipeline visualization shows pass/fail per step
-      - Early-exit behavior—stops on first failure
-      - Expandable error details with HTTP status codes
-      - Stats roll up from steps → runs → flows
-      - Load Demo Data button seeds sample runs instantly
     urls:
       - http://localhost:8000/admin/flow-status/
     cli_setup: python manage.py setup_flow_demo
@@ -184,11 +145,6 @@ demos:
       - Compliance auditors
     prerequisites:
       - Server running (`make run`)
-    talking_points:
-      - Color-coded grid (green=pass, red=fail, gray=untested)
-      - Drill-down to linked tests per requirement
-      - Export to CSV for reporting
-      - Load Demo button seeds sample test results instantly
     urls:
       - http://localhost:8000/admin/matrix/
 
@@ -206,11 +162,6 @@ demos:
       - Engineering leads tracking integration health
     prerequisites:
       - Server running (`make run`)
-    talking_points:
-      - Per-vendor pass rate with color-coded thresholds
-      - Regression detection flags pass→fail transitions
-      - Feature flag tracking shows which flags are active per vendor
-      - Load Demo button creates 4 sample vendors with varied pass rates
     urls:
       - http://localhost:8000/admin/vendor-coverage/
 
@@ -226,11 +177,6 @@ demos:
       - Reference implementation for patterns
     prerequisites:
       - None (self-contained example)
-    talking_points:
-      - Complete project structure to copy/adapt
-      - Specs organized by domain (ingest, transform, storage, delivery)
-      - OpenSLO YAML files for SLO tracking
-      - GitHub Actions workflow example
     files:
       - examples/document-pipeline/specs/
       - examples/document-pipeline/tests/
