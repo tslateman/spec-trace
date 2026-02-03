@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-02-03)
 
 **Core value:** PMs can see, at any moment, which requirements are verified by passing tests
-**Current focus:** v9 Demo & Marketing Polish - Phase 25 Landing Page
+**Current focus:** v9 Demo & Marketing Polish - Phase 26 Demo Data & Hub
 
 ## Current Position
 
 Milestone: v9 Demo & Marketing Polish
-Phase: 25 of 28 (Landing Page)
-Plan: 01 of 01 (complete)
-Status: Phase complete
-Last activity: 2026-02-03 — Completed 25-01-PLAN.md
+Phase: 26 of 28 (Demo Data & Hub)
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-02-03 — Phase 25 Landing Page complete
 
-Progress: [███░░░░░░░] 21%
+Progress: [████░░░░░░] 40%
 
 ## Milestone History
 

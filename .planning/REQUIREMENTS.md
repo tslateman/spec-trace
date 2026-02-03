@@ -9,10 +9,10 @@ Requirements for Demo & Marketing Polish milestone.
 
 ### Landing Page
 
-- [ ] **LAND-01**: Landing page has compelling one-line value proposition
-- [ ] **LAND-02**: Landing page shows 3-4 key feature highlights with icons
-- [ ] **LAND-03**: Feature highlights link to relevant demos or dashboard views
-- [ ] **LAND-04**: Landing page works correctly in dark mode
+- [x] **LAND-01**: Landing page has compelling one-line value proposition
+- [x] **LAND-02**: Landing page shows 3-4 key feature highlights with icons
+- [x] **LAND-03**: Feature highlights link to relevant demos or dashboard views
+- [x] **LAND-04**: Landing page works correctly in dark mode
 
 ### Demo Experience
 
@@ -72,10 +72,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | VIS-02 | Phase 24 | Complete |
 | VIS-03 | Phase 24 | Complete |
 | VIS-04 | Phase 24 | Complete |
-| LAND-01 | Phase 25 | Pending |
-| LAND-02 | Phase 25 | Pending |
-| LAND-03 | Phase 25 | Pending |
-| LAND-04 | Phase 25 | Pending |
+| LAND-01 | Phase 25 | Complete |
+| LAND-02 | Phase 25 | Complete |
+| LAND-03 | Phase 25 | Complete |
+| LAND-04 | Phase 25 | Complete |
 | DEMO-01 | Phase 26 | Pending |
 | DEMO-02 | Phase 26 | Pending |
 | DEMO-03 | Phase 26 | Pending |
