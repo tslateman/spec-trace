@@ -1,22 +1,17 @@
-{% extends "unfold/layouts/base.html" %}
+{% extends "admin/requirements/_base.html" %}
 {% load i18n %}
 
-{% block title %}{{ title }} | SpecTrace{% endblock %}
+{% block breadcrumbs %}
+<nav class="st-breadcrumbs st-animate-in">
+    <a href="{% url 'admin:index' %}" class="st-breadcrumb-link">Dashboard</a>
+    <span class="st-breadcrumb-sep">/</span>
+    <a href="{% url 'admin-flow-status' %}" class="st-breadcrumb-link">Flow Status</a>
+    <span class="st-breadcrumb-sep">/</span>
+    <span class="st-breadcrumb-current">{{ flow_def.display_name }}</span>
+</nav>
+{% endblock %}
 
-{% block content %}
-{% include "admin/requirements/_design_system.html" %}
-
-<div class="st-page-wrapper">
-<div class="st-page st-container">
-    <!-- Breadcrumbs -->
-    <nav class="st-breadcrumbs st-animate-in">
-        <a href="{% url 'admin:index' %}" class="st-breadcrumb-link">Dashboard</a>
-        <span class="st-breadcrumb-sep">/</span>
-        <a href="{% url 'admin-flow-status' %}" class="st-breadcrumb-link">Flow Status</a>
-        <span class="st-breadcrumb-sep">/</span>
-        <span class="st-breadcrumb-current">{{ flow_def.display_name }}</span>
-    </nav>
-
+{% block page_content %}
     <!-- Header -->
     <header class="st-flex-between mb-6 st-animate-in" style="flex-wrap: wrap; gap: var(--st-space-4);">
         <div>
@@ -174,6 +169,4 @@
         </div>
         {% endif %}
     </div>
-</div>
-</div>
 {% endblock %}

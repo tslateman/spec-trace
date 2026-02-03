@@ -1,7 +1,6 @@
 """Views for requirements app."""
 import csv
 import json
-from datetime import datetime
 from pathlib import Path
 
 import yaml
@@ -12,6 +11,12 @@ from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods
 
+from .filter_utils import (
+    MATRIX_FILTERS,
+    VALIDATION_RUN_FILTERS,
+    FLOW_RUN_FILTERS,
+    parse_pagination,
+)
 from .matrix import get_matrix_data, get_cell_color, setup_matrix_demo
 from .models import (
     Requirement,
@@ -46,18 +51,6 @@ from .flow_editor import (
 from requirements.flows.parser import FlowParseError
 
 
-def _build_matrix_filters(request) -> dict:
-    """Build filter dict from request query parameters."""
-    filters = {}
-    if request.GET.get('status'):
-        filters['status'] = request.GET['status']
-    if request.GET.get('tags'):
-        filters['tags'] = [t.strip() for t in request.GET['tags'].split(',')]
-    if request.GET.get('parent_id'):
-        filters['parent_id'] = request.GET['parent_id']
-    return filters
-
-
 @staff_member_required
 def matrix_view(request):
     """Render the traceability matrix grid.
@@ -69,18 +62,8 @@ def matrix_view(request):
         tags: Comma-separated list of tags to filter by
         parent_id: Show only children of this requirement
     """
-    # Parse query parameters with bounds validation
-    try:
-        page = max(1, min(int(request.GET.get('page', 1)), 10000))
-    except (ValueError, TypeError):
-        page = 1
-    try:
-        per_page = max(1, min(int(request.GET.get('per_page', 25)), 100))
-    except (ValueError, TypeError):
-        per_page = 25
-
-    # Build filters from query params
-    filters = _build_matrix_filters(request)
+    page, per_page = parse_pagination(request)
+    filters = MATRIX_FILTERS.build(request)
 
     # Get matrix data
     data = get_matrix_data(page=page, per_page=per_page, filters=filters)
@@ -105,12 +88,7 @@ def matrix_view(request):
         'cells': cells_with_colors,
         'pagination': data['pagination'],
         'parent_requirements': parent_requirements,
-        'current_filters': {
-            'status': request.GET.get('status', ''),
-            'tags': request.GET.get('tags', ''),
-            'parent_id': request.GET.get('parent_id', ''),
-            'per_page': per_page,
-        },
+        'current_filters': MATRIX_FILTERS.get_current_filters(request, per_page),
     }
 
     return render(request, 'admin/requirements/matrix.html', context)
@@ -123,8 +101,7 @@ def matrix_export(request):
     Query parameters same as matrix_view, plus:
         format: 'csv' (default)
     """
-    # Parse query parameters (same as matrix_view)
-    filters = _build_matrix_filters(request)
+    filters = MATRIX_FILTERS.build(request)
 
     # Get all matrix data (no pagination for export)
     data = get_matrix_data(page=1, per_page=10000, filters=filters)
@@ -283,28 +260,6 @@ def impact_analysis_view(request):
     return render(request, "admin/requirements/impact_analysis.html", context)
 
 
-def _build_validation_run_filters(request) -> dict:
-    """Build filter dict from request query parameters for validation runs."""
-    filters = {}
-    if request.GET.get('source'):
-        filters['source'] = request.GET['source']
-    if request.GET.get('vendor'):
-        filters['vendor'] = request.GET['vendor']
-    if request.GET.get('requirement'):
-        filters['requirement'] = request.GET['requirement']
-    if request.GET.get('date_from'):
-        try:
-            filters['date_from'] = datetime.strptime(request.GET['date_from'], '%Y-%m-%d')
-        except ValueError:
-            pass
-    if request.GET.get('date_to'):
-        try:
-            filters['date_to'] = datetime.strptime(request.GET['date_to'], '%Y-%m-%d')
-        except ValueError:
-            pass
-    return filters
-
-
 @staff_member_required
 def validation_run_list_view(request):
     """List view for validation runs with filtering and pagination.
@@ -317,17 +272,8 @@ def validation_run_list_view(request):
         date_from: Filter by start date (YYYY-MM-DD)
         date_to: Filter by end date (YYYY-MM-DD)
     """
-    # Parse pagination with bounds validation
-    try:
-        page = max(1, min(int(request.GET.get('page', 1)), 10000))
-    except (ValueError, TypeError):
-        page = 1
-    try:
-        per_page = max(1, min(int(request.GET.get('per_page', 25)), 100))
-    except (ValueError, TypeError):
-        per_page = 25
-
-    filters = _build_validation_run_filters(request)
+    page, per_page = parse_pagination(request)
+    filters = VALIDATION_RUN_FILTERS.build(request)
     data = get_validation_runs_data(page=page, per_page=per_page, filters=filters)
 
     # Get requirements with validations for filter dropdown
@@ -347,14 +293,7 @@ def validation_run_list_view(request):
         'vendors': get_unique_vendors(),
         'sources': get_unique_sources(),
         'requirements': list(requirements_with_validations),
-        'current_filters': {
-            'source': request.GET.get('source', ''),
-            'vendor': request.GET.get('vendor', ''),
-            'requirement': request.GET.get('requirement', ''),
-            'date_from': request.GET.get('date_from', ''),
-            'date_to': request.GET.get('date_to', ''),
-            'per_page': per_page,
-        },
+        'current_filters': VALIDATION_RUN_FILTERS.get_current_filters(request, per_page),
     }
 
     return render(request, 'admin/requirements/validation_runs.html', context)
@@ -494,24 +433,6 @@ def flow_status_list_view(request):
     return render(request, 'admin/requirements/flow_status.html', context)
 
 
-def _build_flow_run_filters(request) -> dict:
-    """Build filter dict from request query parameters for flow runs."""
-    filters = {}
-    if request.GET.get('status'):
-        filters['status'] = request.GET['status']
-    if request.GET.get('date_from'):
-        try:
-            filters['date_from'] = datetime.strptime(request.GET['date_from'], '%Y-%m-%d')
-        except ValueError:
-            pass
-    if request.GET.get('date_to'):
-        try:
-            filters['date_to'] = datetime.strptime(request.GET['date_to'], '%Y-%m-%d')
-        except ValueError:
-            pass
-    return filters
-
-
 @staff_member_required
 def flow_runs_view(request, flow_name: str):
     """List runs for a specific verification flow.
@@ -523,21 +444,11 @@ def flow_runs_view(request, flow_name: str):
         date_from: Filter runs started on or after this date (YYYY-MM-DD)
         date_to: Filter runs started on or before this date (YYYY-MM-DD)
     """
-    # Parse pagination with bounds validation
-    try:
-        page = max(1, min(int(request.GET.get('page', 1)), 10000))
-    except (ValueError, TypeError):
-        page = 1
-    try:
-        per_page = max(1, min(int(request.GET.get('per_page', 25)), 100))
-    except (ValueError, TypeError):
-        per_page = 25
-
-    filters = _build_flow_run_filters(request)
+    page, per_page = parse_pagination(request)
+    filters = FLOW_RUN_FILTERS.build(request)
     data = get_flow_runs_data(flow_name, page=page, per_page=per_page, filters=filters)
 
     if not data['flow_def']:
-        # Flow not found
         from django.http import Http404
         raise Http404(f"Flow '{flow_name}' not found")
 
@@ -548,12 +459,7 @@ def flow_runs_view(request, flow_name: str):
         'runs': data['runs'],
         'pagination': data['pagination'],
         'summary': data['summary'],
-        'current_filters': {
-            'status': request.GET.get('status', ''),
-            'date_from': request.GET.get('date_from', ''),
-            'date_to': request.GET.get('date_to', ''),
-            'per_page': per_page,
-        },
+        'current_filters': FLOW_RUN_FILTERS.get_current_filters(request, per_page),
     }
 
     return render(request, 'admin/requirements/flow_runs.html', context)

@@ -1,13 +1,7 @@
-{% extends "unfold/layouts/base.html" %}
+{% extends "admin/requirements/_base.html" %}
 {% load i18n validation_tags %}
 
-{% block title %}{{ title }} | SpecTrace{% endblock %}
-
-{% block content %}
-{% include "admin/requirements/_design_system.html" %}
-
-<div class="st-page-wrapper">
-<div class="st-page st-container">
+{% block page_content %}
     <!-- Header -->
     <header class="st-flex-between mb-6 st-animate-in" style="flex-wrap: wrap; gap: var(--st-space-4);">
         <div>
@@ -197,6 +191,4 @@
         </div>
         {% endif %}
     </div>
-</div>
-</div>
 {% endblock %}
