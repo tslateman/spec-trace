@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-02-03)
 
 **Core value:** PMs can see, at any moment, which requirements are verified by passing tests
-**Current focus:** v9 Demo & Marketing Polish - Phase 27 Guided Tour
+**Current focus:** v9 Demo & Marketing Polish - Phase 28 Onboarding Guide
 
 ## Current Position
 
 Milestone: v9 Demo & Marketing Polish
 Phase: 27 of 28 (Guided Tour)
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-02-03 — Phase 26 Demo Data & Hub complete
+Plan: 01 COMPLETE
+Status: Phase complete, ready for Phase 28
+Last activity: 2026-02-03 — Completed 27-01-PLAN.md (Driver.js guided tour)
 
-Progress: [██████░░░░] 60%
+Progress: [███████░░░] 70%
 
 ## Milestone History
 
@@ -34,10 +34,10 @@ Progress: [██████░░░░] 60%
 **Goal:** Make SpecTrace's value immediately clear to engineering leads evaluating the tool
 
 **Phases:**
-- Phase 24: Visual Consistency (VIS-01 to VIS-04) - ✓ COMPLETE
-- Phase 25: Landing Page (LAND-01 to LAND-04) - ✓ COMPLETE
-- Phase 26: Demo Data & Hub (DEMO-01 to DEMO-04) - ✓ COMPLETE
-- Phase 27: Guided Tour (DEMO-05, DEMO-06) - walkthrough
+- Phase 24: Visual Consistency (VIS-01 to VIS-04) - COMPLETE
+- Phase 25: Landing Page (LAND-01 to LAND-04) - COMPLETE
+- Phase 26: Demo Data & Hub (DEMO-01 to DEMO-04) - COMPLETE
+- Phase 27: Guided Tour (DEMO-05, DEMO-06) - COMPLETE
 - Phase 28: Onboarding Guide (ONBD-01 to ONBD-04) - getting started
 
 ## Accumulated Context
@@ -46,6 +46,10 @@ Progress: [██████░░░░] 60%
 
 Decisions logged in PROJECT.md Key Decisions table.
 
+Phase 27 decisions:
+- Driver.js loaded from CDN (no npm install) for minimal footprint
+- SessionStorage pattern for cross-page tour triggering
+
 ### Blockers/Concerns
 
 None.
@@ -53,5 +57,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-03
-Stopped at: Phase 26 complete, ready to plan Phase 27
+Stopped at: Completed 27-01-PLAN.md, Phase 27 complete
 Resume file: None
