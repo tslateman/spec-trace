@@ -23,6 +23,7 @@ from requirements.views import (
     high_risk_dashboard_view,
     impact_analysis_view,
     impact_load_demo_view,
+    landing_view,
     matrix_export,
     matrix_load_demo_view,
     matrix_view,
@@ -39,6 +40,7 @@ from requirements.views import (
 
 # Admin views (place before admin.site.urls in your urlpatterns)
 admin_urlpatterns = [
+    path("", landing_view, name="landing"),
     path("admin/matrix/", matrix_view, name="admin-matrix"),
     path("admin/matrix/export/", matrix_export, name="admin-matrix-export"),
     path("admin/matrix/load-demo/", matrix_load_demo_view, name="admin-matrix-load-demo"),

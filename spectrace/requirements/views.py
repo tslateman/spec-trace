@@ -55,6 +55,32 @@ from .flow_editor import (
 from requirements.flows.parser import FlowParseError
 
 
+def landing_view(request):
+    """Landing page with paths to dashboard and tour.
+
+    Shows live stats if data exists to make the page feel alive.
+    """
+    from .models import Requirement, TestRequirementLink, InAppValidation
+
+    # Gather stats
+    total_requirements = Requirement.objects.count()
+    total_tests = TestRequirementLink.objects.count()
+    total_vendors = InAppValidation.objects.exclude(vendor='').values('vendor').distinct().count()
+
+    # Calculate passing percentage
+    passing_count = Requirement.objects.filter(verification_status='passing').count()
+    passing_pct = round((passing_count / total_requirements * 100)) if total_requirements > 0 else 0
+
+    stats = {
+        'total_requirements': total_requirements,
+        'total_tests': total_tests,
+        'total_vendors': total_vendors,
+        'passing': passing_pct,
+    }
+
+    return render(request, 'admin/requirements/landing.html', {'stats': stats})
+
+
 @staff_member_required
 def matrix_view(request):
     """Render the traceability matrix grid.

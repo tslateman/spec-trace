@@ -1,0 +1,224 @@
+{% extends "unfold/layouts/base.html" %}
+{% load i18n %}
+
+{% block title %}SpecTrace{% endblock %}
+
+{% block content %}
+{% include "admin/requirements/_design_system.html" %}
+
+<style>
+.landing {
+    min-height: calc(100vh - 120px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--st-space-8);
+}
+
+.landing-header {
+    text-align: center;
+    margin-bottom: var(--st-space-10);
+}
+
+.landing-logo {
+    font-size: 3.5rem;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    color: var(--st-text);
+    margin-bottom: var(--st-space-3);
+}
+
+.landing-logo span {
+    color: var(--st-accent-500);
+}
+
+.landing-tagline {
+    font-size: 1.25rem;
+    color: var(--st-text-muted);
+    max-width: 400px;
+    line-height: 1.5;
+}
+
+.landing-paths {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--st-space-6);
+    max-width: 700px;
+    width: 100%;
+    margin-bottom: var(--st-space-10);
+}
+
+.landing-path {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: var(--st-space-8);
+    background: var(--st-surface);
+    border: 1px solid var(--st-border);
+    border-radius: var(--st-radius-xl);
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.2s ease;
+}
+
+.landing-path:hover {
+    border-color: var(--st-accent-500);
+    box-shadow: var(--st-shadow-lg);
+    transform: translateY(-2px);
+}
+
+.landing-path__icon {
+    width: 64px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--st-accent-bg);
+    border-radius: var(--st-radius-lg);
+    color: var(--st-accent-500);
+    margin-bottom: var(--st-space-4);
+}
+
+.landing-path__title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: var(--st-space-2);
+}
+
+.landing-path__desc {
+    font-size: 0.9375rem;
+    color: var(--st-text-muted);
+    text-align: center;
+    line-height: 1.5;
+}
+
+.landing-stats {
+    display: flex;
+    gap: var(--st-space-8);
+    padding: var(--st-space-6);
+    background: var(--st-surface-sunken);
+    border-radius: var(--st-radius-lg);
+    margin-bottom: var(--st-space-8);
+}
+
+.landing-stat {
+    text-align: center;
+    min-width: 100px;
+}
+
+.landing-stat__value {
+    font-family: var(--font-mono);
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--st-text);
+    line-height: 1;
+}
+
+.landing-stat__value--accent {
+    color: var(--st-accent-500);
+}
+
+.landing-stat__value--pass {
+    color: var(--st-pass);
+}
+
+.landing-stat__value--warn {
+    color: var(--st-warn);
+}
+
+.landing-stat__label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--st-text-subtle);
+    margin-top: var(--st-space-1);
+}
+
+.landing-footer {
+    font-size: 0.875rem;
+    color: var(--st-text-subtle);
+}
+
+.landing-footer a {
+    color: var(--st-accent-500);
+    text-decoration: none;
+}
+
+.landing-footer a:hover {
+    text-decoration: underline;
+}
+
+@media (max-width: 640px) {
+    .landing-paths {
+        grid-template-columns: 1fr;
+    }
+
+    .landing-stats {
+        flex-direction: column;
+        gap: var(--st-space-4);
+    }
+}
+</style>
+
+<div class="landing">
+    <header class="landing-header st-animate-in">
+        <h1 class="landing-logo">Spec<span>Trace</span></h1>
+        <p class="landing-tagline">Requirements as code, automatically verified</p>
+    </header>
+
+    {% if stats.total_requirements > 0 %}
+    <div class="landing-stats st-animate-in st-animate-delay-1">
+        <div class="landing-stat">
+            <div class="landing-stat__value landing-stat__value--accent">{{ stats.total_requirements }}</div>
+            <div class="landing-stat__label">Requirements</div>
+        </div>
+        <div class="landing-stat">
+            <div class="landing-stat__value landing-stat__value--pass">{{ stats.passing }}%</div>
+            <div class="landing-stat__label">Passing</div>
+        </div>
+        <div class="landing-stat">
+            <div class="landing-stat__value">{{ stats.total_tests }}</div>
+            <div class="landing-stat__label">Linked Tests</div>
+        </div>
+        {% if stats.total_vendors > 0 %}
+        <div class="landing-stat">
+            <div class="landing-stat__value">{{ stats.total_vendors }}</div>
+            <div class="landing-stat__label">Vendors</div>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="landing-paths">
+        <a href="{% url 'admin-matrix' %}" class="landing-path st-animate-in st-animate-delay-2">
+            <div class="landing-path__icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="3" y1="9" x2="21" y2="9"></line>
+                    <line x1="9" y1="21" x2="9" y2="9"></line>
+                </svg>
+            </div>
+            <div class="landing-path__title">Dashboard</div>
+            <div class="landing-path__desc">View traceability matrix, vendor coverage, and verification status</div>
+        </a>
+
+        <a href="{% url 'spectrace_overview' %}" class="landing-path st-animate-in st-animate-delay-3">
+            <div class="landing-path__icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polygon points="10 8 16 12 10 16 10 8"></polygon>
+                </svg>
+            </div>
+            <div class="landing-path__title">Take the Tour</div>
+            <div class="landing-path__desc">Interactive walkthrough of SpecTrace features and concepts</div>
+        </a>
+    </div>
+
+    <footer class="landing-footer st-animate-in st-animate-delay-4">
+        <a href="{% url 'admin-about' %}">About SpecTrace</a>
+    </footer>
+</div>
+{% endblock %}
