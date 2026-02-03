@@ -189,12 +189,15 @@ html.dark .landing-footer {
 
 .feature-highlights {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
     gap: var(--st-space-4);
     max-width: 900px;
     width: 100%;
     margin-bottom: var(--st-space-10);
 }
+
+.st-animate-delay-8 { animation-delay: 0.3s; }
+.st-animate-delay-9 { animation-delay: 0.35s; }
 
 .feature-highlight {
     display: flex;
@@ -367,9 +370,20 @@ html.dark .feature-highlight__desc {
             <div class="feature-highlight__title">Impact Analysis</div>
             <div class="feature-highlight__desc">Know which tests to run when specs change</div>
         </a>
+
+        <a href="{% url 'getting-started' %}" class="feature-highlight st-animate-in st-animate-delay-8">
+            <div class="feature-highlight__icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+                    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+                </svg>
+            </div>
+            <div class="feature-highlight__title">Getting Started</div>
+            <div class="feature-highlight__desc">Step-by-step guide to integrate SpecTrace</div>
+        </a>
     </div>
 
-    <footer class="landing-footer st-animate-in st-animate-delay-8">
+    <footer class="landing-footer st-animate-in st-animate-delay-9">
         <a href="{% url 'admin-about' %}">About SpecTrace</a>
     </footer>
 </div>
