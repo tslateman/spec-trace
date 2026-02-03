@@ -56,10 +56,11 @@ Plans:
   2. Sample requirements show 3+ level hierarchy (epic -> feature -> story pattern)
   3. Dashboard displays mix of passing (green), failing (red), and untested (gray) requirements
   4. Validation runs show realistic vendor scenarios (multiple vendors, varied outcomes)
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 26-01: TBD
+- [ ] 26-01-PLAN.md - Remove unused YAML fields, create 3-level sample specs
+- [ ] 26-02-PLAN.md - Create sample tests with mixed status, verify vendor scenarios
 
 ### Phase 27: Guided Tour
 **Goal**: New users can follow a step-by-step walkthrough of the SpecTrace workflow
@@ -94,7 +95,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 24. Visual Consistency | 2/2 | ✓ Complete | 2026-02-03 |
 | 25. Landing Page | 1/1 | ✓ Complete | 2026-02-03 |
-| 26. Demo Data & Hub | 0/? | Not started | - |
+| 26. Demo Data & Hub | 0/2 | Planning complete | - |
 | 27. Guided Tour | 0/? | Not started | - |
 | 28. Onboarding Guide | 0/? | Not started | - |
 
