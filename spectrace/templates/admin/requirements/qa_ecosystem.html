@@ -96,41 +96,7 @@
         color: var(--st-text-muted);
     }
 
-    /* Component table */
-    .component-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 0.875rem;
-    }
-
-    .component-table th {
-        text-align: left;
-        padding: var(--st-space-3) var(--st-space-4);
-        background: var(--st-surface-sunken);
-        font-weight: 600;
-        color: var(--st-text);
-        border-bottom: 1px solid var(--st-border);
-    }
-
-    .component-table td {
-        padding: var(--st-space-3) var(--st-space-4);
-        border-bottom: 1px solid var(--st-border);
-        vertical-align: top;
-        color: var(--st-text);
-    }
-
-    .component-table tbody tr {
-        background: var(--st-surface);
-    }
-
-    .component-table tbody tr:nth-child(even) {
-        background: var(--st-surface-sunken);
-    }
-
-    .component-table tr:last-child td {
-        border-bottom: none;
-    }
-
+    /* Component name styling */
     .component-name {
         font-weight: 600;
         color: var(--st-accent-600);
@@ -138,10 +104,6 @@
 
     html.dark .component-name {
         color: var(--st-accent-300);
-    }
-
-    html.dark .component-table td {
-        color: var(--st-slate-200);
     }
 
     /* Architecture diagram */
@@ -307,41 +269,7 @@
         font-style: italic;
     }
 
-    /* Summary table */
-    .summary-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 0.875rem;
-    }
-
-    .summary-table th {
-        text-align: left;
-        padding: var(--st-space-3) var(--st-space-4);
-        background: var(--st-surface-sunken);
-        font-weight: 600;
-        color: var(--st-text);
-        border-bottom: 1px solid var(--st-border);
-    }
-
-    .summary-table td {
-        padding: var(--st-space-3) var(--st-space-4);
-        border-bottom: 1px solid var(--st-border);
-        vertical-align: top;
-        color: var(--st-text);
-    }
-
-    .summary-table tbody tr {
-        background: var(--st-surface);
-    }
-
-    .summary-table tbody tr:nth-child(even) {
-        background: var(--st-surface-sunken);
-    }
-
-    .summary-table tr:last-child td {
-        border-bottom: none;
-    }
-
+    /* Summary table - last row highlight (uses st-table for base styles) */
     .summary-table tr:last-child {
         background: var(--st-accent-bg) !important;
     }
@@ -353,14 +281,11 @@
     .summary-table tr:last-child td {
         font-weight: 600;
         color: var(--st-accent-600);
+        border-bottom: none;
     }
 
     html.dark .summary-table tr:last-child td {
         color: var(--st-accent-300);
-    }
-
-    html.dark .summary-table td {
-        color: var(--st-slate-200);
     }
 
     /* Callout */
@@ -450,7 +375,7 @@
 
         <div class="st-card">
             <div class="st-card-body" style="padding: 0; overflow: hidden;">
-                <table class="component-table">
+                <table class="st-table">
                     <thead>
                         <tr>
                             <th style="width: 30%;">Component</th>
@@ -669,7 +594,7 @@ Specs (markdown) → Test markers → JUnit results → SpecTrace → Coverage m
 
         <div class="st-card">
             <div class="st-card-body" style="padding: 0; overflow: hidden;">
-                <table class="summary-table">
+                <table class="st-table summary-table">
                     <thead>
                         <tr>
                             <th>Initiative</th>
