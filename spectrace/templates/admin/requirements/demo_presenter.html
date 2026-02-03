@@ -23,8 +23,17 @@
         display: none !important;
     }
 
+    /* Vertically center content now that header is hidden */
+    .st-page-wrapper {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: var(--st-space-8) 0;
+    }
+
     .presenter-slide {
-        min-height: calc(100vh - 200px);
+        min-height: auto;
         display: flex;
         flex-direction: column;
     }
