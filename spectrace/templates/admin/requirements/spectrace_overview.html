@@ -316,52 +316,17 @@
         line-height: 1.5;
     }
 
-    /* Demo matrix table */
-    .demo-matrix-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 0.875rem;
-    }
-
-    .demo-matrix-table th {
-        padding: var(--st-space-3) var(--st-space-4);
-        text-align: left;
-        font-weight: 600;
-        background: var(--st-surface-sunken);
-        color: var(--st-text);
-    }
-
+    /* Demo matrix table - column alignment and req-id styling (uses st-table for base) */
     .demo-matrix-table th:nth-child(3),
-    .demo-matrix-table th:nth-child(4) {
-        text-align: center;
-    }
-
-    .demo-matrix-table td {
-        padding: var(--st-space-3) var(--st-space-4);
-        border-top: 1px solid var(--st-border-muted);
-        color: var(--st-text);
-    }
-
+    .demo-matrix-table th:nth-child(4),
     .demo-matrix-table td:nth-child(3),
     .demo-matrix-table td:nth-child(4) {
         text-align: center;
     }
 
-    .demo-matrix-table tbody tr {
-        background: var(--st-surface);
-    }
-
-    .demo-matrix-table tbody tr:nth-child(even) {
-        background: var(--st-surface-sunken);
-    }
-
     .demo-matrix-table .req-id {
         font-family: var(--font-mono);
         color: var(--st-accent-500);
-    }
-
-    html.dark .demo-matrix-table td {
-        color: var(--st-slate-200);
     }
 
     html.dark .demo-matrix-table .req-id {
@@ -578,7 +543,7 @@ accessing protected resources.</pre>
 
             <div class="st-card" style="max-width: 900px; margin: 0 auto;">
                 <div class="st-card-body" style="padding: 0; overflow: hidden; border-radius: var(--st-radius-lg);">
-                    <table class="demo-matrix-table">
+                    <table class="st-table demo-matrix-table">
                         <thead>
                             <tr>
                                 <th>Requirement</th>
