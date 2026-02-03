@@ -45,6 +45,15 @@ class SLOStatus(models.TextChoices):
         return mapping.get(value.lower(), cls.NOT_LINKED)
 
 
+class RiskLevel(models.TextChoices):
+    """Risk classification for requirements."""
+    CRITICAL = 'critical', 'Critical'  # Enterprise/SLO-driving requirements
+    HIGH = 'high', 'High'
+    MEDIUM = 'medium', 'Medium'
+    LOW = 'low', 'Low'
+    UNCLASSIFIED = 'unclassified', 'Unclassified'
+
+
 class AgentTaskStatus(models.TextChoices):
     """Task lifecycle states for agent coordination."""
     DRAFT = 'draft', 'Draft'
@@ -113,6 +122,13 @@ class Requirement(MP_Node):
         max_length=20,
         default='draft',
         help_text="Requirement status (draft, active, deprecated)"
+    )
+    risk_level = models.CharField(
+        max_length=20,
+        choices=RiskLevel.choices,
+        default=RiskLevel.UNCLASSIFIED,
+        db_index=True,
+        help_text="Risk classification (critical, high, medium, low)"
     )
 
     # Verification method (how this requirement should be verified)
@@ -216,6 +232,14 @@ class Requirement(MP_Node):
         fields = [self.scope, self.condition, self.component, self.timing, self.response]
         populated = sum(1 for f in fields if f and f.strip())
         return populated / len(fields)
+
+    @property
+    def is_high_risk(self) -> bool:
+        """Check if this requirement is high-risk (critical or high).
+
+        High-risk requirements require passing tests and SLO compliance.
+        """
+        return self.risk_level in (RiskLevel.CRITICAL, RiskLevel.HIGH)
 
     def save(self, *args, **kwargs):
         """Update structure_completeness before saving."""

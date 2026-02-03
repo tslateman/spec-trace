@@ -11,7 +11,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from .models import Requirement, TestRequirementLink, TestRun
+from .models import Requirement, TestRequirementLink, TestRun, RiskLevel
 
 
 @dataclass
@@ -404,5 +404,159 @@ def detect_all_drift(
 
     if specs_directory:
         result.merge(detect_spec_drift(specs_directory))
+
+    return result
+
+
+def validate_high_risk_requirements() -> DriftResult:
+    """Validate that high-risk requirements have passing tests.
+
+    For critical and high-risk requirements:
+    - ERROR if no tests are linked
+    - ERROR if any linked tests are failing
+    - WARNING if no SLO is linked
+
+    Returns:
+        DriftResult with validation issues.
+    """
+    result = DriftResult()
+
+    high_risk_reqs = Requirement.objects.filter(
+        risk_level__in=[RiskLevel.CRITICAL, RiskLevel.HIGH]
+    ).prefetch_related('test_links', 'slos')
+
+    for req in high_risk_reqs:
+        result.items_checked += 1
+
+        # Check for test coverage
+        test_links = list(req.test_links.all())
+        if not test_links:
+            result.errors.append(
+                ValidationIssue(
+                    type='high_risk_no_tests',
+                    id=req.external_id,
+                    message=f'{req.get_risk_level_display()} requirement has no linked tests',
+                    details={
+                        'risk_level': req.risk_level,
+                        'title': req.title,
+                    },
+                )
+            )
+            continue
+
+        # Check for passing tests
+        failing_tests = [
+            link for link in test_links
+            if link.last_status in ('failed', 'error')
+        ]
+        if failing_tests:
+            result.errors.append(
+                ValidationIssue(
+                    type='high_risk_failing_tests',
+                    id=req.external_id,
+                    message=f'{req.get_risk_level_display()} requirement has {len(failing_tests)} failing test(s)',
+                    details={
+                        'risk_level': req.risk_level,
+                        'title': req.title,
+                        'failing_tests': [t.test_nodeid for t in failing_tests],
+                    },
+                )
+            )
+
+        # Check for SLO linkage (warning only)
+        if not req.slos.exists():
+            result.warnings.append(
+                ValidationIssue(
+                    type='high_risk_no_slo',
+                    id=req.external_id,
+                    message=f'{req.get_risk_level_display()} requirement has no linked SLO',
+                    details={
+                        'risk_level': req.risk_level,
+                        'title': req.title,
+                    },
+                )
+            )
+
+    return result
+
+
+def validate_changed_files_impact(
+    changed_files: list[str],
+    links_data: dict,
+) -> DriftResult:
+    """Validate impact of changed files on high-risk requirements.
+
+    If a PR touches files linked to high-risk requirements, ensure:
+    - All linked high-risk requirements have passing tests
+
+    Args:
+        changed_files: List of file paths changed in the PR.
+        links_data: Parsed links.json content.
+
+    Returns:
+        DriftResult with validation issues.
+    """
+    result = DriftResult()
+    links = links_data.get("links", [])
+
+    # Build mapping of files to requirement IDs
+    file_to_reqs: dict[str, set[str]] = {}
+    for link in links:
+        test_file = link.get("test_file", "")
+        req_id = link.get("requirement_id")
+        if test_file and req_id:
+            if test_file not in file_to_reqs:
+                file_to_reqs[test_file] = set()
+            file_to_reqs[test_file].add(req_id)
+
+    # Find affected requirements
+    affected_req_ids: set[str] = set()
+    for changed_file in changed_files:
+        if changed_file in file_to_reqs:
+            affected_req_ids.update(file_to_reqs[changed_file])
+
+    if not affected_req_ids:
+        return result
+
+    # Check high-risk requirements among affected
+    affected_high_risk = Requirement.objects.filter(
+        external_id__in=affected_req_ids,
+        risk_level__in=[RiskLevel.CRITICAL, RiskLevel.HIGH],
+    ).prefetch_related('test_links')
+
+    for req in affected_high_risk:
+        result.items_checked += 1
+
+        test_links = list(req.test_links.all())
+        failing_tests = [
+            link for link in test_links
+            if link.last_status in ('failed', 'error')
+        ]
+
+        if failing_tests:
+            result.errors.append(
+                ValidationIssue(
+                    type='pr_impacts_failing_high_risk',
+                    id=req.external_id,
+                    message=f'PR changes affect {req.get_risk_level_display()} requirement with failing tests',
+                    details={
+                        'risk_level': req.risk_level,
+                        'title': req.title,
+                        'failing_tests': [t.test_nodeid for t in failing_tests],
+                    },
+                )
+            )
+        elif not test_links:
+            result.errors.append(
+                ValidationIssue(
+                    type='pr_impacts_untested_high_risk',
+                    id=req.external_id,
+                    message=f'PR changes affect {req.get_risk_level_display()} requirement with no tests',
+                    details={
+                        'risk_level': req.risk_level,
+                        'title': req.title,
+                    },
+                )
+            )
 
     return result
