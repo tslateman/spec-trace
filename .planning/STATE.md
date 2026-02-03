@@ -11,11 +11,11 @@ See: .planning/PROJECT.md (updated 2026-02-03)
 
 Milestone: v9 Demo & Marketing Polish
 Phase: 25 of 28 (Landing Page)
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-02-03 — Phase 24 Visual Consistency complete
+Plan: 01 of 01 (complete)
+Status: Phase complete
+Last activity: 2026-02-03 — Completed 25-01-PLAN.md
 
-Progress: [██░░░░░░░░] 20%
+Progress: [███░░░░░░░] 21%
 
 ## Milestone History
 
@@ -35,7 +35,7 @@ Progress: [██░░░░░░░░] 20%
 
 **Phases:**
 - Phase 24: Visual Consistency (VIS-01 to VIS-04) - ✓ COMPLETE
-- Phase 25: Landing Page (LAND-01 to LAND-04) - IN PROGRESS
+- Phase 25: Landing Page (LAND-01 to LAND-04) - ✓ COMPLETE
 - Phase 26: Demo Data & Hub (DEMO-01 to DEMO-04) - realistic scenarios
 - Phase 27: Guided Tour (DEMO-05, DEMO-06) - walkthrough
 - Phase 28: Onboarding Guide (ONBD-01 to ONBD-04) - getting started
@@ -53,5 +53,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-03
-Stopped at: Phase 24 complete, ready to plan Phase 25
+Stopped at: Phase 25 complete, ready to plan Phase 26
 Resume file: None
