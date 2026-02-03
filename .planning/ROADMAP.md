@@ -1,0 +1,102 @@
+# Roadmap: SpecTrace v9 Demo & Marketing Polish
+
+## Overview
+
+Make SpecTrace's value immediately clear to engineering leads evaluating the tool. Starting with visual consistency as the foundation (Phase 24), then building the landing page (Phase 25), enriching demo data (Phase 26), adding guided tour (Phase 27), and completing onboarding documentation (Phase 28).
+
+## Milestones
+
+- v1-v8: See .planning/MILESTONES.md
+- v9 Demo & Marketing Polish: Phases 24-28 (in progress)
+
+## Phases
+
+- [ ] **Phase 24: Visual Consistency** - Design system audit and dark mode verification
+- [ ] **Phase 25: Landing Page** - Compelling value proposition and feature highlights
+- [ ] **Phase 26: Demo Data & Hub** - Realistic sample data and vendor scenarios
+- [ ] **Phase 27: Guided Tour** - Step-by-step SpecTrace workflow walkthrough
+- [ ] **Phase 28: Onboarding Guide** - Getting started documentation
+
+## Phase Details
+
+### Phase 24: Visual Consistency
+**Goal**: All tables and demo pages render correctly in both light and dark mode
+**Depends on**: Nothing (foundation for v9)
+**Requirements**: VIS-01, VIS-02, VIS-03, VIS-04
+**Success Criteria** (what must be TRUE):
+  1. Every table in the codebase uses .st-table or dark-mode-aware classes (no inline styles)
+  2. User can toggle dark mode on any demo page without visual artifacts
+  3. Data tables display alternating row colors in both light and dark mode
+**Plans**: TBD
+
+Plans:
+- [ ] 24-01: TBD
+
+### Phase 25: Landing Page
+**Goal**: Visitors immediately understand what SpecTrace does and why they need it
+**Depends on**: Phase 24 (visual consistency applies to landing page)
+**Requirements**: LAND-01, LAND-02, LAND-03, LAND-04
+**Success Criteria** (what must be TRUE):
+  1. Visitor reads one-line value proposition and understands SpecTrace's purpose
+  2. Visitor sees 3-4 key features with icons that explain capabilities at a glance
+  3. Visitor can click feature highlights to navigate to relevant demos
+  4. Landing page renders correctly in dark mode
+**Plans**: TBD
+
+Plans:
+- [ ] 25-01: TBD
+
+### Phase 26: Demo Data & Hub
+**Goal**: Demo shows realistic scenarios that mirror production usage patterns
+**Depends on**: Phase 25 (landing page links to demos)
+**Requirements**: DEMO-01, DEMO-02, DEMO-03, DEMO-04
+**Success Criteria** (what must be TRUE):
+  1. Demo Hub YAML files contain only used fields (no vestigial options/talking_points)
+  2. Sample requirements show 3+ level hierarchy (epic -> feature -> story pattern)
+  3. Dashboard displays mix of passing (green), failing (red), and untested (gray) requirements
+  4. Validation runs show realistic vendor scenarios (multiple vendors, varied outcomes)
+**Plans**: TBD
+
+Plans:
+- [ ] 26-01: TBD
+
+### Phase 27: Guided Tour
+**Goal**: New users can follow a step-by-step walkthrough of the SpecTrace workflow
+**Depends on**: Phase 26 (tour uses demo data)
+**Requirements**: DEMO-05, DEMO-06
+**Success Criteria** (what must be TRUE):
+  1. User can start guided tour from landing page
+  2. User can start guided tour from demo hub
+  3. Tour explains write specs -> link tests -> view dashboard workflow
+**Plans**: TBD
+
+Plans:
+- [ ] 27-01: TBD
+
+### Phase 28: Onboarding Guide
+**Goal**: New teams have clear documentation to integrate SpecTrace into their workflow
+**Depends on**: Phase 26 (guide references demo data patterns)
+**Requirements**: ONBD-01, ONBD-02, ONBD-03, ONBD-04
+**Success Criteria** (what must be TRUE):
+  1. User can access getting started guide from landing page
+  2. Guide explains what SpecTrace is, how to add specs, and how to link tests
+  3. Guide includes copy-paste code examples for pytest markers
+  4. Guide shows screenshot of expected dashboard after setup
+**Plans**: TBD
+
+Plans:
+- [ ] 28-01: TBD
+
+## Progress
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 24. Visual Consistency | 0/? | Not started | - |
+| 25. Landing Page | 0/? | Not started | - |
+| 26. Demo Data & Hub | 0/? | Not started | - |
+| 27. Guided Tour | 0/? | Not started | - |
+| 28. Onboarding Guide | 0/? | Not started | - |
+
+---
+*Roadmap created: 2026-02-03*
+*Last updated: 2026-02-03*

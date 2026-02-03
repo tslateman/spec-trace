@@ -68,30 +68,30 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| LAND-01 | TBD | Pending |
-| LAND-02 | TBD | Pending |
-| LAND-03 | TBD | Pending |
-| LAND-04 | TBD | Pending |
-| DEMO-01 | TBD | Pending |
-| DEMO-02 | TBD | Pending |
-| DEMO-03 | TBD | Pending |
-| DEMO-04 | TBD | Pending |
-| DEMO-05 | TBD | Pending |
-| DEMO-06 | TBD | Pending |
-| VIS-01 | TBD | Pending |
-| VIS-02 | TBD | Pending |
-| VIS-03 | TBD | Pending |
-| VIS-04 | TBD | Pending |
-| ONBD-01 | TBD | Pending |
-| ONBD-02 | TBD | Pending |
-| ONBD-03 | TBD | Pending |
-| ONBD-04 | TBD | Pending |
+| VIS-01 | Phase 24 | Pending |
+| VIS-02 | Phase 24 | Pending |
+| VIS-03 | Phase 24 | Pending |
+| VIS-04 | Phase 24 | Pending |
+| LAND-01 | Phase 25 | Pending |
+| LAND-02 | Phase 25 | Pending |
+| LAND-03 | Phase 25 | Pending |
+| LAND-04 | Phase 25 | Pending |
+| DEMO-01 | Phase 26 | Pending |
+| DEMO-02 | Phase 26 | Pending |
+| DEMO-03 | Phase 26 | Pending |
+| DEMO-04 | Phase 26 | Pending |
+| DEMO-05 | Phase 27 | Pending |
+| DEMO-06 | Phase 27 | Pending |
+| ONBD-01 | Phase 28 | Pending |
+| ONBD-02 | Phase 28 | Pending |
+| ONBD-03 | Phase 28 | Pending |
+| ONBD-04 | Phase 28 | Pending |
 
 **Coverage:**
 - v9 requirements: 18 total
-- Mapped to phases: 0
-- Unmapped: 18 ⚠️
+- Mapped to phases: 18
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-03*
-*Last updated: 2026-02-03 after initial definition*
+*Last updated: 2026-02-03 after roadmap creation*
