@@ -571,11 +571,20 @@ html.dark .st-btn--primary:hover {
 }
 
 .st-table tbody tr {
+    background: var(--st-surface);
     transition: background 0.1s var(--st-ease-out);
+}
+
+.st-table tbody tr:nth-child(even) {
+    background: var(--st-surface-sunken);
 }
 
 .st-table tbody tr:hover {
     background: var(--st-surface-sunken);
+}
+
+html.dark .st-table td {
+    color: var(--st-slate-200);
 }
 
 /* ==========================================================================
