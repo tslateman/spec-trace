@@ -36,9 +36,9 @@ from requirements.models import Requirement, SLO, VerificationMethod
 
 def banner(text: str) -> None:
     """Print a section banner."""
-    print(f"\n{'='*70}")
+    print(f"\n{'=' * 70}")
     print(f"  {text}")
-    print(f"{'='*70}\n")
+    print(f"{'=' * 70}\n")
     sys.stdout.flush()
 
 
@@ -154,7 +154,7 @@ def step_4_import_slos() -> None:
         print("\n  Imported SLOs:")
         for slo in slos:
             linked_reqs = ", ".join(r.external_id for r in slo.requirements.all())
-            info(f"    {slo.name}: {slo.target*100:.1f}% target")
+            info(f"    {slo.name}: {slo.target * 100:.1f}% target")
             info(f"      Linked to: {linked_reqs or 'none'}")
 
 
@@ -189,7 +189,7 @@ def step_5_run_tests(skip: bool = False) -> None:
     if junit_output.exists():
         print("\n  Importing test results into spec-trace...")
         sys.stdout.flush()
-        run_command(["python", "manage.py", "import_tests", str(junit_output)])
+        run_command(["python", "manage.py", "import_results", str(junit_output)])
         info("Done!")
 
 

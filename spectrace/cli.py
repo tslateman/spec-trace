@@ -86,6 +86,19 @@ def risks(format):
 
 
 # ---------------------------------------------------------------------------
+# Demo commands
+# ---------------------------------------------------------------------------
+
+
+@cli.command()
+@click.option("--step", type=int, default=5, help="Run through step N then stop")
+@click.option("--skip-setup", is_flag=True, default=False, help="Skip setup on reruns")
+def demo(step, skip_setup):
+    """Run the impact demo: spec change -> impact -> tests -> coverage."""
+    _run("demo_impact", step=step, skip_setup=skip_setup)
+
+
+# ---------------------------------------------------------------------------
 # Analysis commands
 # ---------------------------------------------------------------------------
 

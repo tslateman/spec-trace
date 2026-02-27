@@ -180,3 +180,19 @@ demos:
       - examples/document-pipeline/tests/
       - examples/document-pipeline/slos/
       - examples/document-pipeline/ci/github-actions.yml
+
+  - id: impact-demo
+    name: Impact Analysis Demo
+    description: >
+      End-to-end CLI demo: change a spec, see which tests break, run them,
+      import results, and show coverage. Five steps in one command with
+      --step N for presenter pacing.
+    entry_point: spectrace demo
+    duration: 3 minutes
+    audience:
+      - Engineering leads evaluating change-impact workflows
+      - Teams adopting spec-driven testing
+    prerequisites:
+      - Run `make setup` first (or `python scripts/setup_demo.py`)
+      - Database migrated and seeded
+    cli_setup: spectrace setup-impact-demo
