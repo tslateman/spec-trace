@@ -1,7 +1,7 @@
 # Current State
 
 > SpecTrace: Requirements traceability for Python projects
-> Last updated: 2026-02-27
+> Last updated: 2026-02-27 (v10 complete)
 
 ## What Exists
 
@@ -20,13 +20,14 @@ tests and displays verification status in a dashboard. Public repo:
 - v7: UI polish (dark mode, OpenAPI docs, filtering)
 - v8: Agent task pipeline (blackboard architecture for agent coordination)
 - v9: Conflict detection, OpenAPI completeness, onboarding guide
+- v10: Spec as Interface (agent context, spec coverage, integration risk detection)
 
 **Infrastructure (added Feb 2026):**
 
 - CI pipeline: test (gate) + lint (gate) via GitHub Actions
 - Ruff linter + formatter: 0 errors, line-length 100
 - `spectrace` CLI wrapping Django management commands
-- 536 passing tests across spectrace, tests/, spectrace-flows/
+- 566 passing tests across spectrace, tests/, spectrace-flows/
 
 **Current capabilities:**
 
@@ -40,8 +41,11 @@ tests and displays verification status in a dashboard. Public repo:
 - SDK for in-app validation buttons
 - Linear integration health monitoring
 - Agent task coordination with state machine and lease management
+- Agent context assembly for spec-as-context prompt injection
 - Invariant checking for data consistency (11 checks, INV-A through INV-K)
 - Conflict detection with mutual exclusion and structured field analysis
+- Integration risk detection across in-flight agent tasks
+- Spec coverage metrics (specification, structure, verification rates)
 - Verification flows (YAML-defined, pluggable executors)
 
 ## Directory Structure
@@ -51,7 +55,7 @@ spectrace/
 ├── requirements/              # Core Django app
 │   ├── models.py                  # 22 models (1,430 lines)
 │   ├── api.py                     # 14 REST API endpoints
-│   ├── management/commands/       # 30 CLI commands
+│   ├── management/commands/       # 34 CLI commands
 │   │   ├── parse_specs.py             # Import markdown specs
 │   │   ├── extract_links.py           # Find test->requirement links
 │   │   ├── impact_analysis.py         # Git diff -> affected tests
@@ -151,10 +155,7 @@ open http://localhost:8000/admin/
 
 ## Next Steps
 
-1. **v10: Spec as Interface** -- Three phases making specs the interface agents
-   work from. See [milestone-v10.md](milestone-v10.md).
-   - Phase 1: `agent_context` command (spec context for agents)
-   - Phase 2: `spec_coverage` metrics (specification, structure, verification rates)
-   - Phase 3: `detect_integration_risks` (cross-task conflict detection)
-2. **CI webhooks** -- Receive test results directly from CI pipeline (deferred)
-3. **Historical trends** -- Coverage trends chart (deferred)
+1. **Coverage trend snapshots** — store historical spec_coverage snapshots for
+   trend comparison (v10 Phase 2 deferred item)
+2. **CI webhooks** — receive test results directly from CI pipeline
+3. **Historical trends** — coverage trends chart (builds on #1)

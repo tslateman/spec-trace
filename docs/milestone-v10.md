@@ -43,12 +43,12 @@ spec context gives them invariants, not just instructions.
 
 **Acceptance criteria:**
 
-- [ ] `agent_context` command outputs markdown for any AgentTask
-- [ ] Output includes requirement verification status
-- [ ] Output includes `done_when` as checkable criteria
-- [ ] Output includes dependency tree (what this requirement affects)
-- [ ] Test: round-trip — create task, link requirements, verify context output
-- [ ] Test: task with no linked requirements produces minimal valid output
+- [x] `agent_context` command outputs markdown for any AgentTask
+- [x] Output includes requirement verification status
+- [x] Output includes `done_when` as checkable criteria
+- [x] Output includes dependency tree (what this requirement affects)
+- [x] Test: round-trip — create task, link requirements, verify context output
+- [x] Test: task with no linked requirements produces minimal valid output
 
 ### Phase 2: Spec Coverage Metrics
 
@@ -75,12 +75,12 @@ is not.
 
 **Acceptance criteria:**
 
-- [ ] `spec_coverage` command outputs three rates
-- [ ] `spec_coverage --format json` for CI integration
-- [ ] Dashboard card shows three rates on admin index
-- [ ] Trend comparison against previous snapshot (store in JSON or DB)
-- [ ] Test: empty DB returns 0% across all metrics
-- [ ] Test: known fixture returns expected percentages
+- [x] `spec_coverage` command outputs three rates
+- [x] `spec_coverage --format json` for CI integration
+- [x] Dashboard card shows three rates on admin index
+- ~Trend comparison against previous snapshot (deferred to post-v10)~
+- [x] Test: empty DB returns 0% across all metrics
+- [x] Test: known fixture returns expected percentages
 
 ### Phase 3: Integration Conflict Detection
 
@@ -113,14 +113,14 @@ that need a human holding the whole picture.
 
 **Acceptance criteria:**
 
-- [ ] Command detects overlapping requirements across active tasks
-- [ ] Command detects dependency chain conflicts
-- [ ] Command detects scope overlap
-- [ ] Output includes risk level and recommendation
-- [ ] `--format json` for programmatic consumption
-- [ ] Test: two tasks sharing a requirement → flagged
-- [ ] Test: two tasks with no overlap → clean report
-- [ ] Test: dependency chain A→B detected
+- [x] Command detects overlapping requirements across active tasks
+- [x] Command detects dependency chain conflicts
+- [x] Command detects scope overlap
+- [x] Output includes risk level and recommendation
+- [x] `--format json` for programmatic consumption
+- [x] Test: two tasks sharing a requirement → flagged
+- [x] Test: two tasks with no overlap → clean report
+- [x] Test: dependency chain A→B detected
 
 ## What This Is Not
 
