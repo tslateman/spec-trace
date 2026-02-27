@@ -321,3 +321,44 @@ class ErrorResponse(Struct):
 
     success: bool = False
     error: str = ""
+
+
+# === Flow Runs ===
+
+
+class FlowRunStep(Struct):
+    id: int
+    flow_name: str
+    flow_display_name: str
+    started_at: str
+    total_steps: int
+    completed_steps: int
+    current_step: str | None
+    current_step_order: int | None
+
+
+class RunningFlowRunsResponse(Struct):
+    runs: list[FlowRunStep]
+
+
+# === Test Runs ===
+
+
+class TestRunSummary(Struct):
+    id: int
+    imported_at: str
+    source_file: str | None = None
+    git_sha: str | None = None
+    git_branch: str | None = None
+    workflow_name: str | None = None
+    workflow_run_id: str | None = None
+    repository: str | None = None
+    total_tests: int = 0
+    passed: int = 0
+    failed: int = 0
+    errors: int = 0
+    skipped: int = 0
+
+
+class LatestTestRunResponse(Struct):
+    test_run: TestRunSummary | None

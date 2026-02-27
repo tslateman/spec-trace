@@ -103,10 +103,12 @@ from .openapi.schemas import (
     ConflictListResponse,
     ConflictResolveRequest,
     ConflictResolveResponse,
+    LatestTestRunResponse,
     LinearHealthResponse,
     LinearTestRequest,
     LinearTestResponse,
     RequirementStatusResponse,
+    RunningFlowRunsResponse,
     SLOStatusRequest,
     SLOStatusResponse,
     ValidationResultRequest,
@@ -144,6 +146,7 @@ def parse_decimal_safe(value) -> Decimal | None:
     tags=["SLO"],
     summary="Update SLO status",
     methods=["POST"],
+    requires_auth=True,
 )
 def update_slo_status(request, data: SLOStatusRequest | None = None):
     """Update SLO status from observability platform."""
@@ -213,6 +216,7 @@ def update_slo_status(request, data: SLOStatusRequest | None = None):
     tags=["Validation"],
     summary="Submit validation results",
     methods=["POST"],
+    requires_auth=True,
 )
 def submit_validation_result(request, data: ValidationResultRequest | None = None):
     """Submit in-app validation results from product."""
@@ -421,6 +425,7 @@ def _result_to_dict(result: TestConnectionResult) -> dict:
     tags=["Integrations"],
     summary="Test Linear connection",
     methods=["POST"],
+    requires_auth=True,
 )
 def test_linear_connection(request, data: LinearTestRequest | None = None):
     """Test Linear API connection with fresh health check.
@@ -454,6 +459,31 @@ def test_linear_connection(request, data: LinearTestRequest | None = None):
     tags=["Validation Runs"],
     summary="List validation runs",
     methods=["GET"],
+    query_parameters=[
+        {"name": "page", "in": "query", "schema": {"type": "integer", "default": 1}},
+        {
+            "name": "per_page",
+            "in": "query",
+            "schema": {"type": "integer", "default": 20, "maximum": 100},
+        },
+        {"name": "requirement_id", "in": "query", "schema": {"type": "string"}},
+        {"name": "vendor", "in": "query", "schema": {"type": "string"}},
+        {
+            "name": "status",
+            "in": "query",
+            "schema": {"type": "string", "enum": ["pass", "fail", "error", "skip"]},
+        },
+        {
+            "name": "start_date",
+            "in": "query",
+            "schema": {"type": "string", "format": "date"},
+        },
+        {
+            "name": "end_date",
+            "in": "query",
+            "schema": {"type": "string", "format": "date"},
+        },
+    ],
 )
 def list_validation_runs(request, data=None):
     """List validation runs with filtering and pagination."""
@@ -589,6 +619,14 @@ def get_validation_run(request, run_id, data=None):
     tags=["Validation Runs"],
     summary="Get validation run steps",
     methods=["GET"],
+    query_parameters=[
+        {
+            "name": "result_id",
+            "in": "query",
+            "schema": {"type": "integer"},
+            "description": "Filter steps by validation result",
+        },
+    ],
 )
 def get_validation_run_steps(request, run_id, data=None):
     """Get step-level detail for a validation run."""
@@ -628,7 +666,13 @@ def get_validation_run_steps(request, run_id, data=None):
 
 @require_http_methods(["GET"])
 @ratelimit(key="ip", rate=RATE_LIMIT_READ, block=True)
-def get_running_flow_runs(request):
+@validate_request(
+    response_schema=RunningFlowRunsResponse,
+    tags=["Flows"],
+    summary="Get running flow runs",
+    methods=["GET"],
+)
+def get_running_flow_runs(request, data=None):
     """Get currently running flow runs for live monitoring."""
     from .models import VerificationFlowRun, VerificationFlowStatus
 
@@ -702,7 +746,27 @@ def get_linear_health(request, data=None):
 
 @require_http_methods(["GET"])
 @ratelimit(key="ip", rate=RATE_LIMIT_READ, block=True)
-def get_latest_test_run(request):
+@validate_request(
+    response_schema=LatestTestRunResponse,
+    tags=["Test Runs"],
+    summary="Get latest test run",
+    methods=["GET"],
+    query_parameters=[
+        {
+            "name": "since",
+            "in": "query",
+            "schema": {"type": "string", "format": "date-time"},
+            "description": "Only return run newer than this timestamp",
+        },
+        {
+            "name": "repo",
+            "in": "query",
+            "schema": {"type": "string"},
+            "description": "Filter by repository (e.g., owner/repo)",
+        },
+    ],
+)
+def get_latest_test_run(request, data=None):
     """Get the latest test run for dashboard polling.
 
     Returns summary of the most recent test run, used by dashboard
@@ -771,6 +835,22 @@ def get_latest_test_run(request):
     tags=["Conflicts"],
     summary="List conflicts",
     methods=["GET"],
+    query_parameters=[
+        {"name": "page", "in": "query", "schema": {"type": "integer", "default": 1}},
+        {
+            "name": "per_page",
+            "in": "query",
+            "schema": {"type": "integer", "default": 25, "maximum": 100},
+        },
+        {
+            "name": "confidence",
+            "in": "query",
+            "schema": {"type": "string", "enum": ["high", "medium", "low"]},
+        },
+        {"name": "pattern", "in": "query", "schema": {"type": "string"}},
+        {"name": "resolved", "in": "query", "schema": {"type": "boolean"}},
+        {"name": "requirement_id", "in": "query", "schema": {"type": "string"}},
+    ],
 )
 def list_conflicts(request, data=None):
     """List conflicts with filtering and pagination."""
@@ -890,6 +970,7 @@ def get_conflict(request, conflict_id, data=None):
     tags=["Conflicts"],
     summary="Detect conflicts",
     methods=["POST"],
+    requires_auth=True,
 )
 def detect_conflicts(request, data: ConflictDetectRequest | None = None):
     """Run conflict detection and log results."""
@@ -934,6 +1015,7 @@ def detect_conflicts(request, data: ConflictDetectRequest | None = None):
     tags=["Conflicts"],
     summary="Resolve conflict",
     methods=["POST"],
+    requires_auth=True,
 )
 def resolve_conflict(request, conflict_id, data: ConflictResolveRequest | None = None):
     """Mark a conflict as resolved."""

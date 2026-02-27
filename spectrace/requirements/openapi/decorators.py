@@ -17,6 +17,8 @@ def validate_request(
     summary: str | None = None,
     description: str | None = None,
     methods: list[str] | None = None,
+    requires_auth: bool = False,
+    query_parameters: list[dict] | None = None,
 ) -> Callable[[F], F]:
     """Decorator for API endpoints with schema validation and OpenAPI metadata.
 
@@ -48,6 +50,8 @@ def validate_request(
         view_func._openapi_summary = summary  # type: ignore[attr-defined]
         view_func._openapi_description = description  # type: ignore[attr-defined]
         view_func._openapi_methods = methods  # type: ignore[attr-defined]
+        view_func._openapi_requires_auth = requires_auth  # type: ignore[attr-defined]
+        view_func._openapi_query_parameters = query_parameters or []  # type: ignore[attr-defined]
 
         @wraps(view_func)
         def wrapper(request: HttpRequest, *args: Any, **kwargs: Any) -> Any:
@@ -93,4 +97,6 @@ def get_openapi_metadata(view_func: Callable[..., Any]) -> dict[str, Any]:
         "summary": getattr(view_func, "_openapi_summary", None),
         "description": getattr(view_func, "_openapi_description", None),
         "methods": getattr(view_func, "_openapi_methods", None),
+        "requires_auth": getattr(view_func, "_openapi_requires_auth", False),
+        "query_parameters": getattr(view_func, "_openapi_query_parameters", []),
     }

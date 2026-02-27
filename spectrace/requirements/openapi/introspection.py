@@ -24,6 +24,8 @@ class EndpointInfo:
     summary: str | None = None
     description: str | None = None
     path_parameters: list[dict[str, Any]] = field(default_factory=list)
+    requires_auth: bool = False
+    query_parameters: list[dict[str, Any]] = field(default_factory=list)
 
 
 def _convert_django_path_to_openapi(path: str) -> tuple[str, list[dict[str, Any]]]:
@@ -164,6 +166,8 @@ def extract_api_endpoints(prefix: str = "api/") -> list[EndpointInfo]:
                 summary=metadata["summary"],
                 description=description,
                 path_parameters=path_params,
+                requires_auth=metadata.get("requires_auth", False),
+                query_parameters=metadata.get("query_parameters", []),
             )
         )
 

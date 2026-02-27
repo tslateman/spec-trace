@@ -43,9 +43,17 @@ def _build_operation(
     if endpoint.name:
         operation["operationId"] = f"{endpoint.name}_{method}"
 
-    # Add path parameters
-    if endpoint.path_parameters:
-        operation["parameters"] = endpoint.path_parameters.copy()
+    # Add path and query parameters
+    all_params = list(endpoint.path_parameters) + list(endpoint.query_parameters)
+    if all_params:
+        operation["parameters"] = all_params
+
+    # Add per-endpoint security
+    if endpoint.requires_auth:
+        operation["security"] = [
+            {"apiKeyHeader": []},
+            {"bearerAuth": []},
+        ]
 
     # Add request body for POST/PUT/PATCH
     if method in ("post", "put", "patch") and endpoint.request_schema:
@@ -164,6 +172,19 @@ def build_openapi_spec(
         "paths": _build_paths(endpoints),
         "components": {
             "schemas": schemas,
+            "securitySchemes": {
+                "apiKeyHeader": {
+                    "type": "apiKey",
+                    "in": "header",
+                    "name": "X-API-Key",
+                    "description": "API key via X-API-Key header",
+                },
+                "bearerAuth": {
+                    "type": "http",
+                    "scheme": "bearer",
+                    "description": "API key via Authorization: Bearer <key>",
+                },
+            },
         },
     }
 

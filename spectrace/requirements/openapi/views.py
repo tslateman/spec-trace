@@ -2,12 +2,14 @@
 
 import yaml
 from django.http import HttpRequest, HttpResponse, JsonResponse
+from django.views.decorators.cache import cache_page
 from django.views.decorators.http import require_http_methods
 
 from .spec_builder import build_openapi_spec
 
 
 @require_http_methods(["GET"])
+@cache_page(300)
 def openapi_spec(request: HttpRequest) -> HttpResponse:
     """Serve the OpenAPI 3.1 specification.
 
