@@ -1,4 +1,5 @@
 """API endpoints for external systems to push status updates."""
+
 from dataclasses import asdict
 from decimal import Decimal, InvalidOperation
 from functools import wraps
@@ -36,15 +37,16 @@ def require_api_key(view_func):
     The expected key is configured via SPECTRACE_API_KEY in settings.
     If SPECTRACE_API_KEY is not set, authentication is bypassed (dev mode warning).
     """
+
     @wraps(view_func)
     def wrapper(request, *args, **kwargs):
-        expected_key = getattr(settings, 'SPECTRACE_API_KEY', None)
+        expected_key = getattr(settings, "SPECTRACE_API_KEY", None)
 
         # If no API key configured, allow request but log warning
         if not expected_key:
             logger.warning(
                 "SPECTRACE_API_KEY not configured - API endpoint accessed without auth: %s",
-                request.path
+                request.path,
             )
             return view_func(request, *args, **kwargs)
 
@@ -52,32 +54,38 @@ def require_api_key(view_func):
         provided_key = None
 
         # Check Authorization header
-        auth_header = request.headers.get('Authorization', '')
-        if auth_header.startswith('Bearer '):
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
             provided_key = auth_header[7:]
-        elif auth_header.startswith('Api-Key '):
+        elif auth_header.startswith("Api-Key "):
             provided_key = auth_header[8:]
 
         # Check X-API-Key header as fallback
         if not provided_key:
-            provided_key = request.headers.get('X-API-Key', '')
+            provided_key = request.headers.get("X-API-Key", "")
 
         # Validate key using constant-time comparison
         if not provided_key or not hmac.compare_digest(provided_key, expected_key):
             logger.warning(
                 "API authentication failed for endpoint: %s from IP: %s",
                 request.path,
-                request.META.get('REMOTE_ADDR', 'unknown')
+                request.META.get("REMOTE_ADDR", "unknown"),
             )
             return JsonResponse(
-                {'error': 'Authentication required. Provide API key via Authorization or X-API-Key header.'},
-                status=401
+                {
+                    "error": "Authentication required. Provide API key via Authorization or X-API-Key header."
+                },
+                status=401,
             )
 
         return view_func(request, *args, **kwargs)
 
     return wrapper
+
+
 from .models import (
+    ConflictConfidence,
+    ConflictLog,
     InAppValidation,
     InAppValidationResult,
     InAppValidationRun,
@@ -89,6 +97,12 @@ from .models import (
 )
 from .openapi.decorators import validate_request
 from .openapi.schemas import (
+    ConflictDetectRequest,
+    ConflictDetectResponse,
+    ConflictDetailResponse,
+    ConflictListResponse,
+    ConflictResolveRequest,
+    ConflictResolveResponse,
     LinearHealthResponse,
     LinearTestRequest,
     LinearTestResponse,
@@ -101,6 +115,7 @@ from .openapi.schemas import (
     ValidationRunsResponse,
     ValidationRunStepsResponse,
 )
+from .services.conflict_detector import ConflictDetector
 from .status import (
     compute_inapp_validation_status,
     compute_verification_status,
@@ -122,7 +137,7 @@ def parse_decimal_safe(value) -> Decimal | None:
 @csrf_exempt
 @require_api_key
 @require_http_methods(["POST"])
-@ratelimit(key='ip', rate=RATE_LIMIT_WRITE, block=True)
+@ratelimit(key="ip", rate=RATE_LIMIT_WRITE, block=True)
 @validate_request(
     request_schema=SLOStatusRequest,
     response_schema=SLOStatusResponse,
@@ -133,10 +148,12 @@ def parse_decimal_safe(value) -> Decimal | None:
 def update_slo_status(request, data: SLOStatusRequest | None = None):
     """Update SLO status from observability platform."""
     if data is None:
-        return JsonResponse({'success': False, 'error': 'No data provided'}, status=400)
+        return JsonResponse({"success": False, "error": "No data provided"}, status=400)
 
     if not data.slos:
-        return JsonResponse({'success': False, 'error': 'No SLOs in request'}, status=400)
+        return JsonResponse(
+            {"success": False, "error": "No SLOs in request"}, status=400
+        )
 
     updated = 0
     not_found = 0
@@ -176,18 +193,20 @@ def update_slo_status(request, data: SLOStatusRequest | None = None):
     if data.update_verification_status:
         update_all_unified_statuses()
 
-    return JsonResponse({
-        'success': True,
-        'updated': updated,
-        'not_found': not_found,
-        'requirement_status': req_counts,
-    })
+    return JsonResponse(
+        {
+            "success": True,
+            "updated": updated,
+            "not_found": not_found,
+            "requirement_status": req_counts,
+        }
+    )
 
 
 @csrf_exempt
 @require_api_key
 @require_http_methods(["POST"])
-@ratelimit(key='ip', rate=RATE_LIMIT_HEAVY_WRITE, block=True)
+@ratelimit(key="ip", rate=RATE_LIMIT_HEAVY_WRITE, block=True)
 @validate_request(
     request_schema=ValidationResultRequest,
     response_schema=ValidationResultResponse,
@@ -198,10 +217,12 @@ def update_slo_status(request, data: SLOStatusRequest | None = None):
 def submit_validation_result(request, data: ValidationResultRequest | None = None):
     """Submit in-app validation results from product."""
     if data is None:
-        return JsonResponse({'success': False, 'error': 'No data provided'}, status=400)
+        return JsonResponse({"success": False, "error": "No data provided"}, status=400)
 
     if not data.validations:
-        return JsonResponse({'success': False, 'error': 'No validations in request'}, status=400)
+        return JsonResponse(
+            {"success": False, "error": "No validations in request"}, status=400
+        )
 
     # Create validation run
     validation_run = InAppValidationRun.objects.create(
@@ -233,11 +254,11 @@ def submit_validation_result(request, data: ValidationResultRequest | None = Non
         validation, created = InAppValidation.objects.get_or_create(
             requirement=requirement,
             defaults={
-                'name': v.name or f'Validation for {v.requirement_id}',
-                'endpoint': v.endpoint,
-                'vendor': vendor,
-                'feature_flags': feature_flags,
-            }
+                "name": v.name or f"Validation for {v.requirement_id}",
+                "endpoint": v.endpoint,
+                "vendor": vendor,
+                "feature_flags": feature_flags,
+            },
         )
         if created:
             created_validations += 1
@@ -253,13 +274,13 @@ def submit_validation_result(request, data: ValidationResultRequest | None = Non
 
         # Parse status
         status_str = v.status.lower()
-        if status_str == 'success':
+        if status_str == "success":
             status = InAppValidationStatus.SUCCESS
             successful += 1
-        elif status_str == 'failure':
+        elif status_str == "failure":
             status = InAppValidationStatus.FAILURE
             failed += 1
-        elif status_str == 'degraded':
+        elif status_str == "degraded":
             # SDK sends 'degraded' for partial failures
             status = InAppValidationStatus.FAILURE
             failed += 1
@@ -298,18 +319,20 @@ def submit_validation_result(request, data: ValidationResultRequest | None = Non
     if data.update_verification_status:
         update_all_unified_statuses()
 
-    return JsonResponse({
-        'success': True,
-        'imported': len(data.validations) - skipped,
-        'skipped': skipped,
-        'created_validations': created_validations,
-        'successful': successful,
-        'failed': failed,
-    })
+    return JsonResponse(
+        {
+            "success": True,
+            "imported": len(data.validations) - skipped,
+            "skipped": skipped,
+            "created_validations": created_validations,
+            "successful": successful,
+            "failed": failed,
+        }
+    )
 
 
 @require_http_methods(["GET"])
-@ratelimit(key='ip', rate=RATE_LIMIT_READ, block=True)
+@ratelimit(key="ip", rate=RATE_LIMIT_READ, block=True)
 @validate_request(
     response_schema=RequirementStatusResponse,
     tags=["Requirements"],
@@ -321,7 +344,9 @@ def get_requirement_status(request, external_id, data=None):
     try:
         requirement = Requirement.objects.get(external_id=external_id)
     except Requirement.DoesNotExist:
-        return JsonResponse({'success': False, 'error': 'Requirement not found'}, status=404)
+        return JsonResponse(
+            {"success": False, "error": "Requirement not found"}, status=404
+        )
 
     # Count linked items
     test_count = requirement.test_results.count()
@@ -332,22 +357,24 @@ def get_requirement_status(request, external_id, data=None):
     test_status = compute_verification_status(requirement)
     inapp_status = compute_inapp_validation_status(requirement)
 
-    return JsonResponse({
-        'external_id': requirement.external_id,
-        'title': requirement.title,
-        'verification_method': requirement.verification_method,
-        'verification_status': requirement.verification_status,
-        'slo_status': requirement.slo_status,
-        'test_status': test_status,
-        'inapp_status': inapp_status,
-        'linked_tests': test_count,
-        'linked_slos': slo_count,
-        'linked_validations': validation_count,
-    })
+    return JsonResponse(
+        {
+            "external_id": requirement.external_id,
+            "title": requirement.title,
+            "verification_method": requirement.verification_method,
+            "verification_status": requirement.verification_status,
+            "slo_status": requirement.slo_status,
+            "test_status": test_status,
+            "inapp_status": inapp_status,
+            "linked_tests": test_count,
+            "linked_slos": slo_count,
+            "linked_validations": validation_count,
+        }
+    )
 
 
 # Cache key for Linear health check results
-LINEAR_HEALTH_CACHE_KEY = 'linear_connection_health'
+LINEAR_HEALTH_CACHE_KEY = "linear_connection_health"
 
 
 def _compute_overall_status(result: TestConnectionResult) -> str:
@@ -359,14 +386,14 @@ def _compute_overall_status(result: TestConnectionResult) -> str:
         'unhealthy' if all checks failed or error occurred
     """
     if result.success:
-        return 'healthy'
+        return "healthy"
 
     if result.checks:
         passed_count = sum(1 for c in result.checks if c.passed)
         if passed_count > 0:
-            return 'degraded'
+            return "degraded"
 
-    return 'unhealthy'
+    return "unhealthy"
 
 
 def _result_to_dict(result: TestConnectionResult) -> dict:
@@ -376,18 +403,18 @@ def _result_to_dict(result: TestConnectionResult) -> dict:
         checks_data = [asdict(check) for check in result.checks]
 
     return {
-        'success': result.success,
-        'message': result.message,
-        'status': _compute_overall_status(result),
-        'checks': checks_data,
-        'error_details': result.error_details,
+        "success": result.success,
+        "message": result.message,
+        "status": _compute_overall_status(result),
+        "checks": checks_data,
+        "error_details": result.error_details,
     }
 
 
 @csrf_exempt
 @require_api_key
 @require_http_methods(["POST"])
-@ratelimit(key='ip', rate=RATE_LIMIT_EXTERNAL, block=True)
+@ratelimit(key="ip", rate=RATE_LIMIT_EXTERNAL, block=True)
 @validate_request(
     request_schema=LinearTestRequest,
     response_schema=LinearTestResponse,
@@ -403,16 +430,16 @@ def test_linear_connection(request, data: LinearTestRequest | None = None):
     """
     # Use only configured credentials - no override from request to prevent
     # credential enumeration attacks
-    api_key = getattr(settings, 'LINEAR_API_KEY', '')
-    workspace = getattr(settings, 'LINEAR_WORKSPACE', '')
-    team = getattr(settings, 'LINEAR_TEAM', '')
+    api_key = getattr(settings, "LINEAR_API_KEY", "")
+    workspace = getattr(settings, "LINEAR_WORKSPACE", "")
+    team = getattr(settings, "LINEAR_TEAM", "")
 
     # Run fresh health check
     result = verify_linear_connection(api_key, workspace, team)
 
     # Convert to JSON response
     response_data = _result_to_dict(result)
-    response_data['cached'] = False
+    response_data["cached"] = False
 
     # Cache the result
     cache.set(LINEAR_HEALTH_CACHE_KEY, response_data, LINEAR_HEALTH_CACHE_TIMEOUT)
@@ -421,7 +448,7 @@ def test_linear_connection(request, data: LinearTestRequest | None = None):
 
 
 @require_http_methods(["GET"])
-@ratelimit(key='ip', rate=RATE_LIMIT_READ, block=True)
+@ratelimit(key="ip", rate=RATE_LIMIT_READ, block=True)
 @validate_request(
     response_schema=ValidationRunsResponse,
     tags=["Validation Runs"],
@@ -431,78 +458,84 @@ def test_linear_connection(request, data: LinearTestRequest | None = None):
 def list_validation_runs(request, data=None):
     """List validation runs with filtering and pagination."""
     # Parse pagination
-    page = int(request.GET.get('page', 1))
-    per_page = min(int(request.GET.get('per_page', 20)), 100)
+    page = int(request.GET.get("page", 1))
+    per_page = min(int(request.GET.get("per_page", 20)), 100)
 
     # Build queryset with filters
-    queryset = InAppValidationRun.objects.prefetch_related('results__validation__requirement')
+    queryset = InAppValidationRun.objects.prefetch_related(
+        "results__validation__requirement"
+    )
 
     # Filter by requirement_id
-    requirement_id = request.GET.get('requirement_id')
+    requirement_id = request.GET.get("requirement_id")
     if requirement_id:
         queryset = queryset.filter(
             results__validation__requirement__external_id=requirement_id
         ).distinct()
 
     # Filter by vendor
-    vendor = request.GET.get('vendor')
+    vendor = request.GET.get("vendor")
     if vendor:
         queryset = queryset.filter(results__validation__vendor=vendor).distinct()
 
     # Filter by status
-    status = request.GET.get('status')
+    status = request.GET.get("status")
     if status:
         queryset = queryset.filter(results__status=status).distinct()
 
     # Filter by date range
-    start_date = request.GET.get('start_date')
+    start_date = request.GET.get("start_date")
     if start_date:
         parsed_start = parse_datetime(start_date)
         if parsed_start:
             queryset = queryset.filter(imported_at__gte=parsed_start)
 
-    end_date = request.GET.get('end_date')
+    end_date = request.GET.get("end_date")
     if end_date:
         parsed_end = parse_datetime(end_date)
         if parsed_end:
             queryset = queryset.filter(imported_at__lte=parsed_end)
 
     # Order by newest first
-    queryset = queryset.order_by('-imported_at')
+    queryset = queryset.order_by("-imported_at")
 
     # Paginate
     total = queryset.count()
     total_pages = (total + per_page - 1) // per_page if total > 0 else 1
     offset = (page - 1) * per_page
-    runs = queryset[offset:offset + per_page]
+    runs = queryset[offset : offset + per_page]
 
     # Serialize
     runs_data = []
     for run in runs:
-        runs_data.append({
-            'id': run.id,
-            'source': run.source,
-            'imported_at': run.imported_at.isoformat(),
-            'total_validations': run.total_validations,
-            'successful': run.successful,
-            'failed': run.failed,
-        })
+        runs_data.append(
+            {
+                "id": run.id,
+                "source": run.source,
+                "imported_at": run.imported_at.isoformat(),
+                "total_validations": run.total_validations,
+                "successful": run.successful,
+                "failed": run.failed,
+            }
+        )
 
-    return JsonResponse({
-        'runs': runs_data,
-        'pagination': {
-            'page': page,
-            'per_page': per_page,
-            'total': total,
-            'total_pages': total_pages,
-            'has_next': page < total_pages,
-            'has_prev': page > 1,
-        },
-    })
+    return JsonResponse(
+        {
+            "runs": runs_data,
+            "pagination": {
+                "page": page,
+                "per_page": per_page,
+                "total": total,
+                "total_pages": total_pages,
+                "has_next": page < total_pages,
+                "has_prev": page > 1,
+            },
+        }
+    )
 
 
 @require_http_methods(["GET"])
-@ratelimit(key='ip', rate=RATE_LIMIT_READ, block=True)
+@ratelimit(key="ip", rate=RATE_LIMIT_READ, block=True)
 @validate_request(
     response_schema=ValidationRunDetailResponse,
     tags=["Validation Runs"],
@@ -513,40 +546,44 @@ def get_validation_run(request, run_id, data=None):
     """Get validation run detail with all results."""
     try:
         run = InAppValidationRun.objects.prefetch_related(
-            'results__validation__requirement'
+            "results__validation__requirement"
         ).get(id=run_id)
     except InAppValidationRun.DoesNotExist:
-        return JsonResponse({'error': 'Validation run not found'}, status=404)
+        return JsonResponse({"error": "Validation run not found"}, status=404)
 
     results_data = []
     for result in run.results.all():
         steps = result.steps or []
-        results_data.append({
-            'id': result.id,
-            'validation_id': result.validation.id,
-            'validation_name': result.validation.name,
-            'requirement_id': result.validation.requirement.external_id,
-            'vendor': result.validation.vendor,
-            'status': result.status,
-            'message': result.message,
-            'checked_at': result.checked_at.isoformat(),
-            'step_count': len(steps),
-            'steps_passed': sum(1 for s in steps if s.get('passed')),
-        })
+        results_data.append(
+            {
+                "id": result.id,
+                "validation_id": result.validation.id,
+                "validation_name": result.validation.name,
+                "requirement_id": result.validation.requirement.external_id,
+                "vendor": result.validation.vendor,
+                "status": result.status,
+                "message": result.message,
+                "checked_at": result.checked_at.isoformat(),
+                "step_count": len(steps),
+                "steps_passed": sum(1 for s in steps if s.get("passed")),
+            }
+        )
 
-    return JsonResponse({
-        'id': run.id,
-        'source': run.source,
-        'imported_at': run.imported_at.isoformat(),
-        'total_validations': run.total_validations,
-        'successful': run.successful,
-        'failed': run.failed,
-        'results': results_data,
-    })
+    return JsonResponse(
+        {
+            "id": run.id,
+            "source": run.source,
+            "imported_at": run.imported_at.isoformat(),
+            "total_validations": run.total_validations,
+            "successful": run.successful,
+            "failed": run.failed,
+            "results": results_data,
+        }
+    )
 
 
 @require_http_methods(["GET"])
-@ratelimit(key='ip', rate=RATE_LIMIT_READ, block=True)
+@ratelimit(key="ip", rate=RATE_LIMIT_READ, block=True)
 @validate_request(
     response_schema=ValidationRunStepsResponse,
     tags=["Validation Runs"],
@@ -557,66 +594,75 @@ def get_validation_run_steps(request, run_id, data=None):
     """Get step-level detail for a validation run."""
     try:
         run = InAppValidationRun.objects.prefetch_related(
-            'results__validation__requirement'
+            "results__validation__requirement"
         ).get(id=run_id)
     except InAppValidationRun.DoesNotExist:
-        return JsonResponse({'error': 'Validation run not found'}, status=404)
+        return JsonResponse({"error": "Validation run not found"}, status=404)
 
     # Optional filter to specific result
-    result_id = request.GET.get('result_id')
+    result_id = request.GET.get("result_id")
     results = run.results.all()
     if result_id:
         results = results.filter(id=result_id)
 
     results_data = []
     for result in results:
-        results_data.append({
-            'result_id': result.id,
-            'validation_name': result.validation.name,
-            'requirement_id': result.validation.requirement.external_id,
-            'status': result.status,
-            'steps': result.steps or [],
-            'context': result.context or {},
-        })
+        results_data.append(
+            {
+                "result_id": result.id,
+                "validation_name": result.validation.name,
+                "requirement_id": result.validation.requirement.external_id,
+                "status": result.status,
+                "steps": result.steps or [],
+                "context": result.context or {},
+            }
+        )
 
-    return JsonResponse({
-        'run_id': run.id,
-        'results': results_data,
-    })
+    return JsonResponse(
+        {
+            "run_id": run.id,
+            "results": results_data,
+        }
+    )
 
 
 @require_http_methods(["GET"])
-@ratelimit(key='ip', rate=RATE_LIMIT_READ, block=True)
+@ratelimit(key="ip", rate=RATE_LIMIT_READ, block=True)
 def get_running_flow_runs(request):
     """Get currently running flow runs for live monitoring."""
     from .models import VerificationFlowRun, VerificationFlowStatus
 
-    runs = VerificationFlowRun.objects.filter(
-        status=VerificationFlowStatus.RUNNING
-    ).select_related('flow').prefetch_related('steps').order_by('-started_at')
+    runs = (
+        VerificationFlowRun.objects.filter(status=VerificationFlowStatus.RUNNING)
+        .select_related("flow")
+        .prefetch_related("steps")
+        .order_by("-started_at")
+    )
 
     runs_data = []
     for run in runs:
-        steps = list(run.steps.order_by('step_order'))
+        steps = list(run.steps.order_by("step_order"))
         completed_steps = [s for s in steps if s.completed_at]
         current_step = next((s for s in steps if not s.completed_at), None)
 
-        runs_data.append({
-            'id': run.id,
-            'flow_name': run.flow.name,
-            'flow_display_name': run.flow.display_name,
-            'started_at': run.started_at.isoformat(),
-            'total_steps': len(steps),
-            'completed_steps': len(completed_steps),
-            'current_step': current_step.name if current_step else None,
-            'current_step_order': current_step.step_order if current_step else None,
-        })
+        runs_data.append(
+            {
+                "id": run.id,
+                "flow_name": run.flow.name,
+                "flow_display_name": run.flow.display_name,
+                "started_at": run.started_at.isoformat(),
+                "total_steps": len(steps),
+                "completed_steps": len(completed_steps),
+                "current_step": current_step.name if current_step else None,
+                "current_step_order": current_step.step_order if current_step else None,
+            }
+        )
 
-    return JsonResponse({'runs': runs_data})
+    return JsonResponse({"runs": runs_data})
 
 
 @require_http_methods(["GET"])
-@ratelimit(key='ip', rate=RATE_LIMIT_READ, block=True)
+@ratelimit(key="ip", rate=RATE_LIMIT_READ, block=True)
 @validate_request(
     response_schema=LinearHealthResponse,
     tags=["Integrations"],
@@ -629,31 +675,33 @@ def get_linear_health(request, data=None):
 
     if cached_result:
         response_data = cached_result.copy()
-        response_data['cached'] = True
+        response_data["cached"] = True
 
         # Try to get TTL if cache backend supports it
         try:
             ttl = cache.ttl(LINEAR_HEALTH_CACHE_KEY)
             if ttl is not None:
-                response_data['cache_remaining_seconds'] = ttl
+                response_data["cache_remaining_seconds"] = ttl
         except AttributeError:
             # Cache backend doesn't support TTL query
             pass
 
         return JsonResponse(response_data)
 
-    return JsonResponse({
-        'success': False,
-        'message': 'No cached health check available',
-        'status': 'unknown',
-        'checks': None,
-        'error_details': None,
-        'cached': False,
-    })
+    return JsonResponse(
+        {
+            "success": False,
+            "message": "No cached health check available",
+            "status": "unknown",
+            "checks": None,
+            "error_details": None,
+            "cached": False,
+        }
+    )
 
 
 @require_http_methods(["GET"])
-@ratelimit(key='ip', rate=RATE_LIMIT_READ, block=True)
+@ratelimit(key="ip", rate=RATE_LIMIT_READ, block=True)
 def get_latest_test_run(request):
     """Get the latest test run for dashboard polling.
 
@@ -669,8 +717,8 @@ def get_latest_test_run(request):
         204 if no new run since 'since' timestamp
         200 with null data if no runs exist
     """
-    since = request.GET.get('since')
-    repo = request.GET.get('repo')
+    since = request.GET.get("since")
+    repo = request.GET.get("repo")
 
     queryset = TestRun.objects.all()
 
@@ -679,33 +727,239 @@ def get_latest_test_run(request):
 
     if since:
         try:
-            since_dt = timezone.datetime.fromisoformat(since.replace('Z', '+00:00'))
+            since_dt = timezone.datetime.fromisoformat(since.replace("Z", "+00:00"))
             queryset = queryset.filter(imported_at__gt=since_dt)
         except (ValueError, TypeError):
-            return JsonResponse({'error': 'Invalid since parameter'}, status=400)
+            return JsonResponse({"error": "Invalid since parameter"}, status=400)
 
-    latest = queryset.order_by('-imported_at').first()
+    latest = queryset.order_by("-imported_at").first()
 
     if not latest:
         if since:
             # No new runs since the timestamp - return 204
             return JsonResponse({}, status=204)
-        return JsonResponse({'test_run': None})
+        return JsonResponse({"test_run": None})
 
-    return JsonResponse({
-        'test_run': {
-            'id': latest.id,
-            'imported_at': latest.imported_at.isoformat(),
-            'source_file': latest.source_file,
-            'git_sha': latest.git_sha,
-            'git_branch': latest.git_branch,
-            'workflow_name': latest.workflow_name,
-            'workflow_run_id': latest.workflow_run_id,
-            'repository': latest.repository,
-            'total_tests': latest.total_tests,
-            'passed': latest.passed,
-            'failed': latest.failed,
-            'errors': latest.errors,
-            'skipped': latest.skipped,
+    return JsonResponse(
+        {
+            "test_run": {
+                "id": latest.id,
+                "imported_at": latest.imported_at.isoformat(),
+                "source_file": latest.source_file,
+                "git_sha": latest.git_sha,
+                "git_branch": latest.git_branch,
+                "workflow_name": latest.workflow_name,
+                "workflow_run_id": latest.workflow_run_id,
+                "repository": latest.repository,
+                "total_tests": latest.total_tests,
+                "passed": latest.passed,
+                "failed": latest.failed,
+                "errors": latest.errors,
+                "skipped": latest.skipped,
+            }
         }
-    })
+    )
+
+
+# === Conflicts ===
+
+
+@require_http_methods(["GET"])
+@ratelimit(key="ip", rate=RATE_LIMIT_READ, block=True)
+@validate_request(
+    response_schema=ConflictListResponse,
+    tags=["Conflicts"],
+    summary="List conflicts",
+    methods=["GET"],
+)
+def list_conflicts(request, data=None):
+    """List conflicts with filtering and pagination."""
+    page = int(request.GET.get("page", 1))
+    per_page = min(int(request.GET.get("per_page", 25)), 100)
+
+    queryset = ConflictLog.objects.select_related("requirement_a", "requirement_b")
+
+    # Filter by confidence
+    confidence = request.GET.get("confidence")
+    if confidence and confidence in ConflictConfidence.values:
+        queryset = queryset.filter(confidence=confidence)
+
+    # Filter by pattern
+    pattern = request.GET.get("pattern")
+    if pattern:
+        queryset = queryset.filter(pattern=pattern)
+
+    # Filter by resolved status
+    resolved = request.GET.get("resolved")
+    if resolved is not None and resolved != "":
+        queryset = queryset.filter(resolved=resolved.lower() == "true")
+
+    # Filter by requirement
+    requirement_id = request.GET.get("requirement_id")
+    if requirement_id:
+        from django.db.models import Q
+
+        queryset = queryset.filter(
+            Q(requirement_a__external_id=requirement_id)
+            | Q(requirement_b__external_id=requirement_id)
+        )
+
+    queryset = queryset.order_by("-created_at")
+
+    # Paginate
+    total = queryset.count()
+    total_pages = (total + per_page - 1) // per_page if total > 0 else 1
+    offset = (page - 1) * per_page
+    conflicts = queryset[offset : offset + per_page]
+
+    conflicts_data = []
+    for c in conflicts:
+        conflicts_data.append(
+            {
+                "id": c.id,
+                "requirement_a": c.requirement_a.external_id,
+                "requirement_b": c.requirement_b.external_id,
+                "pattern": c.pattern,
+                "confidence": c.confidence,
+                "resolved": c.resolved,
+                "created_at": c.created_at.isoformat(),
+            }
+        )
+
+    return JsonResponse(
+        {
+            "conflicts": conflicts_data,
+            "pagination": {
+                "page": page,
+                "per_page": per_page,
+                "total": total,
+                "total_pages": total_pages,
+                "has_next": page < total_pages,
+                "has_prev": page > 1,
+            },
+        }
+    )
+
+
+@require_http_methods(["GET"])
+@ratelimit(key="ip", rate=RATE_LIMIT_READ, block=True)
+@validate_request(
+    response_schema=ConflictDetailResponse,
+    tags=["Conflicts"],
+    summary="Get conflict detail",
+    methods=["GET"],
+)
+def get_conflict(request, conflict_id, data=None):
+    """Get full detail for a single conflict."""
+    try:
+        conflict = ConflictLog.objects.select_related(
+            "requirement_a", "requirement_b"
+        ).get(id=conflict_id)
+    except ConflictLog.DoesNotExist:
+        return JsonResponse({"error": "Conflict not found"}, status=404)
+
+    return JsonResponse(
+        {
+            "conflict": {
+                "id": conflict.id,
+                "requirement_a": conflict.requirement_a.external_id,
+                "requirement_b": conflict.requirement_b.external_id,
+                "requirement_a_title": conflict.requirement_a.title,
+                "requirement_b_title": conflict.requirement_b.title,
+                "pattern": conflict.pattern,
+                "confidence": conflict.confidence,
+                "details": conflict.details,
+                "resolved": conflict.resolved,
+                "resolved_at": conflict.resolved_at.isoformat()
+                if conflict.resolved_at
+                else None,
+                "resolution_notes": conflict.resolution_notes,
+                "created_at": conflict.created_at.isoformat(),
+            },
+        }
+    )
+
+
+@csrf_exempt
+@require_api_key
+@require_http_methods(["POST"])
+@ratelimit(key="ip", rate=RATE_LIMIT_HEAVY_WRITE, block=True)
+@validate_request(
+    request_schema=ConflictDetectRequest,
+    response_schema=ConflictDetectResponse,
+    tags=["Conflicts"],
+    summary="Detect conflicts",
+    methods=["POST"],
+)
+def detect_conflicts(request, data: ConflictDetectRequest | None = None):
+    """Run conflict detection and log results."""
+    min_runs = 10
+    min_overlap = 5
+    include_structured = True
+
+    if data is not None:
+        min_runs = data.min_runs
+        min_overlap = data.min_overlap
+        include_structured = data.include_structured
+
+    detector = ConflictDetector(min_runs=min_runs, min_overlap=min_overlap)
+
+    # Run mutual exclusion detection
+    conflicts = detector.detect_mutual_exclusion()
+
+    # Run structured field-based detection
+    if include_structured:
+        conflicts.extend(detector.detect_all_structured_conflicts())
+
+    # Log to database
+    result = detector.log_conflicts(conflicts)
+
+    return JsonResponse(
+        {
+            "success": True,
+            "conflicts_found": len(conflicts),
+            "logged": result["created_count"],
+            "skipped_existing": result["skipped_count"],
+        }
+    )
+
+
+@csrf_exempt
+@require_api_key
+@require_http_methods(["POST"])
+@ratelimit(key="ip", rate=RATE_LIMIT_WRITE, block=True)
+@validate_request(
+    request_schema=ConflictResolveRequest,
+    response_schema=ConflictResolveResponse,
+    tags=["Conflicts"],
+    summary="Resolve conflict",
+    methods=["POST"],
+)
+def resolve_conflict(request, conflict_id, data: ConflictResolveRequest | None = None):
+    """Mark a conflict as resolved."""
+    if data is None:
+        return JsonResponse({"success": False, "error": "No data provided"}, status=400)
+
+    try:
+        conflict = ConflictLog.objects.get(id=conflict_id)
+    except ConflictLog.DoesNotExist:
+        return JsonResponse({"error": "Conflict not found"}, status=404)
+
+    if conflict.resolved:
+        return JsonResponse(
+            {"success": False, "error": "Conflict already resolved"}, status=400
+        )
+
+    now = timezone.now()
+    conflict.resolved = True
+    conflict.resolved_at = now
+    conflict.resolution_notes = data.resolution_notes
+    conflict.save()
+
+    return JsonResponse(
+        {
+            "success": True,
+            "conflict_id": conflict.id,
+            "resolved_at": now.isoformat(),
+        }
+    )
