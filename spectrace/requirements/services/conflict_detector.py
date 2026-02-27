@@ -6,6 +6,7 @@ Detects patterns where requirements may be in conflict, such as:
 - Timing conflict: Same component, conflicting timing constraints.
 - Response contradiction: Same trigger, different expected responses.
 """
+
 import re
 from collections import defaultdict
 from dataclasses import dataclass
@@ -26,6 +27,7 @@ from requirements.models import (
 @dataclass
 class ConflictResult:
     """A detected conflict between two requirements."""
+
     requirement_a_id: int
     requirement_b_id: int
     requirement_a_external_id: str
@@ -72,7 +74,7 @@ class ConflictDetector:
             List of ConflictResult objects for detected conflicts.
         """
         if runs is None:
-            runs = list(TestRun.objects.order_by('-imported_at')[:self.min_runs * 2])
+            runs = list(TestRun.objects.order_by("-imported_at")[: self.min_runs * 2])
 
         if len(runs) < self.min_runs:
             return []
@@ -84,16 +86,14 @@ class ConflictDetector:
 
         # Get all requirements that have linked tests
         req_ids_with_links = set(
-            TestRequirementLink.objects.values_list('requirement_id', flat=True).distinct()
+            TestRequirementLink.objects.values_list("requirement_id", flat=True).distinct()
         )
 
         conflicts = []
 
         # Check all pairs of requirements
         for req_a_id, req_b_id in combinations(req_ids_with_links, 2):
-            conflict = self._check_pair_for_mutual_exclusion(
-                req_a_id, req_b_id, run_statuses
-            )
+            conflict = self._check_pair_for_mutual_exclusion(req_a_id, req_b_id, run_statuses)
             if conflict:
                 conflicts.append(conflict)
 
@@ -110,9 +110,9 @@ class ConflictDetector:
         statuses = {}
 
         # Get all links that were tested in this run
-        links = TestRequirementLink.objects.filter(
-            last_run_at=run.imported_at
-        ).select_related('requirement')
+        links = TestRequirementLink.objects.filter(last_run_at=run.imported_at).select_related(
+            "requirement"
+        )
 
         # Group by requirement
         req_results = defaultdict(list)
@@ -121,14 +121,14 @@ class ConflictDetector:
 
         # Aggregate status per requirement
         for req_id, link_statuses in req_results.items():
-            if any(s in ('failed', 'error') for s in link_statuses):
-                statuses[req_id] = 'failed'
-            elif all(s == 'skipped' for s in link_statuses):
-                statuses[req_id] = 'skipped'
-            elif any(s == 'passed' for s in link_statuses):
-                statuses[req_id] = 'passed'
+            if any(s in ("failed", "error") for s in link_statuses):
+                statuses[req_id] = "failed"
+            elif all(s == "skipped" for s in link_statuses):
+                statuses[req_id] = "skipped"
+            elif any(s == "passed" for s in link_statuses):
+                statuses[req_id] = "passed"
             else:
-                statuses[req_id] = 'unknown'
+                statuses[req_id] = "unknown"
 
         return statuses
 
@@ -157,13 +157,13 @@ class ConflictDetector:
             status_a = statuses[req_a_id]
             status_b = statuses[req_b_id]
 
-            if status_a == 'passed' and status_b == 'passed':
+            if status_a == "passed" and status_b == "passed":
                 both_passed += 1
-            elif status_a == 'passed' and status_b == 'failed':
+            elif status_a == "passed" and status_b == "failed":
                 a_passed_b_failed += 1
-            elif status_a == 'failed' and status_b == 'passed':
+            elif status_a == "failed" and status_b == "passed":
                 a_failed_b_passed += 1
-            elif status_a == 'failed' and status_b == 'failed':
+            elif status_a == "failed" and status_b == "failed":
                 both_failed += 1
 
         # Check for mutual exclusion pattern
@@ -204,12 +204,12 @@ class ConflictDetector:
             confidence=confidence,
             runs_analyzed=both_tested,
             details={
-                'both_passed': both_passed,
-                'a_passed_b_failed': a_passed_b_failed,
-                'a_failed_b_passed': a_failed_b_passed,
-                'both_failed': both_failed,
-                'inverse_ratio': inverse_ratio,
-            }
+                "both_passed": both_passed,
+                "a_passed_b_failed": a_passed_b_failed,
+                "a_failed_b_passed": a_failed_b_passed,
+                "both_failed": both_failed,
+                "inverse_ratio": inverse_ratio,
+            },
         )
 
     def detect_condition_overlap(self) -> list[ConflictResult]:
@@ -224,9 +224,7 @@ class ConflictDetector:
             List of ConflictResult objects for detected conflicts.
         """
         # Get requirements with both component and condition defined
-        requirements = list(
-            Requirement.objects.exclude(component='').exclude(condition='')
-        )
+        requirements = list(Requirement.objects.exclude(component="").exclude(condition=""))
 
         if len(requirements) < 2:
             return []
@@ -247,27 +245,27 @@ class ConflictDetector:
                 overlap_info = self._check_condition_overlap(req_a, req_b)
                 if overlap_info:
                     confidence = self._calculate_condition_confidence(overlap_info)
-                    conflicts.append(ConflictResult(
-                        requirement_a_id=req_a.id,
-                        requirement_b_id=req_b.id,
-                        requirement_a_external_id=req_a.external_id,
-                        requirement_b_external_id=req_b.external_id,
-                        pattern=ConflictPattern.CONDITION_OVERLAP,
-                        confidence=confidence,
-                        runs_analyzed=0,
-                        details={
-                            'component': component,
-                            'condition_a': req_a.condition,
-                            'condition_b': req_b.condition,
-                            **overlap_info,
-                        }
-                    ))
+                    conflicts.append(
+                        ConflictResult(
+                            requirement_a_id=req_a.id,
+                            requirement_b_id=req_b.id,
+                            requirement_a_external_id=req_a.external_id,
+                            requirement_b_external_id=req_b.external_id,
+                            pattern=ConflictPattern.CONDITION_OVERLAP,
+                            confidence=confidence,
+                            runs_analyzed=0,
+                            details={
+                                "component": component,
+                                "condition_a": req_a.condition,
+                                "condition_b": req_b.condition,
+                                **overlap_info,
+                            },
+                        )
+                    )
 
         return conflicts
 
-    def _check_condition_overlap(
-        self, req_a: Requirement, req_b: Requirement
-    ) -> dict | None:
+    def _check_condition_overlap(self, req_a: Requirement, req_b: Requirement) -> dict | None:
         """Check if two requirements have overlapping conditions.
 
         Uses simple heuristics:
@@ -281,7 +279,7 @@ class ConflictDetector:
         cond_b = req_b.condition.lower()
 
         # Extract variables being compared (e.g., "battery_level", "temperature")
-        var_pattern = r'([a-z_][a-z0-9_]*)\s*[<>=!]+'
+        var_pattern = r"([a-z_][a-z0-9_]*)\s*[<>=!]+"
         vars_a = set(re.findall(var_pattern, cond_a))
         vars_b = set(re.findall(var_pattern, cond_b))
 
@@ -290,32 +288,32 @@ class ConflictDetector:
             return None
 
         # Extract numeric thresholds for comparison
-        threshold_pattern = r'[<>=!]+\s*(\d+(?:\.\d+)?)'
+        threshold_pattern = r"[<>=!]+\s*(\d+(?:\.\d+)?)"
         thresholds_a = [float(t) for t in re.findall(threshold_pattern, cond_a)]
         thresholds_b = [float(t) for t in re.findall(threshold_pattern, cond_b)]
 
         # Check for potential range overlap
-        overlap_type = 'variable_overlap'
+        overlap_type = "variable_overlap"
         if thresholds_a and thresholds_b:
             # Simple overlap check: if ranges might intersect
             min_a, max_a = min(thresholds_a), max(thresholds_a)
             min_b, max_b = min(thresholds_b), max(thresholds_b)
 
             if max_a >= min_b and max_b >= min_a:
-                overlap_type = 'range_overlap'
+                overlap_type = "range_overlap"
 
         return {
-            'common_variables': list(common_vars),
-            'overlap_type': overlap_type,
-            'thresholds_a': thresholds_a,
-            'thresholds_b': thresholds_b,
+            "common_variables": list(common_vars),
+            "overlap_type": overlap_type,
+            "thresholds_a": thresholds_a,
+            "thresholds_b": thresholds_b,
         }
 
     def _calculate_condition_confidence(self, overlap_info: dict) -> str:
         """Calculate confidence level for condition overlap."""
-        if overlap_info.get('overlap_type') == 'range_overlap':
+        if overlap_info.get("overlap_type") == "range_overlap":
             return ConflictConfidence.HIGH
-        elif len(overlap_info.get('common_variables', [])) > 1:
+        elif len(overlap_info.get("common_variables", [])) > 1:
             return ConflictConfidence.MEDIUM
         return ConflictConfidence.LOW
 
@@ -331,9 +329,7 @@ class ConflictDetector:
             List of ConflictResult objects for detected conflicts.
         """
         # Get requirements with both component and timing defined
-        requirements = list(
-            Requirement.objects.exclude(component='').exclude(timing='')
-        )
+        requirements = list(Requirement.objects.exclude(component="").exclude(timing=""))
 
         if len(requirements) < 2:
             return []
@@ -360,7 +356,11 @@ class ConflictDetector:
                 # Different timing requirements for same component = potential conflict
                 if timing_a != timing_b:
                     # Greater difference = higher confidence
-                    ratio = max(timing_a, timing_b) / min(timing_a, timing_b) if min(timing_a, timing_b) > 0 else 10
+                    ratio = (
+                        max(timing_a, timing_b) / min(timing_a, timing_b)
+                        if min(timing_a, timing_b) > 0
+                        else 10
+                    )
                     if ratio >= 5:
                         confidence = ConflictConfidence.HIGH
                     elif ratio >= 2:
@@ -368,23 +368,25 @@ class ConflictDetector:
                     else:
                         confidence = ConflictConfidence.LOW
 
-                    conflicts.append(ConflictResult(
-                        requirement_a_id=req_a.id,
-                        requirement_b_id=req_b.id,
-                        requirement_a_external_id=req_a.external_id,
-                        requirement_b_external_id=req_b.external_id,
-                        pattern=ConflictPattern.TIMING_CONFLICT,
-                        confidence=confidence,
-                        runs_analyzed=0,
-                        details={
-                            'component': component,
-                            'timing_a': req_a.timing,
-                            'timing_b': req_b.timing,
-                            'seconds_a': timing_a,
-                            'seconds_b': timing_b,
-                            'ratio': ratio,
-                        }
-                    ))
+                    conflicts.append(
+                        ConflictResult(
+                            requirement_a_id=req_a.id,
+                            requirement_b_id=req_b.id,
+                            requirement_a_external_id=req_a.external_id,
+                            requirement_b_external_id=req_b.external_id,
+                            pattern=ConflictPattern.TIMING_CONFLICT,
+                            confidence=confidence,
+                            runs_analyzed=0,
+                            details={
+                                "component": component,
+                                "timing_a": req_a.timing,
+                                "timing_b": req_b.timing,
+                                "seconds_a": timing_a,
+                                "seconds_b": timing_b,
+                                "ratio": ratio,
+                            },
+                        )
+                    )
 
         return conflicts
 
@@ -403,7 +405,7 @@ class ConflictDetector:
         timing = timing.lower().strip()
 
         # Match patterns like "2 seconds", "500ms", "1 minute"
-        pattern = r'(\d+(?:\.\d+)?)\s*(seconds?|s|ms|milliseconds?|minutes?|m)'
+        pattern = r"(\d+(?:\.\d+)?)\s*(seconds?|s|ms|milliseconds?|minutes?|m)"
         match = re.search(pattern, timing)
 
         if not match:
@@ -412,9 +414,9 @@ class ConflictDetector:
         value = float(match.group(1))
         unit = match.group(2)
 
-        if unit in ('ms', 'millisecond', 'milliseconds'):
+        if unit in ("ms", "millisecond", "milliseconds"):
             return value / 1000
-        elif unit in ('m', 'minute', 'minutes'):
+        elif unit in ("m", "minute", "minutes"):
             return value * 60
         else:  # seconds
             return value
@@ -431,9 +433,7 @@ class ConflictDetector:
             List of ConflictResult objects for detected conflicts.
         """
         # Get requirements with both condition and response defined
-        requirements = list(
-            Requirement.objects.exclude(condition='').exclude(response='')
-        )
+        requirements = list(Requirement.objects.exclude(condition="").exclude(response=""))
 
         if len(requirements) < 2:
             return []
@@ -446,27 +446,27 @@ class ConflictDetector:
                 continue
 
             # Check if responses are contradictory
-            contradiction_info = self._check_response_contradiction(
-                req_a.response, req_b.response
-            )
+            contradiction_info = self._check_response_contradiction(req_a.response, req_b.response)
 
             if contradiction_info:
-                conflicts.append(ConflictResult(
-                    requirement_a_id=req_a.id,
-                    requirement_b_id=req_b.id,
-                    requirement_a_external_id=req_a.external_id,
-                    requirement_b_external_id=req_b.external_id,
-                    pattern=ConflictPattern.RESPONSE_CONTRADICTION,
-                    confidence=contradiction_info['confidence'],
-                    runs_analyzed=0,
-                    details={
-                        'condition_a': req_a.condition,
-                        'condition_b': req_b.condition,
-                        'response_a': req_a.response,
-                        'response_b': req_b.response,
-                        **contradiction_info,
-                    }
-                ))
+                conflicts.append(
+                    ConflictResult(
+                        requirement_a_id=req_a.id,
+                        requirement_b_id=req_b.id,
+                        requirement_a_external_id=req_a.external_id,
+                        requirement_b_external_id=req_b.external_id,
+                        pattern=ConflictPattern.RESPONSE_CONTRADICTION,
+                        confidence=contradiction_info["confidence"],
+                        runs_analyzed=0,
+                        details={
+                            "condition_a": req_a.condition,
+                            "condition_b": req_b.condition,
+                            "response_a": req_a.response,
+                            "response_b": req_b.response,
+                            **contradiction_info,
+                        },
+                    )
+                )
 
         return conflicts
 
@@ -475,8 +475,8 @@ class ConflictDetector:
 
         Uses simple word overlap heuristic.
         """
-        words_a = set(re.findall(r'[a-z_][a-z0-9_]*', cond_a.lower()))
-        words_b = set(re.findall(r'[a-z_][a-z0-9_]*', cond_b.lower()))
+        words_a = set(re.findall(r"[a-z_][a-z0-9_]*", cond_a.lower()))
+        words_b = set(re.findall(r"[a-z_][a-z0-9_]*", cond_b.lower()))
 
         if not words_a or not words_b:
             return False
@@ -487,9 +487,7 @@ class ConflictDetector:
         # At least 50% word overlap
         return len(overlap) >= min_len * 0.5
 
-    def _check_response_contradiction(
-        self, response_a: str, response_b: str
-    ) -> dict | None:
+    def _check_response_contradiction(self, response_a: str, response_b: str) -> dict | None:
         """Check if two responses are contradictory.
 
         Looks for patterns like:
@@ -499,16 +497,16 @@ class ConflictDetector:
         - "allow" vs "deny"
         """
         antonym_pairs = [
-            ('show', 'hide'),
-            ('display', 'hide'),
-            ('enable', 'disable'),
-            ('start', 'stop'),
-            ('allow', 'deny'),
-            ('accept', 'reject'),
-            ('open', 'close'),
-            ('lock', 'unlock'),
-            ('activate', 'deactivate'),
-            ('on', 'off'),
+            ("show", "hide"),
+            ("display", "hide"),
+            ("enable", "disable"),
+            ("start", "stop"),
+            ("allow", "deny"),
+            ("accept", "reject"),
+            ("open", "close"),
+            ("lock", "unlock"),
+            ("activate", "deactivate"),
+            ("on", "off"),
         ]
 
         resp_a = response_a.lower()
@@ -518,21 +516,21 @@ class ConflictDetector:
             # Check if a has word_a and b has word_b, or vice versa
             if (word_a in resp_a and word_b in resp_b) or (word_b in resp_a and word_a in resp_b):
                 return {
-                    'contradiction_type': 'antonym',
-                    'antonym_pair': (word_a, word_b),
-                    'confidence': ConflictConfidence.HIGH,
+                    "contradiction_type": "antonym",
+                    "antonym_pair": (word_a, word_b),
+                    "confidence": ConflictConfidence.HIGH,
                 }
 
         # Check for same action on same object (might be duplicate, not conflict)
         # This is lower confidence as it might be intentional
-        words_a = set(re.findall(r'[a-z_][a-z0-9_]*', resp_a))
-        words_b = set(re.findall(r'[a-z_][a-z0-9_]*', resp_b))
+        words_a = set(re.findall(r"[a-z_][a-z0-9_]*", resp_a))
+        words_b = set(re.findall(r"[a-z_][a-z0-9_]*", resp_b))
 
         if words_a != words_b and len(words_a & words_b) >= 2:
             return {
-                'contradiction_type': 'partial_overlap',
-                'common_words': list(words_a & words_b),
-                'confidence': ConflictConfidence.LOW,
+                "contradiction_type": "partial_overlap",
+                "common_words": list(words_a & words_b),
+                "confidence": ConflictConfidence.LOW,
             }
 
         return None
@@ -569,8 +567,14 @@ class ConflictDetector:
         for conflict in conflicts:
             # Check for existing unresolved conflict (in either direction)
             existing = ConflictLog.objects.filter(
-                Q(requirement_a_id=conflict.requirement_a_id, requirement_b_id=conflict.requirement_b_id) |
-                Q(requirement_a_id=conflict.requirement_b_id, requirement_b_id=conflict.requirement_a_id),
+                Q(
+                    requirement_a_id=conflict.requirement_a_id,
+                    requirement_b_id=conflict.requirement_b_id,
+                )
+                | Q(
+                    requirement_a_id=conflict.requirement_b_id,
+                    requirement_b_id=conflict.requirement_a_id,
+                ),
                 pattern=conflict.pattern,
                 resolved=False,
             ).exists()
@@ -589,8 +593,8 @@ class ConflictDetector:
             created_count += 1
 
         return {
-            'created_count': created_count,
-            'skipped_count': skipped_count,
+            "created_count": created_count,
+            "skipped_count": skipped_count,
         }
 
     def get_high_confidence_conflicts(self) -> list[ConflictLog]:
@@ -599,5 +603,5 @@ class ConflictDetector:
             ConflictLog.objects.filter(
                 confidence=ConflictConfidence.HIGH,
                 resolved=False,
-            ).select_related('requirement_a', 'requirement_b')
+            ).select_related("requirement_a", "requirement_b")
         )

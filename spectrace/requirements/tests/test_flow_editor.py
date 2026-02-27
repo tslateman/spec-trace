@@ -7,7 +7,6 @@ import pytest
 
 from requirements.flow_editor import (
     FLOWS_DIR,
-    FlowEditorError,
     get_flow_files,
     load_flow_for_editing,
     save_flow,
@@ -91,9 +90,7 @@ class TestGetFlowFiles:
 
     def test_get_flow_files__returns_empty_for_missing_dir(self):
         """Returns empty list if FLOWS_DIR doesn't exist."""
-        with patch(
-            "requirements.flow_editor.FLOWS_DIR", Path("/nonexistent/flows")
-        ):
+        with patch("requirements.flow_editor.FLOWS_DIR", Path("/nonexistent/flows")):
             result = get_flow_files()
 
         assert result == []

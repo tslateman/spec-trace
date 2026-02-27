@@ -5,7 +5,7 @@ The `urlpatterns` list routes URLs to views. For more information please see:
 """
 
 from django.contrib import admin
-from django.urls import include, path
+from django.urls import path
 
 from requirements.urls import admin_urlpatterns, api_urlpatterns
 

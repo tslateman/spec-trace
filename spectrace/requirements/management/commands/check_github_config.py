@@ -1,4 +1,5 @@
 """Management command to verify GitHub webhook configuration."""
+
 import json
 import sys
 

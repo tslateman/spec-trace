@@ -4,30 +4,45 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('requirements', '0005_add_verification_flow_models'),
+        ("requirements", "0005_add_verification_flow_models"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='inappvalidation',
-            name='feature_flags',
-            field=models.JSONField(blank=True, default=dict, help_text="Feature flags active during validation (e.g., {'use_new_auth': True})"),
+            model_name="inappvalidation",
+            name="feature_flags",
+            field=models.JSONField(
+                blank=True,
+                default=dict,
+                help_text="Feature flags active during validation (e.g., {'use_new_auth': True})",
+            ),
         ),
         migrations.AddField(
-            model_name='inappvalidation',
-            name='vendor',
-            field=models.CharField(blank=True, help_text="Integration vendor (e.g., 'Opera', 'Mews', 'Ambiance', 'OpenKey')", max_length=100),
+            model_name="inappvalidation",
+            name="vendor",
+            field=models.CharField(
+                blank=True,
+                help_text="Integration vendor (e.g., 'Opera', 'Mews', 'Ambiance', 'OpenKey')",
+                max_length=100,
+            ),
         ),
         migrations.AddField(
-            model_name='inappvalidationresult',
-            name='context',
-            field=models.JSONField(blank=True, default=dict, help_text='Debugging context (hotel_id, vendor, config version, etc.)'),
+            model_name="inappvalidationresult",
+            name="context",
+            field=models.JSONField(
+                blank=True,
+                default=dict,
+                help_text="Debugging context (hotel_id, vendor, config version, etc.)",
+            ),
         ),
         migrations.AddField(
-            model_name='inappvalidationresult',
-            name='steps',
-            field=models.JSONField(blank=True, default=list, help_text='List of validation steps with pass/fail/details'),
+            model_name="inappvalidationresult",
+            name="steps",
+            field=models.JSONField(
+                blank=True,
+                default=list,
+                help_text="List of validation steps with pass/fail/details",
+            ),
         ),
     ]

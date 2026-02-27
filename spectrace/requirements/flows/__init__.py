@@ -5,6 +5,10 @@ package while maintaining Django-specific functionality (sync, storage).
 """
 
 # Import from standalone spectrace-flows package
+# Django-specific imports
+from requirements.flows.definitions import LINEAR_CONNECTION_FLOW, REGISTERED_FLOWS
+from requirements.flows.django_storage import DjangoFlowStorage, get_engine
+from requirements.flows.sync import sync_flows_to_db
 from spectrace_flows import (
     FlowDef,
     FlowParseError,
@@ -15,11 +19,6 @@ from spectrace_flows import (
     get_flow_by_name,
     register_flow,
 )
-
-# Django-specific imports
-from requirements.flows.definitions import LINEAR_CONNECTION_FLOW, REGISTERED_FLOWS
-from requirements.flows.django_storage import DjangoFlowStorage, get_engine
-from requirements.flows.sync import sync_flows_to_db
 
 __all__ = [
     # From spectrace-flows package

@@ -1,4 +1,5 @@
 """Spec file parser for importing markdown requirements into the database."""
+
 import re
 from pathlib import Path
 from typing import Any, TypedDict
@@ -13,6 +14,7 @@ class RequirementData(TypedDict, total=False):
 
     Used by SpecParser and importers like LinearClient.
     """
+
     external_id: str  # required
     title: str
     description: str
@@ -56,26 +58,26 @@ def _extract_requirement_fields(req_data: dict[str, Any]) -> dict[str, Any]:
         Dictionary of fields ready for Requirement model
     """
     return {
-        'title': req_data.get('title', ''),
-        'description': req_data.get('description', ''),
-        'tags': req_data.get('tags', []),
-        'priority': req_data.get('priority', ''),
-        'status': req_data.get('status', 'draft'),
-        'source_file': req_data.get('source_file', ''),
-        'verification_method': normalize_verification_method(req_data.get('verification_method')),
+        "title": req_data.get("title", ""),
+        "description": req_data.get("description", ""),
+        "tags": req_data.get("tags", []),
+        "priority": req_data.get("priority", ""),
+        "status": req_data.get("status", "draft"),
+        "source_file": req_data.get("source_file", ""),
+        "verification_method": normalize_verification_method(req_data.get("verification_method")),
         # Structured fields (FRET-inspired)
-        'scope': req_data.get('scope', ''),
-        'condition': req_data.get('condition', ''),
-        'component': req_data.get('component', ''),
-        'timing': req_data.get('timing', ''),
-        'response': req_data.get('response', ''),
+        "scope": req_data.get("scope", ""),
+        "condition": req_data.get("condition", ""),
+        "component": req_data.get("component", ""),
+        "timing": req_data.get("timing", ""),
+        "response": req_data.get("response", ""),
     }
 
 
 def import_requirements_to_database(
     requirements: list[dict[str, Any]],
     clear_existing: bool = False,
-    source_prefix: str | None = None
+    source_prefix: str | None = None,
 ) -> int:
     """Import requirement dicts to database.
 
@@ -105,14 +107,14 @@ def import_requirements_to_database(
     existing = {req.external_id: req for req in Requirement.objects.all()}
 
     # Separate root requirements (no parent) and children
-    roots = [r for r in requirements if r.get('parent_id') is None]
-    children = [r for r in requirements if r.get('parent_id') is not None]
+    roots = [r for r in requirements if r.get("parent_id") is None]
+    children = [r for r in requirements if r.get("parent_id") is not None]
 
     created_count = 0
 
     # First pass: create all root requirements
     for req_data in roots:
-        external_id = req_data['external_id']
+        external_id = req_data["external_id"]
         fields = _extract_requirement_fields(req_data)
 
         if external_id in existing:
@@ -129,8 +131,8 @@ def import_requirements_to_database(
 
     # Second pass: create children with parent references
     for req_data in children:
-        external_id = req_data['external_id']
-        parent_id = req_data['parent_id']
+        external_id = req_data["external_id"]
+        parent_id = req_data["parent_id"]
         fields = _extract_requirement_fields(req_data)
 
         if external_id in existing:
@@ -154,11 +156,11 @@ def import_requirements_to_database(
 
     # Third pass: establish dependency relationships
     for req_data in requirements:
-        depends_on_ids = req_data.get('depends_on', [])
+        depends_on_ids = req_data.get("depends_on", [])
         if not depends_on_ids:
             continue
 
-        req = existing.get(req_data['external_id'])
+        req = existing.get(req_data["external_id"])
         if not req:
             continue
 
@@ -168,7 +170,10 @@ def import_requirements_to_database(
             if dep_req:
                 valid_deps.append(dep_req)
             else:
-                print(f"Warning: {req_data['external_id']} depends on {dep_id}, but {dep_id} not found")
+                print(
+                    f"Warning: {req_data['external_id']} depends on"
+                    f" {dep_id}, but {dep_id} not found"
+                )
 
         req.depends_on.set(valid_deps)
 
@@ -196,7 +201,7 @@ class SpecParser:
     """
 
     # Pattern to match requirement headings in multi-requirement files
-    REQ_HEADING_PATTERN = re.compile(r'^##\s+(REQ-[\w-]+):\s*(.+)$', re.MULTILINE)
+    REQ_HEADING_PATTERN = re.compile(r"^##\s+(REQ-[\w-]+):\s*(.+)$", re.MULTILINE)
 
     def parse_file(self, file_path: Path) -> list[dict[str, Any]]:
         """Parse a single spec file, return list of requirement dicts.
@@ -210,7 +215,7 @@ class SpecParser:
         post = frontmatter.load(file_path)
 
         # Check if single-requirement or multi-requirement file
-        if 'id' in post.metadata:
+        if "id" in post.metadata:
             # Single requirement file
             return [self._parse_single(post, file_path)]
         else:
@@ -228,28 +233,30 @@ class SpecParser:
             Requirement dictionary
         """
         # Handle depends_on as string or list
-        depends_on_raw = post.metadata.get('depends_on', [])
+        depends_on_raw = post.metadata.get("depends_on", [])
         if isinstance(depends_on_raw, str):
             depends_on_raw = [depends_on_raw]
 
         return {
-            'external_id': post.metadata['id'],
-            'title': post.metadata.get('title', ''),
-            'description': post.content,
-            'tags': post.metadata.get('tags', []),
-            'priority': post.metadata.get('priority', ''),
-            'status': post.metadata.get('status', 'draft'),
-            'parent_id': post.metadata.get('parent'),
-            'source_file': str(file_path),
-            'verification_method': post.metadata.get('verification_method', VerificationMethod.UNSPECIFIED),
+            "external_id": post.metadata["id"],
+            "title": post.metadata.get("title", ""),
+            "description": post.content,
+            "tags": post.metadata.get("tags", []),
+            "priority": post.metadata.get("priority", ""),
+            "status": post.metadata.get("status", "draft"),
+            "parent_id": post.metadata.get("parent"),
+            "source_file": str(file_path),
+            "verification_method": post.metadata.get(
+                "verification_method", VerificationMethod.UNSPECIFIED
+            ),
             # Structured fields (FRET-inspired)
-            'scope': post.metadata.get('scope', ''),
-            'condition': post.metadata.get('condition', ''),
-            'component': post.metadata.get('component', ''),
-            'timing': post.metadata.get('timing', ''),
-            'response': post.metadata.get('response', ''),
+            "scope": post.metadata.get("scope", ""),
+            "condition": post.metadata.get("condition", ""),
+            "component": post.metadata.get("component", ""),
+            "timing": post.metadata.get("timing", ""),
+            "response": post.metadata.get("response", ""),
             # Dependencies
-            'depends_on': depends_on_raw,
+            "depends_on": depends_on_raw,
         }
 
     def _parse_multi(self, post: frontmatter.Post, file_path: Path) -> list[dict[str, Any]]:
@@ -276,18 +283,20 @@ class SpecParser:
             return []
 
         # Get shared metadata from frontmatter (tags, priority, etc.)
-        shared_tags = post.metadata.get('tags', [])
-        shared_priority = post.metadata.get('priority', '')
-        shared_status = post.metadata.get('status', 'draft')
-        shared_verification_method = post.metadata.get('verification_method', VerificationMethod.UNSPECIFIED)
+        shared_tags = post.metadata.get("tags", [])
+        shared_priority = post.metadata.get("priority", "")
+        shared_status = post.metadata.get("status", "draft")
+        shared_verification_method = post.metadata.get(
+            "verification_method", VerificationMethod.UNSPECIFIED
+        )
         # Structured fields (FRET-inspired) - shared across all requirements in file
-        shared_scope = post.metadata.get('scope', '')
-        shared_condition = post.metadata.get('condition', '')
-        shared_component = post.metadata.get('component', '')
-        shared_timing = post.metadata.get('timing', '')
-        shared_response = post.metadata.get('response', '')
+        shared_scope = post.metadata.get("scope", "")
+        shared_condition = post.metadata.get("condition", "")
+        shared_component = post.metadata.get("component", "")
+        shared_timing = post.metadata.get("timing", "")
+        shared_response = post.metadata.get("response", "")
         # Dependencies - shared across all requirements in file
-        shared_depends_on_raw = post.metadata.get('depends_on', [])
+        shared_depends_on_raw = post.metadata.get("depends_on", [])
         if isinstance(shared_depends_on_raw, str):
             shared_depends_on_raw = [shared_depends_on_raw]
         shared_depends_on = shared_depends_on_raw
@@ -312,25 +321,27 @@ class SpecParser:
                 # Default children to first requirement unless otherwise specified
                 parent_id = first_req_id
 
-            requirements.append({
-                'external_id': req_id,
-                'title': title,
-                'description': description,
-                'tags': shared_tags,
-                'priority': shared_priority,
-                'status': shared_status,
-                'parent_id': parent_id,
-                'source_file': str(file_path),
-                'verification_method': shared_verification_method,
-                # Structured fields (FRET-inspired)
-                'scope': shared_scope,
-                'condition': shared_condition,
-                'component': shared_component,
-                'timing': shared_timing,
-                'response': shared_response,
-                # Dependencies (shared from frontmatter for multi-req files)
-                'depends_on': shared_depends_on,
-            })
+            requirements.append(
+                {
+                    "external_id": req_id,
+                    "title": title,
+                    "description": description,
+                    "tags": shared_tags,
+                    "priority": shared_priority,
+                    "status": shared_status,
+                    "parent_id": parent_id,
+                    "source_file": str(file_path),
+                    "verification_method": shared_verification_method,
+                    # Structured fields (FRET-inspired)
+                    "scope": shared_scope,
+                    "condition": shared_condition,
+                    "component": shared_component,
+                    "timing": shared_timing,
+                    "response": shared_response,
+                    # Dependencies (shared from frontmatter for multi-req files)
+                    "depends_on": shared_depends_on,
+                }
+            )
 
         return requirements
 
@@ -344,7 +355,7 @@ class SpecParser:
             List of all requirement dictionaries from all files
         """
         requirements = []
-        for md_file in sorted(specs_dir.glob('**/*.md')):
+        for md_file in sorted(specs_dir.glob("**/*.md")):
             try:
                 file_requirements = self.parse_file(md_file)
                 requirements.extend(file_requirements)

@@ -1,4 +1,5 @@
 """GitHub webhook endpoints for CI/CD integration."""
+
 import json
 import logging
 
@@ -54,9 +55,7 @@ def github_webhook(request):
 
     # Verify signature
     if not verify_webhook_signature(request.body, signature):
-        logger.warning(
-            "Webhook signature verification failed for delivery %s", delivery_id
-        )
+        logger.warning("Webhook signature verification failed for delivery %s", delivery_id)
         return JsonResponse({"error": "Invalid signature"}, status=401)
 
     # Parse payload
@@ -75,9 +74,7 @@ def github_webhook(request):
     allowed_repos = getattr(settings, "GITHUB_ALLOWED_REPOS", [])
     if allowed_repos and repository not in allowed_repos:
         logger.info("Webhook from non-allowed repository: %s", repository)
-        return JsonResponse(
-            {"error": f"Repository {repository} not in allowlist"}, status=403
-        )
+        return JsonResponse({"error": f"Repository {repository} not in allowlist"}, status=403)
 
     # Check for duplicate delivery (idempotency)
     if WebhookEvent.objects.filter(delivery_id=delivery_id).exists():

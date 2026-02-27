@@ -17,14 +17,12 @@ from django.db import transaction
 from django.utils import timezone
 
 from requirements.models import (
+    AGENT_TASK_STATE_TRANSITIONS,
     Agent,
-    AgentRole,
     AgentTask,
     AgentTaskHistory,
     AgentTaskReview,
     AgentTaskStatus,
-    AGENT_TASK_STATE_TRANSITIONS,
-    ReviewDecision,
 )
 
 
@@ -78,9 +76,7 @@ def _log_history(
     )
 
 
-def validate_transition(
-    task: AgentTask, to_status: str, agent: Agent | None = None
-) -> None:
+def validate_transition(task: AgentTask, to_status: str, agent: Agent | None = None) -> None:
     """Validate a state transition is allowed.
 
     Args:
@@ -95,8 +91,7 @@ def validate_transition(
 
     if to_status not in allowed:
         raise TransitionError(
-            f"Cannot transition from '{task.status}' to '{to_status}'. "
-            f"Allowed: {allowed}",
+            f"Cannot transition from '{task.status}' to '{to_status}'. Allowed: {allowed}",
             code="INVALID_TRANSITION",
         )
 
@@ -152,9 +147,7 @@ def get_task(task_id: str) -> AgentTask:
 
 
 @transaction.atomic
-def claim_task(
-    task_id: str, agent_id: str, lease_minutes: int = 30
-) -> TransitionResult:
+def claim_task(task_id: str, agent_id: str, lease_minutes: int = 30) -> TransitionResult:
     """Claim an unclaimed task for an agent.
 
     Args:
@@ -193,9 +186,7 @@ def claim_task(
     # Check if task is claimable (dependencies met)
     if not task.is_claimable():
         blocked_deps = [
-            dep.external_id
-            for dep in task.depends_on.all()
-            if dep.status != AgentTaskStatus.MERGED
+            dep.external_id for dep in task.depends_on.all() if dep.status != AgentTaskStatus.MERGED
         ]
         raise TransitionError(
             f"Task '{task_id}' has unmerged dependencies: {blocked_deps}",
@@ -292,9 +283,7 @@ def start_task(task_id: str, agent_id: str) -> TransitionResult:
 
 
 @transaction.atomic
-def submit_for_review(
-    task_id: str, agent_id: str, commit_sha: str
-) -> TransitionResult:
+def submit_for_review(task_id: str, agent_id: str, commit_sha: str) -> TransitionResult:
     """Submit work for review.
 
     Args:
@@ -662,15 +651,17 @@ def list_tasks(
 
     results = []
     for task in queryset:
-        results.append({
-            "external_id": task.external_id,
-            "title": task.title,
-            "status": task.status,
-            "claimed_by": task.claimed_by.agent_id if task.claimed_by else None,
-            "sprint": task.sprint.name if task.sprint else None,
-            "lease_expires": task.lease_expires.isoformat() if task.lease_expires else None,
-            "attempt_count": task.attempt_count,
-            "created_at": task.created_at.isoformat(),
-        })
+        results.append(
+            {
+                "external_id": task.external_id,
+                "title": task.title,
+                "status": task.status,
+                "claimed_by": task.claimed_by.agent_id if task.claimed_by else None,
+                "sprint": task.sprint.name if task.sprint else None,
+                "lease_expires": task.lease_expires.isoformat() if task.lease_expires else None,
+                "attempt_count": task.attempt_count,
+                "created_at": task.created_at.isoformat(),
+            }
+        )
 
     return results

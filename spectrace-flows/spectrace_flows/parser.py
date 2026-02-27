@@ -103,9 +103,7 @@ class YAMLFlowParser:
 
         return self._validate_and_build_flow(doc, file_path)
 
-    def _validate_and_build_flow(
-        self, doc: dict[str, Any], file_path: Path
-    ) -> FlowDef:
+    def _validate_and_build_flow(self, doc: dict[str, Any], file_path: Path) -> FlowDef:
         """Validate document and build FlowDef.
 
         Args:
@@ -121,9 +119,7 @@ class YAMLFlowParser:
         # Check required fields
         missing_fields = self.REQUIRED_FIELDS - set(doc.keys())
         if missing_fields:
-            raise FlowParseError(
-                file_path, f"Missing required fields: {sorted(missing_fields)}"
-            )
+            raise FlowParseError(file_path, f"Missing required fields: {sorted(missing_fields)}")
 
         # Validate steps is a list
         steps_data = doc["steps"]
@@ -157,9 +153,7 @@ class YAMLFlowParser:
             source_file=str(file_path),
         )
 
-    def _build_step(
-        self, step_data: dict[str, Any], file_path: Path, step_num: int
-    ) -> FlowStepDef:
+    def _build_step(self, step_data: dict[str, Any], file_path: Path, step_num: int) -> FlowStepDef:
         """Build a FlowStepDef from step dict.
 
         Args:
@@ -176,9 +170,7 @@ class YAMLFlowParser:
         # Check required step fields
         missing = self.REQUIRED_STEP_FIELDS - set(step_data.keys())
         if missing:
-            raise FlowParseError(
-                file_path, f"Step {step_num} missing fields: {sorted(missing)}"
-            )
+            raise FlowParseError(file_path, f"Step {step_num} missing fields: {sorted(missing)}")
 
         # Validate step type
         step_type = step_data.get("type", "handler")
@@ -201,9 +193,7 @@ class YAMLFlowParser:
         if config is None:
             config = {}
         if not isinstance(config, dict):
-            raise FlowParseError(
-                file_path, f"Step {step_num} 'config' must be a mapping"
-            )
+            raise FlowParseError(file_path, f"Step {step_num} 'config' must be a mapping")
 
         return FlowStepDef(
             name=step_data["name"],

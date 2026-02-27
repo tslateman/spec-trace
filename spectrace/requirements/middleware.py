@@ -1,4 +1,5 @@
 """Custom middleware for request handling."""
+
 import uuid
 
 from django.http import JsonResponse
@@ -14,15 +15,15 @@ class RequestSizeLimitMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        content_length = request.headers.get('Content-Length')
+        content_length = request.headers.get("Content-Length")
         if content_length:
             try:
                 size = int(content_length)
                 if size > MAX_REQUEST_BODY_SIZE:
                     max_mb = MAX_REQUEST_BODY_SIZE // 1024 // 1024
                     return JsonResponse(
-                        {'error': f'Request body too large (max {max_mb}MB)'},
-                        status=413
+                        {"error": f"Request body too large (max {max_mb}MB)"},
+                        status=413,
                     )
             except ValueError:
                 pass
@@ -41,8 +42,8 @@ class RequestIDMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        rid = request.headers.get('X-Request-ID') or str(uuid.uuid4())[:8]
+        rid = request.headers.get("X-Request-ID") or str(uuid.uuid4())[:8]
         request_id.set(rid)
         response = self.get_response(request)
-        response['X-Request-ID'] = rid
+        response["X-Request-ID"] = rid
         return response

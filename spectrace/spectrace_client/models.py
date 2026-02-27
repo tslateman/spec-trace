@@ -3,6 +3,7 @@
 These are dataclasses (not Django models) used for structuring
 validation results before submitting to SpecTrace API.
 """
+
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -11,6 +12,7 @@ from typing import Any
 
 class ValidationStatus(str, Enum):
     """Status of a validation run."""
+
     SUCCESS = "success"
     DEGRADED = "degraded"  # Some steps passed, some failed
     FAILURE = "failure"
@@ -20,17 +22,18 @@ class ValidationStatus(str, Enum):
 @dataclass
 class ValidationStep:
     """Single step within a validation run.
-    
+
     Represents one check in a multi-step validation (e.g., "authentication",
     "permissions", "connectivity").
     """
+
     name: str
     passed: bool
     details: str = ""
     error_message: str = ""
     duration_ms: int | None = None
     timestamp: datetime = field(default_factory=lambda: datetime.now())
-    
+
     def to_dict(self) -> dict[str, Any]:
         """Convert to JSON-serializable dict for API submission."""
         return {
@@ -46,9 +49,10 @@ class ValidationStep:
 @dataclass
 class ValidationResult:
     """Result of a complete validation run.
-    
+
     Contains overall status, individual steps, and context for debugging.
     """
+
     requirement_id: str
     name: str
     status: ValidationStatus
@@ -56,11 +60,11 @@ class ValidationResult:
     message: str = ""
     context: dict[str, Any] = field(default_factory=dict)
     timestamp: datetime = field(default_factory=lambda: datetime.now())
-    
+
     @property
     def overall_status(self) -> ValidationStatus:
         """Compute overall status from individual steps.
-        
+
         Logic:
         - No steps: use self.status
         - All steps passed: SUCCESS
@@ -69,17 +73,17 @@ class ValidationResult:
         """
         if not self.steps:
             return self.status
-        
+
         passed_count = sum(1 for s in self.steps if s.passed)
         failed_count = len(self.steps) - passed_count
-        
+
         if failed_count == 0:
             return ValidationStatus.SUCCESS
         elif passed_count > 0:
             return ValidationStatus.DEGRADED
         else:
             return ValidationStatus.FAILURE
-    
+
     def to_dict(self) -> dict[str, Any]:
         """Convert to JSON-serializable dict for API submission."""
         return {

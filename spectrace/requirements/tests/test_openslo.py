@@ -1,11 +1,12 @@
 """Tests for OpenSLO parser and import functionality."""
+
 import tempfile
 from decimal import Decimal
 from pathlib import Path
 
 import pytest
 
-from requirements.models import Requirement, SLO, SLOStatus
+from requirements.models import SLO, Requirement, SLOStatus
 from requirements.openslo import (
     OpenSLOParser,
     import_slos_to_database,
@@ -44,9 +45,7 @@ spec:
         duration: 30d
   budgetingMethod: Occurrences
 """
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".yaml", delete=False
-    ) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
         f.write(content)
         return Path(f.name)
 
@@ -68,9 +67,7 @@ spec:
       timeWindow:
         duration: 7d
 """
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".yaml", delete=False
-    ) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
         f.write(content)
         return Path(f.name)
 
@@ -86,9 +83,7 @@ metadata:
 spec:
   displayName: API Gateway
 """
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".yaml", delete=False
-    ) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
         f.write(content)
         return Path(f.name)
 
@@ -130,6 +125,7 @@ class TestOpenSLOParser:
         """Parse all YAML files in a directory."""
         # Create temp dir with both files
         import shutil
+
         temp_dir = Path(tempfile.mkdtemp())
         shutil.copy(sample_openslo_yaml, temp_dir / "slo1.yaml")
         shutil.copy(non_slo_yaml, temp_dir / "service.yaml")

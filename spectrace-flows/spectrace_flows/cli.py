@@ -99,7 +99,7 @@ def run_flow(args) -> int:
     # Print results
     print(f"\nFlow: {flow.display_name}")
     print(f"Status: {result.status.value.upper()}")
-    print(f"\nSteps:")
+    print("\nSteps:")
 
     for step in result.steps:
         status_icon = "[PASS]" if step.passed else "[FAIL]"

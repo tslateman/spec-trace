@@ -1,4 +1,5 @@
 """GitHub App authentication and API client for CI/CD integration."""
+
 import hashlib
 import hmac
 import io
@@ -182,8 +183,7 @@ class GitHubClient:
 
         if not self.app_id or not self.private_key:
             raise GitHubAuthError(
-                "GitHub App credentials not configured. "
-                "Set GITHUB_APP_ID and GITHUB_PRIVATE_KEY."
+                "GitHub App credentials not configured. Set GITHUB_APP_ID and GITHUB_PRIVATE_KEY."
             )
 
         now = int(time.time())
@@ -236,9 +236,7 @@ class GitHubClient:
         try:
             token = self._fetch_installation_token(url, headers)
         except requests.RequestException as e:
-            raise GitHubAuthError(
-                f"Failed to get installation token: {e}"
-            ) from e
+            raise GitHubAuthError(f"Failed to get installation token: {e}") from e
 
         # Cache token (expires in ~50 minutes)
         expires_at = time.time() + INSTALLATION_TOKEN_CACHE_SECONDS
@@ -472,8 +470,7 @@ class GitHubClient:
         if not target_artifact:
             available_names = [a.name for a in artifacts if not a.expired]
             raise GitHubArtifactError(
-                f"Artifact '{artifact_name}' not found. "
-                f"Available: {available_names}"
+                f"Artifact '{artifact_name}' not found. Available: {available_names}"
             )
 
         logger.info(
@@ -486,9 +483,7 @@ class GitHubClient:
         )
 
         # Download and extract
-        content = self.download_artifact(
-            owner, repo, target_artifact.id, installation_id
-        )
+        content = self.download_artifact(owner, repo, target_artifact.id, installation_id)
         files = self.extract_files_from_artifact(content, required_files)
 
         logger.info(

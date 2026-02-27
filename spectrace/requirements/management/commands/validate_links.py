@@ -8,7 +8,7 @@ from pathlib import Path
 
 from django.core.management.base import BaseCommand, CommandError
 
-from ...validator import validate_links, validate_high_risk_requirements
+from ...validator import validate_high_risk_requirements, validate_links
 
 
 class Command(BaseCommand):
@@ -89,7 +89,9 @@ class Command(BaseCommand):
         self.stdout.write(f"Validating {links_file} against requirements database...\n")
 
         if high_risk_result:
-            self.stdout.write(f"Also checking {high_risk_result.items_checked} high-risk requirements...\n")
+            self.stdout.write(
+                f"Also checking {high_risk_result.items_checked} high-risk requirements...\n"
+            )
 
         if result.errors:
             self.stdout.write(self.style.ERROR(f"\nERRORS ({len(result.errors)}):"))
@@ -101,7 +103,10 @@ class Command(BaseCommand):
                         msg += f" (in {tests[0]})"
                     else:
                         msg += f" (in {len(tests)} tests)"
-                elif error.type in ("high_risk_failing_tests", "pr_impacts_failing_high_risk"):
+                elif error.type in (
+                    "high_risk_failing_tests",
+                    "pr_impacts_failing_high_risk",
+                ):
                     failing = error.details.get("failing_tests", [])
                     if failing:
                         msg += f" ({len(failing)} failing)"

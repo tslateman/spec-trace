@@ -1,17 +1,18 @@
 """JUnit XML import logic for test results."""
+
 import json
 
 from django.utils import timezone
-from junitparser import JUnitXml, Failure, Error, Skipped
+from junitparser import Error, Failure, JUnitXml, Skipped
 
-from .models import TestRun, TestResult, Requirement, TestRequirementLink
+from .models import Requirement, TestRequirementLink, TestResult, TestRun
 
 
 def import_junit_xml(
     file_path: str,
-    git_sha: str = '',
-    git_branch: str = '',
-    ci_job_url: str = '',
+    git_sha: str = "",
+    git_branch: str = "",
+    ci_job_url: str = "",
 ) -> TestRun:
     """Import pytest JUnit XML file into database.
 
@@ -41,22 +42,22 @@ def import_junit_xml(
         for case in suite:
             # Determine status from result list
             # Default: no result element = passed
-            status = 'passed'
-            message = ''
+            status = "passed"
+            message = ""
 
             if case.result:
                 for result in case.result:
                     if isinstance(result, Failure):
-                        status = 'failed'
-                        message = result.message or ''
+                        status = "failed"
+                        message = result.message or ""
                         break
                     elif isinstance(result, Error):
-                        status = 'error'
-                        message = result.message or ''
+                        status = "error"
+                        message = result.message or ""
                         break
                     elif isinstance(result, Skipped):
-                        status = 'skipped'
-                        message = result.message or ''
+                        status = "skipped"
+                        message = result.message or ""
 
             # Build nodeid from classname and name
             # pytest format: classname is "tests.test_module" or file path
@@ -65,7 +66,7 @@ def import_junit_xml(
             TestResult.objects.create(
                 test_run=test_run,
                 test_nodeid=nodeid,
-                classname=case.classname or '',
+                classname=case.classname or "",
                 name=case.name,
                 time=case.time or 0.0,
                 status=status,
@@ -93,16 +94,17 @@ def _normalize_nodeid(nodeid: str) -> str:
     Returns:
         Normalized nodeid in file path format.
     """
-    if '::' in nodeid:
-        path_part, test_part = nodeid.split('::', 1)
+    if "::" in nodeid:
+        path_part, test_part = nodeid.split("::", 1)
     else:
         path_part = nodeid
-        test_part = ''
+        test_part = ""
 
     # If path part has dots and no slashes, convert to file path
-    if '.' in path_part and '/' not in path_part and not path_part.endswith('.py'):
-        # Convert dotted path to file path: spectrace.tests.test_example -> spectrace/tests/test_example.py
-        path_part = path_part.replace('.', '/') + '.py'
+    if "." in path_part and "/" not in path_part and not path_part.endswith(".py"):
+        # Convert dotted path to file path:
+        # spectrace.tests.test_example -> spectrace/tests/test_example.py
+        path_part = path_part.replace(".", "/") + ".py"
 
     if test_part:
         return f"{path_part}::{test_part}"
@@ -129,9 +131,9 @@ def link_results_to_requirements(test_run: TestRun, links_json_path: str) -> dic
 
     # Build normalized nodeid -> requirement_ids lookup
     nodeid_to_reqs = {}
-    for link in data.get('links', []):
-        nodeid = _normalize_nodeid(link['test_nodeid'])
-        req_id = link['requirement_id']
+    for link in data.get("links", []):
+        nodeid = _normalize_nodeid(link["test_nodeid"])
+        req_id = link["requirement_id"]
         if nodeid not in nodeid_to_reqs:
             nodeid_to_reqs[nodeid] = []
         nodeid_to_reqs[nodeid].append(req_id)
@@ -150,7 +152,7 @@ def link_results_to_requirements(test_run: TestRun, links_json_path: str) -> dic
         else:
             unlinked_tests.append(result.test_nodeid)
 
-    return {'linked_count': linked_count, 'unlinked_tests': unlinked_tests}
+    return {"linked_count": linked_count, "unlinked_tests": unlinked_tests}
 
 
 def update_test_requirement_links(test_run: TestRun) -> dict:
@@ -189,15 +191,15 @@ def update_test_requirement_links(test_run: TestRun) -> dict:
             link.last_run_at = test_run.imported_at
 
             # Flag for review if status changed to failing
-            if old_status == 'passed' and new_status in ('failed', 'error'):
+            if old_status == "passed" and new_status in ("failed", "error"):
                 link.needs_review = True
-                link.review_reason = f'status changed: {old_status} → {new_status}'
+                link.review_reason = f"status changed: {old_status} → {new_status}"
                 status_changes.append((link.test_nodeid, old_status, new_status))
 
             link.save()
             updated_count += 1
 
     return {
-        'updated_count': updated_count,
-        'status_changes': status_changes,
+        "updated_count": updated_count,
+        "status_changes": status_changes,
     }

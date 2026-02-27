@@ -1,4 +1,5 @@
 """Tests for Linear API client."""
+
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -68,9 +69,7 @@ class TestLinearClient:
     def test_execute_query_raises_on_graphql_errors(self, mock_post, linear_client):
         """Execute query raises ValueError on GraphQL errors."""
         mock_response = MagicMock()
-        mock_response.json.return_value = {
-            "errors": [{"message": "Invalid query"}]
-        }
+        mock_response.json.return_value = {"errors": [{"message": "Invalid query"}]}
         mock_response.raise_for_status = MagicMock()
         mock_post.return_value = mock_response
 
@@ -225,15 +224,6 @@ class TestLinearClient:
 
     def test_verification_method_mapping(self, linear_client):
         """Verification method labels map correctly."""
-        assert (
-            linear_client.VERIFICATION_METHOD_MAP["verify:test"]
-            == VerificationMethod.TEST
-        )
-        assert (
-            linear_client.VERIFICATION_METHOD_MAP["verify:inapp"]
-            == VerificationMethod.INAPP
-        )
-        assert (
-            linear_client.VERIFICATION_METHOD_MAP["verify:both"]
-            == VerificationMethod.BOTH
-        )
+        assert linear_client.VERIFICATION_METHOD_MAP["verify:test"] == VerificationMethod.TEST
+        assert linear_client.VERIFICATION_METHOD_MAP["verify:inapp"] == VerificationMethod.INAPP
+        assert linear_client.VERIFICATION_METHOD_MAP["verify:both"] == VerificationMethod.BOTH

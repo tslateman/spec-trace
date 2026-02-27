@@ -1,8 +1,9 @@
 """Impact analysis service for detecting spec changes and affected tests."""
-from dataclasses import dataclass
+
 import logging
 import re
 import subprocess
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
@@ -12,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 # Valid git ref pattern: alphanumeric, dots, slashes, hyphens, underscores, colons
 # Also allows HEAD, HEAD~N, HEAD^N, @{upstream}, etc.
-GIT_REF_PATTERN = re.compile(r'^[a-zA-Z0-9][a-zA-Z0-9._/:\-~^@{}]*$')
+GIT_REF_PATTERN = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._/:\-~^@{}]*$")
 
 
 def validate_git_ref(ref: str) -> None:
@@ -34,7 +35,7 @@ def validate_git_ref(ref: str) -> None:
             "slashes, hyphens, underscores, or standard git ref syntax."
         )
     # Block refs that look like command-line flags
-    if ref.startswith('-'):
+    if ref.startswith("-"):
         raise ValueError("Git ref cannot start with a hyphen")
 
 
@@ -262,7 +263,12 @@ def setup_impact_demo(repo_path: Optional[Path] = None) -> dict:
             'head_ref': str,
         }
     """
-    from requirements.models import Requirement, TestRequirementLink, TestRun, TestResult
+    from requirements.models import (
+        Requirement,
+        TestRequirementLink,
+        TestResult,
+        TestRun,
+    )
 
     repo_path = repo_path or Path.cwd()
     specs_dir = repo_path / "specs"
@@ -295,7 +301,12 @@ def setup_impact_demo(repo_path: Optional[Path] = None) -> dict:
                 timeout=30,
             )
             subprocess.run(
-                ["git", "commit", "-m", "chore: add spec files for impact analysis demo"],
+                [
+                    "git",
+                    "commit",
+                    "-m",
+                    "chore: add spec files for impact analysis demo",
+                ],
                 cwd=repo_path,
                 check=True,
                 timeout=30,
@@ -316,7 +327,8 @@ def setup_impact_demo(repo_path: Optional[Path] = None) -> dict:
 
         for i, req in enumerate(requirements):
             # Create a fake test result and link
-            test_nodeid = f"tests/test_{req.external_id.lower().replace('-', '_')}.py::test_verify_{i}"
+            ext_id = req.external_id.lower().replace("-", "_")
+            test_nodeid = f"tests/test_{ext_id}.py::test_verify_{i}"
             TestResult.objects.get_or_create(
                 test_run=test_run,
                 test_nodeid=test_nodeid,
@@ -379,7 +391,9 @@ def setup_impact_demo(repo_path: Optional[Path] = None) -> dict:
             # Append a demo change to the spec
             content = spec_file.read_text()
             if "## Demo Change" not in content:
-                demo_addition = "\n\n## Demo Change\n\nThis section was added to demonstrate impact analysis.\n"
+                demo_addition = (
+                    "\n\n## Demo Change\n\nThis section was added to demonstrate impact analysis.\n"
+                )
                 spec_file.write_text(content + demo_addition)
 
                 subprocess.run(

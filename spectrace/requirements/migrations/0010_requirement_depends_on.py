@@ -4,15 +4,19 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('requirements', '0009_add_agent_coordination_models'),
+        ("requirements", "0009_add_agent_coordination_models"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='requirement',
-            name='depends_on',
-            field=models.ManyToManyField(blank=True, help_text='Requirements that must be satisfied before this one', related_name='depended_by', to='requirements.requirement'),
+            model_name="requirement",
+            name="depends_on",
+            field=models.ManyToManyField(
+                blank=True,
+                help_text="Requirements that must be satisfied before this one",
+                related_name="depended_by",
+                to="requirements.requirement",
+            ),
         ),
     ]

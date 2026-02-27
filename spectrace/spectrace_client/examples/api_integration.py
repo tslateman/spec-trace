@@ -9,19 +9,20 @@ on-demand validations using the SpecTrace SDK. Useful for:
 Usage:
     # In your urls.py:
     from spectrace_client.examples.api_integration import hotel_validation_views
-    
+
     urlpatterns = [
-        path('api/hotels/<int:hotel_id>/validate-pms/', 
+        path('api/hotels/<int:hotel_id>/validate-pms/',
              hotel_validation_views.test_pms_connection),
-        path('api/hotels/<int:hotel_id>/validate-mobile-key/', 
+        path('api/hotels/<int:hotel_id>/validate-mobile-key/',
              hotel_validation_views.test_mobile_key),
     ]
 """
-from typing import Any
-from django.http import JsonResponse, HttpRequest
-from django.views.decorators.http import require_http_methods
-from django.views.decorators.csrf import csrf_exempt
+
 import json
+
+from django.http import HttpRequest, JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
 
 from spectrace_client import ValidationStatus
 
@@ -31,15 +32,15 @@ from spectrace_client import ValidationStatus
 @require_http_methods(["POST"])
 def test_pms_connection(request: HttpRequest, hotel_id: int) -> JsonResponse:
     """Test PMS connection for a specific hotel.
-    
+
     POST /api/hotels/{hotel_id}/validate-pms/
-    
+
     Request body (optional):
         {
             "vendor": "Opera",  # If not provided, uses hotel's configured vendor
             "feature_flags": {"new_auth": true}
         }
-    
+
     Response:
         {
             "success": true,
@@ -59,104 +60,102 @@ def test_pms_connection(request: HttpRequest, hotel_id: int) -> JsonResponse:
     try:
         # Parse request body
         body = json.loads(request.body) if request.body else {}
-        vendor = body.get('vendor')
-        feature_flags = body.get('feature_flags', {})
-        
+        vendor = body.get("vendor")
+        feature_flags = body.get("feature_flags", {})
+
         # Dynamically choose validation function based on vendor
-        from spectrace_client.examples.pms import validate_opera_pms, validate_mews_pms
-        
-        if vendor == 'Mews':
+        from spectrace_client.examples.pms import validate_mews_pms, validate_opera_pms
+
+        if vendor == "Mews":
             result = validate_mews_pms(hotel_id, feature_flags)
         else:
             # Default to Opera
             result = validate_opera_pms(hotel_id, feature_flags)
-        
-        return JsonResponse({
-            'success': True,
-            'validation': {
-                'requirement_id': result.requirement_id,
-                'name': result.name,
-                'status': result.status.value,
-                'message': result.message,
-                'steps': [
-                    {
-                        'name': step.name,
-                        'passed': step.passed,
-                        'details': step.details,
-                        'error_message': step.error_message,
-                        'duration_ms': step.duration_ms,
-                    }
-                    for step in result.steps
-                ],
-                'context': result.context,
+
+        return JsonResponse(
+            {
+                "success": True,
+                "validation": {
+                    "requirement_id": result.requirement_id,
+                    "name": result.name,
+                    "status": result.status.value,
+                    "message": result.message,
+                    "steps": [
+                        {
+                            "name": step.name,
+                            "passed": step.passed,
+                            "details": step.details,
+                            "error_message": step.error_message,
+                            "duration_ms": step.duration_ms,
+                        }
+                        for step in result.steps
+                    ],
+                    "context": result.context,
+                },
             }
-        })
-    
+        )
+
     except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'error': str(e)
-        }, status=500)
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
 
 
 @csrf_exempt
 @require_http_methods(["POST"])
 def test_mobile_key(request: HttpRequest, hotel_id: int) -> JsonResponse:
     """Test mobile key connection for a specific hotel.
-    
+
     POST /api/hotels/{hotel_id}/validate-mobile-key/
-    
+
     Request body (optional):
         {
             "vendor": "Ambiance",
             "feature_flags": {"new_protocol": true}
         }
-    
+
     Response: Same format as test_pms_connection
     """
     try:
         body = json.loads(request.body) if request.body else {}
-        vendor = body.get('vendor')
-        feature_flags = body.get('feature_flags', {})
-        
+        vendor = body.get("vendor")
+        feature_flags = body.get("feature_flags", {})
+
         from spectrace_client.examples.mobile_key import (
             validate_ambiance_mobile_key,
             validate_openkey_mobile_key,
             validate_vostio_mobile_key,
         )
-        
-        if vendor == 'OpenKey':
+
+        if vendor == "OpenKey":
             result = validate_openkey_mobile_key(hotel_id, feature_flags)
-        elif vendor == 'Vostio':
+        elif vendor == "Vostio":
             result = validate_vostio_mobile_key(hotel_id, feature_flags)
         else:
             # Default to Ambiance
             result = validate_ambiance_mobile_key(hotel_id, feature_flags)
-        
-        return JsonResponse({
-            'success': True,
-            'validation': {
-                'requirement_id': result.requirement_id,
-                'name': result.name,
-                'status': result.status.value,
-                'message': result.message,
-                'steps': [
-                    {
-                        'name': step.name,
-                        'passed': step.passed,
-                        'details': step.details,
-                        'error_message': step.error_message,
-                    }
-                    for step in result.steps
-                ],
+
+        return JsonResponse(
+            {
+                "success": True,
+                "validation": {
+                    "requirement_id": result.requirement_id,
+                    "name": result.name,
+                    "status": result.status.value,
+                    "message": result.message,
+                    "steps": [
+                        {
+                            "name": step.name,
+                            "passed": step.passed,
+                            "details": step.details,
+                            "error_message": step.error_message,
+                        }
+                        for step in result.steps
+                    ],
+                },
             }
-        })
-    
+        )
+
     except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'error': str(e)
-        }, status=500)
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
 
 
 # Example: Batch validation endpoint
@@ -164,16 +163,16 @@ def test_mobile_key(request: HttpRequest, hotel_id: int) -> JsonResponse:
 @require_http_methods(["POST"])
 def batch_validate_hotels(request: HttpRequest) -> JsonResponse:
     """Validate multiple hotels in a single request.
-    
+
     POST /api/hotels/batch-validate/
-    
+
     Request body:
         {
             "hotel_ids": [123, 456, 789],
             "validation_type": "pms",  # or "mobile_key"
             "feature_flags": {"new_auth": true}
         }
-    
+
     Response:
         {
             "success": true,
@@ -192,57 +191,57 @@ def batch_validate_hotels(request: HttpRequest) -> JsonResponse:
     """
     try:
         body = json.loads(request.body)
-        hotel_ids = body.get('hotel_ids', [])
-        validation_type = body.get('validation_type', 'pms')
-        feature_flags = body.get('feature_flags', {})
-        
+        hotel_ids = body.get("hotel_ids", [])
+        validation_type = body.get("validation_type", "pms")
+        feature_flags = body.get("feature_flags", {})
+
         results = {}
-        summary = {'total': len(hotel_ids), 'success': 0, 'degraded': 0, 'failure': 0, 'error': 0}
-        
+        summary = {
+            "total": len(hotel_ids),
+            "success": 0,
+            "degraded": 0,
+            "failure": 0,
+            "error": 0,
+        }
+
         for hotel_id in hotel_ids:
             try:
-                if validation_type == 'pms':
+                if validation_type == "pms":
                     from spectrace_client.examples.pms import validate_opera_pms
+
                     result = validate_opera_pms(hotel_id, feature_flags)
                 else:
-                    from spectrace_client.examples.mobile_key import validate_ambiance_mobile_key
+                    from spectrace_client.examples.mobile_key import (
+                        validate_ambiance_mobile_key,
+                    )
+
                     result = validate_ambiance_mobile_key(hotel_id, feature_flags)
-                
+
                 results[str(hotel_id)] = {
-                    'status': result.status.value,
-                    'message': result.message,
-                    'steps_passed': sum(1 for s in result.steps if s.passed),
-                    'steps_total': len(result.steps),
+                    "status": result.status.value,
+                    "message": result.message,
+                    "steps_passed": sum(1 for s in result.steps if s.passed),
+                    "steps_total": len(result.steps),
                 }
-                
+
                 # Update summary
                 if result.status == ValidationStatus.SUCCESS:
-                    summary['success'] += 1
+                    summary["success"] += 1
                 elif result.status == ValidationStatus.DEGRADED:
-                    summary['degraded'] += 1
+                    summary["degraded"] += 1
                 elif result.status == ValidationStatus.FAILURE:
-                    summary['failure'] += 1
+                    summary["failure"] += 1
                 else:
-                    summary['error'] += 1
-            
+                    summary["error"] += 1
+
             except Exception as e:
-                results[str(hotel_id)] = {
-                    'status': 'error',
-                    'message': str(e)
-                }
-                summary['error'] += 1
-        
-        return JsonResponse({
-            'success': True,
-            'results': results,
-            'summary': summary
-        })
-    
+                results[str(hotel_id)] = {"status": "error", "message": str(e)}
+                summary["error"] += 1
+
+        return JsonResponse({"success": True, "results": results, "summary": summary})
+
     except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'error': str(e)
-        }, status=500)
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
 
 
 # Example URLConf
@@ -257,11 +256,11 @@ urlpatterns = [
     path('api/hotels/<int:hotel_id>/validate-pms/',
          api_integration.test_pms_connection,
          name='test-pms-connection'),
-    
+
     path('api/hotels/<int:hotel_id>/validate-mobile-key/',
          api_integration.test_mobile_key,
          name='test-mobile-key'),
-    
+
     # Batch validation
     path('api/hotels/batch-validate/',
          api_integration.batch_validate_hotels,
@@ -279,9 +278,9 @@ const testPMSConnection = async (hotelId) => {
             feature_flags: {new_auth: true}
         })
     });
-    
+
     const data = await response.json();
-    
+
     if (data.success && data.validation.status === 'success') {
         alert('✅ PMS connection test passed!');
     } else {

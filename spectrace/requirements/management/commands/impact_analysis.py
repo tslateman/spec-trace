@@ -96,9 +96,7 @@ class Command(BaseCommand):
             return
 
         # Changed requirements
-        self.stdout.write(
-            f"\nChanged Requirements ({len(result.changed_requirements)}):\n"
-        )
+        self.stdout.write(f"\nChanged Requirements ({len(result.changed_requirements)}):\n")
         for req_id in result.changed_requirements:
             self.stdout.write(f"  • {req_id}\n")
 
@@ -117,18 +115,12 @@ class Command(BaseCommand):
         # Affected tests
         if result.affected_tests:
             self.stdout.write(
-                self.style.WARNING(
-                    f"\nAffected Tests ({len(result.affected_tests)}):\n"
-                )
+                self.style.WARNING(f"\nAffected Tests ({len(result.affected_tests)}):\n")
             )
             for test in sorted(result.affected_tests):
                 self.stdout.write(f"  ✗ {test}\n")
             self.stdout.write(
-                self.style.WARNING(
-                    f"\nThese tests should be run to verify the changes.\n"
-                )
+                self.style.WARNING("\nThese tests should be run to verify the changes.\n")
             )
         else:
-            self.stdout.write(
-                self.style.SUCCESS("\nNo tests affected by these changes.\n")
-            )
+            self.stdout.write(self.style.SUCCESS("\nNo tests affected by these changes.\n"))

@@ -5,96 +5,345 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('requirements', '0002_testrun_testresult_verification_status'),
+        ("requirements", "0002_testrun_testresult_verification_status"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='InAppValidationRun',
+            name="InAppValidationRun",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('imported_at', models.DateTimeField(auto_now_add=True, help_text='When the validation results were imported')),
-                ('source', models.CharField(help_text='Source file or system that provided the results', max_length=500)),
-                ('total_validations', models.IntegerField(default=0)),
-                ('successful', models.IntegerField(default=0)),
-                ('failed', models.IntegerField(default=0)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "imported_at",
+                    models.DateTimeField(
+                        auto_now_add=True,
+                        help_text="When the validation results were imported",
+                    ),
+                ),
+                (
+                    "source",
+                    models.CharField(
+                        help_text="Source file or system that provided the results",
+                        max_length=500,
+                    ),
+                ),
+                ("total_validations", models.IntegerField(default=0)),
+                ("successful", models.IntegerField(default=0)),
+                ("failed", models.IntegerField(default=0)),
             ],
             options={
-                'verbose_name': 'In-App Validation Run',
-                'verbose_name_plural': 'In-App Validation Runs',
-                'ordering': ['-imported_at'],
+                "verbose_name": "In-App Validation Run",
+                "verbose_name_plural": "In-App Validation Runs",
+                "ordering": ["-imported_at"],
             },
         ),
         migrations.AddField(
-            model_name='requirement',
-            name='slo_status',
-            field=models.CharField(choices=[('met', 'Met'), ('at_risk', 'At Risk'), ('breached', 'Breached'), ('not_linked', 'Not Linked')], db_index=True, default='not_linked', help_text='SLO compliance status for this requirement', max_length=20),
+            model_name="requirement",
+            name="slo_status",
+            field=models.CharField(
+                choices=[
+                    ("met", "Met"),
+                    ("at_risk", "At Risk"),
+                    ("breached", "Breached"),
+                    ("not_linked", "Not Linked"),
+                ],
+                db_index=True,
+                default="not_linked",
+                help_text="SLO compliance status for this requirement",
+                max_length=20,
+            ),
         ),
         migrations.AddField(
-            model_name='requirement',
-            name='verification_method',
-            field=models.CharField(choices=[('test', 'Test Automation'), ('inapp', 'In-App Validation'), ('both', 'Both Methods'), ('unspecified', 'Unspecified')], db_index=True, default='unspecified', help_text='How this requirement should be verified', max_length=20),
+            model_name="requirement",
+            name="verification_method",
+            field=models.CharField(
+                choices=[
+                    ("test", "Test Automation"),
+                    ("inapp", "In-App Validation"),
+                    ("both", "Both Methods"),
+                    ("unspecified", "Unspecified"),
+                ],
+                db_index=True,
+                default="unspecified",
+                help_text="How this requirement should be verified",
+                max_length=20,
+            ),
         ),
         migrations.CreateModel(
-            name='InAppValidation',
+            name="InAppValidation",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(help_text="Human-readable validation name (e.g., 'Verify Mobile Key Connection')", max_length=200)),
-                ('endpoint', models.CharField(blank=True, help_text="API endpoint or identifier for this validation (e.g., '/api/mobile-key/verify')", max_length=500)),
-                ('status', models.CharField(choices=[('success', 'Success'), ('failure', 'Failure'), ('unknown', 'Unknown'), ('not_run', 'Not Run')], db_index=True, default='not_run', help_text='Current validation status', max_length=20)),
-                ('last_checked', models.DateTimeField(blank=True, help_text='When this validation was last run', null=True)),
-                ('message', models.TextField(blank=True, help_text='Status message from last validation run')),
-                ('requirement', models.ForeignKey(help_text='The requirement this validation verifies', on_delete=django.db.models.deletion.CASCADE, related_name='inapp_validations', to='requirements.requirement')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "name",
+                    models.CharField(
+                        help_text="Human-readable validation name (e.g., 'Verify Mobile Key Connection')",
+                        max_length=200,
+                    ),
+                ),
+                (
+                    "endpoint",
+                    models.CharField(
+                        blank=True,
+                        help_text="API endpoint or identifier for this validation (e.g., '/api/mobile-key/verify')",
+                        max_length=500,
+                    ),
+                ),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("success", "Success"),
+                            ("failure", "Failure"),
+                            ("unknown", "Unknown"),
+                            ("not_run", "Not Run"),
+                        ],
+                        db_index=True,
+                        default="not_run",
+                        help_text="Current validation status",
+                        max_length=20,
+                    ),
+                ),
+                (
+                    "last_checked",
+                    models.DateTimeField(
+                        blank=True,
+                        help_text="When this validation was last run",
+                        null=True,
+                    ),
+                ),
+                (
+                    "message",
+                    models.TextField(
+                        blank=True, help_text="Status message from last validation run"
+                    ),
+                ),
+                (
+                    "requirement",
+                    models.ForeignKey(
+                        help_text="The requirement this validation verifies",
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="inapp_validations",
+                        to="requirements.requirement",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'In-App Validation',
-                'verbose_name_plural': 'In-App Validations',
-                'ordering': ['requirement', 'name'],
+                "verbose_name": "In-App Validation",
+                "verbose_name_plural": "In-App Validations",
+                "ordering": ["requirement", "name"],
             },
         ),
         migrations.CreateModel(
-            name='InAppValidationResult',
+            name="InAppValidationResult",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('status', models.CharField(choices=[('success', 'Success'), ('failure', 'Failure'), ('unknown', 'Unknown'), ('not_run', 'Not Run')], help_text='Result status', max_length=20)),
-                ('message', models.TextField(blank=True, help_text='Status message or error details')),
-                ('checked_at', models.DateTimeField(help_text='When this validation was executed')),
-                ('validation', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='results', to='requirements.inappvalidation')),
-                ('validation_run', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='results', to='requirements.inappvalidationrun')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("success", "Success"),
+                            ("failure", "Failure"),
+                            ("unknown", "Unknown"),
+                            ("not_run", "Not Run"),
+                        ],
+                        help_text="Result status",
+                        max_length=20,
+                    ),
+                ),
+                (
+                    "message",
+                    models.TextField(blank=True, help_text="Status message or error details"),
+                ),
+                (
+                    "checked_at",
+                    models.DateTimeField(help_text="When this validation was executed"),
+                ),
+                (
+                    "validation",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="results",
+                        to="requirements.inappvalidation",
+                    ),
+                ),
+                (
+                    "validation_run",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="results",
+                        to="requirements.inappvalidationrun",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'In-App Validation Result',
-                'verbose_name_plural': 'In-App Validation Results',
-                'ordering': ['-checked_at'],
+                "verbose_name": "In-App Validation Result",
+                "verbose_name_plural": "In-App Validation Results",
+                "ordering": ["-checked_at"],
             },
         ),
         migrations.CreateModel(
-            name='SLO',
+            name="SLO",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(db_index=True, help_text='OpenSLO metadata.name (unique identifier)', max_length=200, unique=True)),
-                ('display_name', models.CharField(blank=True, help_text='Human-readable display name', max_length=200)),
-                ('description', models.TextField(blank=True, help_text='SLO description')),
-                ('service', models.CharField(blank=True, help_text='Service name from OpenSLO spec', max_length=200)),
-                ('target', models.DecimalField(blank=True, decimal_places=4, help_text='Target SLO percentage (e.g., 0.999 for 99.9%)', max_digits=6, null=True)),
-                ('time_window', models.CharField(blank=True, help_text="Time window for SLO (e.g., '30d', '7d')", max_length=50)),
-                ('budgeting_method', models.CharField(blank=True, help_text='Budgeting method (occurrences, timeslices)', max_length=50)),
-                ('status', models.CharField(choices=[('met', 'Met'), ('at_risk', 'At Risk'), ('breached', 'Breached'), ('not_linked', 'Not Linked')], db_index=True, default='not_linked', help_text='Current SLO compliance status', max_length=20)),
-                ('current_value', models.DecimalField(blank=True, decimal_places=4, help_text='Current SLO value from observability platform', max_digits=6, null=True)),
-                ('error_budget_remaining', models.DecimalField(blank=True, decimal_places=4, help_text='Remaining error budget as decimal (e.g., 0.5 = 50%)', max_digits=6, null=True)),
-                ('last_updated', models.DateTimeField(blank=True, help_text='When status was last updated from observability platform', null=True)),
-                ('source_file', models.CharField(blank=True, help_text='Path to OpenSLO YAML source file', max_length=500)),
-                ('raw_yaml', models.TextField(blank=True, help_text='Original OpenSLO YAML content')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('requirements', models.ManyToManyField(blank=True, help_text='Requirements this SLO helps verify', related_name='slos', to='requirements.requirement')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "name",
+                    models.CharField(
+                        db_index=True,
+                        help_text="OpenSLO metadata.name (unique identifier)",
+                        max_length=200,
+                        unique=True,
+                    ),
+                ),
+                (
+                    "display_name",
+                    models.CharField(
+                        blank=True,
+                        help_text="Human-readable display name",
+                        max_length=200,
+                    ),
+                ),
+                (
+                    "description",
+                    models.TextField(blank=True, help_text="SLO description"),
+                ),
+                (
+                    "service",
+                    models.CharField(
+                        blank=True,
+                        help_text="Service name from OpenSLO spec",
+                        max_length=200,
+                    ),
+                ),
+                (
+                    "target",
+                    models.DecimalField(
+                        blank=True,
+                        decimal_places=4,
+                        help_text="Target SLO percentage (e.g., 0.999 for 99.9%)",
+                        max_digits=6,
+                        null=True,
+                    ),
+                ),
+                (
+                    "time_window",
+                    models.CharField(
+                        blank=True,
+                        help_text="Time window for SLO (e.g., '30d', '7d')",
+                        max_length=50,
+                    ),
+                ),
+                (
+                    "budgeting_method",
+                    models.CharField(
+                        blank=True,
+                        help_text="Budgeting method (occurrences, timeslices)",
+                        max_length=50,
+                    ),
+                ),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("met", "Met"),
+                            ("at_risk", "At Risk"),
+                            ("breached", "Breached"),
+                            ("not_linked", "Not Linked"),
+                        ],
+                        db_index=True,
+                        default="not_linked",
+                        help_text="Current SLO compliance status",
+                        max_length=20,
+                    ),
+                ),
+                (
+                    "current_value",
+                    models.DecimalField(
+                        blank=True,
+                        decimal_places=4,
+                        help_text="Current SLO value from observability platform",
+                        max_digits=6,
+                        null=True,
+                    ),
+                ),
+                (
+                    "error_budget_remaining",
+                    models.DecimalField(
+                        blank=True,
+                        decimal_places=4,
+                        help_text="Remaining error budget as decimal (e.g., 0.5 = 50%)",
+                        max_digits=6,
+                        null=True,
+                    ),
+                ),
+                (
+                    "last_updated",
+                    models.DateTimeField(
+                        blank=True,
+                        help_text="When status was last updated from observability platform",
+                        null=True,
+                    ),
+                ),
+                (
+                    "source_file",
+                    models.CharField(
+                        blank=True,
+                        help_text="Path to OpenSLO YAML source file",
+                        max_length=500,
+                    ),
+                ),
+                (
+                    "raw_yaml",
+                    models.TextField(blank=True, help_text="Original OpenSLO YAML content"),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "requirements",
+                    models.ManyToManyField(
+                        blank=True,
+                        help_text="Requirements this SLO helps verify",
+                        related_name="slos",
+                        to="requirements.requirement",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'SLO',
-                'verbose_name_plural': 'SLOs',
-                'ordering': ['name'],
+                "verbose_name": "SLO",
+                "verbose_name_plural": "SLOs",
+                "ordering": ["name"],
             },
         ),
     ]

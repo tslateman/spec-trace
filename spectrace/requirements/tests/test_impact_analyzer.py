@@ -1,7 +1,7 @@
 """Tests for ImpactAnalyzer service."""
+
 import subprocess
-from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 

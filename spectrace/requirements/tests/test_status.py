@@ -4,7 +4,6 @@ import pytest
 
 from requirements.models import (
     Requirement,
-    SLO,
     SLOStatus,
     TestResult,
     TestRun,
@@ -21,10 +20,10 @@ from requirements.status import (
 def requirement(db):
     """Create a basic requirement."""
     return Requirement.add_root(
-        external_id='REQ-001',
-        title='Test Requirement',
-        status='active',
-        source_file='test.md',
+        external_id="REQ-001",
+        title="Test Requirement",
+        status="active",
+        source_file="test.md",
         verification_method=VerificationMethod.TEST,
     )
 
@@ -32,7 +31,7 @@ def requirement(db):
 @pytest.fixture
 def test_run(db):
     """Create a test run."""
-    return TestRun.objects.create(source_file='results.xml')
+    return TestRun.objects.create(source_file="results.xml")
 
 
 class TestComputeVerificationStatus:
@@ -42,56 +41,56 @@ class TestComputeVerificationStatus:
     def test_compute__untested_when_no_results(self, requirement):
         """Returns 'untested' when requirement has no test results."""
         status = compute_verification_status(requirement)
-        assert status == 'untested'
+        assert status == "untested"
 
     @pytest.mark.django_db
     def test_compute__passing_when_all_pass(self, requirement, test_run):
         """Returns 'passing' when all linked tests pass."""
         result = TestResult.objects.create(
             test_run=test_run,
-            test_nodeid='test.py::test_one',
-            name='test_one',
-            status='passed',
+            test_nodeid="test.py::test_one",
+            name="test_one",
+            status="passed",
         )
         result.requirements.add(requirement)
 
         status = compute_verification_status(requirement, test_run)
-        assert status == 'passing'
+        assert status == "passing"
 
     @pytest.mark.django_db
     def test_compute__failing_when_any_fail(self, requirement, test_run):
         """Returns 'failing' when any linked test fails."""
         pass_result = TestResult.objects.create(
             test_run=test_run,
-            test_nodeid='test.py::test_one',
-            name='test_one',
-            status='passed',
+            test_nodeid="test.py::test_one",
+            name="test_one",
+            status="passed",
         )
         fail_result = TestResult.objects.create(
             test_run=test_run,
-            test_nodeid='test.py::test_two',
-            name='test_two',
-            status='failed',
+            test_nodeid="test.py::test_two",
+            name="test_two",
+            status="failed",
         )
         pass_result.requirements.add(requirement)
         fail_result.requirements.add(requirement)
 
         status = compute_verification_status(requirement, test_run)
-        assert status == 'failing'
+        assert status == "failing"
 
     @pytest.mark.django_db
     def test_compute__untested_when_all_skipped(self, requirement, test_run):
         """Returns 'untested' when all linked tests are skipped."""
         result = TestResult.objects.create(
             test_run=test_run,
-            test_nodeid='test.py::test_one',
-            name='test_one',
-            status='skipped',
+            test_nodeid="test.py::test_one",
+            name="test_one",
+            status="skipped",
         )
         result.requirements.add(requirement)
 
         status = compute_verification_status(requirement, test_run)
-        assert status == 'untested'
+        assert status == "untested"
 
 
 class TestComputeUnifiedVerificationStatus:
@@ -103,9 +102,9 @@ class TestComputeUnifiedVerificationStatus:
         # Create passing test
         result = TestResult.objects.create(
             test_run=test_run,
-            test_nodeid='test.py::test_one',
-            name='test_one',
-            status='passed',
+            test_nodeid="test.py::test_one",
+            name="test_one",
+            status="passed",
         )
         result.requirements.add(requirement)
 
@@ -114,16 +113,16 @@ class TestComputeUnifiedVerificationStatus:
         requirement.save()
 
         status = compute_unified_verification_status(requirement, test_run)
-        assert status == 'failing'
+        assert status == "failing"
 
     @pytest.mark.django_db
     def test_unified__met_slo_does_not_override(self, requirement, test_run):
         """Met SLO doesn't change test-based status."""
         result = TestResult.objects.create(
             test_run=test_run,
-            test_nodeid='test.py::test_one',
-            name='test_one',
-            status='passed',
+            test_nodeid="test.py::test_one",
+            name="test_one",
+            status="passed",
         )
         result.requirements.add(requirement)
 
@@ -131,7 +130,7 @@ class TestComputeUnifiedVerificationStatus:
         requirement.save()
 
         status = compute_unified_verification_status(requirement, test_run)
-        assert status == 'passing'
+        assert status == "passing"
 
 
 class TestUpdateAllVerificationStatuses:
@@ -151,15 +150,15 @@ class TestUpdateAllVerificationStatuses:
         # Create passing test
         result = TestResult.objects.create(
             test_run=test_run,
-            test_nodeid='test.py::test_one',
-            name='test_one',
-            status='passed',
+            test_nodeid="test.py::test_one",
+            name="test_one",
+            status="passed",
         )
         result.requirements.add(requirement)
 
         # Set SLO to breached
         requirement.slo_status = SLOStatus.BREACHED
-        requirement.verification_status = 'untested'  # Start with non-failing
+        requirement.verification_status = "untested"  # Start with non-failing
         requirement.save()
 
         # Update all statuses
@@ -167,41 +166,41 @@ class TestUpdateAllVerificationStatuses:
 
         # Requirement should be failing due to breached SLO
         requirement.refresh_from_db()
-        assert requirement.verification_status == 'failing', (
-            'INV-B violated: update_all_verification_statuses must set '
-            'breached SLO requirements to failing status'
+        assert requirement.verification_status == "failing", (
+            "INV-B violated: update_all_verification_statuses must set "
+            "breached SLO requirements to failing status"
         )
-        assert counts['failing'] >= 1
+        assert counts["failing"] >= 1
 
     @pytest.mark.django_db
     def test_update_all__returns_counts(self, requirement, test_run):
         """Returns dict with counts by status."""
         counts = update_all_verification_statuses(test_run)
 
-        assert 'passing' in counts
-        assert 'failing' in counts
-        assert 'untested' in counts
+        assert "passing" in counts
+        assert "failing" in counts
+        assert "untested" in counts
         assert sum(counts.values()) == Requirement.objects.count()
 
     @pytest.mark.django_db
     def test_update_all__respects_latest_run(self, requirement, test_run):
         """Only considers results from specified test run."""
         # Create old run with passing result
-        old_run = TestRun.objects.create(source_file='old.xml')
+        old_run = TestRun.objects.create(source_file="old.xml")
         old_result = TestResult.objects.create(
             test_run=old_run,
-            test_nodeid='test.py::test_one',
-            name='test_one',
-            status='passed',
+            test_nodeid="test.py::test_one",
+            name="test_one",
+            status="passed",
         )
         old_result.requirements.add(requirement)
 
         # Create new run with failing result
         new_result = TestResult.objects.create(
             test_run=test_run,
-            test_nodeid='test.py::test_one',
-            name='test_one',
-            status='failed',
+            test_nodeid="test.py::test_one",
+            name="test_one",
+            status="failed",
         )
         new_result.requirements.add(requirement)
 
@@ -209,4 +208,4 @@ class TestUpdateAllVerificationStatuses:
         update_all_verification_statuses(test_run)
 
         requirement.refresh_from_db()
-        assert requirement.verification_status == 'failing'
+        assert requirement.verification_status == "failing"

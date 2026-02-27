@@ -1,4 +1,5 @@
 """OpenSLO YAML parser for importing SLOs."""
+
 import re
 from decimal import Decimal
 from pathlib import Path
@@ -6,7 +7,7 @@ from typing import Any
 
 import yaml
 
-from requirements.models import Requirement, SLO, SLOStatus
+from requirements.models import SLO, Requirement, SLOStatus
 
 
 class OpenSLOParser:
@@ -60,17 +61,15 @@ class OpenSLOParser:
             return None
 
         # Check if this is an OpenSLO SLO document
-        api_version = doc.get('apiVersion', '')
-        kind = doc.get('kind', '')
+        api_version = doc.get("apiVersion", "")
+        kind = doc.get("kind", "")
 
-        if not api_version.startswith('openslo/') or kind != 'SLO':
+        if not api_version.startswith("openslo/") or kind != "SLO":
             return None
 
         return self._parse_slo_doc(doc, file_path)
 
-    def _parse_slo_doc(
-        self, doc: dict[str, Any], file_path: Path
-    ) -> dict[str, Any]:
+    def _parse_slo_doc(self, doc: dict[str, Any], file_path: Path) -> dict[str, Any]:
         """Parse an OpenSLO SLO document into a dict.
 
         Args:
@@ -80,25 +79,25 @@ class OpenSLOParser:
         Returns:
             SLO dict for database import
         """
-        metadata = doc.get('metadata', {})
-        spec = doc.get('spec', {})
-        labels = metadata.get('labels', {})
-        annotations = metadata.get('annotations', {})
+        metadata = doc.get("metadata", {})
+        spec = doc.get("spec", {})
+        labels = metadata.get("labels", {})
+        annotations = metadata.get("annotations", {})
 
         # Extract name and display name
-        name = metadata.get('name', '')
-        display_name = metadata.get('displayName', '') or name
+        name = metadata.get("name", "")
+        display_name = metadata.get("displayName", "") or name
 
         # Extract requirement links from labels or annotations
         requirement_ids = self._extract_requirement_ids(labels, annotations)
 
         # Extract target from objectives
         target = None
-        time_window = ''
-        objectives = spec.get('objectives', [])
+        time_window = ""
+        objectives = spec.get("objectives", [])
         if objectives and isinstance(objectives, list):
             first_obj = objectives[0]
-            target_value = first_obj.get('target')
+            target_value = first_obj.get("target")
             if target_value is not None:
                 try:
                     target = Decimal(str(target_value))
@@ -106,22 +105,22 @@ class OpenSLOParser:
                     pass
 
             # Extract time window
-            tw = first_obj.get('timeWindow', {})
+            tw = first_obj.get("timeWindow", {})
             if isinstance(tw, dict):
-                time_window = tw.get('duration', '')
+                time_window = tw.get("duration", "")
             elif isinstance(tw, str):
                 time_window = tw
 
         return {
-            'name': name,
-            'display_name': display_name,
-            'description': spec.get('description', ''),
-            'service': spec.get('service', ''),
-            'target': target,
-            'time_window': time_window,
-            'budgeting_method': spec.get('budgetingMethod', ''),
-            'requirement_ids': requirement_ids,
-            'source_file': str(file_path),
+            "name": name,
+            "display_name": display_name,
+            "description": spec.get("description", ""),
+            "service": spec.get("service", ""),
+            "target": target,
+            "time_window": time_window,
+            "budgeting_method": spec.get("budgetingMethod", ""),
+            "requirement_ids": requirement_ids,
+            "source_file": str(file_path),
         }
 
     def _extract_requirement_ids(
@@ -149,16 +148,16 @@ class OpenSLOParser:
                 continue
 
             # Single requirement
-            for key in ['requirement', 'spec-trace/requirement']:
+            for key in ["requirement", "spec-trace/requirement"]:
                 if key in source:
                     req_id = source[key].strip()
                     if req_id and req_id not in requirement_ids:
                         requirement_ids.append(req_id)
 
             # Multiple requirements (comma-separated)
-            for key in ['requirements', 'spec-trace/requirements']:
+            for key in ["requirements", "spec-trace/requirements"]:
                 if key in source:
-                    for req_id in source[key].split(','):
+                    for req_id in source[key].split(","):
                         req_id = req_id.strip()
                         if req_id and req_id not in requirement_ids:
                             requirement_ids.append(req_id)
@@ -166,7 +165,7 @@ class OpenSLOParser:
         return requirement_ids
 
     # File patterns for YAML files
-    FILE_PATTERNS = ('**/*.yaml', '**/*.yml')
+    FILE_PATTERNS = ("**/*.yaml", "**/*.yml")
 
     def parse_directory(self, slos_dir: Path) -> list[dict[str, Any]]:
         """Parse all YAML files in directory recursively.
@@ -208,21 +207,21 @@ def import_slos_to_database(
     created_count = 0
 
     for slo_data in slos:
-        name = slo_data['name']
-        requirement_ids = slo_data.pop('requirement_ids', [])
+        name = slo_data["name"]
+        requirement_ids = slo_data.pop("requirement_ids", [])
 
         # Get or create SLO
         slo, created = SLO.objects.update_or_create(
             name=name,
             defaults={
-                'display_name': slo_data.get('display_name', ''),
-                'description': slo_data.get('description', ''),
-                'service': slo_data.get('service', ''),
-                'target': slo_data.get('target'),
-                'time_window': slo_data.get('time_window', ''),
-                'budgeting_method': slo_data.get('budgeting_method', ''),
-                'source_file': slo_data.get('source_file', ''),
-            }
+                "display_name": slo_data.get("display_name", ""),
+                "description": slo_data.get("description", ""),
+                "service": slo_data.get("service", ""),
+                "target": slo_data.get("target"),
+                "time_window": slo_data.get("time_window", ""),
+                "budgeting_method": slo_data.get("budgeting_method", ""),
+                "source_file": slo_data.get("source_file", ""),
+            },
         )
 
         if created:
@@ -231,7 +230,7 @@ def import_slos_to_database(
         # Link to requirements
         if requirement_ids:
             requirements = Requirement.objects.filter(external_id__in=requirement_ids)
-            found_ids = set(requirements.values_list('external_id', flat=True))
+            found_ids = set(requirements.values_list("external_id", flat=True))
             missing_ids = set(requirement_ids) - found_ids
 
             if missing_ids:
@@ -269,10 +268,10 @@ def update_slo_status_from_json(json_data: dict[str, Any]) -> dict[str, int]:
     updated = 0
     not_found = 0
 
-    slos_data = json_data.get('slos', [])
+    slos_data = json_data.get("slos", [])
 
     for slo_data in slos_data:
-        name = slo_data.get('name')
+        name = slo_data.get("name")
         if not name:
             continue
 
@@ -284,15 +283,15 @@ def update_slo_status_from_json(json_data: dict[str, Any]) -> dict[str, int]:
             continue
 
         # Map status
-        status_str = slo_data.get('status', 'unknown')
+        status_str = slo_data.get("status", "unknown")
         slo.status = SLOStatus.from_string(status_str)
 
         # Update values
-        current_value = slo_data.get('current_value')
+        current_value = slo_data.get("current_value")
         if current_value is not None:
             slo.current_value = Decimal(str(current_value))
 
-        error_budget = slo_data.get('error_budget_remaining')
+        error_budget = slo_data.get("error_budget_remaining")
         if error_budget is not None:
             slo.error_budget_remaining = Decimal(str(error_budget))
 
@@ -300,7 +299,7 @@ def update_slo_status_from_json(json_data: dict[str, Any]) -> dict[str, int]:
         slo.save()
         updated += 1
 
-    return {'updated': updated, 'not_found': not_found}
+    return {"updated": updated, "not_found": not_found}
 
 
 def parse_timing_to_seconds(timing: str) -> float | None:
@@ -325,7 +324,7 @@ def parse_timing_to_seconds(timing: str) -> float | None:
     timing = timing.lower().strip()
 
     # Match patterns like "2 seconds", "500ms", "1 minute"
-    pattern = r'(\d+(?:\.\d+)?)\s*(seconds?|s|ms|milliseconds?|minutes?|m)'
+    pattern = r"(\d+(?:\.\d+)?)\s*(seconds?|s|ms|milliseconds?|minutes?|m)"
     match = re.search(pattern, timing)
 
     if not match:
@@ -334,9 +333,9 @@ def parse_timing_to_seconds(timing: str) -> float | None:
     value = float(match.group(1))
     unit = match.group(2)
 
-    if unit in ('ms', 'millisecond', 'milliseconds'):
+    if unit in ("ms", "millisecond", "milliseconds"):
         return value / 1000
-    elif unit in ('m', 'minute', 'minutes'):
+    elif unit in ("m", "minute", "minutes"):
         return value * 60
     else:  # seconds
         return value
@@ -362,7 +361,7 @@ def parse_slo_time_window_to_seconds(time_window: str) -> float | None:
     time_window = time_window.lower().strip()
 
     # Match patterns like "30d", "7d", "1h"
-    pattern = r'(\d+(?:\.\d+)?)\s*(d|days?|h|hours?|m|minutes?|s|seconds?)'
+    pattern = r"(\d+(?:\.\d+)?)\s*(d|days?|h|hours?|m|minutes?|s|seconds?)"
     match = re.search(pattern, time_window)
 
     if not match:
@@ -371,11 +370,11 @@ def parse_slo_time_window_to_seconds(time_window: str) -> float | None:
     value = float(match.group(1))
     unit = match.group(2)
 
-    if unit in ('d', 'day', 'days'):
+    if unit in ("d", "day", "days"):
         return value * 86400  # seconds per day
-    elif unit in ('h', 'hour', 'hours'):
+    elif unit in ("h", "hour", "hours"):
         return value * 3600
-    elif unit in ('m', 'minute', 'minutes'):
+    elif unit in ("m", "minute", "minutes"):
         return value * 60
     else:  # seconds
         return value
@@ -397,13 +396,13 @@ def auto_link_slos_by_timing() -> dict[str, int]:
     skipped_count = 0
 
     # Get requirements with timing defined
-    requirements_with_timing = Requirement.objects.exclude(timing='')
+    requirements_with_timing = Requirement.objects.exclude(timing="")
 
     # Get SLOs with targets (latency-based SLOs typically have targets like 0.95, 0.99)
     slos = SLO.objects.filter(target__isnull=False)
 
     for slo in slos:
-        slo_target = float(slo.target) if slo.target else 0
+        _ = float(slo.target) if slo.target else 0
 
         # For latency SLOs, we look at the time_window as a potential latency threshold
         # This is a heuristic - in practice, latency SLOs might define this differently
@@ -429,7 +428,9 @@ def auto_link_slos_by_timing() -> dict[str, int]:
                     if not slo.requirements.filter(id=req.id).exists():
                         slo.requirements.add(req)
                         linked_count += 1
-                        print(f"Auto-linked: {req.external_id} -> {slo.name} "
-                              f"(timing: {req.timing}, component: {req.component})")
+                        print(
+                            f"Auto-linked: {req.external_id} -> {slo.name} "
+                            f"(timing: {req.timing}, component: {req.component})"
+                        )
 
-    return {'linked_count': linked_count, 'skipped_count': skipped_count}
+    return {"linked_count": linked_count, "skipped_count": skipped_count}

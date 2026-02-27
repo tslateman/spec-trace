@@ -13,9 +13,7 @@ from .assertion import execute_assertion_step
 from .wait import execute_wait_step
 
 
-def execute_handler_step(
-    step_def: dict, context: dict
-) -> tuple[VerificationCheck, dict]:
+def execute_handler_step(step_def: dict, context: dict) -> tuple[VerificationCheck, dict]:
     """Execute a handler step by loading and calling the handler function.
 
     Args:

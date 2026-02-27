@@ -13,13 +13,12 @@ from unittest.mock import Mock, patch
 import pytest
 import responses
 
+from requirements.flows.engine import SequentialFlowEngine
 from requirements.flows.executors import STEP_EXECUTORS, execute_step
 from requirements.flows.executors.api_call import execute_api_call_step
 from requirements.flows.executors.assertion import execute_assertion_step
 from requirements.flows.executors.wait import execute_wait_step
-from requirements.flows.engine import SequentialFlowEngine
 from requirements.models import VerificationFlow, VerificationFlowStatus
-
 
 # ============================================================================
 # API Call Executor Tests

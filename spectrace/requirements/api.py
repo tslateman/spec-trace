@@ -1,10 +1,10 @@
 """API endpoints for external systems to push status updates."""
 
+import hmac
+import logging
 from dataclasses import asdict
 from decimal import Decimal, InvalidOperation
 from functools import wraps
-import hmac
-import logging
 
 from django.conf import settings
 from django.core.cache import cache
@@ -73,7 +73,8 @@ def require_api_key(view_func):
             )
             return JsonResponse(
                 {
-                    "error": "Authentication required. Provide API key via Authorization or X-API-Key header."
+                    "error": "Authentication required."
+                    " Provide API key via Authorization or X-API-Key header."
                 },
                 status=401,
             )
@@ -84,6 +85,7 @@ def require_api_key(view_func):
 
 
 from .models import (
+    SLO,
     ConflictConfidence,
     ConflictLog,
     InAppValidation,
@@ -91,15 +93,14 @@ from .models import (
     InAppValidationRun,
     InAppValidationStatus,
     Requirement,
-    SLO,
     SLOStatus,
     TestRun,
 )
 from .openapi.decorators import validate_request
 from .openapi.schemas import (
+    ConflictDetailResponse,
     ConflictDetectRequest,
     ConflictDetectResponse,
-    ConflictDetailResponse,
     ConflictListResponse,
     ConflictResolveRequest,
     ConflictResolveResponse,
@@ -154,9 +155,7 @@ def update_slo_status(request, data: SLOStatusRequest | None = None):
         return JsonResponse({"success": False, "error": "No data provided"}, status=400)
 
     if not data.slos:
-        return JsonResponse(
-            {"success": False, "error": "No SLOs in request"}, status=400
-        )
+        return JsonResponse({"success": False, "error": "No SLOs in request"}, status=400)
 
     updated = 0
     not_found = 0
@@ -224,9 +223,7 @@ def submit_validation_result(request, data: ValidationResultRequest | None = Non
         return JsonResponse({"success": False, "error": "No data provided"}, status=400)
 
     if not data.validations:
-        return JsonResponse(
-            {"success": False, "error": "No validations in request"}, status=400
-        )
+        return JsonResponse({"success": False, "error": "No validations in request"}, status=400)
 
     # Create validation run
     validation_run = InAppValidationRun.objects.create(
@@ -348,9 +345,7 @@ def get_requirement_status(request, external_id, data=None):
     try:
         requirement = Requirement.objects.get(external_id=external_id)
     except Requirement.DoesNotExist:
-        return JsonResponse(
-            {"success": False, "error": "Requirement not found"}, status=404
-        )
+        return JsonResponse({"success": False, "error": "Requirement not found"}, status=404)
 
     # Count linked items
     test_count = requirement.test_results.count()
@@ -492,9 +487,7 @@ def list_validation_runs(request, data=None):
     per_page = min(int(request.GET.get("per_page", 20)), 100)
 
     # Build queryset with filters
-    queryset = InAppValidationRun.objects.prefetch_related(
-        "results__validation__requirement"
-    )
+    queryset = InAppValidationRun.objects.prefetch_related("results__validation__requirement")
 
     # Filter by requirement_id
     requirement_id = request.GET.get("requirement_id")
@@ -575,9 +568,9 @@ def list_validation_runs(request, data=None):
 def get_validation_run(request, run_id, data=None):
     """Get validation run detail with all results."""
     try:
-        run = InAppValidationRun.objects.prefetch_related(
-            "results__validation__requirement"
-        ).get(id=run_id)
+        run = InAppValidationRun.objects.prefetch_related("results__validation__requirement").get(
+            id=run_id
+        )
     except InAppValidationRun.DoesNotExist:
         return JsonResponse({"error": "Validation run not found"}, status=404)
 
@@ -631,9 +624,9 @@ def get_validation_run(request, run_id, data=None):
 def get_validation_run_steps(request, run_id, data=None):
     """Get step-level detail for a validation run."""
     try:
-        run = InAppValidationRun.objects.prefetch_related(
-            "results__validation__requirement"
-        ).get(id=run_id)
+        run = InAppValidationRun.objects.prefetch_related("results__validation__requirement").get(
+            id=run_id
+        )
     except InAppValidationRun.DoesNotExist:
         return JsonResponse({"error": "Validation run not found"}, status=404)
 
@@ -932,9 +925,9 @@ def list_conflicts(request, data=None):
 def get_conflict(request, conflict_id, data=None):
     """Get full detail for a single conflict."""
     try:
-        conflict = ConflictLog.objects.select_related(
-            "requirement_a", "requirement_b"
-        ).get(id=conflict_id)
+        conflict = ConflictLog.objects.select_related("requirement_a", "requirement_b").get(
+            id=conflict_id
+        )
     except ConflictLog.DoesNotExist:
         return JsonResponse({"error": "Conflict not found"}, status=404)
 
@@ -950,9 +943,7 @@ def get_conflict(request, conflict_id, data=None):
                 "confidence": conflict.confidence,
                 "details": conflict.details,
                 "resolved": conflict.resolved,
-                "resolved_at": conflict.resolved_at.isoformat()
-                if conflict.resolved_at
-                else None,
+                "resolved_at": conflict.resolved_at.isoformat() if conflict.resolved_at else None,
                 "resolution_notes": conflict.resolution_notes,
                 "created_at": conflict.created_at.isoformat(),
             },
@@ -1028,9 +1019,7 @@ def resolve_conflict(request, conflict_id, data: ConflictResolveRequest | None =
         return JsonResponse({"error": "Conflict not found"}, status=404)
 
     if conflict.resolved:
-        return JsonResponse(
-            {"success": False, "error": "Conflict already resolved"}, status=400
-        )
+        return JsonResponse({"success": False, "error": "Conflict already resolved"}, status=400)
 
     now = timezone.now()
     conflict.resolved = True

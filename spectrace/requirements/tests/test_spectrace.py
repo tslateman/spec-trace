@@ -1,9 +1,7 @@
 """Tests for spectrace Linear integration features."""
+
 import json
-from datetime import timedelta
 from io import StringIO
-from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pytest
 from django.core.management import call_command
@@ -156,15 +154,19 @@ class TestImportTestLinksCommand:
     def test_import_links__creates_link_records(self, db, sample_requirement, tmp_path):
         """Import creates TestRequirementLink records."""
         links_json = tmp_path / "links.json"
-        links_json.write_text(json.dumps({
-            "collected_at": "2025-01-15T12:00:00Z",
-            "links": [
+        links_json.write_text(
+            json.dumps(
                 {
-                    "test_nodeid": "tests/test_auth.py::test_login",
-                    "linear_issue_ids": ["CAN-1234"],
+                    "collected_at": "2025-01-15T12:00:00Z",
+                    "links": [
+                        {
+                            "test_nodeid": "tests/test_auth.py::test_login",
+                            "linear_issue_ids": ["CAN-1234"],
+                        }
+                    ],
                 }
-            ]
-        }))
+            )
+        )
 
         out = StringIO()
         call_command("import_test_links", str(links_json), stdout=out)
@@ -179,14 +181,18 @@ class TestImportTestLinksCommand:
     def test_import_links__warns_on_missing_requirement(self, db, tmp_path):
         """Import warns when requirement not found."""
         links_json = tmp_path / "links.json"
-        links_json.write_text(json.dumps({
-            "links": [
+        links_json.write_text(
+            json.dumps(
                 {
-                    "test_nodeid": "tests/test_auth.py::test_login",
-                    "linear_issue_ids": ["MISSING-999"],
+                    "links": [
+                        {
+                            "test_nodeid": "tests/test_auth.py::test_login",
+                            "linear_issue_ids": ["MISSING-999"],
+                        }
+                    ]
                 }
-            ]
-        }))
+            )
+        )
 
         out = StringIO()
         err = StringIO()
@@ -196,17 +202,23 @@ class TestImportTestLinksCommand:
         output = out.getvalue()
         assert "MISSING-999" in output
 
-    def test_import_links__updates_existing(self, db, sample_requirement, test_requirement_link, tmp_path):
+    def test_import_links__updates_existing(
+        self, db, sample_requirement, test_requirement_link, tmp_path
+    ):
         """Import updates existing links without creating duplicates."""
         links_json = tmp_path / "links.json"
-        links_json.write_text(json.dumps({
-            "links": [
+        links_json.write_text(
+            json.dumps(
                 {
-                    "test_nodeid": "tests/test_auth.py::test_login",
-                    "linear_issue_ids": ["CAN-1234"],
+                    "links": [
+                        {
+                            "test_nodeid": "tests/test_auth.py::test_login",
+                            "linear_issue_ids": ["CAN-1234"],
+                        }
+                    ]
                 }
-            ]
-        }))
+            )
+        )
 
         call_command("import_test_links", str(links_json), stdout=StringIO())
 
@@ -314,9 +326,7 @@ class TestConflictDetector:
                 run_statuses[run.id] = {req_a.id: "failed", req_b.id: "passed"}
 
         # Check for mutual exclusion
-        conflict = detector._check_pair_for_mutual_exclusion(
-            req_a.id, req_b.id, run_statuses
-        )
+        conflict = detector._check_pair_for_mutual_exclusion(req_a.id, req_b.id, run_statuses)
 
         assert conflict is not None
         assert conflict.pattern == ConflictPattern.MUTUAL_EXCLUSION
@@ -335,9 +345,7 @@ class TestConflictDetector:
             3: {req_a.id: "failed", req_b.id: "passed"},
         }
 
-        conflict = detector._check_pair_for_mutual_exclusion(
-            req_a.id, req_b.id, run_statuses
-        )
+        conflict = detector._check_pair_for_mutual_exclusion(req_a.id, req_b.id, run_statuses)
 
         assert conflict is None  # No mutual exclusion
 

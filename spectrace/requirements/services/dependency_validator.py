@@ -1,4 +1,5 @@
 """Dependency validation service for requirement dependencies."""
+
 from collections import defaultdict
 from dataclasses import dataclass
 
@@ -8,6 +9,7 @@ from requirements.models import Requirement
 @dataclass
 class CircularDependency:
     """A circular dependency detected between requirements."""
+
     cycle: list[str]  # List of external_ids forming the cycle
 
     def __str__(self) -> str:
@@ -17,6 +19,7 @@ class CircularDependency:
 @dataclass
 class DependencyChain:
     """Transitive dependencies for a requirement."""
+
     root_id: str
     direct: list[str]  # Direct dependencies
     transitive: list[str]  # All transitive dependencies (includes direct)
@@ -37,7 +40,7 @@ class DependencyValidator:
         self._graph = defaultdict(set)
         self._reverse_graph = defaultdict(set)
 
-        for req in Requirement.objects.prefetch_related('depends_on').all():
+        for req in Requirement.objects.prefetch_related("depends_on").all():
             ext_id = req.external_id
             self._graph[ext_id]  # Ensure node exists even without dependencies
             for dep in req.depends_on.all():

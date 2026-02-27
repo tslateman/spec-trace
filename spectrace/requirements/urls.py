@@ -45,9 +45,7 @@ admin_urlpatterns = [
     path("", landing_view, name="landing"),
     path("admin/matrix/", matrix_view, name="admin-matrix"),
     path("admin/matrix/export/", matrix_export, name="admin-matrix-export"),
-    path(
-        "admin/matrix/load-demo/", matrix_load_demo_view, name="admin-matrix-load-demo"
-    ),
+    path("admin/matrix/load-demo/", matrix_load_demo_view, name="admin-matrix-load-demo"),
     path("admin/vendor-coverage/", vendor_coverage_view, name="admin-vendor-coverage"),
     path(
         "admin/vendor-coverage/load-demo/",
@@ -74,9 +72,7 @@ admin_urlpatterns = [
         name="getting-started",
     ),
     # Validation runs
-    path(
-        "admin/validation-runs/", validation_run_list_view, name="admin-validation-runs"
-    ),
+    path("admin/validation-runs/", validation_run_list_view, name="admin-validation-runs"),
     path(
         "admin/validation-runs/<int:run_id>/",
         validation_run_detail_view,
@@ -95,9 +91,7 @@ admin_urlpatterns = [
     # Flow status
     path("admin/flow-status/", flow_status_list_view, name="admin-flow-status"),
     path("admin/flow-status/live/", flow_live_status_view, name="admin-flow-live"),
-    path(
-        "admin/flow-status/load-demo/", flow_load_demo_view, name="admin-flow-load-demo"
-    ),
+    path("admin/flow-status/load-demo/", flow_load_demo_view, name="admin-flow-load-demo"),
     path(
         "admin/flow-status/run/<int:run_id>/",
         flow_run_detail_view,
@@ -139,9 +133,7 @@ def _get_webhook_urlpatterns():
     from requirements import webhooks
 
     return [
-        path(
-            "api/webhooks/github/", webhooks.github_webhook, name="api-github-webhook"
-        ),
+        path("api/webhooks/github/", webhooks.github_webhook, name="api-github-webhook"),
     ]
 
 
@@ -196,9 +188,7 @@ api_urlpatterns = [
     # Conflicts
     path("api/conflicts/", api.list_conflicts, name="api-conflicts"),
     path("api/conflicts/detect/", api.detect_conflicts, name="api-conflicts-detect"),
-    path(
-        "api/conflicts/<int:conflict_id>/", api.get_conflict, name="api-conflict-detail"
-    ),
+    path("api/conflicts/<int:conflict_id>/", api.get_conflict, name="api-conflict-detail"),
     path(
         "api/conflicts/<int:conflict_id>/resolve/",
         api.resolve_conflict,

@@ -1,4 +1,5 @@
 """Demo data setup for vendor coverage page."""
+
 import logging
 from datetime import timedelta
 
@@ -88,10 +89,10 @@ def setup_vendor_demo(clear: bool = True) -> dict:
         logger.warning("No requirements found; creating minimal demo requirements")
         for i in range(12):
             req, _ = Requirement.objects.get_or_create(
-                external_id=f"DEMO-REQ-{i+1:03d}",
+                external_id=f"DEMO-REQ-{i + 1:03d}",
                 defaults={
-                    "title": f"Demo Requirement {i+1}",
-                    "description": f"Demo requirement for vendor coverage testing",
+                    "title": f"Demo Requirement {i + 1}",
+                    "description": "Demo requirement for vendor coverage testing",
                 },
             )
             requirements.append(req)
@@ -103,9 +104,7 @@ def setup_vendor_demo(clear: bool = True) -> dict:
         imported_at=now - timedelta(days=2),
     )
     # Manually set imported_at since auto_now_add ignores our value
-    InAppValidationRun.objects.filter(pk=older_run.pk).update(
-        imported_at=now - timedelta(days=2)
-    )
+    InAppValidationRun.objects.filter(pk=older_run.pk).update(imported_at=now - timedelta(days=2))
     older_run.refresh_from_db()
 
     newer_run = InAppValidationRun.objects.create(
@@ -133,8 +132,8 @@ def setup_vendor_demo(clear: bool = True) -> dict:
             # Create validation
             validation = InAppValidation.objects.create(
                 requirement=req,
-                name=f"{vendor_name} - Validation {i+1}",
-                endpoint=f"{DEMO_SOURCE_PREFIX}/{vendor_name.lower()}/v{i+1}",
+                name=f"{vendor_name} - Validation {i + 1}",
+                endpoint=f"{DEMO_SOURCE_PREFIX}/{vendor_name.lower()}/v{i + 1}",
                 vendor=vendor_name,
                 feature_flags=feature_flags,
             )
@@ -165,14 +164,20 @@ def setup_vendor_demo(clear: bool = True) -> dict:
                     message="Connection timeout - regression detected",
                     checked_at=newer_run.imported_at + timedelta(minutes=i),
                     steps=[
-                        {"name": "Connect", "passed": False, "error": "Timeout after 30s"},
+                        {
+                            "name": "Connect",
+                            "passed": False,
+                            "error": "Timeout after 30s",
+                        },
                         {"name": "Verify", "passed": False, "skipped": True},
                     ],
                 )
                 result["results_created"] += 2
             else:
                 # Normal case: same status in both runs
-                status = InAppValidationStatus.SUCCESS if should_pass else InAppValidationStatus.FAILURE
+                status = (
+                    InAppValidationStatus.SUCCESS if should_pass else InAppValidationStatus.FAILURE
+                )
                 message = "Validation passed" if should_pass else "Assertion failed"
 
                 for run in [older_run, newer_run]:

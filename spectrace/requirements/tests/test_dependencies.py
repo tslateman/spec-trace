@@ -1,14 +1,11 @@
 """Tests for requirement dependency features."""
+
 import tempfile
 from pathlib import Path
-
-import pytest
 
 from requirements.models import Requirement, TestRequirementLink
 from requirements.parser import SpecParser, import_requirements_to_database
 from requirements.services.dependency_validator import (
-    CircularDependency,
-    DependencyChain,
     DependencyValidator,
 )
 from requirements.services.impact_analyzer import ImpactAnalyzer
@@ -163,9 +160,7 @@ class TestImportDependencies:
         import_requirements_to_database(requirements, clear_existing=True)
 
         dependent = Requirement.objects.get(external_id="REQ-DEPENDENT")
-        assert list(dependent.depends_on.values_list("external_id", flat=True)) == [
-            "REQ-BASE"
-        ]
+        assert list(dependent.depends_on.values_list("external_id", flat=True)) == ["REQ-BASE"]
 
     def test_import__warns_on_missing_dependency(self, db, capsys):
         """Prints warning when dependency target doesn't exist."""

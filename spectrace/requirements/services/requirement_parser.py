@@ -3,12 +3,14 @@
 Uses regex patterns to extract FRET-inspired structured fields from
 unstructured text like Linear issue descriptions.
 """
+
 import re
 from typing import TypedDict
 
 
 class StructuredFields(TypedDict, total=False):
     """Extracted structured fields from text."""
+
     scope: str
     condition: str
     component: str
@@ -21,38 +23,34 @@ class StructuredFields(TypedDict, total=False):
 EXTRACTION_PATTERNS = {
     # Scope: when does this requirement apply?
     # Matches: "in active_session", "during checkout", "while logged in"
-    'scope': [
-        r'(?:in|during|while)\s+([a-z][a-z0-9_]*(?:[-_][a-z0-9_]+)*(?:\s+(?:mode|state|phase|session|flow))?)',
-        r'(?:when\s+in)\s+([a-z][a-z0-9_]*(?:[-_][a-z0-9_]+)*)',
+    "scope": [
+        r"(?:in|during|while)\s+([a-z][a-z0-9_]*(?:[-_][a-z0-9_]+)*(?:\s+(?:mode|state|phase|session|flow))?)",
+        r"(?:when\s+in)\s+([a-z][a-z0-9_]*(?:[-_][a-z0-9_]+)*)",
     ],
-
     # Condition: what triggers the behavior?
     # Matches: "when battery < 10", "if user is logged in", "whenever timeout occurs"
-    'condition': [
-        r'(?:when|if|whenever)\s+(.+?)(?:\.|,|then|the system|shall|should|must|will|$)',
-        r'(?:given\s+that)\s+(.+?)(?:\.|,|then|$)',
+    "condition": [
+        r"(?:when|if|whenever)\s+(.+?)(?:\.|,|then|the system|shall|should|must|will|$)",
+        r"(?:given\s+that)\s+(.+?)(?:\.|,|then|$)",
     ],
-
     # Component: what system owns this?
     # Matches: "the warning_system should", "in the auth_service"
-    'component': [
-        r'(?:the|in|by)\s+([a-z][a-z0-9_]*(?:[-_][a-z0-9_]+)*)\s+(?:should|shall|must|will|component|service|system|module)',
-        r'([a-z][a-z0-9_]*(?:[-_][a-z0-9_]+)*)\s+(?:component|service|system|module)\s+(?:should|shall|must|will)',
+    "component": [
+        r"(?:the|in|by)\s+([a-z][a-z0-9_]*(?:[-_][a-z0-9_]+)*)\s+(?:should|shall|must|will|component|service|system|module)",
+        r"([a-z][a-z0-9_]*(?:[-_][a-z0-9_]+)*)\s+(?:component|service|system|module)\s+(?:should|shall|must|will)",
     ],
-
     # Timing: performance constraint?
     # Matches: "within 2 seconds", "in 500ms", "after 1 minute"
-    'timing': [
-        r'(?:within|in|after|under)\s+(\d+\s*(?:seconds?|s|ms|milliseconds?|minutes?|m))',
-        r'(?:response\s+time|latency)\s*(?:of|:)?\s*(\d+\s*(?:seconds?|s|ms|milliseconds?|minutes?|m))',
-        r'(\d+\s*(?:seconds?|s|ms|milliseconds?|minutes?|m))\s+(?:timeout|deadline|limit)',
+    "timing": [
+        r"(?:within|in|after|under)\s+(\d+\s*(?:seconds?|s|ms|milliseconds?|minutes?|m))",
+        r"(?:response\s+time|latency)\s*(?:of|:)?\s*(\d+\s*(?:seconds?|s|ms|milliseconds?|minutes?|m))",
+        r"(\d+\s*(?:seconds?|s|ms|milliseconds?|minutes?|m))\s+(?:timeout|deadline|limit)",
     ],
-
     # Response: what must happen?
     # Matches: "shall display warning", "should send notification", "must log error"
-    'response': [
-        r'(?:shall|should|must|will)\s+(.+?)(?:\.|$)',
-        r'(?:the\s+system|it)\s+(?:shall|should|must|will)\s+(.+?)(?:\.|$)',
+    "response": [
+        r"(?:shall|should|must|will)\s+(.+?)(?:\.|$)",
+        r"(?:the\s+system|it)\s+(?:shall|should|must|will)\s+(.+?)(?:\.|$)",
     ],
 }
 
@@ -99,27 +97,27 @@ def _clean_extracted_value(value: str, field: str) -> str:
         Cleaned value
     """
     if not value:
-        return ''
+        return ""
 
     # Remove trailing punctuation
-    value = value.rstrip('.,;:')
+    value = value.rstrip(".,;:")
 
     # For component, normalize to snake_case
-    if field == 'component':
-        value = re.sub(r'[\s-]+', '_', value.lower())
+    if field == "component":
+        value = re.sub(r"[\s-]+", "_", value.lower())
         # Remove any remaining non-identifier characters
-        value = re.sub(r'[^a-z0-9_]', '', value)
+        value = re.sub(r"[^a-z0-9_]", "", value)
 
     # For timing, normalize format
-    elif field == 'timing':
+    elif field == "timing":
         # Ensure consistent format like "2 seconds" or "500ms"
         value = value.lower().strip()
         # Add "within" prefix if not present
-        if not value.startswith(('within', 'in', 'under', 'after')):
+        if not value.startswith(("within", "in", "under", "after")):
             value = f"within {value}"
 
     # For condition and response, capitalize first letter
-    elif field in ('condition', 'response'):
+    elif field in ("condition", "response"):
         if value and value[0].islower():
             value = value[0].upper() + value[1:]
 
@@ -147,7 +145,10 @@ def extract_from_markdown(text: str) -> StructuredFields:
 
     # Pattern for labeled sections in markdown
     # Matches: "**Scope:** value", "## Condition: value", "- Timing: value"
-    labeled_pattern = r'(?:\*\*|#+|-|\*)\s*(scope|condition|component|timing|response)\s*[:\*]+\s*(.+?)(?:\n|$)'
+    labeled_pattern = (
+        r"(?:\*\*|#+|-|\*)\s*(scope|condition|component|timing|response)"
+        r"\s*[:\*]+\s*(.+?)(?:\n|$)"
+    )
 
     for match in re.finditer(labeled_pattern, text, re.IGNORECASE):
         field = match.group(1).lower()

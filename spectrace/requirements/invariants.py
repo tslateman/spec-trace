@@ -42,7 +42,7 @@ class InvariantViolation:
     code: str
     requirement_id: str
     message: str
-    severity: Literal['error', 'warning']
+    severity: Literal["error", "warning"]
     details: dict = field(default_factory=dict)
     fixable: bool = False
 
@@ -61,32 +61,32 @@ class InvariantCheckResult:
 
     @property
     def error_count(self) -> int:
-        return sum(1 for v in self.violations if v.severity == 'error')
+        return sum(1 for v in self.violations if v.severity == "error")
 
     @property
     def warning_count(self) -> int:
-        return sum(1 for v in self.violations if v.severity == 'warning')
+        return sum(1 for v in self.violations if v.severity == "warning")
 
     def to_dict(self) -> dict:
         """Convert to JSON-serializable dict."""
         return {
-            'violations': [
+            "violations": [
                 {
-                    'code': v.code,
-                    'requirement_id': v.requirement_id,
-                    'message': v.message,
-                    'severity': v.severity,
-                    'fixable': v.fixable,
+                    "code": v.code,
+                    "requirement_id": v.requirement_id,
+                    "message": v.message,
+                    "severity": v.severity,
+                    "fixable": v.fixable,
                     **v.details,
                 }
                 for v in self.violations
             ],
-            'summary': {
-                'checks_performed': self.checks_performed,
-                'total_violations': len(self.violations),
-                'errors': self.error_count,
-                'warnings': self.warning_count,
-                'fixed': self.fixed_count,
+            "summary": {
+                "checks_performed": self.checks_performed,
+                "total_violations": len(self.violations),
+                "errors": self.error_count,
+                "warnings": self.warning_count,
+                "fixed": self.fixed_count,
             },
         }
 
@@ -114,16 +114,15 @@ def check_inv_a_status_consistency(
 
         if req.verification_status != computed:
             violation = InvariantViolation(
-                code='INV-A',
+                code="INV-A",
                 requirement_id=req.external_id,
                 message=(
-                    f"Status mismatch: stored '{req.verification_status}', "
-                    f"computed '{computed}'"
+                    f"Status mismatch: stored '{req.verification_status}', computed '{computed}'"
                 ),
-                severity='error',
+                severity="error",
                 details={
-                    'stored_status': req.verification_status,
-                    'computed_status': computed,
+                    "stored_status": req.verification_status,
+                    "computed_status": computed,
                 },
                 fixable=True,
             )
@@ -131,7 +130,7 @@ def check_inv_a_status_consistency(
 
             if fix:
                 req.verification_status = computed
-                req.save(update_fields=['verification_status'])
+                req.save(update_fields=["verification_status"])
                 result.fixed_count += 1
 
     return result
@@ -155,26 +154,25 @@ def check_inv_b_slo_override(fix: bool = False) -> InvariantCheckResult:
     for req in breached_reqs:
         result.checks_performed += 1
 
-        if req.verification_status != 'failing':
+        if req.verification_status != "failing":
             violation = InvariantViolation(
-                code='INV-B',
+                code="INV-B",
                 requirement_id=req.external_id,
                 message=(
-                    f"SLO breached but status is '{req.verification_status}', "
-                    f"should be 'failing'"
+                    f"SLO breached but status is '{req.verification_status}', should be 'failing'"
                 ),
-                severity='error',
+                severity="error",
                 details={
-                    'slo_status': req.slo_status,
-                    'verification_status': req.verification_status,
+                    "slo_status": req.slo_status,
+                    "verification_status": req.verification_status,
                 },
                 fixable=True,
             )
             result.violations.append(violation)
 
             if fix:
-                req.verification_status = 'failing'
-                req.save(update_fields=['verification_status'])
+                req.verification_status = "failing"
+                req.save(update_fields=["verification_status"])
                 result.fixed_count += 1
 
     return result
@@ -197,26 +195,23 @@ def check_inv_d_link_uniqueness() -> InvariantCheckResult:
     from django.db.models import Count
 
     duplicates = (
-        TestRequirementLink.objects.values('test_nodeid', 'requirement')
-        .annotate(count=Count('id'))
+        TestRequirementLink.objects.values("test_nodeid", "requirement")
+        .annotate(count=Count("id"))
         .filter(count__gt=1)
     )
 
     for dup in duplicates:
         result.checks_performed += 1
-        req = Requirement.objects.get(pk=dup['requirement'])
+        req = Requirement.objects.get(pk=dup["requirement"])
 
         violation = InvariantViolation(
-            code='INV-D',
+            code="INV-D",
             requirement_id=req.external_id,
-            message=(
-                f"Duplicate links: {dup['count']} links for test "
-                f"'{dup['test_nodeid']}'"
-            ),
-            severity='error',
+            message=(f"Duplicate links: {dup['count']} links for test '{dup['test_nodeid']}'"),
+            severity="error",
             details={
-                'test_nodeid': dup['test_nodeid'],
-                'link_count': dup['count'],
+                "test_nodeid": dup["test_nodeid"],
+                "link_count": dup["count"],
             },
             fixable=False,  # Requires manual resolution
         )
@@ -247,7 +242,7 @@ def check_inv_e_review_flag(fix: bool = False) -> InvariantCheckResult:
 
     # Links with failed/error status but not flagged for review
     unflagged_failures = TestRequirementLink.objects.filter(
-        last_status__in=['failed', 'error'],
+        last_status__in=["failed", "error"],
         needs_review=False,
     )
 
@@ -255,16 +250,16 @@ def check_inv_e_review_flag(fix: bool = False) -> InvariantCheckResult:
         result.checks_performed += 1
 
         violation = InvariantViolation(
-            code='INV-E',
+            code="INV-E",
             requirement_id=link.requirement.external_id,
             message=(
                 f"Test '{link.test_nodeid}' has status '{link.last_status}' "
                 f"but needs_review is False"
             ),
-            severity='warning',
+            severity="warning",
             details={
-                'test_nodeid': link.test_nodeid,
-                'last_status': link.last_status,
+                "test_nodeid": link.test_nodeid,
+                "last_status": link.last_status,
             },
             fixable=True,
         )
@@ -272,8 +267,8 @@ def check_inv_e_review_flag(fix: bool = False) -> InvariantCheckResult:
 
         if fix:
             link.needs_review = True
-            link.review_reason = 'INV-E fix: unflagged failure'
-            link.save(update_fields=['needs_review', 'review_reason'])
+            link.review_reason = "INV-E fix: unflagged failure"
+            link.save(update_fields=["needs_review", "review_reason"])
             result.fixed_count += 1
 
     if not unflagged_failures:
@@ -301,17 +296,17 @@ def check_inv_f_flow_completion() -> InvariantCheckResult:
     for run in incomplete_with_timestamp:
         result.checks_performed += 1
         violation = InvariantViolation(
-            code='INV-F',
-            requirement_id=f'flow-run-{run.id}',
+            code="INV-F",
+            requirement_id=f"flow-run-{run.id}",
             message=(
                 f"Flow run {run.id} has completed_at but status is "
                 f"'{run.status}' (expected 'passed' or 'failed')"
             ),
-            severity='error',
+            severity="error",
             details={
-                'flow_run_id': run.id,
-                'flow_name': run.flow.name,
-                'status': run.status,
+                "flow_run_id": run.id,
+                "flow_name": run.flow.name,
+                "status": run.status,
             },
             fixable=False,
         )
@@ -326,17 +321,14 @@ def check_inv_f_flow_completion() -> InvariantCheckResult:
     for run in complete_without_timestamp:
         result.checks_performed += 1
         violation = InvariantViolation(
-            code='INV-F',
-            requirement_id=f'flow-run-{run.id}',
-            message=(
-                f"Flow run {run.id} has status '{run.status}' but no "
-                f"completed_at timestamp"
-            ),
-            severity='error',
+            code="INV-F",
+            requirement_id=f"flow-run-{run.id}",
+            message=(f"Flow run {run.id} has status '{run.status}' but no completed_at timestamp"),
+            severity="error",
             details={
-                'flow_run_id': run.id,
-                'flow_name': run.flow.name,
-                'status': run.status,
+                "flow_run_id": run.id,
+                "flow_name": run.flow.name,
+                "status": run.status,
             },
             fixable=False,
         )
@@ -366,14 +358,12 @@ def check_inv_g_claimed_has_agent() -> InvariantCheckResult:
     for task in orphan_tasks:
         result.checks_performed += 1
         violation = InvariantViolation(
-            code='INV-G',
+            code="INV-G",
             requirement_id=task.external_id,
-            message=(
-                f"Task has status '{task.status}' but no claimed_by agent"
-            ),
-            severity='error',
+            message=(f"Task has status '{task.status}' but no claimed_by agent"),
+            severity="error",
             details={
-                'task_status': task.status,
+                "task_status": task.status,
             },
             fixable=False,
         )
@@ -405,23 +395,19 @@ def check_inv_h_claimed_has_lease() -> InvariantCheckResult:
     for task in no_lease_tasks:
         result.checks_performed += 1
         violation = InvariantViolation(
-            code='INV-H',
+            code="INV-H",
             requirement_id=task.external_id,
-            message=(
-                f"Task is CLAIMED but has no lease_expires timestamp"
-            ),
-            severity='error',
+            message=("Task is CLAIMED but has no lease_expires timestamp"),
+            severity="error",
             details={
-                'claimed_by': task.claimed_by.agent_id if task.claimed_by else None,
+                "claimed_by": task.claimed_by.agent_id if task.claimed_by else None,
             },
             fixable=False,
         )
         result.violations.append(violation)
 
     if not no_lease_tasks:
-        result.checks_performed = AgentTask.objects.filter(
-            status=AgentTaskStatus.CLAIMED
-        ).count()
+        result.checks_performed = AgentTask.objects.filter(status=AgentTaskStatus.CLAIMED).count()
 
     return result
 
@@ -446,14 +432,12 @@ def check_inv_i_nondraft_has_history() -> InvariantCheckResult:
 
         if history_count == 0:
             violation = InvariantViolation(
-                code='INV-I',
+                code="INV-I",
                 requirement_id=task.external_id,
-                message=(
-                    f"Task has status '{task.status}' but no history entries"
-                ),
-                severity='warning',
+                message=(f"Task has status '{task.status}' but no history entries"),
+                severity="warning",
                 details={
-                    'task_status': task.status,
+                    "task_status": task.status,
                 },
                 fixable=False,
             )
@@ -486,14 +470,12 @@ def check_inv_j_approved_has_review() -> InvariantCheckResult:
 
         if not has_approved_review:
             violation = InvariantViolation(
-                code='INV-J',
+                code="INV-J",
                 requirement_id=task.external_id,
-                message=(
-                    f"Task has status '{task.status}' but no approved review record"
-                ),
-                severity='error',
+                message=(f"Task has status '{task.status}' but no approved review record"),
+                severity="error",
                 details={
-                    'task_status': task.status,
+                    "task_status": task.status,
                 },
                 fixable=False,
             )
@@ -512,9 +494,7 @@ def check_inv_k_no_self_review() -> InvariantCheckResult:
     """
     result = InvariantCheckResult()
 
-    reviews = AgentTaskReview.objects.select_related(
-        'task__claimed_by', 'reviewer'
-    ).all()
+    reviews = AgentTaskReview.objects.select_related("task__claimed_by", "reviewer").all()
 
     for review in reviews:
         result.checks_performed += 1
@@ -525,16 +505,14 @@ def check_inv_k_no_self_review() -> InvariantCheckResult:
             and review.task.claimed_by.agent_id == review.reviewer.agent_id
         ):
             violation = InvariantViolation(
-                code='INV-K',
+                code="INV-K",
                 requirement_id=review.task.external_id,
-                message=(
-                    f"Agent '{review.reviewer.agent_id}' reviewed their own work"
-                ),
-                severity='error',
+                message=(f"Agent '{review.reviewer.agent_id}' reviewed their own work"),
+                severity="error",
                 details={
-                    'reviewer_id': review.reviewer.agent_id,
-                    'review_id': review.id,
-                    'decision': review.decision,
+                    "reviewer_id": review.reviewer.agent_id,
+                    "review_id": review.id,
+                    "decision": review.decision,
                 },
                 fixable=False,
             )

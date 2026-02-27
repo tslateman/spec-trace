@@ -10,6 +10,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 import os
 from pathlib import Path
+
 from django.urls import reverse_lazy
 from django.utils.translation import gettext_lazy as _
 
@@ -22,39 +23,32 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 # In production, set SECRET_KEY environment variable
-SECRET_KEY = os.environ.get(
-    'SECRET_KEY',
-    'django-insecure-dev-key-change-in-production'
-)
+SECRET_KEY = os.environ.get("SECRET_KEY", "django-insecure-dev-key-change-in-production")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # Set DEBUG=false in production environment
-DEBUG = os.environ.get('DEBUG', 'true').lower() in ('true', '1', 'yes')
+DEBUG = os.environ.get("DEBUG", "true").lower() in ("true", "1", "yes")
 
 # ALLOWED_HOSTS must be set in production
 # Set as comma-separated list: ALLOWED_HOSTS=example.com,www.example.com
 ALLOWED_HOSTS = [
-    h.strip()
-    for h in os.environ.get('ALLOWED_HOSTS', '').split(',')
-    if h.strip()
-] or ['localhost', '127.0.0.1', '[::1]']
+    h.strip() for h in os.environ.get("ALLOWED_HOSTS", "").split(",") if h.strip()
+] or ["localhost", "127.0.0.1", "[::1]"]
 
 # API key for external systems to submit data
 # Required for /api/update-slo-status, /api/submit-validation-result, etc.
-SPECTRACE_API_KEY = os.environ.get('SPECTRACE_API_KEY', '')
+SPECTRACE_API_KEY = os.environ.get("SPECTRACE_API_KEY", "")
 
 # GitHub App configuration for CI/CD integration
 # Create a GitHub App at https://github.com/settings/apps
-GITHUB_APP_ID = os.environ.get('GITHUB_APP_ID', '')
-GITHUB_PRIVATE_KEY = os.environ.get('GITHUB_PRIVATE_KEY', '')  # PEM format
-GITHUB_WEBHOOK_SECRET = os.environ.get('GITHUB_WEBHOOK_SECRET', '')
+GITHUB_APP_ID = os.environ.get("GITHUB_APP_ID", "")
+GITHUB_PRIVATE_KEY = os.environ.get("GITHUB_PRIVATE_KEY", "")  # PEM format
+GITHUB_WEBHOOK_SECRET = os.environ.get("GITHUB_WEBHOOK_SECRET", "")
 
 # Optional: restrict webhooks to specific repositories (comma-separated)
 # Leave empty to allow all repositories where the app is installed
 GITHUB_ALLOWED_REPOS = [
-    r.strip()
-    for r in os.environ.get('GITHUB_ALLOWED_REPOS', '').split(',')
-    if r.strip()
+    r.strip() for r in os.environ.get("GITHUB_ALLOWED_REPOS", "").split(",") if r.strip()
 ]
 
 
@@ -64,17 +58,17 @@ INSTALLED_APPS = [
     # django-unfold must be before django.contrib.admin
     "unfold",
     "unfold.contrib.filters",
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
     # Third-party apps
-    'treebeard',
+    "treebeard",
     # Local apps
-    'requirements',
-    'spectrace_client',
+    "requirements",
+    "spectrace_client",
 ]
 
 # django-unfold configuration
@@ -154,45 +148,45 @@ UNFOLD = {
 }
 
 MIDDLEWARE = [
-    'django.middleware.security.SecurityMiddleware',
-    'requirements.middleware.RequestSizeLimitMiddleware',
-    'requirements.middleware.RequestIDMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "django.middleware.security.SecurityMiddleware",
+    "requirements.middleware.RequestSizeLimitMiddleware",
+    "requirements.middleware.RequestIDMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = 'spectrace.urls'
+ROOT_URLCONF = "spectrace.urls"
 
 TEMPLATES = [
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / "templates"],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.debug',
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [BASE_DIR / "templates"],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.debug",
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
             ],
         },
     },
 ]
 
-WSGI_APPLICATION = 'spectrace.wsgi.application'
+WSGI_APPLICATION = "spectrace.wsgi.application"
 
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",
     }
 }
 
@@ -202,16 +196,16 @@ DATABASES = {
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
 
@@ -219,9 +213,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = "UTC"
 
 USE_I18N = True
 
@@ -231,10 +225,10 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = "static/"
 
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

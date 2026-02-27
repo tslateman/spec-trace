@@ -4,15 +4,19 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('requirements', '0010_requirement_depends_on'),
+        ("requirements", "0010_requirement_depends_on"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='verificationflow',
-            name='requirements',
-            field=models.ManyToManyField(blank=True, help_text='Requirements this flow verifies', related_name='verification_flows', to='requirements.requirement'),
+            model_name="verificationflow",
+            name="requirements",
+            field=models.ManyToManyField(
+                blank=True,
+                help_text="Requirements this flow verifies",
+                related_name="verification_flows",
+                to="requirements.requirement",
+            ),
         ),
     ]

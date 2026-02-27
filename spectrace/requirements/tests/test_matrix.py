@@ -1,10 +1,11 @@
 """Tests for matrix data layer."""
+
 import pytest
 
 from requirements.matrix import (
-    get_matrix_data,
-    get_cell_css_class,
     get_cell_color,
+    get_cell_css_class,
+    get_matrix_data,
 )
 from requirements.models import (
     Requirement,
@@ -95,12 +96,12 @@ class TestGetMatrixDataEmpty:
         """Matrix with no requirements returns empty data."""
         data = get_matrix_data()
 
-        assert data['requirements'] == []
-        assert data['tests'] == []
-        assert data['cells'] == {}
-        assert data['pagination']['total_requirements'] == 0
-        assert data['pagination']['total_pages'] == 1
-        assert data['pagination']['page'] == 1
+        assert data["requirements"] == []
+        assert data["tests"] == []
+        assert data["cells"] == {}
+        assert data["pagination"]["total_requirements"] == 0
+        assert data["pagination"]["total_pages"] == 1
+        assert data["pagination"]["page"] == 1
 
 
 class TestGetMatrixDataBasic:
@@ -111,8 +112,8 @@ class TestGetMatrixDataBasic:
         """Matrix returns all requirements."""
         data = get_matrix_data()
 
-        assert len(data['requirements']) == 3
-        external_ids = [r.external_id for r in data['requirements']]
+        assert len(data["requirements"]) == 3
+        external_ids = [r.external_id for r in data["requirements"]]
         assert "REQ-001" in external_ids
         assert "REQ-002" in external_ids
         assert "REQ-003" in external_ids
@@ -122,8 +123,8 @@ class TestGetMatrixDataBasic:
         """Matrix returns unique tests."""
         data = get_matrix_data()
 
-        assert len(data['tests']) == 3
-        nodeids = [t['nodeid'] for t in data['tests']]
+        assert len(data["tests"]) == 3
+        nodeids = [t["nodeid"] for t in data["tests"]]
         assert "tests/test_auth.py::test_login" in nodeids
         assert "tests/test_auth.py::test_logout" in nodeids
         assert "tests/test_dashboard.py::test_view" in nodeids
@@ -133,9 +134,9 @@ class TestGetMatrixDataBasic:
         """Tests include name and file metadata."""
         data = get_matrix_data()
 
-        test = next(t for t in data['tests'] if t['name'] == 'test_login')
-        assert test['file'] == 'tests/test_auth.py'
-        assert test['classname'] == 'tests.test_auth'
+        test = next(t for t in data["tests"] if t["name"] == "test_login")
+        assert test["file"] == "tests/test_auth.py"
+        assert test["classname"] == "tests.test_auth"
 
 
 class TestCellMatrix:
@@ -147,10 +148,10 @@ class TestCellMatrix:
         data = get_matrix_data()
 
         # REQ-001 + test_login = passed
-        cell = data['cells'][('REQ-001', 'tests/test_auth.py::test_login')]
-        assert cell['status'] == 'passed'
-        assert cell['linked'] is True
-        assert cell['test_result_id'] is not None
+        cell = data["cells"][("REQ-001", "tests/test_auth.py::test_login")]
+        assert cell["status"] == "passed"
+        assert cell["linked"] is True
+        assert cell["test_result_id"] is not None
 
     @pytest.mark.django_db
     def test_unlinked_cell(self, sample_requirements, sample_test_results):
@@ -158,10 +159,10 @@ class TestCellMatrix:
         data = get_matrix_data()
 
         # REQ-002 is not linked to test_login
-        cell = data['cells'][('REQ-002', 'tests/test_auth.py::test_login')]
-        assert cell['status'] == 'unlinked'
-        assert cell['linked'] is False
-        assert cell['test_result_id'] is None
+        cell = data["cells"][("REQ-002", "tests/test_auth.py::test_login")]
+        assert cell["status"] == "unlinked"
+        assert cell["linked"] is False
+        assert cell["test_result_id"] is None
 
     @pytest.mark.django_db
     def test_failed_cell(self, sample_requirements, sample_test_results):
@@ -169,9 +170,9 @@ class TestCellMatrix:
         data = get_matrix_data()
 
         # REQ-001 + test_logout = failed
-        cell = data['cells'][('REQ-001', 'tests/test_auth.py::test_logout')]
-        assert cell['status'] == 'failed'
-        assert cell['linked'] is True
+        cell = data["cells"][("REQ-001", "tests/test_auth.py::test_logout")]
+        assert cell["status"] == "failed"
+        assert cell["linked"] is True
 
 
 class TestPagination:
@@ -182,34 +183,34 @@ class TestPagination:
         """Default pagination values are correct."""
         data = get_matrix_data()
 
-        assert data['pagination']['page'] == 1
-        assert data['pagination']['per_page'] == 25
-        assert data['pagination']['total_requirements'] == 3
-        assert data['pagination']['total_pages'] == 1
-        assert data['pagination']['has_next'] is False
-        assert data['pagination']['has_prev'] is False
+        assert data["pagination"]["page"] == 1
+        assert data["pagination"]["per_page"] == 25
+        assert data["pagination"]["total_requirements"] == 3
+        assert data["pagination"]["total_pages"] == 1
+        assert data["pagination"]["has_next"] is False
+        assert data["pagination"]["has_prev"] is False
 
     @pytest.mark.django_db
     def test_pagination_with_small_per_page(self, sample_requirements):
         """Pagination works with small per_page value."""
         data = get_matrix_data(page=1, per_page=2)
 
-        assert len(data['requirements']) == 2
-        assert data['pagination']['page'] == 1
-        assert data['pagination']['per_page'] == 2
-        assert data['pagination']['total_pages'] == 2
-        assert data['pagination']['has_next'] is True
-        assert data['pagination']['has_prev'] is False
+        assert len(data["requirements"]) == 2
+        assert data["pagination"]["page"] == 1
+        assert data["pagination"]["per_page"] == 2
+        assert data["pagination"]["total_pages"] == 2
+        assert data["pagination"]["has_next"] is True
+        assert data["pagination"]["has_prev"] is False
 
     @pytest.mark.django_db
     def test_pagination_page_2(self, sample_requirements):
         """Can navigate to page 2."""
         data = get_matrix_data(page=2, per_page=2)
 
-        assert len(data['requirements']) == 1
-        assert data['pagination']['page'] == 2
-        assert data['pagination']['has_next'] is False
-        assert data['pagination']['has_prev'] is True
+        assert len(data["requirements"]) == 1
+        assert data["pagination"]["page"] == 2
+        assert data["pagination"]["has_next"] is False
+        assert data["pagination"]["has_prev"] is True
 
     @pytest.mark.django_db
     def test_pagination_clamps_page(self, sample_requirements):
@@ -217,7 +218,7 @@ class TestPagination:
         data = get_matrix_data(page=100, per_page=25)
 
         # Should clamp to last page
-        assert data['pagination']['page'] == 1
+        assert data["pagination"]["page"] == 1
 
 
 class TestFilters:
@@ -226,26 +227,26 @@ class TestFilters:
     @pytest.mark.django_db
     def test_filter_by_status(self, sample_requirements):
         """Filter by verification status."""
-        data = get_matrix_data(filters={'status': 'failing'})
+        data = get_matrix_data(filters={"status": "failing"})
 
-        assert len(data['requirements']) == 1
-        assert data['requirements'][0].external_id == "REQ-003"
+        assert len(data["requirements"]) == 1
+        assert data["requirements"][0].external_id == "REQ-003"
 
     @pytest.mark.django_db
     def test_filter_by_tags(self, sample_requirements):
         """Filter by tags (any match)."""
-        data = get_matrix_data(filters={'tags': ['dashboard']})
+        data = get_matrix_data(filters={"tags": ["dashboard"]})
 
-        assert len(data['requirements']) == 1
-        assert data['requirements'][0].external_id == "REQ-003"
+        assert len(data["requirements"]) == 1
+        assert data["requirements"][0].external_id == "REQ-003"
 
     @pytest.mark.django_db
     def test_filter_by_multiple_tags(self, sample_requirements):
         """Filter by multiple tags (OR logic)."""
-        data = get_matrix_data(filters={'tags': ['login', 'dashboard']})
+        data = get_matrix_data(filters={"tags": ["login", "dashboard"]})
 
-        assert len(data['requirements']) == 2
-        external_ids = [r.external_id for r in data['requirements']]
+        assert len(data["requirements"]) == 2
+        external_ids = [r.external_id for r in data["requirements"]]
         assert "REQ-001" in external_ids
         assert "REQ-003" in external_ids
 
@@ -255,24 +256,24 @@ class TestHelperFunctions:
 
     def test_get_cell_css_class_passed(self):
         """Passed status returns correct CSS class."""
-        assert get_cell_css_class('passed') == 'matrix-cell-passed'
+        assert get_cell_css_class("passed") == "matrix-cell-passed"
 
     def test_get_cell_css_class_failed(self):
         """Failed status returns correct CSS class."""
-        assert get_cell_css_class('failed') == 'matrix-cell-failed'
+        assert get_cell_css_class("failed") == "matrix-cell-failed"
 
     def test_get_cell_css_class_unlinked(self):
         """Unlinked status returns correct CSS class."""
-        assert get_cell_css_class('unlinked') == 'matrix-cell-unlinked'
+        assert get_cell_css_class("unlinked") == "matrix-cell-unlinked"
 
     def test_get_cell_color_passed(self):
         """Passed status returns green color."""
-        assert get_cell_color('passed') == 'bg-green-500'
+        assert get_cell_color("passed") == "bg-green-500"
 
     def test_get_cell_color_failed(self):
         """Failed status returns red color."""
-        assert get_cell_color('failed') == 'bg-red-500'
+        assert get_cell_color("failed") == "bg-red-500"
 
     def test_get_cell_color_unlinked(self):
         """Unlinked status returns gray color."""
-        assert get_cell_color('unlinked') == 'bg-gray-200'
+        assert get_cell_color("unlinked") == "bg-gray-200"

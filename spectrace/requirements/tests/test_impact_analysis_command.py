@@ -1,12 +1,12 @@
 """Tests for impact_analysis management command."""
+
 import json
 from io import StringIO
-from unittest.mock import patch, MagicMock
-
-from django.core.management import call_command
-from django.core.management.base import CommandError
+from unittest.mock import MagicMock, patch
 
 import pytest
+from django.core.management import call_command
+from django.core.management.base import CommandError
 
 from requirements.services.impact_analyzer import ImpactResult
 
@@ -32,9 +32,7 @@ class TestImpactAnalysisCommand:
 
             out = StringIO()
             with pytest.raises(SystemExit) as exc_info:
-                call_command(
-                    "impact_analysis", "main", "feature", "--format", "json", stdout=out
-                )
+                call_command("impact_analysis", "main", "feature", "--format", "json", stdout=out)
 
             # Exit 1 because tests affected
             assert exc_info.value.code == 1
@@ -160,8 +158,6 @@ class TestImpactAnalysisCommand:
             mock_analyzer.analyze.return_value = mock_result
             MockAnalyzer.return_value = mock_analyzer
 
-            call_command(
-                "impact_analysis", "main", "feature", "--spec-dir", "docs/specs"
-            )
+            call_command("impact_analysis", "main", "feature", "--spec-dir", "docs/specs")
 
             MockAnalyzer.assert_called_once_with(spec_dir="docs/specs")

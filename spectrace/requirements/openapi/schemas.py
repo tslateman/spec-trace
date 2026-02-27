@@ -13,11 +13,8 @@ from requirements.constants import (
     MAX_SOURCE_LENGTH,
     MAX_STATUS_LENGTH,
     MAX_STEPS_PER_VALIDATION,
-    MAX_URL_LENGTH,
     MAX_VALIDATIONS_PER_REQUEST,
-    MAX_VENDOR_LENGTH,
 )
-
 
 # === SLO Status ===
 
@@ -65,15 +62,11 @@ class ValidationItem(Struct, kw_only=True):
 
     requirement_id: Annotated[str, Meta(max_length=MAX_REQUIREMENT_ID_LENGTH)]
     name: Annotated[str, Meta(max_length=MAX_NAME_LENGTH)]
-    status: Annotated[
-        str, Meta(max_length=MAX_STATUS_LENGTH)
-    ]  # success, failure, unknown
+    status: Annotated[str, Meta(max_length=MAX_STATUS_LENGTH)]  # success, failure, unknown
     message: Annotated[str, Meta(max_length=MAX_MESSAGE_LENGTH)] = ""
     endpoint: Annotated[str, Meta(max_length=MAX_ENDPOINT_LENGTH)] = ""
     checked_at: str | None = None
-    steps: Annotated[
-        list[ValidationStep], Meta(max_length=MAX_STEPS_PER_VALIDATION)
-    ] = []
+    steps: Annotated[list[ValidationStep], Meta(max_length=MAX_STEPS_PER_VALIDATION)] = []
     context: dict | None = None  # Flexible dict to preserve all context fields
 
 
@@ -81,9 +74,7 @@ class ValidationResultRequest(Struct):
     """Request body for POST /api/validation/result/."""
 
     source: Annotated[str, Meta(max_length=MAX_SOURCE_LENGTH)]
-    validations: Annotated[
-        list[ValidationItem], Meta(max_length=MAX_VALIDATIONS_PER_REQUEST)
-    ]
+    validations: Annotated[list[ValidationItem], Meta(max_length=MAX_VALIDATIONS_PER_REQUEST)]
     update_verification_status: bool = False
 
 

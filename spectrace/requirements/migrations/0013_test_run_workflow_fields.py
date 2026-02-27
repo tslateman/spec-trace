@@ -4,25 +4,36 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('requirements', '0012_webhook_event'),
+        ("requirements", "0012_webhook_event"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='testrun',
-            name='repository',
-            field=models.CharField(blank=True, db_index=True, help_text='Repository full name (owner/repo)', max_length=200),
+            model_name="testrun",
+            name="repository",
+            field=models.CharField(
+                blank=True,
+                db_index=True,
+                help_text="Repository full name (owner/repo)",
+                max_length=200,
+            ),
         ),
         migrations.AddField(
-            model_name='testrun',
-            name='workflow_name',
-            field=models.CharField(blank=True, help_text='GitHub Actions workflow name', max_length=200),
+            model_name="testrun",
+            name="workflow_name",
+            field=models.CharField(
+                blank=True, help_text="GitHub Actions workflow name", max_length=200
+            ),
         ),
         migrations.AddField(
-            model_name='testrun',
-            name='workflow_run_id',
-            field=models.BigIntegerField(blank=True, db_index=True, help_text='GitHub Actions workflow run ID', null=True),
+            model_name="testrun",
+            name="workflow_run_id",
+            field=models.BigIntegerField(
+                blank=True,
+                db_index=True,
+                help_text="GitHub Actions workflow run ID",
+                null=True,
+            ),
         ),
     ]

@@ -1,10 +1,11 @@
 """Structured logging utilities."""
+
 import logging
 from contextvars import ContextVar
 
 # Request correlation ID stored as a context variable
 # This allows the ID to be automatically available in async contexts
-request_id: ContextVar[str] = ContextVar('request_id', default='')
+request_id: ContextVar[str] = ContextVar("request_id", default="")
 
 
 class StructuredAdapter(logging.LoggerAdapter):
@@ -15,11 +16,11 @@ class StructuredAdapter(logging.LoggerAdapter):
     """
 
     def process(self, msg, kwargs):
-        extra = kwargs.get('extra', {})
-        extra['request_id'] = request_id.get('')
+        extra = kwargs.get("extra", {})
+        extra["request_id"] = request_id.get("")
         if self.extra:
             extra.update(self.extra)
-        kwargs['extra'] = extra
+        kwargs["extra"] = extra
         return msg, kwargs
 
 

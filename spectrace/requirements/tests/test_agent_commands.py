@@ -3,7 +3,6 @@
 import json
 from datetime import timedelta
 from io import StringIO
-from unittest.mock import patch
 
 import pytest
 from django.core.management import call_command
@@ -13,11 +12,10 @@ from freezegun import freeze_time
 from requirements.models import (
     Agent,
     AgentRole,
+    AgentSprint,
     AgentTask,
     AgentTaskStatus,
-    AgentSprint,
 )
-
 
 # =============================================================================
 # Test Fixtures
@@ -28,7 +26,7 @@ from requirements.models import (
 def coder_agent(db):
     """Create a coder agent."""
     return Agent.objects.create(
-        agent_id='coder-1',
+        agent_id="coder-1",
         role=AgentRole.CODER,
         is_active=True,
     )
@@ -38,7 +36,7 @@ def coder_agent(db):
 def reviewer_agent(db):
     """Create a reviewer agent."""
     return Agent.objects.create(
-        agent_id='reviewer-1',
+        agent_id="reviewer-1",
         role=AgentRole.REVIEWER,
         is_active=True,
     )
@@ -48,8 +46,8 @@ def reviewer_agent(db):
 def unclaimed_task(db):
     """Create an unclaimed task."""
     return AgentTask.objects.create(
-        external_id='task-001',
-        title='Implement login',
+        external_id="task-001",
+        title="Implement login",
         status=AgentTaskStatus.UNCLAIMED,
     )
 
@@ -58,8 +56,8 @@ def unclaimed_task(db):
 def sprint(db):
     """Create a sprint."""
     return AgentSprint.objects.create(
-        name='Sprint 1',
-        goal_description='Complete auth flow',
+        name="Sprint 1",
+        goal_description="Complete auth flow",
     )
 
 
@@ -74,62 +72,62 @@ class TestAgentTasksCommand:
     def test_agent_tasks__lists_all(self, unclaimed_task):
         """Lists all tasks."""
         out = StringIO()
-        call_command('agent_tasks', stdout=out)
+        call_command("agent_tasks", stdout=out)
         output = out.getvalue()
 
-        assert 'task-001' in output
-        assert 'Implement login' in output
+        assert "task-001" in output
+        assert "Implement login" in output
 
     def test_agent_tasks__json_format(self, unclaimed_task):
         """JSON format outputs valid JSON."""
         out = StringIO()
-        call_command('agent_tasks', format='json', stdout=out)
+        call_command("agent_tasks", format="json", stdout=out)
         data = json.loads(out.getvalue())
 
-        assert 'tasks' in data
-        assert len(data['tasks']) == 1
-        assert data['tasks'][0]['external_id'] == 'task-001'
+        assert "tasks" in data
+        assert len(data["tasks"]) == 1
+        assert data["tasks"][0]["external_id"] == "task-001"
 
     def test_agent_tasks__filter_by_status(self, db):
         """Filters by status."""
         AgentTask.objects.create(
-            external_id='task-a',
-            title='Task A',
+            external_id="task-a",
+            title="Task A",
             status=AgentTaskStatus.UNCLAIMED,
         )
         AgentTask.objects.create(
-            external_id='task-b',
-            title='Task B',
+            external_id="task-b",
+            title="Task B",
             status=AgentTaskStatus.MERGED,
         )
 
         out = StringIO()
-        call_command('agent_tasks', status='unclaimed', format='json', stdout=out)
+        call_command("agent_tasks", status="unclaimed", format="json", stdout=out)
         data = json.loads(out.getvalue())
 
-        assert len(data['tasks']) == 1
-        assert data['tasks'][0]['external_id'] == 'task-a'
+        assert len(data["tasks"]) == 1
+        assert data["tasks"][0]["external_id"] == "task-a"
 
     def test_agent_tasks__filter_by_sprint(self, sprint, db):
         """Filters by sprint."""
         AgentTask.objects.create(
-            external_id='task-sprint',
-            title='Sprint task',
+            external_id="task-sprint",
+            title="Sprint task",
             status=AgentTaskStatus.UNCLAIMED,
             sprint=sprint,
         )
         AgentTask.objects.create(
-            external_id='task-no-sprint',
-            title='No sprint',
+            external_id="task-no-sprint",
+            title="No sprint",
             status=AgentTaskStatus.UNCLAIMED,
         )
 
         out = StringIO()
-        call_command('agent_tasks', sprint=sprint.id, format='json', stdout=out)
+        call_command("agent_tasks", sprint=sprint.id, format="json", stdout=out)
         data = json.loads(out.getvalue())
 
-        assert len(data['tasks']) == 1
-        assert data['tasks'][0]['external_id'] == 'task-sprint'
+        assert len(data["tasks"]) == 1
+        assert data["tasks"][0]["external_id"] == "task-sprint"
 
 
 # =============================================================================
@@ -140,20 +138,21 @@ class TestAgentTasksCommand:
 class TestAgentClaimCommand:
     """Tests for agent_claim command."""
 
-    @freeze_time('2025-01-15 12:00:00')
+    @freeze_time("2025-01-15 12:00:00")
     def test_agent_claim__succeeds(self, coder_agent, unclaimed_task):
         """Claims task successfully."""
         out = StringIO()
         call_command(
-            'agent_claim', 'task-001',
-            agent='coder-1',
-            format='json',
+            "agent_claim",
+            "task-001",
+            agent="coder-1",
+            format="json",
             stdout=out,
         )
         data = json.loads(out.getvalue())
 
-        assert data['success'] is True
-        assert data['to_status'] == 'claimed'
+        assert data["success"] is True
+        assert data["to_status"] == "claimed"
 
         unclaimed_task.refresh_from_db()
         assert unclaimed_task.status == AgentTaskStatus.CLAIMED
@@ -165,17 +164,18 @@ class TestAgentClaimCommand:
 
         with pytest.raises(SystemExit) as exc_info:
             call_command(
-                'agent_claim', 'task-001',
-                agent='nonexistent',
-                format='json',
+                "agent_claim",
+                "task-001",
+                agent="nonexistent",
+                format="json",
                 stdout=out,
                 stderr=err,
             )
 
         assert exc_info.value.code == 1
         data = json.loads(out.getvalue())
-        assert data['success'] is False
-        assert data['code'] == 'AGENT_NOT_FOUND'
+        assert data["success"] is False
+        assert data["code"] == "AGENT_NOT_FOUND"
 
 
 # =============================================================================
@@ -188,35 +188,36 @@ class TestAgentStartCommand:
 
     def test_agent_start__succeeds(self, coder_agent, db):
         """Starts claimed task."""
-        task = AgentTask.objects.create(
-            external_id='task-start',
-            title='Start me',
+        AgentTask.objects.create(
+            external_id="task-start",
+            title="Start me",
             status=AgentTaskStatus.CLAIMED,
             claimed_by=coder_agent,
         )
 
         out = StringIO()
         call_command(
-            'agent_start', 'task-start',
-            agent='coder-1',
-            format='json',
+            "agent_start",
+            "task-start",
+            agent="coder-1",
+            format="json",
             stdout=out,
         )
         data = json.loads(out.getvalue())
 
-        assert data['success'] is True
-        assert data['to_status'] == 'in_progress'
+        assert data["success"] is True
+        assert data["to_status"] == "in_progress"
 
     def test_agent_start__fails_wrong_owner(self, coder_agent, db):
         """Fails if not task owner."""
         coder2 = Agent.objects.create(
-            agent_id='coder-2',
+            agent_id="coder-2",
             role=AgentRole.CODER,
             is_active=True,
         )
-        task = AgentTask.objects.create(
-            external_id='task-other',
-            title='Other task',
+        AgentTask.objects.create(
+            external_id="task-other",
+            title="Other task",
             status=AgentTaskStatus.CLAIMED,
             claimed_by=coder2,
         )
@@ -226,15 +227,16 @@ class TestAgentStartCommand:
 
         with pytest.raises(SystemExit):
             call_command(
-                'agent_start', 'task-other',
-                agent='coder-1',
-                format='json',
+                "agent_start",
+                "task-other",
+                agent="coder-1",
+                format="json",
                 stdout=out,
                 stderr=err,
             )
 
         data = json.loads(out.getvalue())
-        assert data['code'] == 'NOT_OWNER'
+        assert data["code"] == "NOT_OWNER"
 
 
 # =============================================================================
@@ -247,26 +249,27 @@ class TestAgentSubmitCommand:
 
     def test_agent_submit__succeeds(self, coder_agent, db):
         """Submits in-progress task."""
-        task = AgentTask.objects.create(
-            external_id='task-submit',
-            title='Submit me',
+        AgentTask.objects.create(
+            external_id="task-submit",
+            title="Submit me",
             status=AgentTaskStatus.IN_PROGRESS,
             claimed_by=coder_agent,
         )
 
         out = StringIO()
         call_command(
-            'agent_submit', 'task-submit',
-            agent='coder-1',
-            commit_sha='abc123def456',
-            format='json',
+            "agent_submit",
+            "task-submit",
+            agent="coder-1",
+            commit_sha="abc123def456",
+            format="json",
             stdout=out,
         )
         data = json.loads(out.getvalue())
 
-        assert data['success'] is True
-        assert data['to_status'] == 'ready_for_review'
-        assert data['commit_sha'] == 'abc123def456'
+        assert data["success"] is True
+        assert data["to_status"] == "ready_for_review"
+        assert data["commit_sha"] == "abc123def456"
 
 
 # =============================================================================
@@ -279,67 +282,69 @@ class TestAgentReviewCommand:
 
     def test_agent_review__approve(self, coder_agent, reviewer_agent, db):
         """Approves task."""
-        task = AgentTask.objects.create(
-            external_id='task-review',
-            title='Review me',
+        AgentTask.objects.create(
+            external_id="task-review",
+            title="Review me",
             status=AgentTaskStatus.READY_FOR_REVIEW,
             claimed_by=coder_agent,
-            commit_sha='abc123',
+            commit_sha="abc123",
         )
 
         out = StringIO()
         call_command(
-            'agent_review', 'task-review',
-            reviewer='reviewer-1',
-            decision='approved',
-            feedback='LGTM',
-            format='json',
+            "agent_review",
+            "task-review",
+            reviewer="reviewer-1",
+            decision="approved",
+            feedback="LGTM",
+            format="json",
             stdout=out,
         )
         data = json.loads(out.getvalue())
 
-        assert data['success'] is True
-        assert data['to_status'] == 'approved'
-        assert data['decision'] == 'approved'
+        assert data["success"] is True
+        assert data["to_status"] == "approved"
+        assert data["decision"] == "approved"
 
     def test_agent_review__changes_requested(self, coder_agent, reviewer_agent, db):
         """Requests changes."""
-        task = AgentTask.objects.create(
-            external_id='task-changes',
-            title='Needs changes',
+        AgentTask.objects.create(
+            external_id="task-changes",
+            title="Needs changes",
             status=AgentTaskStatus.READY_FOR_REVIEW,
             claimed_by=coder_agent,
-            commit_sha='abc123',
+            commit_sha="abc123",
         )
 
         out = StringIO()
         call_command(
-            'agent_review', 'task-changes',
-            reviewer='reviewer-1',
-            decision='changes_requested',
-            feedback='Fix X',
-            blocking_issues=['Issue X'],
-            format='json',
+            "agent_review",
+            "task-changes",
+            reviewer="reviewer-1",
+            decision="changes_requested",
+            feedback="Fix X",
+            blocking_issues=["Issue X"],
+            format="json",
             stdout=out,
         )
         data = json.loads(out.getvalue())
 
-        assert data['success'] is True
-        assert data['to_status'] == 'changes_requested'
+        assert data["success"] is True
+        assert data["to_status"] == "changes_requested"
 
     def test_agent_review__self_review_fails(self, db):
         """Self-review fails."""
         agent = Agent.objects.create(
-            agent_id='dual-agent',
+            agent_id="dual-agent",
             role=AgentRole.REVIEWER,
             is_active=True,
         )
-        task = AgentTask.objects.create(
-            external_id='task-self',
-            title='Self review',
+        AgentTask.objects.create(
+            external_id="task-self",
+            title="Self review",
             status=AgentTaskStatus.READY_FOR_REVIEW,
             claimed_by=agent,
-            commit_sha='abc123',
+            commit_sha="abc123",
         )
 
         out = StringIO()
@@ -347,16 +352,17 @@ class TestAgentReviewCommand:
 
         with pytest.raises(SystemExit):
             call_command(
-                'agent_review', 'task-self',
-                reviewer='dual-agent',
-                decision='approved',
-                format='json',
+                "agent_review",
+                "task-self",
+                reviewer="dual-agent",
+                decision="approved",
+                format="json",
                 stdout=out,
                 stderr=err,
             )
 
         data = json.loads(out.getvalue())
-        assert data['code'] == 'SELF_REVIEW_NOT_ALLOWED'
+        assert data["code"] == "SELF_REVIEW_NOT_ALLOWED"
 
 
 # =============================================================================
@@ -369,28 +375,29 @@ class TestAgentMergeCommand:
 
     def test_agent_merge__succeeds(self, db):
         """Merges approved task."""
-        task = AgentTask.objects.create(
-            external_id='task-merge',
-            title='Merge me',
+        AgentTask.objects.create(
+            external_id="task-merge",
+            title="Merge me",
             status=AgentTaskStatus.APPROVED,
         )
 
         out = StringIO()
         call_command(
-            'agent_merge', 'task-merge',
-            format='json',
+            "agent_merge",
+            "task-merge",
+            format="json",
             stdout=out,
         )
         data = json.loads(out.getvalue())
 
-        assert data['success'] is True
-        assert data['to_status'] == 'merged'
+        assert data["success"] is True
+        assert data["to_status"] == "merged"
 
     def test_agent_merge__fails_not_approved(self, db):
         """Fails for non-approved task."""
-        task = AgentTask.objects.create(
-            external_id='task-not-approved',
-            title='Not approved',
+        AgentTask.objects.create(
+            external_id="task-not-approved",
+            title="Not approved",
             status=AgentTaskStatus.IN_PROGRESS,
         )
 
@@ -399,14 +406,15 @@ class TestAgentMergeCommand:
 
         with pytest.raises(SystemExit):
             call_command(
-                'agent_merge', 'task-not-approved',
-                format='json',
+                "agent_merge",
+                "task-not-approved",
+                format="json",
                 stdout=out,
                 stderr=err,
             )
 
         data = json.loads(out.getvalue())
-        assert data['code'] == 'NOT_APPROVED'
+        assert data["code"] == "NOT_APPROVED"
 
 
 # =============================================================================
@@ -421,33 +429,35 @@ class TestAgentRegisterCommand:
         """Registers new agent."""
         out = StringIO()
         call_command(
-            'agent_register', 'new-coder',
-            role='coder',
-            format='json',
+            "agent_register",
+            "new-coder",
+            role="coder",
+            format="json",
             stdout=out,
         )
         data = json.loads(out.getvalue())
 
-        assert data['success'] is True
-        assert data['agent_id'] == 'new-coder'
-        assert data['role'] == 'coder'
+        assert data["success"] is True
+        assert data["agent_id"] == "new-coder"
+        assert data["role"] == "coder"
 
-        agent = Agent.objects.get(agent_id='new-coder')
+        agent = Agent.objects.get(agent_id="new-coder")
         assert agent.role == AgentRole.CODER
 
     def test_agent_register__with_config(self, db):
         """Registers with config."""
         out = StringIO()
         call_command(
-            'agent_register', 'config-agent',
-            role='reviewer',
+            "agent_register",
+            "config-agent",
+            role="reviewer",
             config='{"model": "claude-3"}',
-            format='json',
+            format="json",
             stdout=out,
         )
 
-        agent = Agent.objects.get(agent_id='config-agent')
-        assert agent.config == {'model': 'claude-3'}
+        agent = Agent.objects.get(agent_id="config-agent")
+        assert agent.config == {"model": "claude-3"}
 
 
 # =============================================================================
@@ -458,62 +468,62 @@ class TestAgentRegisterCommand:
 class TestExpireLeasesCommand:
     """Tests for expire_leases command."""
 
-    @freeze_time('2025-01-15 12:00:00')
+    @freeze_time("2025-01-15 12:00:00")
     def test_expire_leases__releases_expired(self, coder_agent, db):
         """Releases expired leases."""
         task = AgentTask.objects.create(
-            external_id='task-expired',
-            title='Expired',
+            external_id="task-expired",
+            title="Expired",
             status=AgentTaskStatus.CLAIMED,
             claimed_by=coder_agent,
             lease_expires=timezone.now() - timedelta(minutes=5),
         )
 
         out = StringIO()
-        call_command('expire_leases', format='json', stdout=out)
+        call_command("expire_leases", format="json", stdout=out)
         data = json.loads(out.getvalue())
 
-        assert data['expired_count'] == 1
-        assert data['tasks'][0]['released'] is True
+        assert data["expired_count"] == 1
+        assert data["tasks"][0]["released"] is True
 
         task.refresh_from_db()
         assert task.status == AgentTaskStatus.UNCLAIMED
 
-    @freeze_time('2025-01-15 12:00:00')
+    @freeze_time("2025-01-15 12:00:00")
     def test_expire_leases__dry_run(self, coder_agent, db):
         """Dry run reports but doesn't modify."""
         task = AgentTask.objects.create(
-            external_id='task-dry',
-            title='Dry run',
+            external_id="task-dry",
+            title="Dry run",
             status=AgentTaskStatus.CLAIMED,
             claimed_by=coder_agent,
             lease_expires=timezone.now() - timedelta(minutes=5),
         )
 
         out = StringIO()
-        call_command('expire_leases', dry_run=True, format='json', stdout=out)
+        call_command("expire_leases", dry_run=True, format="json", stdout=out)
         data = json.loads(out.getvalue())
 
-        assert data['dry_run'] is True
-        assert data['expired_count'] == 1
-        assert data['tasks'][0]['released'] is False
+        assert data["dry_run"] is True
+        assert data["expired_count"] == 1
+        assert data["tasks"][0]["released"] is False
 
         task.refresh_from_db()
         assert task.status == AgentTaskStatus.CLAIMED  # Unchanged
 
-    @freeze_time('2025-01-15 12:00:00')
+    @freeze_time("2025-01-15 12:00:00")
     def test_expire_leases__no_expired(self, coder_agent, db):
         """No expired leases reports zero."""
         AgentTask.objects.create(
-            external_id='task-valid',
-            title='Valid',
+            external_id="task-valid",
+            title="Valid",
             status=AgentTaskStatus.CLAIMED,
             claimed_by=coder_agent,
             lease_expires=timezone.now() + timedelta(minutes=25),
         )
 
         out = StringIO()
-        call_command('expire_leases', format='json', stdout=out)
+        call_command("expire_leases", format="json", stdout=out)
         data = json.loads(out.getvalue())
 
-        assert data['expired_count'] == 0
+        assert data["expired_count"] == 0

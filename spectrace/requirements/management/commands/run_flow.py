@@ -1,4 +1,5 @@
 """Django management command for running verification flows from CLI."""
+
 import json
 import sys
 
@@ -15,43 +16,39 @@ from requirements.models import (
 class Command(BaseCommand):
     """Run a verification flow by name or ID."""
 
-    help = 'Run a verification flow by name or ID'
+    help = "Run a verification flow by name or ID"
 
     def add_arguments(self, parser):
         """Define command arguments."""
+        parser.add_argument("flow_id", type=str, help="Flow ID (numeric) or name (string)")
         parser.add_argument(
-            'flow_id',
+            "--context",
             type=str,
-            help='Flow ID (numeric) or name (string)'
+            default="{}",
+            help="JSON string with execution context",
         )
         parser.add_argument(
-            '--context',
-            type=str,
-            default='{}',
-            help='JSON string with execution context'
-        )
-        parser.add_argument(
-            '--timeout',
+            "--timeout",
             type=int,
             default=300,
-            help='Flow timeout in seconds (default 300)'
+            help="Flow timeout in seconds (default 300)",
         )
         parser.add_argument(
-            '--step-timeout',
+            "--step-timeout",
             type=int,
             default=60,
-            help='Per-step timeout in seconds (default 60)'
+            help="Per-step timeout in seconds (default 60)",
         )
 
     def handle(self, *args, **options):
         """Execute the flow."""
-        flow_id = options['flow_id']
+        flow_id = options["flow_id"]
 
         # Lookup flow by ID or name
         flow = self._lookup_flow(flow_id)
 
         # Parse context JSON
-        context = self._parse_context(options['context'])
+        context = self._parse_context(options["context"])
 
         # Execute flow
         engine = SequentialFlowEngine()
@@ -59,8 +56,8 @@ class Command(BaseCommand):
             flow=flow,
             context=context,
             source=VerificationFlowSource.MANUAL,
-            step_timeout=options['step_timeout'],
-            flow_timeout=options['timeout'],
+            step_timeout=options["step_timeout"],
+            flow_timeout=options["timeout"],
         )
 
         # Output results
@@ -139,7 +136,7 @@ class Command(BaseCommand):
 
         # Steps
         self.stdout.write("\nSteps:")
-        for step in run.steps.order_by('step_order'):
+        for step in run.steps.order_by("step_order"):
             if step.passed:
                 status_marker = self.style.SUCCESS("[PASS]")
                 self.stdout.write(f"  {status_marker} {step.name}")

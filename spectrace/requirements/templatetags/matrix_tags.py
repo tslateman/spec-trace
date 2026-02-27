@@ -1,4 +1,5 @@
 """Template tags for matrix view."""
+
 from django import template
 
 register = template.Library()
@@ -10,7 +11,7 @@ def get_cell(cells, key_tuple):
 
     Usage: {{ cells|get_cell:key_tuple }}
     """
-    return cells.get(key_tuple, {'status': 'unlinked', 'linked': False})
+    return cells.get(key_tuple, {"status": "unlinked", "linked": False})
 
 
 @register.simple_tag
@@ -20,4 +21,4 @@ def matrix_cell(cells, req_external_id, test_nodeid):
     Usage: {% matrix_cell cells req.external_id test.nodeid as cell %}
     """
     key = (req_external_id, test_nodeid)
-    return cells.get(key, {'status': 'unlinked', 'linked': False, 'test_result_id': None})
+    return cells.get(key, {"status": "unlinked", "linked": False, "test_result_id": None})

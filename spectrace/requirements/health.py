@@ -22,14 +22,14 @@ from requirements.models import VerificationFlow
 
 # Re-export types for backward compatibility
 __all__ = [
-    'TestConnectionResult',
-    'VerificationCheck',
-    '_get_timestamp',
-    '_sanitize_response',
-    'check_authentication',
-    'check_configuration',
-    'check_permissions',
-    'verify_linear_connection',
+    "TestConnectionResult",
+    "VerificationCheck",
+    "_get_timestamp",
+    "_sanitize_response",
+    "check_authentication",
+    "check_configuration",
+    "check_permissions",
+    "verify_linear_connection",
 ]
 
 
@@ -52,16 +52,23 @@ def _sanitize_response(response_text: str, max_length: int = 500) -> str:
     sanitized = response_text[:max_length]
 
     # Remove API key patterns (lin_api_...)
-    sanitized = re.sub(r'lin_api_[A-Za-z0-9_-]+', '[REDACTED]', sanitized)
+    sanitized = re.sub(r"lin_api_[A-Za-z0-9_-]+", "[REDACTED]", sanitized)
 
     # Remove bearer tokens
-    sanitized = re.sub(r'Bearer\s+[A-Za-z0-9_.-]+', 'Bearer [REDACTED]', sanitized, flags=re.IGNORECASE)
+    sanitized = re.sub(
+        r"Bearer\s+[A-Za-z0-9_.-]+", "Bearer [REDACTED]", sanitized, flags=re.IGNORECASE
+    )
 
     # Remove authorization headers in JSON
-    sanitized = re.sub(r'"authorization":\s*"[^"]*"', '"authorization": "[REDACTED]"', sanitized, flags=re.IGNORECASE)
+    sanitized = re.sub(
+        r'"authorization":\s*"[^"]*"',
+        '"authorization": "[REDACTED]"',
+        sanitized,
+        flags=re.IGNORECASE,
+    )
 
     if len(response_text) > max_length:
-        sanitized += '... [truncated]'
+        sanitized += "... [truncated]"
 
     return sanitized
 
@@ -88,34 +95,36 @@ def check_configuration(api_key: str, workspace: str, team: str) -> Verification
         return VerificationCheck(
             name="Configuration",
             passed=False,
-            error_message="LINEAR_API_KEY not configured"
+            error_message="LINEAR_API_KEY not configured",
         )
 
-    if not api_key.startswith('lin_api_'):
+    if not api_key.startswith("lin_api_"):
         return VerificationCheck(
             name="Configuration",
             passed=False,
-            error_message="LINEAR_API_KEY does not match expected format (should start with 'lin_api_')"
+            error_message=(
+                "LINEAR_API_KEY does not match expected format (should start with 'lin_api_')"
+            ),
         )
 
     if not workspace:
         return VerificationCheck(
             name="Configuration",
             passed=False,
-            error_message="LINEAR_WORKSPACE not configured"
+            error_message="LINEAR_WORKSPACE not configured",
         )
 
     if not team:
         return VerificationCheck(
             name="Configuration",
             passed=False,
-            error_message="LINEAR_TEAM not configured"
+            error_message="LINEAR_TEAM not configured",
         )
 
     return VerificationCheck(
         name="Configuration",
         passed=True,
-        details=f"API key present, workspace: {workspace}, team: {team}"
+        details=f"API key present, workspace: {workspace}, team: {team}",
     )
 
 
@@ -144,9 +153,9 @@ def check_authentication(client) -> VerificationCheck:
             }
         """)
 
-        viewer = result.get('viewer', {})
-        name = viewer.get('name', 'Unknown')
-        email = viewer.get('email', 'unknown@example.com')
+        viewer = result.get("viewer", {})
+        name = viewer.get("name", "Unknown")
+        email = viewer.get("email", "unknown@example.com")
 
         return VerificationCheck(
             name="Authentication",
@@ -205,7 +214,7 @@ def check_permissions(client) -> VerificationCheck:
             name="Permissions",
             passed=True,
             details="Read access to issues endpoint confirmed",
-            response_status=200
+            response_status=200,
         )
 
     except requests.HTTPError as e:
@@ -214,19 +223,17 @@ def check_permissions(client) -> VerificationCheck:
             passed=False,
             error_message=f"HTTP {e.response.status_code}: Insufficient permissions for issues",
             response_status=e.response.status_code,
-            response_body=_sanitize_response(e.response.text)
+            response_body=_sanitize_response(e.response.text),
         )
     except ValueError as e:
         return VerificationCheck(
-            name="Permissions",
-            passed=False,
-            error_message=f"GraphQL error: {str(e)}"
+            name="Permissions", passed=False, error_message=f"GraphQL error: {str(e)}"
         )
     except Exception as e:
         return VerificationCheck(
             name="Permissions",
             passed=False,
-            error_message=f"Request failed: {type(e).__name__}: {str(e)}"
+            error_message=f"Request failed: {type(e).__name__}: {str(e)}",
         )
 
 
@@ -253,21 +260,26 @@ def verify_linear_connection(api_key: str, workspace: str, team: str) -> TestCon
         TestConnectionResult with success status, message, and checks
     """
     try:
-        flow = VerificationFlow.objects.get(name='linear-connection')
+        flow = VerificationFlow.objects.get(name="linear-connection")
     except VerificationFlow.DoesNotExist:
         return _verify_linear_connection_direct(api_key, workspace, team)
 
     engine = SequentialFlowEngine()
-    run = engine.execute(flow, {
-        'api_key': api_key,
-        'workspace': workspace,
-        'team': team,
-    })
+    run = engine.execute(
+        flow,
+        {
+            "api_key": api_key,
+            "workspace": workspace,
+            "team": team,
+        },
+    )
 
     return TestConnectionResult.from_flow_run(run)
 
 
-def _verify_linear_connection_direct(api_key: str, workspace: str, team: str) -> TestConnectionResult:
+def _verify_linear_connection_direct(
+    api_key: str, workspace: str, team: str
+) -> TestConnectionResult:
     """Direct verification without flow engine (fallback when flows not synced)."""
     checks = []
 
@@ -285,7 +297,7 @@ def _verify_linear_connection_direct(api_key: str, workspace: str, team: str) ->
             success=False,
             message="Failed to create Linear client",
             checks=checks,
-            error_details=f"{type(e).__name__}: {e}"
+            error_details=f"{type(e).__name__}: {e}",
         )
 
     auth_check = check_authentication(client)

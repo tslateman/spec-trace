@@ -12,10 +12,9 @@ from dataclasses import asdict
 
 from django.utils import timezone
 
-from spectrace_flows import FlowDef
-
 from requirements.flows.definitions import REGISTERED_FLOWS, register_django_flows
 from requirements.models import Requirement, VerificationFlow
+from spectrace_flows import FlowDef
 
 logger = logging.getLogger(__name__)
 
@@ -38,15 +37,15 @@ def sync_flows_to_db() -> dict[str, str]:
         flow, created = VerificationFlow.objects.update_or_create(
             name=flow_def.name,
             defaults={
-                'display_name': flow_def.display_name,
-                'description': flow_def.description,
-                'steps': steps_data,
-                'version': flow_def.version,
-                'synced_at': timezone.now(),
-            }
+                "display_name": flow_def.display_name,
+                "description": flow_def.description,
+                "steps": steps_data,
+                "version": flow_def.version,
+                "synced_at": timezone.now(),
+            },
         )
 
-        action = 'created' if created else 'updated'
+        action = "created" if created else "updated"
         results[flow_def.name] = action
         logger.info(f"Flow '{flow_def.name}' {action} (v{flow_def.version})")
 
@@ -89,7 +88,7 @@ def _sync_flow_requirements(
     """
     if not requirement_ids:
         flow.requirements.clear()
-        return {'linked': [], 'missing': []}
+        return {"linked": [], "missing": []}
 
     linked = []
     missing = []
@@ -107,7 +106,7 @@ def _sync_flow_requirements(
     # Atomic replacement of requirements
     flow.requirements.set(requirements_to_link)
 
-    return {'linked': linked, 'missing': missing}
+    return {"linked": linked, "missing": missing}
 
 
 def sync_yaml_flows_to_db(
@@ -133,13 +132,11 @@ def sync_yaml_flows_to_db(
 
     # Clear flows by name if requested
     if clear_existing and flow_names:
-        deleted_count, _ = VerificationFlow.objects.filter(
-            name__in=flow_names
-        ).delete()
+        deleted_count, _ = VerificationFlow.objects.filter(name__in=flow_names).delete()
         logger.info(f"Cleared {deleted_count} existing flows")
         # Mark all as will be created
         for name in flow_names:
-            results[name] = 'deleted'
+            results[name] = "deleted"
 
     all_missing_requirements = []
 
@@ -150,8 +147,8 @@ def sync_yaml_flows_to_db(
         # Store source_file metadata as first element with _metadata key
         # Requirements are now linked via M2M relationship
         metadata = {
-            '_metadata': {
-                'source_file': flow_def.source_file,
+            "_metadata": {
+                "source_file": flow_def.source_file,
             }
         }
         steps_with_metadata = [metadata] + steps_data
@@ -159,22 +156,22 @@ def sync_yaml_flows_to_db(
         flow, created = VerificationFlow.objects.update_or_create(
             name=flow_def.name,
             defaults={
-                'display_name': flow_def.display_name,
-                'description': flow_def.description,
-                'steps': steps_with_metadata,
-                'version': flow_def.version,
-                'synced_at': timezone.now(),
-            }
+                "display_name": flow_def.display_name,
+                "description": flow_def.description,
+                "steps": steps_with_metadata,
+                "version": flow_def.version,
+                "synced_at": timezone.now(),
+            },
         )
 
         # Link requirements via M2M (after flow exists)
         req_result = _sync_flow_requirements(flow, flow_def.requirements)
-        if req_result['missing']:
-            all_missing_requirements.extend(req_result['missing'])
+        if req_result["missing"]:
+            all_missing_requirements.extend(req_result["missing"])
 
-        action = 'created' if created else 'updated'
+        action = "created" if created else "updated"
         results[flow_def.name] = action
-        linked_count = len(req_result['linked'])
+        linked_count = len(req_result["linked"])
         logger.info(
             f"Flow '{flow_def.name}' {action} (v{flow_def.version}, "
             f"{linked_count} requirements linked)"
@@ -183,8 +180,6 @@ def sync_yaml_flows_to_db(
     # Summary logging for missing requirements
     if all_missing_requirements:
         unique_missing = sorted(set(all_missing_requirements))
-        logger.warning(
-            f"Missing requirements during sync: {', '.join(unique_missing)}"
-        )
+        logger.warning(f"Missing requirements during sync: {', '.join(unique_missing)}")
 
     return results

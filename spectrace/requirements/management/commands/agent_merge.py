@@ -6,47 +6,50 @@ import sys
 from django.core.management import call_command
 from django.core.management.base import BaseCommand
 
-from requirements.services.agent_tasks import merge_task, TransitionError
+from requirements.services.agent_tasks import TransitionError, merge_task
 
 
 class Command(BaseCommand):
-    help = 'Mark an approved task as merged (APPROVED → MERGED)'
+    help = "Mark an approved task as merged (APPROVED → MERGED)"
 
     def add_arguments(self, parser):
         parser.add_argument(
-            'task_id',
+            "task_id",
             type=str,
-            help='Task external ID to merge',
+            help="Task external ID to merge",
         )
         parser.add_argument(
-            '--format',
-            choices=['text', 'json'],
-            default='text',
-            help='Output format (default: text)',
+            "--format",
+            choices=["text", "json"],
+            default="text",
+            help="Output format (default: text)",
         )
 
     def handle(self, *args, **options):
-        task_id = options['task_id']
+        task_id = options["task_id"]
 
         try:
             result = merge_task(task_id)
 
-            if options['format'] == 'json':
+            if options["format"] == "json":
                 self.stdout.write(json.dumps(result.to_dict(), indent=2))
             else:
-                self.stdout.write(
-                    self.style.SUCCESS(f"✓ {result.message}")
-                )
+                self.stdout.write(self.style.SUCCESS(f"✓ {result.message}"))
                 # Run consolidation after successful merge (text output only)
-                call_command('consolidate', stdout=self.stdout, stderr=self.stderr)
+                call_command("consolidate", stdout=self.stdout, stderr=self.stderr)
 
         except TransitionError as e:
-            if options['format'] == 'json':
-                self.stdout.write(json.dumps({
-                    'success': False,
-                    'error': str(e),
-                    'code': e.code,
-                }, indent=2))
+            if options["format"] == "json":
+                self.stdout.write(
+                    json.dumps(
+                        {
+                            "success": False,
+                            "error": str(e),
+                            "code": e.code,
+                        },
+                        indent=2,
+                    )
+                )
             else:
                 self.stderr.write(self.style.ERROR(f"✗ {e}"))
             sys.exit(1)

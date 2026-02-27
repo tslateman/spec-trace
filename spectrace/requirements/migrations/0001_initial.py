@@ -4,33 +4,77 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='Requirement',
+            name="Requirement",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('path', models.CharField(max_length=255, unique=True)),
-                ('depth', models.PositiveIntegerField()),
-                ('numchild', models.PositiveIntegerField(default=0)),
-                ('external_id', models.CharField(db_index=True, help_text='Unique ID from spec file (e.g., REQ-AUTH-001)', max_length=50, unique=True)),
-                ('title', models.CharField(help_text='Short descriptive title', max_length=200)),
-                ('description', models.TextField(blank=True, help_text='Markdown body from spec file')),
-                ('tags', models.JSONField(blank=True, default=list, help_text='Category tags for filtering')),
-                ('priority', models.CharField(blank=True, help_text='Priority level (high, medium, low)', max_length=20)),
-                ('status', models.CharField(default='draft', help_text='Requirement status (draft, active, deprecated)', max_length=20)),
-                ('source_file', models.CharField(help_text='Relative path to source spec file', max_length=500)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("path", models.CharField(max_length=255, unique=True)),
+                ("depth", models.PositiveIntegerField()),
+                ("numchild", models.PositiveIntegerField(default=0)),
+                (
+                    "external_id",
+                    models.CharField(
+                        db_index=True,
+                        help_text="Unique ID from spec file (e.g., REQ-AUTH-001)",
+                        max_length=50,
+                        unique=True,
+                    ),
+                ),
+                (
+                    "title",
+                    models.CharField(help_text="Short descriptive title", max_length=200),
+                ),
+                (
+                    "description",
+                    models.TextField(blank=True, help_text="Markdown body from spec file"),
+                ),
+                (
+                    "tags",
+                    models.JSONField(
+                        blank=True,
+                        default=list,
+                        help_text="Category tags for filtering",
+                    ),
+                ),
+                (
+                    "priority",
+                    models.CharField(
+                        blank=True,
+                        help_text="Priority level (high, medium, low)",
+                        max_length=20,
+                    ),
+                ),
+                (
+                    "status",
+                    models.CharField(
+                        default="draft",
+                        help_text="Requirement status (draft, active, deprecated)",
+                        max_length=20,
+                    ),
+                ),
+                (
+                    "source_file",
+                    models.CharField(help_text="Relative path to source spec file", max_length=500),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
             ],
             options={
-                'verbose_name': 'Requirement',
-                'verbose_name_plural': 'Requirements',
+                "verbose_name": "Requirement",
+                "verbose_name_plural": "Requirements",
             },
         ),
     ]

@@ -5,118 +5,458 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('requirements', '0008_structured_fields'),
+        ("requirements", "0008_structured_fields"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Agent',
+            name="Agent",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('agent_id', models.CharField(db_index=True, help_text="Unique agent identifier (e.g., 'coder-1', 'reviewer-opus')", max_length=100, unique=True)),
-                ('role', models.CharField(choices=[('planner', 'Planner'), ('coder', 'Coder'), ('reviewer', 'Code Reviewer')], db_index=True, help_text='Agent specialization determining allowed actions', max_length=20)),
-                ('is_active', models.BooleanField(default=True, help_text='Whether agent is active and can claim tasks')),
-                ('last_heartbeat', models.DateTimeField(blank=True, help_text='When agent last reported being alive', null=True)),
-                ('config', models.JSONField(default=dict, help_text='Agent-specific configuration (model, temperature, etc.)')),
-                ('registered_at', models.DateTimeField(auto_now_add=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "agent_id",
+                    models.CharField(
+                        db_index=True,
+                        help_text="Unique agent identifier (e.g., 'coder-1', 'reviewer-opus')",
+                        max_length=100,
+                        unique=True,
+                    ),
+                ),
+                (
+                    "role",
+                    models.CharField(
+                        choices=[
+                            ("planner", "Planner"),
+                            ("coder", "Coder"),
+                            ("reviewer", "Code Reviewer"),
+                        ],
+                        db_index=True,
+                        help_text="Agent specialization determining allowed actions",
+                        max_length=20,
+                    ),
+                ),
+                (
+                    "is_active",
+                    models.BooleanField(
+                        default=True,
+                        help_text="Whether agent is active and can claim tasks",
+                    ),
+                ),
+                (
+                    "last_heartbeat",
+                    models.DateTimeField(
+                        blank=True,
+                        help_text="When agent last reported being alive",
+                        null=True,
+                    ),
+                ),
+                (
+                    "config",
+                    models.JSONField(
+                        default=dict,
+                        help_text="Agent-specific configuration (model, temperature, etc.)",
+                    ),
+                ),
+                ("registered_at", models.DateTimeField(auto_now_add=True)),
             ],
             options={
-                'verbose_name': 'Agent',
-                'verbose_name_plural': 'Agents',
+                "verbose_name": "Agent",
+                "verbose_name_plural": "Agents",
             },
         ),
         migrations.CreateModel(
-            name='AgentSprint',
+            name="AgentSprint",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(help_text="Sprint name (e.g., 'Auth Flow v2')", max_length=200)),
-                ('description', models.TextField(blank=True, help_text='Optional additional description')),
-                ('goal_description', models.TextField(help_text='What this sprint should accomplish')),
-                ('is_active', models.BooleanField(default=True, help_text='Whether new tasks can be added to this sprint')),
-                ('completed_at', models.DateTimeField(blank=True, help_text='When the sprint was marked complete', null=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "name",
+                    models.CharField(
+                        help_text="Sprint name (e.g., 'Auth Flow v2')", max_length=200
+                    ),
+                ),
+                (
+                    "description",
+                    models.TextField(blank=True, help_text="Optional additional description"),
+                ),
+                (
+                    "goal_description",
+                    models.TextField(help_text="What this sprint should accomplish"),
+                ),
+                (
+                    "is_active",
+                    models.BooleanField(
+                        default=True,
+                        help_text="Whether new tasks can be added to this sprint",
+                    ),
+                ),
+                (
+                    "completed_at",
+                    models.DateTimeField(
+                        blank=True,
+                        help_text="When the sprint was marked complete",
+                        null=True,
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
             ],
             options={
-                'verbose_name': 'Agent Sprint',
-                'verbose_name_plural': 'Agent Sprints',
-                'ordering': ['-created_at'],
+                "verbose_name": "Agent Sprint",
+                "verbose_name_plural": "Agent Sprints",
+                "ordering": ["-created_at"],
             },
         ),
         migrations.AlterField(
-            model_name='conflictlog',
-            name='pattern',
-            field=models.CharField(choices=[('mutual_exclusion', 'Mutual Exclusion'), ('code_overlap', 'Code Overlap'), ('inverse_correlation', 'Inverse Correlation'), ('condition_overlap', 'Condition Overlap'), ('timing_conflict', 'Timing Conflict'), ('response_contradiction', 'Response Contradiction')], help_text='Type of conflict pattern detected', max_length=50),
+            model_name="conflictlog",
+            name="pattern",
+            field=models.CharField(
+                choices=[
+                    ("mutual_exclusion", "Mutual Exclusion"),
+                    ("code_overlap", "Code Overlap"),
+                    ("inverse_correlation", "Inverse Correlation"),
+                    ("condition_overlap", "Condition Overlap"),
+                    ("timing_conflict", "Timing Conflict"),
+                    ("response_contradiction", "Response Contradiction"),
+                ],
+                help_text="Type of conflict pattern detected",
+                max_length=50,
+            ),
         ),
         migrations.CreateModel(
-            name='AgentTask',
+            name="AgentTask",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('external_id', models.CharField(db_index=True, help_text="Task ID (e.g., 'task-auth-login-001')", max_length=100, unique=True)),
-                ('title', models.CharField(help_text='Short descriptive title', max_length=200)),
-                ('description', models.TextField(blank=True, help_text='Detailed task description')),
-                ('status', models.CharField(choices=[('draft', 'Draft'), ('unclaimed', 'Unclaimed'), ('claimed', 'Claimed'), ('in_progress', 'In Progress'), ('ready_for_review', 'Ready for Review'), ('changes_requested', 'Changes Requested'), ('approved', 'Approved'), ('merged', 'Merged'), ('blocked', 'Blocked'), ('abandoned', 'Abandoned')], db_index=True, default='draft', help_text='Current task state', max_length=20)),
-                ('claimed_at', models.DateTimeField(blank=True, help_text='When the task was claimed', null=True)),
-                ('lease_expires', models.DateTimeField(blank=True, help_text='Task returns to UNCLAIMED if lease expires', null=True)),
-                ('done_when', models.JSONField(default=list, help_text="List of falsifiable criteria (e.g., 'pytest tests/test_auth.py exits 0')")),
-                ('scope_in', models.JSONField(default=list, help_text='What IS in scope for this task')),
-                ('scope_out', models.JSONField(default=list, help_text='What is NOT in scope (explicit exclusions)')),
-                ('spec_ref', models.CharField(blank=True, help_text="Path to spec file (e.g., 'specs/auth.md')", max_length=500)),
-                ('worktree_path', models.CharField(blank=True, help_text="Path to git worktree (e.g., '.worktrees/task-auth-001')", max_length=255)),
-                ('branch_name', models.CharField(blank=True, help_text='Git branch for this task', max_length=100)),
-                ('commit_sha', models.CharField(blank=True, help_text='Latest commit SHA submitted for review', max_length=40)),
-                ('attempt_count', models.PositiveIntegerField(default=0, help_text='Number of times this task has been attempted')),
-                ('max_attempts', models.PositiveIntegerField(default=2, help_text='After this many failures by different coders, task is presumed wrong')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('claimed_by', models.ForeignKey(blank=True, help_text='Agent that claimed this task', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='claimed_tasks', to='requirements.agent')),
-                ('depends_on', models.ManyToManyField(blank=True, help_text='Tasks that must complete before this one', related_name='blocks', to='requirements.agenttask')),
-                ('requirements', models.ManyToManyField(blank=True, help_text='Requirements this task implements', related_name='agent_tasks', to='requirements.requirement')),
-                ('sprint', models.ForeignKey(blank=True, help_text='Sprint this task belongs to', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='tasks', to='requirements.agentsprint')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "external_id",
+                    models.CharField(
+                        db_index=True,
+                        help_text="Task ID (e.g., 'task-auth-login-001')",
+                        max_length=100,
+                        unique=True,
+                    ),
+                ),
+                (
+                    "title",
+                    models.CharField(help_text="Short descriptive title", max_length=200),
+                ),
+                (
+                    "description",
+                    models.TextField(blank=True, help_text="Detailed task description"),
+                ),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("draft", "Draft"),
+                            ("unclaimed", "Unclaimed"),
+                            ("claimed", "Claimed"),
+                            ("in_progress", "In Progress"),
+                            ("ready_for_review", "Ready for Review"),
+                            ("changes_requested", "Changes Requested"),
+                            ("approved", "Approved"),
+                            ("merged", "Merged"),
+                            ("blocked", "Blocked"),
+                            ("abandoned", "Abandoned"),
+                        ],
+                        db_index=True,
+                        default="draft",
+                        help_text="Current task state",
+                        max_length=20,
+                    ),
+                ),
+                (
+                    "claimed_at",
+                    models.DateTimeField(
+                        blank=True, help_text="When the task was claimed", null=True
+                    ),
+                ),
+                (
+                    "lease_expires",
+                    models.DateTimeField(
+                        blank=True,
+                        help_text="Task returns to UNCLAIMED if lease expires",
+                        null=True,
+                    ),
+                ),
+                (
+                    "done_when",
+                    models.JSONField(
+                        default=list,
+                        help_text="List of falsifiable criteria (e.g., 'pytest tests/test_auth.py exits 0')",
+                    ),
+                ),
+                (
+                    "scope_in",
+                    models.JSONField(default=list, help_text="What IS in scope for this task"),
+                ),
+                (
+                    "scope_out",
+                    models.JSONField(
+                        default=list,
+                        help_text="What is NOT in scope (explicit exclusions)",
+                    ),
+                ),
+                (
+                    "spec_ref",
+                    models.CharField(
+                        blank=True,
+                        help_text="Path to spec file (e.g., 'specs/auth.md')",
+                        max_length=500,
+                    ),
+                ),
+                (
+                    "worktree_path",
+                    models.CharField(
+                        blank=True,
+                        help_text="Path to git worktree (e.g., '.worktrees/task-auth-001')",
+                        max_length=255,
+                    ),
+                ),
+                (
+                    "branch_name",
+                    models.CharField(
+                        blank=True, help_text="Git branch for this task", max_length=100
+                    ),
+                ),
+                (
+                    "commit_sha",
+                    models.CharField(
+                        blank=True,
+                        help_text="Latest commit SHA submitted for review",
+                        max_length=40,
+                    ),
+                ),
+                (
+                    "attempt_count",
+                    models.PositiveIntegerField(
+                        default=0,
+                        help_text="Number of times this task has been attempted",
+                    ),
+                ),
+                (
+                    "max_attempts",
+                    models.PositiveIntegerField(
+                        default=2,
+                        help_text="After this many failures by different coders, task is presumed wrong",
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "claimed_by",
+                    models.ForeignKey(
+                        blank=True,
+                        help_text="Agent that claimed this task",
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="claimed_tasks",
+                        to="requirements.agent",
+                    ),
+                ),
+                (
+                    "depends_on",
+                    models.ManyToManyField(
+                        blank=True,
+                        help_text="Tasks that must complete before this one",
+                        related_name="blocks",
+                        to="requirements.agenttask",
+                    ),
+                ),
+                (
+                    "requirements",
+                    models.ManyToManyField(
+                        blank=True,
+                        help_text="Requirements this task implements",
+                        related_name="agent_tasks",
+                        to="requirements.requirement",
+                    ),
+                ),
+                (
+                    "sprint",
+                    models.ForeignKey(
+                        blank=True,
+                        help_text="Sprint this task belongs to",
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="tasks",
+                        to="requirements.agentsprint",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Agent Task',
-                'verbose_name_plural': 'Agent Tasks',
-                'ordering': ['created_at'],
+                "verbose_name": "Agent Task",
+                "verbose_name_plural": "Agent Tasks",
+                "ordering": ["created_at"],
             },
         ),
         migrations.CreateModel(
-            name='AgentTaskHistory',
+            name="AgentTaskHistory",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('timestamp', models.DateTimeField(auto_now_add=True, db_index=True, help_text='When this action occurred')),
-                ('action', models.CharField(help_text="Action taken (e.g., 'CLAIMED', 'SUBMITTED_FOR_REVIEW', 'APPROVED')", max_length=50)),
-                ('from_status', models.CharField(blank=True, help_text='Status before transition', max_length=20)),
-                ('to_status', models.CharField(blank=True, help_text='Status after transition', max_length=20)),
-                ('details', models.JSONField(default=dict, help_text='Additional context (commit SHA, review feedback, etc.)')),
-                ('agent', models.ForeignKey(blank=True, help_text='Agent that performed the action (null for system actions)', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='task_history', to='requirements.agent')),
-                ('task', models.ForeignKey(help_text='The task this history entry belongs to', on_delete=django.db.models.deletion.CASCADE, related_name='history', to='requirements.agenttask')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "timestamp",
+                    models.DateTimeField(
+                        auto_now_add=True,
+                        db_index=True,
+                        help_text="When this action occurred",
+                    ),
+                ),
+                (
+                    "action",
+                    models.CharField(
+                        help_text="Action taken (e.g., 'CLAIMED', 'SUBMITTED_FOR_REVIEW', 'APPROVED')",
+                        max_length=50,
+                    ),
+                ),
+                (
+                    "from_status",
+                    models.CharField(
+                        blank=True, help_text="Status before transition", max_length=20
+                    ),
+                ),
+                (
+                    "to_status",
+                    models.CharField(
+                        blank=True, help_text="Status after transition", max_length=20
+                    ),
+                ),
+                (
+                    "details",
+                    models.JSONField(
+                        default=dict,
+                        help_text="Additional context (commit SHA, review feedback, etc.)",
+                    ),
+                ),
+                (
+                    "agent",
+                    models.ForeignKey(
+                        blank=True,
+                        help_text="Agent that performed the action (null for system actions)",
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="task_history",
+                        to="requirements.agent",
+                    ),
+                ),
+                (
+                    "task",
+                    models.ForeignKey(
+                        help_text="The task this history entry belongs to",
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="history",
+                        to="requirements.agenttask",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Agent Task History',
-                'verbose_name_plural': 'Agent Task History',
-                'ordering': ['-timestamp'],
+                "verbose_name": "Agent Task History",
+                "verbose_name_plural": "Agent Task History",
+                "ordering": ["-timestamp"],
             },
         ),
         migrations.CreateModel(
-            name='AgentTaskReview',
+            name="AgentTaskReview",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('decision', models.CharField(choices=[('approved', 'Approved'), ('changes_requested', 'Changes Requested'), ('rejected', 'Rejected')], help_text='Review outcome', max_length=20)),
-                ('commit_sha', models.CharField(help_text='The commit SHA that was reviewed', max_length=40)),
-                ('done_when_results', models.JSONField(default=list, help_text='Pass/fail for each done_when criterion')),
-                ('feedback', models.TextField(blank=True, help_text='Detailed review feedback')),
-                ('blocking_issues', models.JSONField(default=list, help_text='Issues that must be fixed')),
-                ('suggestions', models.JSONField(default=list, help_text='Non-blocking suggestions')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('reviewer', models.ForeignKey(help_text='Agent that performed the review', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='reviews_given', to='requirements.agent')),
-                ('task', models.ForeignKey(help_text='The task being reviewed', on_delete=django.db.models.deletion.CASCADE, related_name='reviews', to='requirements.agenttask')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "decision",
+                    models.CharField(
+                        choices=[
+                            ("approved", "Approved"),
+                            ("changes_requested", "Changes Requested"),
+                            ("rejected", "Rejected"),
+                        ],
+                        help_text="Review outcome",
+                        max_length=20,
+                    ),
+                ),
+                (
+                    "commit_sha",
+                    models.CharField(help_text="The commit SHA that was reviewed", max_length=40),
+                ),
+                (
+                    "done_when_results",
+                    models.JSONField(
+                        default=list, help_text="Pass/fail for each done_when criterion"
+                    ),
+                ),
+                (
+                    "feedback",
+                    models.TextField(blank=True, help_text="Detailed review feedback"),
+                ),
+                (
+                    "blocking_issues",
+                    models.JSONField(default=list, help_text="Issues that must be fixed"),
+                ),
+                (
+                    "suggestions",
+                    models.JSONField(default=list, help_text="Non-blocking suggestions"),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "reviewer",
+                    models.ForeignKey(
+                        help_text="Agent that performed the review",
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="reviews_given",
+                        to="requirements.agent",
+                    ),
+                ),
+                (
+                    "task",
+                    models.ForeignKey(
+                        help_text="The task being reviewed",
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="reviews",
+                        to="requirements.agenttask",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Agent Task Review',
-                'verbose_name_plural': 'Agent Task Reviews',
-                'ordering': ['-created_at'],
+                "verbose_name": "Agent Task Review",
+                "verbose_name_plural": "Agent Task Reviews",
+                "ordering": ["-created_at"],
             },
         ),
     ]

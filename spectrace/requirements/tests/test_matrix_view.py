@@ -1,4 +1,5 @@
 """Tests for matrix view."""
+
 import pytest
 from django.contrib.auth.models import User
 from django.test import Client
@@ -10,9 +11,7 @@ from requirements.models import Requirement, TestResult, TestRun
 def admin_user(db):
     """Create an admin user."""
     return User.objects.create_superuser(
-        username='admin',
-        email='admin@test.com',
-        password='adminpass'
+        username="admin", email="admin@test.com", password="adminpass"
     )
 
 
@@ -20,7 +19,7 @@ def admin_user(db):
 def admin_client(admin_user):
     """Create an authenticated admin client."""
     client = Client()
-    client.login(username='admin', password='adminpass')
+    client.login(username="admin", password="adminpass")
     return client
 
 
@@ -68,7 +67,7 @@ def sample_data(db):
     )
     result2.requirements.add(req2)
 
-    return {'requirements': [req1, req2], 'results': [result1, result2]}
+    return {"requirements": [req1, req2], "results": [result1, result2]}
 
 
 class TestMatrixViewAccess:
@@ -76,21 +75,21 @@ class TestMatrixViewAccess:
 
     def test_requires_login(self, client):
         """Unauthenticated users are redirected to login."""
-        response = client.get('/admin/matrix/')
+        response = client.get("/admin/matrix/")
         assert response.status_code == 302
-        assert '/admin/login/' in response.url or '/accounts/login/' in response.url
+        assert "/admin/login/" in response.url or "/accounts/login/" in response.url
 
     @pytest.mark.django_db
     def test_staff_can_access(self, admin_client):
         """Staff users can access the matrix view."""
-        response = admin_client.get('/admin/matrix/')
+        response = admin_client.get("/admin/matrix/")
         assert response.status_code == 200
 
     @pytest.mark.django_db
     def test_renders_template(self, admin_client):
         """View renders the correct template."""
-        response = admin_client.get('/admin/matrix/')
-        assert 'Traceability Matrix' in response.content.decode()
+        response = admin_client.get("/admin/matrix/")
+        assert "Traceability Matrix" in response.content.decode()
 
 
 class TestMatrixViewContent:
@@ -99,28 +98,28 @@ class TestMatrixViewContent:
     @pytest.mark.django_db
     def test_shows_requirements(self, admin_client, sample_data):
         """Matrix shows requirements."""
-        response = admin_client.get('/admin/matrix/')
+        response = admin_client.get("/admin/matrix/")
         content = response.content.decode()
 
-        assert 'REQ-001' in content
-        assert 'REQ-002' in content
+        assert "REQ-001" in content
+        assert "REQ-002" in content
 
     @pytest.mark.django_db
     def test_shows_tests(self, admin_client, sample_data):
         """Matrix shows test names."""
-        response = admin_client.get('/admin/matrix/')
+        response = admin_client.get("/admin/matrix/")
         content = response.content.decode()
 
-        assert 'test_login' in content
-        assert 'test_view' in content
+        assert "test_login" in content
+        assert "test_view" in content
 
     @pytest.mark.django_db
     def test_shows_empty_state(self, admin_client):
         """Matrix shows empty state when no data."""
-        response = admin_client.get('/admin/matrix/')
+        response = admin_client.get("/admin/matrix/")
         content = response.content.decode()
 
-        assert 'No requirements yet' in content
+        assert "No requirements yet" in content
 
 
 class TestMatrixViewFilters:
@@ -129,24 +128,24 @@ class TestMatrixViewFilters:
     @pytest.mark.django_db
     def test_filter_by_status(self, admin_client, sample_data):
         """Can filter by requirement status."""
-        response = admin_client.get('/admin/matrix/?status=passing')
+        response = admin_client.get("/admin/matrix/?status=passing")
         content = response.content.decode()
 
         # REQ-001 (passing) should be in the matrix table
-        assert 'Login Feature' in content
+        assert "Login Feature" in content
         # REQ-002 (failing) should NOT be in the filtered results
-        assert 'Dashboard Feature' not in content
+        assert "Dashboard Feature" not in content
 
     @pytest.mark.django_db
     def test_filter_by_tags(self, admin_client, sample_data):
         """Can filter by tags."""
-        response = admin_client.get('/admin/matrix/?tags=ui')
+        response = admin_client.get("/admin/matrix/?tags=ui")
         content = response.content.decode()
 
         # REQ-002 has 'ui' tag
-        assert 'Dashboard Feature' in content
+        assert "Dashboard Feature" in content
         # REQ-001 (no 'ui' tag) should NOT be in the filtered results
-        assert 'Login Feature' not in content
+        assert "Login Feature" not in content
 
 
 class TestMatrixExport:
@@ -155,46 +154,46 @@ class TestMatrixExport:
     @pytest.mark.django_db
     def test_export_requires_login(self, client):
         """Unauthenticated users are redirected."""
-        response = client.get('/admin/matrix/export/')
+        response = client.get("/admin/matrix/export/")
         assert response.status_code == 302
 
     @pytest.mark.django_db
     def test_export_returns_csv(self, admin_client, sample_data):
         """Export returns CSV file."""
-        response = admin_client.get('/admin/matrix/export/')
+        response = admin_client.get("/admin/matrix/export/")
         assert response.status_code == 200
-        assert response['Content-Type'] == 'text/csv'
-        assert 'attachment' in response['Content-Disposition']
-        assert 'traceability_matrix.csv' in response['Content-Disposition']
+        assert response["Content-Type"] == "text/csv"
+        assert "attachment" in response["Content-Disposition"]
+        assert "traceability_matrix.csv" in response["Content-Disposition"]
 
     @pytest.mark.django_db
     def test_export_contains_requirements(self, admin_client, sample_data):
         """CSV contains requirement data."""
-        response = admin_client.get('/admin/matrix/export/')
+        response = admin_client.get("/admin/matrix/export/")
         content = response.content.decode()
 
-        assert 'REQ-001' in content
-        assert 'REQ-002' in content
-        assert 'Login Feature' in content
+        assert "REQ-001" in content
+        assert "REQ-002" in content
+        assert "Login Feature" in content
 
     @pytest.mark.django_db
     def test_export_contains_tests(self, admin_client, sample_data):
         """CSV header contains test names."""
-        response = admin_client.get('/admin/matrix/export/')
+        response = admin_client.get("/admin/matrix/export/")
         content = response.content.decode()
 
-        assert 'test_login' in content
-        assert 'test_view' in content
+        assert "test_login" in content
+        assert "test_view" in content
 
     @pytest.mark.django_db
     def test_export_respects_filters(self, admin_client, sample_data):
         """Export respects status filter."""
-        response = admin_client.get('/admin/matrix/export/?status=passing')
+        response = admin_client.get("/admin/matrix/export/?status=passing")
         content = response.content.decode()
 
-        assert 'REQ-001' in content
+        assert "REQ-001" in content
         # REQ-002 should not be in the data rows (only 1 data row)
-        lines = content.strip().split('\n')
+        lines = content.strip().split("\n")
         # Header + 1 data row = 2 lines
         assert len(lines) == 2
 
@@ -205,24 +204,24 @@ class TestMatrixViewPagination:
     @pytest.mark.django_db
     def test_pagination_info(self, admin_client, sample_data):
         """Pagination info is displayed."""
-        response = admin_client.get('/admin/matrix/')
+        response = admin_client.get("/admin/matrix/")
         content = response.content.decode()
 
-        assert 'Page 1' in content
+        assert "Page 1" in content
 
     @pytest.mark.django_db
     def test_per_page_parameter(self, admin_client, sample_data):
         """Per page parameter is respected."""
-        response = admin_client.get('/admin/matrix/?per_page=1')
+        response = admin_client.get("/admin/matrix/?per_page=1")
         content = response.content.decode()
 
         # Should show pagination since we have 2 items
-        assert 'Page 1 of 2' in content
+        assert "Page 1 of 2" in content
 
     @pytest.mark.django_db
     def test_page_parameter(self, admin_client, sample_data):
         """Page parameter navigates correctly."""
-        response = admin_client.get('/admin/matrix/?per_page=1&page=2')
+        response = admin_client.get("/admin/matrix/?per_page=1&page=2")
         content = response.content.decode()
 
-        assert 'Page 2 of 2' in content
+        assert "Page 2 of 2" in content

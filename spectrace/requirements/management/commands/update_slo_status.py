@@ -1,4 +1,5 @@
 """Django management command for updating SLO status from observability platforms."""
+
 import json
 from pathlib import Path
 
@@ -11,20 +12,20 @@ from requirements.status import update_all_slo_statuses
 class Command(BaseCommand):
     """Update SLO status from observability platform JSON."""
 
-    help = 'Update SLO status from observability platform JSON'
+    help = "Update SLO status from observability platform JSON"
 
     def add_arguments(self, parser):
         """Define command arguments."""
         parser.add_argument(
-            '--from-json',
+            "--from-json",
             type=str,
             required=True,
-            help='Path to JSON file with SLO status data'
+            help="Path to JSON file with SLO status data",
         )
         parser.add_argument(
-            '--no-requirement-update',
-            action='store_true',
-            help='Skip updating requirement slo_status fields'
+            "--no-requirement-update",
+            action="store_true",
+            help="Skip updating requirement slo_status fields",
         )
 
     def handle(self, *args, **options):
@@ -43,7 +44,7 @@ class Command(BaseCommand):
             ]
         }
         """
-        json_path = Path(options['from_json'])
+        json_path = Path(options["from_json"])
         if not json_path.exists():
             raise CommandError(f"JSON file not found: {json_path}")
 
@@ -54,7 +55,7 @@ class Command(BaseCommand):
         except json.JSONDecodeError as e:
             raise CommandError(f"Invalid JSON: {e}")
 
-        slos_data = data.get('slos', [])
+        slos_data = data.get("slos", [])
         if not slos_data:
             self.stdout.write(self.style.WARNING("No SLOs found in JSON file"))
             return
@@ -64,22 +65,22 @@ class Command(BaseCommand):
         # Update SLO status
         summary = update_slo_status_from_json(data)
 
-        self.stdout.write(self.style.SUCCESS(
-            f"Updated {summary['updated']} SLO(s)"
-        ))
-        if summary['not_found']:
-            self.stdout.write(self.style.WARNING(
-                f"  {summary['not_found']} SLO(s) not found in database"
-            ))
+        self.stdout.write(self.style.SUCCESS(f"Updated {summary['updated']} SLO(s)"))
+        if summary["not_found"]:
+            self.stdout.write(
+                self.style.WARNING(f"  {summary['not_found']} SLO(s) not found in database")
+            )
 
         # Update requirement slo_status
-        if not options['no_requirement_update']:
+        if not options["no_requirement_update"]:
             self.stdout.write("Updating requirement SLO status...")
             counts = update_all_slo_statuses()
-            self.stdout.write(self.style.SUCCESS(
-                f"Requirements updated: met={counts['met']}, "
-                f"at_risk={counts['at_risk']}, breached={counts['breached']}, "
-                f"not_linked={counts['not_linked']}"
-            ))
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f"Requirements updated: met={counts['met']}, "
+                    f"at_risk={counts['at_risk']}, breached={counts['breached']}, "
+                    f"not_linked={counts['not_linked']}"
+                )
+            )
 
         self.stdout.write(self.style.SUCCESS("Status update complete!"))

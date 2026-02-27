@@ -1,4 +1,5 @@
 """Verification status computation logic."""
+
 from collections.abc import Callable
 from typing import Any
 
@@ -63,18 +64,18 @@ def compute_verification_status(requirement: Requirement, latest_run=None) -> st
         linked_results = linked_results.filter(test_run=latest_run)
 
     if not linked_results.exists():
-        return 'untested'
+        return "untested"
 
-    statuses = list(linked_results.values_list('status', flat=True))
+    statuses = list(linked_results.values_list("status", flat=True))
 
-    if 'failed' in statuses or 'error' in statuses:
-        return 'failing'
+    if "failed" in statuses or "error" in statuses:
+        return "failing"
 
-    if all(s == 'passed' for s in statuses):
-        return 'passing'
+    if all(s == "passed" for s in statuses):
+        return "passing"
 
     # All skipped or mixed skipped/passed = untested
-    return 'untested'
+    return "untested"
 
 
 def update_all_verification_statuses(latest_run=None) -> dict[str, int]:
@@ -94,9 +95,9 @@ def update_all_verification_statuses(latest_run=None) -> dict[str, int]:
         - untested: Number of requirements with untested status
     """
     return _update_all_statuses(
-        'verification_status',
+        "verification_status",
         compute_unified_verification_status,
-        ['passing', 'failing', 'untested'],
+        ["passing", "failing", "untested"],
         latest_run=latest_run,
     )
 
@@ -118,18 +119,18 @@ def compute_inapp_validation_status(requirement: Requirement) -> str:
     validations = list(requirement.inapp_validations.all())
 
     if not validations:
-        return 'untested'
+        return "untested"
 
     statuses = [v.status for v in validations]
 
     if InAppValidationStatus.FAILURE in statuses:
-        return 'failing'
+        return "failing"
 
     if all(s == InAppValidationStatus.SUCCESS for s in statuses):
-        return 'passing'
+        return "passing"
 
     # All not_run/unknown = untested
-    return 'untested'
+    return "untested"
 
 
 def compute_unified_verification_status(requirement: Requirement, latest_run=None) -> str:
@@ -163,27 +164,27 @@ def compute_unified_verification_status(requirement: Requirement, latest_run=Non
         base_status = inapp_status
     elif method == VerificationMethod.BOTH:
         # Both must pass
-        if test_status == 'failing' or inapp_status == 'failing':
-            base_status = 'failing'
-        elif test_status == 'passing' and inapp_status == 'passing':
-            base_status = 'passing'
-        elif test_status == 'untested' and inapp_status == 'untested':
-            base_status = 'untested'
+        if test_status == "failing" or inapp_status == "failing":
+            base_status = "failing"
+        elif test_status == "passing" and inapp_status == "passing":
+            base_status = "passing"
+        elif test_status == "untested" and inapp_status == "untested":
+            base_status = "untested"
         else:
             # One is passing, one is untested - partial verification
-            base_status = 'untested'
+            base_status = "untested"
     else:  # UNSPECIFIED
         # Use whatever is available - prefer tests, then inapp
-        if test_status != 'untested':
+        if test_status != "untested":
             base_status = test_status
-        elif inapp_status != 'untested':
+        elif inapp_status != "untested":
             base_status = inapp_status
         else:
-            base_status = 'untested'
+            base_status = "untested"
 
     # Check SLO status - breached SLO overrides to failing
     if requirement.slo_status == SLOStatus.BREACHED:
-        return 'failing'
+        return "failing"
 
     return base_status
 
@@ -208,7 +209,7 @@ def compute_slo_status(requirement: Requirement) -> str:
     if not slos.exists():
         return SLOStatus.NOT_LINKED
 
-    slo_statuses = list(slos.values_list('status', flat=True))
+    slo_statuses = list(slos.values_list("status", flat=True))
 
     if SLOStatus.BREACHED in slo_statuses:
         return SLOStatus.BREACHED
@@ -230,9 +231,9 @@ def update_all_slo_statuses() -> dict[str, int]:
         Summary dict with counts by status
     """
     return _update_all_statuses(
-        'slo_status',
+        "slo_status",
         compute_slo_status,
-        ['met', 'at_risk', 'breached', 'not_linked'],
+        ["met", "at_risk", "breached", "not_linked"],
     )
 
 
@@ -249,8 +250,8 @@ def update_all_unified_statuses(latest_run=None) -> dict[str, int]:
         Summary dict with counts by status
     """
     return _update_all_statuses(
-        'verification_status',
+        "verification_status",
         compute_unified_verification_status,
-        ['passing', 'failing', 'untested'],
+        ["passing", "failing", "untested"],
         latest_run=latest_run,
     )

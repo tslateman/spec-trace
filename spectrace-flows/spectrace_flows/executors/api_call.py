@@ -9,9 +9,7 @@ import requests
 from spectrace_flows.types import VerificationCheck
 
 
-def execute_api_call_step(
-    step_def: dict, context: dict
-) -> tuple[VerificationCheck, dict]:
+def execute_api_call_step(step_def: dict, context: dict) -> tuple[VerificationCheck, dict]:
     """Execute an HTTP request and verify the status code.
 
     Config options (from step_def):

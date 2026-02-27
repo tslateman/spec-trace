@@ -4,40 +4,65 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('requirements', '0007_add_spectrace_models'),
+        ("requirements", "0007_add_spectrace_models"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='requirement',
-            name='component',
-            field=models.CharField(blank=True, db_index=True, default='', help_text="What system owns this? (e.g., 'warning_system')", max_length=255),
+            model_name="requirement",
+            name="component",
+            field=models.CharField(
+                blank=True,
+                db_index=True,
+                default="",
+                help_text="What system owns this? (e.g., 'warning_system')",
+                max_length=255,
+            ),
         ),
         migrations.AddField(
-            model_name='requirement',
-            name='condition',
-            field=models.TextField(blank=True, default='', help_text="What triggers the behavior? (e.g., 'battery_level < 10')"),
+            model_name="requirement",
+            name="condition",
+            field=models.TextField(
+                blank=True,
+                default="",
+                help_text="What triggers the behavior? (e.g., 'battery_level < 10')",
+            ),
         ),
         migrations.AddField(
-            model_name='requirement',
-            name='response',
-            field=models.TextField(blank=True, default='', help_text="What must happen? (e.g., 'display battery_warning')"),
+            model_name="requirement",
+            name="response",
+            field=models.TextField(
+                blank=True,
+                default="",
+                help_text="What must happen? (e.g., 'display battery_warning')",
+            ),
         ),
         migrations.AddField(
-            model_name='requirement',
-            name='scope',
-            field=models.TextField(blank=True, default='', help_text="When does this requirement apply? (e.g., 'when in active_session')"),
+            model_name="requirement",
+            name="scope",
+            field=models.TextField(
+                blank=True,
+                default="",
+                help_text="When does this requirement apply? (e.g., 'when in active_session')",
+            ),
         ),
         migrations.AddField(
-            model_name='requirement',
-            name='structure_completeness',
-            field=models.FloatField(default=0.0, help_text='Percentage of structured fields populated (0.0-1.0)'),
+            model_name="requirement",
+            name="structure_completeness",
+            field=models.FloatField(
+                default=0.0,
+                help_text="Percentage of structured fields populated (0.0-1.0)",
+            ),
         ),
         migrations.AddField(
-            model_name='requirement',
-            name='timing',
-            field=models.CharField(blank=True, default='', help_text="Performance constraint? (e.g., 'within 2 seconds')", max_length=100),
+            model_name="requirement",
+            name="timing",
+            field=models.CharField(
+                blank=True,
+                default="",
+                help_text="Performance constraint? (e.g., 'within 2 seconds')",
+                max_length=100,
+            ),
         ),
     ]

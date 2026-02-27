@@ -8,9 +8,6 @@ Tests cover:
 """
 
 import io
-from pathlib import Path
-from tempfile import TemporaryDirectory
-from unittest.mock import patch
 
 import pytest
 from django.core.management import call_command
@@ -20,7 +17,6 @@ from requirements.flows.definitions import FlowDef, FlowStepDef
 from requirements.flows.parser import FlowParseError, YAMLFlowParser
 from requirements.flows.sync import sync_yaml_flows_to_db
 from requirements.models import Requirement, VerificationFlow
-
 
 # ============================================================================
 # YAMLFlowParser Tests
@@ -614,9 +610,7 @@ steps:
         stderr = io.StringIO()
 
         with pytest.raises(CommandError) as exc_info:
-            call_command(
-                "parse_flows", "/nonexistent/path", stdout=stdout, stderr=stderr
-            )
+            call_command("parse_flows", "/nonexistent/path", stdout=stdout, stderr=stderr)
 
         assert "not found" in str(exc_info.value)
 

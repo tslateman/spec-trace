@@ -9,11 +9,11 @@ from django.test import Client
 
 from requirements.health import TestConnectionResult, VerificationCheck
 from requirements.models import (
+    SLO,
     ConflictLog,
     InAppValidation,
     InAppValidationRun,
     Requirement,
-    SLO,
     SLOStatus,
 )
 
@@ -216,9 +216,7 @@ class TestGetRequirementStatusAPI:
         assert response.json()["success"] is False
 
     @pytest.mark.django_db
-    def test_get_requirement_with_linked_items(
-        self, client, sample_requirement, sample_slo
-    ):
+    def test_get_requirement_with_linked_items(self, client, sample_requirement, sample_slo):
         """Requirement with linked SLO shows correct counts."""
         sample_slo.requirements.add(sample_requirement)
 
@@ -245,19 +243,13 @@ class TestLinearTestConnectionAPI:
             success=True,
             message="All checks passed",
             checks=[
-                VerificationCheck(
-                    name="Configuration", passed=True, details="Config OK"
-                ),
-                VerificationCheck(
-                    name="Authentication", passed=True, details="Auth OK"
-                ),
+                VerificationCheck(name="Configuration", passed=True, details="Config OK"),
+                VerificationCheck(name="Authentication", passed=True, details="Auth OK"),
                 VerificationCheck(name="Permissions", passed=True, details="Perms OK"),
             ],
         )
 
-        with patch(
-            "requirements.api.verify_linear_connection", return_value=mock_result
-        ):
+        with patch("requirements.api.verify_linear_connection", return_value=mock_result):
             response = client.post("/api/integrations/linear/test-connection/")
 
         assert response.status_code == 200
@@ -275,9 +267,7 @@ class TestLinearTestConnectionAPI:
             success=False,
             message="Authentication failed",
             checks=[
-                VerificationCheck(
-                    name="Configuration", passed=True, details="Config OK"
-                ),
+                VerificationCheck(name="Configuration", passed=True, details="Config OK"),
                 VerificationCheck(
                     name="Authentication",
                     passed=False,
@@ -287,9 +277,7 @@ class TestLinearTestConnectionAPI:
             ],
         )
 
-        with patch(
-            "requirements.api.verify_linear_connection", return_value=mock_result
-        ):
+        with patch("requirements.api.verify_linear_connection", return_value=mock_result):
             response = client.post("/api/integrations/linear/test-connection/")
 
         assert response.status_code == 200
@@ -315,9 +303,7 @@ class TestLinearTestConnectionAPI:
             ],
         )
 
-        with patch(
-            "requirements.api.verify_linear_connection", return_value=mock_result
-        ):
+        with patch("requirements.api.verify_linear_connection", return_value=mock_result):
             response = client.post("/api/integrations/linear/test-connection/")
 
         assert response.status_code == 200
@@ -342,9 +328,7 @@ class TestLinearTestConnectionAPI:
     @pytest.mark.django_db
     def test_test_connection_ignores_request_body_credentials(self, client):
         """Request body credentials are ignored for security (uses settings only)."""
-        mock_result = TestConnectionResult(
-            success=True, message="All checks passed", checks=[]
-        )
+        mock_result = TestConnectionResult(success=True, message="All checks passed", checks=[])
 
         with patch(
             "requirements.api.verify_linear_connection", return_value=mock_result
@@ -368,13 +352,9 @@ class TestLinearTestConnectionAPI:
     @pytest.mark.django_db
     def test_test_connection_caches_result(self, client):
         """Test connection result is cached."""
-        mock_result = TestConnectionResult(
-            success=True, message="All checks passed", checks=[]
-        )
+        mock_result = TestConnectionResult(success=True, message="All checks passed", checks=[])
 
-        with patch(
-            "requirements.api.verify_linear_connection", return_value=mock_result
-        ):
+        with patch("requirements.api.verify_linear_connection", return_value=mock_result):
             client.post("/api/integrations/linear/test-connection/")
 
         # Check cache was populated
@@ -439,15 +419,11 @@ class TestLinearHealthAPI:
             success=True,
             message="All checks passed",
             checks=[
-                VerificationCheck(
-                    name="Configuration", passed=True, details="Config OK"
-                ),
+                VerificationCheck(name="Configuration", passed=True, details="Config OK"),
             ],
         )
 
-        with patch(
-            "requirements.api.verify_linear_connection", return_value=mock_result
-        ):
+        with patch("requirements.api.verify_linear_connection", return_value=mock_result):
             client.post("/api/integrations/linear/test-connection/")
 
         # Now health should return cached result

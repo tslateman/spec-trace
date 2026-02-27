@@ -8,29 +8,33 @@ Usage:
     # In your admin.py file:
     from spectrace_client.examples.admin_integration import create_pms_test_action
     from spectrace_client.examples.pms import validate_opera_pms
-    
+
     @admin.register(Hotel)
     class HotelAdmin(admin.ModelAdmin):
         list_display = ['name', 'pms_vendor', 'last_validated']
         actions = [create_pms_test_action(validate_opera_pms)]
 """
-from typing import Callable, Any
+
+from typing import Any, Callable
+
 from django.contrib import admin, messages
-from django.http import HttpRequest
 from django.db.models import QuerySet
+from django.http import HttpRequest
 
 from spectrace_client import ValidationStatus
 
 
-def create_pms_test_action(validate_func: Callable[[int, dict | None], Any]) -> Callable:
+def create_pms_test_action(
+    validate_func: Callable[[int, dict | None], Any],
+) -> Callable:
     """Create a Django admin action for testing PMS connections.
-    
+
     Args:
         validate_func: Validation function that takes (hotel_id, feature_flags)
-    
+
     Returns:
         Admin action function that can be added to ModelAdmin.actions
-    
+
     Example:
         @admin.register(Hotel)
         class HotelAdmin(admin.ModelAdmin):
@@ -39,71 +43,72 @@ def create_pms_test_action(validate_func: Callable[[int, dict | None], Any]) -> 
                 create_pms_test_action(validate_mews_pms),
             ]
     """
+
     def test_connection_action(
-        modeladmin: admin.ModelAdmin,
-        request: HttpRequest,
-        queryset: QuerySet
+        modeladmin: admin.ModelAdmin, request: HttpRequest, queryset: QuerySet
     ) -> None:
         """Test PMS connection for selected hotels."""
         success_count = 0
         failure_count = 0
-        
+
         for hotel in queryset:
             # Get feature flags from hotel settings if available
-            feature_flags = getattr(hotel, 'feature_flags', {})
-            
+            feature_flags = getattr(hotel, "feature_flags", {})
+
             try:
                 result = validate_func(hotel.id, feature_flags)
-                
+
                 if result.status == ValidationStatus.SUCCESS:
                     success_count += 1
                     modeladmin.message_user(
                         request,
                         f"✅ {hotel.name}: Connection test PASSED",
-                        messages.SUCCESS
+                        messages.SUCCESS,
                     )
                 elif result.status == ValidationStatus.DEGRADED:
                     modeladmin.message_user(
                         request,
                         f"⚠️ {hotel.name}: Connection test DEGRADED - {result.message}",
-                        messages.WARNING
+                        messages.WARNING,
                     )
                 else:
                     failure_count += 1
                     modeladmin.message_user(
                         request,
                         f"❌ {hotel.name}: Connection test FAILED - {result.message}",
-                        messages.ERROR
+                        messages.ERROR,
                     )
             except Exception as e:
                 failure_count += 1
                 modeladmin.message_user(
                     request,
                     f"❌ {hotel.name}: Validation error - {str(e)}",
-                    messages.ERROR
+                    messages.ERROR,
                 )
-        
+
         # Summary message
         if success_count > 0:
             modeladmin.message_user(
                 request,
                 f"Tested {queryset.count()} hotel(s): {success_count} passed, {failure_count} failed",
-                messages.INFO
+                messages.INFO,
             )
-    
+
     test_connection_action.short_description = f"Test {validate_func.__name__.replace('validate_', '').replace('_', ' ').title()} Connection"
     return test_connection_action
 
 
-def create_mobile_key_test_action(validate_func: Callable[[int, dict | None], Any]) -> Callable:
+def create_mobile_key_test_action(
+    validate_func: Callable[[int, dict | None], Any],
+) -> Callable:
     """Create a Django admin action for testing mobile key connections.
-    
+
     Args:
         validate_func: Validation function that takes (hotel_id, feature_flags)
-    
+
     Returns:
         Admin action function that can be added to ModelAdmin.actions
-    
+
     Example:
         @admin.register(Hotel)
         class HotelAdmin(admin.ModelAdmin):
@@ -112,58 +117,59 @@ def create_mobile_key_test_action(validate_func: Callable[[int, dict | None], An
                 create_mobile_key_test_action(validate_openkey_mobile_key),
             ]
     """
+
     def test_mobile_key_action(
-        modeladmin: admin.ModelAdmin,
-        request: HttpRequest,
-        queryset: QuerySet
+        modeladmin: admin.ModelAdmin, request: HttpRequest, queryset: QuerySet
     ) -> None:
         """Test mobile key connection for selected hotels."""
         success_count = 0
         failure_count = 0
-        
+
         for hotel in queryset:
-            feature_flags = getattr(hotel, 'feature_flags', {})
-            
+            feature_flags = getattr(hotel, "feature_flags", {})
+
             try:
                 result = validate_func(hotel.id, feature_flags)
-                
+
                 if result.status == ValidationStatus.SUCCESS:
                     success_count += 1
                     modeladmin.message_user(
                         request,
                         f"✅ {hotel.name}: Mobile key test PASSED",
-                        messages.SUCCESS
+                        messages.SUCCESS,
                     )
                 elif result.status == ValidationStatus.DEGRADED:
                     modeladmin.message_user(
                         request,
                         f"⚠️ {hotel.name}: Mobile key test DEGRADED - {result.message}",
-                        messages.WARNING
+                        messages.WARNING,
                     )
                 else:
                     failure_count += 1
                     modeladmin.message_user(
                         request,
                         f"❌ {hotel.name}: Mobile key test FAILED - {result.message}",
-                        messages.ERROR
+                        messages.ERROR,
                     )
             except Exception as e:
                 failure_count += 1
                 modeladmin.message_user(
                     request,
                     f"❌ {hotel.name}: Validation error - {str(e)}",
-                    messages.ERROR
+                    messages.ERROR,
                 )
-        
+
         # Summary message
         if success_count + failure_count > 0:
             modeladmin.message_user(
                 request,
                 f"Tested {queryset.count()} hotel(s): {success_count} passed, {failure_count} failed",
-                messages.INFO
+                messages.INFO,
             )
-    
-    test_mobile_key_action.short_description = f"Test {validate_func.__name__.replace('validate_', '').replace('_', ' ').title()}"
+
+    test_mobile_key_action.short_description = (
+        f"Test {validate_func.__name__.replace('validate_', '').replace('_', ' ').title()}"
+    )
     return test_mobile_key_action
 
 
@@ -189,7 +195,7 @@ class HotelAdmin(admin.ModelAdmin):
     list_display = ['name', 'pms_vendor', 'mobile_key_vendor', 'last_validated']
     list_filter = ['pms_vendor', 'mobile_key_vendor']
     search_fields = ['name', 'code']
-    
+
     # Add "Test Connection" actions
     actions = [
         create_pms_test_action(validate_opera_pms),
@@ -197,7 +203,7 @@ class HotelAdmin(admin.ModelAdmin):
         create_mobile_key_test_action(validate_ambiance_mobile_key),
         create_mobile_key_test_action(validate_openkey_mobile_key),
     ]
-    
+
     fieldsets = (
         ('Basic Info', {
             'fields': ('name', 'code', 'address')

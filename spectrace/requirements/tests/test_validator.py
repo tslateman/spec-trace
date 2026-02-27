@@ -1,4 +1,5 @@
 """Unit tests for requirements validation logic."""
+
 import pytest
 
 from requirements.models import Requirement

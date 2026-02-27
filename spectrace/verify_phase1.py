@@ -1,17 +1,20 @@
 #!/usr/bin/env python
 """Verify Phase 1 success criteria."""
+
 import os
 import sys
 
 # Configure Django before any imports
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'spectrace.settings')
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "spectrace.settings")
 sys.path.insert(0, os.path.dirname(__file__))
 
 import django
+
 django.setup()
 
-from django.db.models import Count
-from requirements.models import Requirement
+from django.db.models import Count  # noqa: E402
+
+from requirements.models import Requirement  # noqa: E402
 
 
 def verify():
@@ -25,9 +28,9 @@ def verify():
     print("   PASS: Requirements exist\n")
 
     # 2. Unique IDs
-    dupes = Requirement.objects.values('external_id').annotate(
-        count=Count('id')
-    ).filter(count__gt=1)
+    dupes = (
+        Requirement.objects.values("external_id").annotate(count=Count("id")).filter(count__gt=1)
+    )
     dupe_count = dupes.count()
     print(f"2. Duplicate IDs: {dupe_count}")
     assert not dupes.exists(), f"Duplicates found: {list(dupes)}"
@@ -49,14 +52,14 @@ def verify():
     print(f"4. Requirements with tags: {tagged.count()}")
 
     # Test tag filtering
-    auth_reqs = [r for r in Requirement.objects.all() if 'auth' in r.tags]
+    auth_reqs = [r for r in Requirement.objects.all() if "auth" in r.tags]
     print(f"   - Requirements with 'auth' tag: {len(auth_reqs)}")
     for req in auth_reqs:
         print(f"     - {req.external_id}: {req.tags}")
     print("   PASS: Tags are queryable\n")
 
     # 5. Source file tracking
-    with_source = Requirement.objects.exclude(source_file='')
+    with_source = Requirement.objects.exclude(source_file="")
     print(f"5. Requirements with source_file: {with_source.count()}")
     for req in Requirement.objects.all()[:3]:
         print(f"   - {req.external_id}: {req.source_file}")
@@ -74,6 +77,6 @@ def verify():
     return True
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     success = verify()
     sys.exit(0 if success else 1)

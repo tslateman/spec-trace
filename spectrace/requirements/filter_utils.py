@@ -2,6 +2,7 @@
 
 Consolidates repeated filter building logic across views.
 """
+
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
@@ -81,25 +82,31 @@ class FilterBuilder:
 
 
 # Pre-built filter builders for common views
-MATRIX_FILTERS = FilterBuilder([
-    FilterSpec("status"),
-    FilterSpec("tags", type="tags"),
-    FilterSpec("parent_id"),
-])
+MATRIX_FILTERS = FilterBuilder(
+    [
+        FilterSpec("status"),
+        FilterSpec("tags", type="tags"),
+        FilterSpec("parent_id"),
+    ]
+)
 
-VALIDATION_RUN_FILTERS = FilterBuilder([
-    FilterSpec("source"),
-    FilterSpec("vendor"),
-    FilterSpec("requirement"),
-    FilterSpec("date_from", type="date"),
-    FilterSpec("date_to", type="date"),
-])
+VALIDATION_RUN_FILTERS = FilterBuilder(
+    [
+        FilterSpec("source"),
+        FilterSpec("vendor"),
+        FilterSpec("requirement"),
+        FilterSpec("date_from", type="date"),
+        FilterSpec("date_to", type="date"),
+    ]
+)
 
-FLOW_RUN_FILTERS = FilterBuilder([
-    FilterSpec("status"),
-    FilterSpec("date_from", type="date"),
-    FilterSpec("date_to", type="date"),
-])
+FLOW_RUN_FILTERS = FilterBuilder(
+    [
+        FilterSpec("status"),
+        FilterSpec("date_from", type="date"),
+        FilterSpec("date_to", type="date"),
+    ]
+)
 
 
 def parse_pagination(request: HttpRequest, default_per_page: int = 25) -> tuple[int, int]:

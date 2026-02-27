@@ -1,12 +1,13 @@
 """GitHub webhook handler for processing workflow_run events."""
+
 import json
 import logging
 from typing import TYPE_CHECKING
 
 from django.utils import timezone
-from junitparser import JUnitXml, Failure, Error, Skipped
+from junitparser import Error, Failure, JUnitXml, Skipped
 
-from ..models import TestRun, TestResult, Requirement, TestRequirementLink
+from ..models import Requirement, TestRequirementLink, TestResult, TestRun
 
 if TYPE_CHECKING:
     from ..models import WebhookEvent
@@ -41,7 +42,7 @@ def process_workflow_run(
     Raises:
         WorkflowProcessingError: If processing fails.
     """
-    from .github_app import GitHubClient, GitHubArtifactError
+    from .github_app import GitHubArtifactError, GitHubClient
 
     logger.info(
         "Processing workflow run %d (%s) for %s",

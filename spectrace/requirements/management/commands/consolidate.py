@@ -19,22 +19,22 @@ from requirements.models import AgentTask, AgentTaskStatus
 
 
 class Command(BaseCommand):
-    help = 'Consolidate knowledge after task completion (update docs, check invariants)'
+    help = "Consolidate knowledge after task completion (update docs, check invariants)"
 
     def add_arguments(self, parser):
         parser.add_argument(
-            '--dry-run',
-            action='store_true',
-            help='Show what would be updated without making changes',
+            "--dry-run",
+            action="store_true",
+            help="Show what would be updated without making changes",
         )
         parser.add_argument(
-            '--skip-invariants',
-            action='store_true',
-            help='Skip invariant checks',
+            "--skip-invariants",
+            action="store_true",
+            help="Skip invariant checks",
         )
 
     def handle(self, *args, **options):
-        dry_run = options['dry_run']
+        dry_run = options["dry_run"]
 
         self.stdout.write("Consolidating project state...\n")
 
@@ -42,7 +42,7 @@ class Command(BaseCommand):
         self._update_current_state(dry_run)
 
         # 2. Check invariants
-        if not options['skip_invariants']:
+        if not options["skip_invariants"]:
             self._check_invariants()
 
         # 3. Report task pipeline status
@@ -59,9 +59,7 @@ class Command(BaseCommand):
         current_state_path = project_root / "docs" / "current-state.md"
 
         if not current_state_path.exists():
-            self.stdout.write(self.style.WARNING(
-                f"   {current_state_path} not found - skipping"
-            ))
+            self.stdout.write(self.style.WARNING(f"   {current_state_path} not found - skipping"))
             return
 
         # Check if file has "Last updated" line and update it
@@ -73,11 +71,7 @@ class Command(BaseCommand):
             return
 
         # Update the date
-        new_content = re.sub(
-            r"Last updated: \d{4}-\d{2}-\d{2}",
-            f"Last updated: {today}",
-            content
-        )
+        new_content = re.sub(r"Last updated: \d{4}-\d{2}-\d{2}", f"Last updated: {today}", content)
 
         if new_content != content:
             if dry_run:
@@ -87,9 +81,9 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.SUCCESS(f"   Updated 'Last updated' to {today}"))
 
         # Remind about manual review
-        self.stdout.write(self.style.WARNING(
-            "   Review docs/current-state.md for accuracy after major changes"
-        ))
+        self.stdout.write(
+            self.style.WARNING("   Review docs/current-state.md for accuracy after major changes")
+        )
 
     def _check_invariants(self) -> None:
         """Run invariant checks."""
@@ -97,16 +91,13 @@ class Command(BaseCommand):
 
         try:
             from requirements.invariants import check_all_invariants
+
             report = check_all_invariants()
 
             if not report.has_violations:
-                self.stdout.write(
-                    f"   All {report.checks_performed} invariant checks passed"
-                )
+                self.stdout.write(f"   All {report.checks_performed} invariant checks passed")
             else:
-                self.stderr.write(
-                    f"   {len(report.violations)} invariant violations found"
-                )
+                self.stderr.write(f"   {len(report.violations)} invariant violations found")
                 for v in report.violations[:5]:  # Show first 5
                     self.stdout.write(f"   - {v.code}: {v.message}")
                 if len(report.violations) > 5:
@@ -120,19 +111,23 @@ class Command(BaseCommand):
 
         try:
             counts = {
-                'draft': AgentTask.objects.filter(status=AgentTaskStatus.DRAFT).count(),
-                'claimed': AgentTask.objects.filter(status=AgentTaskStatus.CLAIMED).count(),
-                'in_progress': AgentTask.objects.filter(status=AgentTaskStatus.IN_PROGRESS).count(),
-                'pending_review': AgentTask.objects.filter(status=AgentTaskStatus.READY_FOR_REVIEW).count(),
-                'merged': AgentTask.objects.filter(status=AgentTaskStatus.MERGED).count(),
+                "draft": AgentTask.objects.filter(status=AgentTaskStatus.DRAFT).count(),
+                "claimed": AgentTask.objects.filter(status=AgentTaskStatus.CLAIMED).count(),
+                "in_progress": AgentTask.objects.filter(status=AgentTaskStatus.IN_PROGRESS).count(),
+                "pending_review": AgentTask.objects.filter(
+                    status=AgentTaskStatus.READY_FOR_REVIEW
+                ).count(),
+                "merged": AgentTask.objects.filter(status=AgentTaskStatus.MERGED).count(),
             }
 
-            active = counts['claimed'] + counts['in_progress'] + counts['pending_review']
+            active = counts["claimed"] + counts["in_progress"] + counts["pending_review"]
 
-            if active == 0 and counts['draft'] == 0:
+            if active == 0 and counts["draft"] == 0:
                 self.stdout.write(self.style.SUCCESS("   No active tasks"))
             else:
-                self.stdout.write(f"   Draft: {counts['draft']}, Active: {active}, Merged: {counts['merged']}")
+                self.stdout.write(
+                    f"   Draft: {counts['draft']}, Active: {active}, Merged: {counts['merged']}"
+                )
 
         except Exception as e:
             self.stdout.write(self.style.WARNING(f"   Could not query tasks: {e}"))

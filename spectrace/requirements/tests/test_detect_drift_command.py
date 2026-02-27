@@ -1,10 +1,10 @@
 """Tests for detect_drift management command."""
 
 import json
+from io import StringIO
 
 import pytest
 from django.core.management import call_command
-from io import StringIO
 
 from requirements.models import (
     Requirement,
@@ -18,17 +18,17 @@ from requirements.models import (
 def requirement(db):
     """Create a basic requirement."""
     return Requirement.add_root(
-        external_id='REQ-001',
-        title='Test Requirement',
-        status='active',
-        source_file='test.md',
+        external_id="REQ-001",
+        title="Test Requirement",
+        status="active",
+        source_file="test.md",
     )
 
 
 @pytest.fixture
 def test_run(db):
     """Create a test run."""
-    return TestRun.objects.create(source_file='results.xml')
+    return TestRun.objects.create(source_file="results.xml")
 
 
 class TestDetectDriftCommand:
@@ -39,48 +39,48 @@ class TestDetectDriftCommand:
         """Command runs and returns output."""
         out = StringIO()
         try:
-            call_command('detect_drift', stdout=out)
+            call_command("detect_drift", stdout=out)
         except SystemExit:
             pass  # Expected if issues found
 
         output = out.getvalue()
-        assert 'all drift checks' in output
+        assert "all drift checks" in output
 
     @pytest.mark.django_db
     def test_command__json_format(self, requirement, test_run):
         """Command outputs valid JSON when --format json."""
         out = StringIO()
         try:
-            call_command('detect_drift', '--format', 'json', stdout=out)
+            call_command("detect_drift", "--format", "json", stdout=out)
         except SystemExit:
             pass
 
         output = out.getvalue()
         data = json.loads(output)
-        assert 'errors' in data
-        assert 'warnings' in data
-        assert 'summary' in data
+        assert "errors" in data
+        assert "warnings" in data
+        assert "summary" in data
 
     @pytest.mark.django_db
     def test_command__stale_check(self, requirement, test_run):
         """Command can run specific check type."""
         # Create stale link
         TestRequirementLink.objects.create(
-            test_nodeid='old_test.py::test_deleted',
+            test_nodeid="old_test.py::test_deleted",
             requirement=requirement,
         )
         TestResult.objects.create(
             test_run=test_run,
-            test_nodeid='new_test.py::test_current',
-            name='test_current',
-            status='passed',
+            test_nodeid="new_test.py::test_current",
+            name="test_current",
+            status="passed",
         )
 
         out = StringIO()
         with pytest.raises(SystemExit) as exc_info:
-            call_command('detect_drift', '--check', 'stale', stdout=out)
+            call_command("detect_drift", "--check", "stale", stdout=out)
 
-        output = out.getvalue()
+        out.getvalue()
         # Should find stale link and exit with error
         assert exc_info.value.code == 1
 
@@ -89,20 +89,20 @@ class TestDetectDriftCommand:
         """Command detects orphan requirements."""
         out = StringIO()
         try:
-            call_command('detect_drift', '--check', 'orphan', stdout=out)
+            call_command("detect_drift", "--check", "orphan", stdout=out)
         except SystemExit:
             pass
 
         output = out.getvalue()
         # Should find orphan requirement (active with no tests)
-        assert 'orphan' in output.lower() or 'ORPHAN' in output
+        assert "orphan" in output.lower() or "ORPHAN" in output
 
     @pytest.mark.django_db
     def test_command__unmarked_check_requires_path(self):
         """Unmarked check requires --tests path."""
         err = StringIO()
         with pytest.raises(SystemExit) as exc_info:
-            call_command('detect_drift', '--check', 'unmarked', stderr=err)
+            call_command("detect_drift", "--check", "unmarked", stderr=err)
 
         assert exc_info.value.code == 2
 
@@ -111,29 +111,31 @@ class TestDetectDriftCommand:
         """Drift check requires --specs path."""
         err = StringIO()
         with pytest.raises(SystemExit) as exc_info:
-            call_command('detect_drift', '--check', 'drift', stderr=err)
+            call_command("detect_drift", "--check", "drift", stderr=err)
 
         assert exc_info.value.code == 2
 
     @pytest.mark.django_db
     def test_command__with_test_directory(self, requirement, test_run, tmp_path):
         """Command runs with test directory specified."""
-        test_dir = tmp_path / 'tests'
+        test_dir = tmp_path / "tests"
         test_dir.mkdir()
 
         out = StringIO()
         try:
             call_command(
-                'detect_drift',
-                '--check', 'unmarked',
-                '--tests', str(test_dir),
+                "detect_drift",
+                "--check",
+                "unmarked",
+                "--tests",
+                str(test_dir),
                 stdout=out,
             )
         except SystemExit:
             pass
 
         output = out.getvalue()
-        assert 'unmarked' in output.lower()
+        assert "unmarked" in output.lower()
 
     @pytest.mark.django_db
     def test_command__strict_mode(self, requirement):
@@ -142,9 +144,10 @@ class TestDetectDriftCommand:
         out = StringIO()
         with pytest.raises(SystemExit) as exc_info:
             call_command(
-                'detect_drift',
-                '--check', 'orphan',
-                '--strict',
+                "detect_drift",
+                "--check",
+                "orphan",
+                "--strict",
                 stdout=out,
             )
 

@@ -4,58 +4,57 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('requirements', '0003_inappvalidationrun_requirement_slo_status_and_more'),
+        ("requirements", "0003_inappvalidationrun_requirement_slo_status_and_more"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='inappvalidation',
-            name='last_checked',
+            model_name="inappvalidation",
+            name="last_checked",
         ),
         migrations.RemoveField(
-            model_name='inappvalidation',
-            name='message',
+            model_name="inappvalidation",
+            name="message",
         ),
         migrations.RemoveField(
-            model_name='inappvalidation',
-            name='status',
+            model_name="inappvalidation",
+            name="status",
         ),
         migrations.RemoveField(
-            model_name='inappvalidationrun',
-            name='failed',
+            model_name="inappvalidationrun",
+            name="failed",
         ),
         migrations.RemoveField(
-            model_name='inappvalidationrun',
-            name='successful',
+            model_name="inappvalidationrun",
+            name="successful",
         ),
         migrations.RemoveField(
-            model_name='inappvalidationrun',
-            name='total_validations',
+            model_name="inappvalidationrun",
+            name="total_validations",
         ),
         migrations.RemoveField(
-            model_name='slo',
-            name='raw_yaml',
+            model_name="slo",
+            name="raw_yaml",
         ),
         migrations.RemoveField(
-            model_name='testrun',
-            name='errors',
+            model_name="testrun",
+            name="errors",
         ),
         migrations.RemoveField(
-            model_name='testrun',
-            name='failed',
+            model_name="testrun",
+            name="failed",
         ),
         migrations.RemoveField(
-            model_name='testrun',
-            name='passed',
+            model_name="testrun",
+            name="passed",
         ),
         migrations.RemoveField(
-            model_name='testrun',
-            name='skipped',
+            model_name="testrun",
+            name="skipped",
         ),
         migrations.RemoveField(
-            model_name='testrun',
-            name='total_tests',
+            model_name="testrun",
+            name="total_tests",
         ),
     ]

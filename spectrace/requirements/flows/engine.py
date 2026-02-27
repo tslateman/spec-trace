@@ -6,17 +6,18 @@ SequentialFlowEngine that uses DjangoFlowStorage by default.
 
 from typing import Union
 
+from requirements.flows.django_storage import DjangoFlowStorage
+from requirements.models import VerificationFlow, VerificationFlowSource
 from spectrace_flows import (
     FlowDef,
     FlowStepDef,
     FlowTimeoutError,
-    SequentialFlowEngine as BaseSequentialFlowEngine,
     StepTimeoutError,
     load_handler,
 )
-
-from requirements.flows.django_storage import DjangoFlowStorage
-from requirements.models import VerificationFlow, VerificationFlowSource
+from spectrace_flows import (
+    SequentialFlowEngine as BaseSequentialFlowEngine,
+)
 
 # Re-export for backward compatibility
 __all__ = [
@@ -104,9 +105,8 @@ class SequentialFlowEngine(BaseSequentialFlowEngine):
         Returns:
             VerificationFlowRun Django model for backward compatibility
         """
-        from spectrace_flows import FlowSource
-
         from requirements.models import VerificationFlowRun
+        from spectrace_flows import FlowSource
 
         # Convert Django model to FlowDef if needed
         if isinstance(flow, VerificationFlow):

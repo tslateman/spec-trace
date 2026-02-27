@@ -28,7 +28,7 @@ from requirements.flows.handlers.linear import (
     check_permissions,
 )
 from requirements.flows.sync import sync_flows_safe, sync_flows_to_db
-from requirements.health import TestConnectionResult, VerificationCheck
+from requirements.health import TestConnectionResult
 from requirements.models import (
     VerificationFlow,
     VerificationFlowRun,
@@ -36,7 +36,6 @@ from requirements.models import (
     VerificationFlowStatus,
     VerificationFlowStep,
 )
-
 
 # ============================================================================
 # Flow Definitions Tests
@@ -83,12 +82,12 @@ class TestFlowStepDef:
         step_dict = asdict(step)
 
         assert step_dict == {
-            'name': 'test',
-            'handler': 'module.function',
-            'display_name': 'Test',
-            'description': 'Description',
-            'type': 'handler',
-            'config': {},
+            "name": "test",
+            "handler": "module.function",
+            "display_name": "Test",
+            "description": "Description",
+            "type": "handler",
+            "config": {},
         }
 
 
@@ -173,11 +172,13 @@ class TestLinearCheckConfiguration:
 
     def test_valid_configuration(self):
         """Valid configuration returns success."""
-        check, ctx = check_configuration({
-            'api_key': 'lin_api_abc123',
-            'workspace': 'my-workspace',
-            'team': 'my-team',
-        })
+        check, ctx = check_configuration(
+            {
+                "api_key": "lin_api_abc123",
+                "workspace": "my-workspace",
+                "team": "my-team",
+            }
+        )
 
         assert check.passed is True
         assert check.name == "Configuration"
@@ -186,41 +187,49 @@ class TestLinearCheckConfiguration:
 
     def test_missing_api_key(self):
         """Missing API key returns failure."""
-        check, ctx = check_configuration({
-            'workspace': 'my-workspace',
-            'team': 'my-team',
-        })
+        check, ctx = check_configuration(
+            {
+                "workspace": "my-workspace",
+                "team": "my-team",
+            }
+        )
 
         assert check.passed is False
         assert "LINEAR_API_KEY not configured" in check.error_message
 
     def test_invalid_api_key_format(self):
         """Invalid API key format returns failure."""
-        check, ctx = check_configuration({
-            'api_key': 'invalid_key',
-            'workspace': 'my-workspace',
-            'team': 'my-team',
-        })
+        check, ctx = check_configuration(
+            {
+                "api_key": "invalid_key",
+                "workspace": "my-workspace",
+                "team": "my-team",
+            }
+        )
 
         assert check.passed is False
         assert "does not match expected format" in check.error_message
 
     def test_missing_workspace(self):
         """Missing workspace returns failure."""
-        check, ctx = check_configuration({
-            'api_key': 'lin_api_abc123',
-            'team': 'my-team',
-        })
+        check, ctx = check_configuration(
+            {
+                "api_key": "lin_api_abc123",
+                "team": "my-team",
+            }
+        )
 
         assert check.passed is False
         assert "LINEAR_WORKSPACE not configured" in check.error_message
 
     def test_missing_team(self):
         """Missing team returns failure."""
-        check, ctx = check_configuration({
-            'api_key': 'lin_api_abc123',
-            'workspace': 'my-workspace',
-        })
+        check, ctx = check_configuration(
+            {
+                "api_key": "lin_api_abc123",
+                "workspace": "my-workspace",
+            }
+        )
 
         assert check.passed is False
         assert "LINEAR_TEAM not configured" in check.error_message
@@ -231,24 +240,24 @@ class TestLinearCheckAuthentication:
 
     def test_successful_authentication(self):
         """Successful auth returns success and client in context."""
-        with patch('requirements.flows.handlers.linear.LinearClient') as MockClient:
+        with patch("requirements.flows.handlers.linear.LinearClient") as MockClient:
             mock_client = Mock()
             mock_client._execute_query.return_value = {
-                'viewer': {'id': '1', 'name': 'Test User', 'email': 'test@example.com'}
+                "viewer": {"id": "1", "name": "Test User", "email": "test@example.com"}
             }
             MockClient.return_value = mock_client
 
-            check, ctx = check_authentication({'api_key': 'lin_api_abc123'})
+            check, ctx = check_authentication({"api_key": "lin_api_abc123"})
 
             assert check.passed is True
             assert check.name == "Authentication"
             assert "Authenticated as Test User" in check.details
-            assert 'client' in ctx
-            assert ctx['client'] is mock_client
+            assert "client" in ctx
+            assert ctx["client"] is mock_client
 
     def test_http_401_error(self):
         """HTTP 401 returns failure."""
-        with patch('requirements.flows.handlers.linear.LinearClient') as MockClient:
+        with patch("requirements.flows.handlers.linear.LinearClient") as MockClient:
             mock_client = Mock()
             mock_response = Mock()
             mock_response.status_code = 401
@@ -257,7 +266,7 @@ class TestLinearCheckAuthentication:
             mock_client._execute_query.side_effect = http_error
             MockClient.return_value = mock_client
 
-            check, ctx = check_authentication({'api_key': 'lin_api_abc123'})
+            check, ctx = check_authentication({"api_key": "lin_api_abc123"})
 
             assert check.passed is False
             assert check.response_status == 401
@@ -266,12 +275,12 @@ class TestLinearCheckAuthentication:
 
     def test_graphql_error(self):
         """GraphQL error returns failure."""
-        with patch('requirements.flows.handlers.linear.LinearClient') as MockClient:
+        with patch("requirements.flows.handlers.linear.LinearClient") as MockClient:
             mock_client = Mock()
             mock_client._execute_query.side_effect = ValueError("GraphQL error")
             MockClient.return_value = mock_client
 
-            check, ctx = check_authentication({'api_key': 'lin_api_abc123'})
+            check, ctx = check_authentication({"api_key": "lin_api_abc123"})
 
             assert check.passed is False
             assert "GraphQL error" in check.error_message
@@ -283,11 +292,9 @@ class TestLinearCheckPermissions:
     def test_successful_permissions(self):
         """Successful permissions check returns success."""
         mock_client = Mock()
-        mock_client._execute_query.return_value = {
-            'issues': {'nodes': [{'id': 'issue-1'}]}
-        }
+        mock_client._execute_query.return_value = {"issues": {"nodes": [{"id": "issue-1"}]}}
 
-        check, ctx = check_permissions({'client': mock_client})
+        check, ctx = check_permissions({"client": mock_client})
 
         assert check.passed is True
         assert check.name == "Permissions"
@@ -310,7 +317,7 @@ class TestLinearCheckPermissions:
         http_error = requests.HTTPError(response=mock_response)
         mock_client._execute_query.side_effect = http_error
 
-        check, ctx = check_permissions({'client': mock_client})
+        check, ctx = check_permissions({"client": mock_client})
 
         assert check.passed is False
         assert check.response_status == 403
@@ -331,16 +338,16 @@ def verification_flow(db):
         description="Test flow description",
         steps=[
             {
-                'name': 'step1',
-                'handler': 'requirements.flows.handlers.linear.check_configuration',
-                'display_name': 'Step 1',
-                'description': 'First step',
+                "name": "step1",
+                "handler": "requirements.flows.handlers.linear.check_configuration",
+                "display_name": "Step 1",
+                "description": "First step",
             },
             {
-                'name': 'step2',
-                'handler': 'requirements.flows.handlers.linear.check_authentication',
-                'display_name': 'Step 2',
-                'description': 'Second step',
+                "name": "step2",
+                "handler": "requirements.flows.handlers.linear.check_authentication",
+                "display_name": "Step 2",
+                "description": "Second step",
             },
         ],
         version=1,
@@ -352,23 +359,21 @@ class TestLoadHandler:
 
     def test_load_existing_handler(self):
         """Can load an existing handler function."""
-        handler = load_handler(
-            'requirements.flows.handlers.linear.check_configuration'
-        )
+        handler = load_handler("requirements.flows.handlers.linear.check_configuration")
 
         # Should be the actual function
         assert callable(handler)
-        assert handler.__name__ == 'check_configuration'
+        assert handler.__name__ == "check_configuration"
 
     def test_load_nonexistent_module(self):
         """Raises ImportError for nonexistent module."""
         with pytest.raises(ImportError):
-            load_handler('nonexistent.module.function')
+            load_handler("nonexistent.module.function")
 
     def test_load_nonexistent_function(self):
         """Raises AttributeError for nonexistent function."""
         with pytest.raises(AttributeError):
-            load_handler('requirements.flows.handlers.linear.nonexistent')
+            load_handler("requirements.flows.handlers.linear.nonexistent")
 
 
 class TestSequentialFlowEngine:
@@ -376,10 +381,10 @@ class TestSequentialFlowEngine:
 
     def test_execute_all_steps_pass(self, db, verification_flow):
         """All passing steps results in PASSED run."""
-        with patch('requirements.flows.handlers.linear.LinearClient') as MockClient:
+        with patch("requirements.flows.handlers.linear.LinearClient") as MockClient:
             mock_client = Mock()
             mock_client._execute_query.return_value = {
-                'viewer': {'id': '1', 'name': 'Test', 'email': 'test@test.com'}
+                "viewer": {"id": "1", "name": "Test", "email": "test@test.com"}
             }
             MockClient.return_value = mock_client
 
@@ -387,10 +392,10 @@ class TestSequentialFlowEngine:
             run = engine.execute(
                 verification_flow,
                 {
-                    'api_key': 'lin_api_test123',
-                    'workspace': 'ws',
-                    'team': 'tm',
-                }
+                    "api_key": "lin_api_test123",
+                    "workspace": "ws",
+                    "team": "tm",
+                },
             )
 
             assert run.status == VerificationFlowStatus.PASSED
@@ -404,10 +409,10 @@ class TestSequentialFlowEngine:
         run = engine.execute(
             verification_flow,
             {
-                'api_key': '',  # Will fail config check
-                'workspace': 'ws',
-                'team': 'tm',
-            }
+                "api_key": "",  # Will fail config check
+                "workspace": "ws",
+                "team": "tm",
+            },
         )
 
         assert run.status == VerificationFlowStatus.FAILED
@@ -424,10 +429,10 @@ class TestSequentialFlowEngine:
         run = engine.execute(
             verification_flow,
             {
-                'api_key': 'lin_api_test123',
-                'workspace': 'my-workspace',
-                'team': 'my-team',
-            }
+                "api_key": "lin_api_test123",
+                "workspace": "my-workspace",
+                "team": "my-team",
+            },
         )
 
         # Check first step details
@@ -444,7 +449,7 @@ class TestSequentialFlowEngine:
 
         run = engine.execute(
             verification_flow,
-            {'api_key': '', 'workspace': '', 'team': ''},
+            {"api_key": "", "workspace": "", "team": ""},
             source=VerificationFlowSource.MANUAL,
         )
 
@@ -457,18 +462,18 @@ class TestSequentialFlowEngine:
         run = engine.execute(
             verification_flow,
             {
-                'api_key': 'lin_api_secret',
-                'workspace': 'ws',
-                'team': 'tm',
-                'token': 'secret-token',
-            }
+                "api_key": "lin_api_secret",
+                "workspace": "ws",
+                "team": "tm",
+                "token": "secret-token",
+            },
         )
 
         # API key should be redacted in stored context
-        assert run.context.get('api_key') == '[REDACTED]'
-        assert run.context.get('token') == '[REDACTED]'
+        assert run.context.get("api_key") == "[REDACTED]"
+        assert run.context.get("token") == "[REDACTED]"
         # Non-sensitive values preserved
-        assert run.context.get('workspace') == 'ws'
+        assert run.context.get("workspace") == "ws"
 
     def test_execute_handler_error_handled(self, db):
         """Handler errors are caught and reported."""
@@ -477,9 +482,9 @@ class TestSequentialFlowEngine:
             display_name="Bad Flow",
             steps=[
                 {
-                    'name': 'bad',
-                    'handler': 'nonexistent.module.function',
-                    'display_name': 'Bad Step',
+                    "name": "bad",
+                    "handler": "nonexistent.module.function",
+                    "display_name": "Bad Step",
                 }
             ],
             version=1,
@@ -509,8 +514,8 @@ class TestSyncFlowsToDb:
 
         result = sync_flows_to_db()
 
-        assert result.get('linear-connection') == 'created'
-        flow = VerificationFlow.objects.get(name='linear-connection')
+        assert result.get("linear-connection") == "created"
+        flow = VerificationFlow.objects.get(name="linear-connection")
         assert flow.display_name == "Linear Connection Verification"
         assert len(flow.steps) == 3
         assert flow.synced_at is not None
@@ -527,14 +532,14 @@ class TestSyncFlowsToDb:
 
         result = sync_flows_to_db()
 
-        assert result.get('linear-connection') == 'updated'
-        flow = VerificationFlow.objects.get(name='linear-connection')
+        assert result.get("linear-connection") == "updated"
+        flow = VerificationFlow.objects.get(name="linear-connection")
         assert flow.display_name == "Linear Connection Verification"
         assert len(flow.steps) == 3
 
     def test_sync_flows_safe_handles_errors(self, db):
         """sync_flows_safe returns None on error."""
-        with patch('requirements.flows.sync.REGISTERED_FLOWS', None):
+        with patch("requirements.flows.sync.REGISTERED_FLOWS", None):
             result = sync_flows_safe()
             assert result is None
 
@@ -650,7 +655,7 @@ class TestTestConnectionResultFromFlowRun:
 
         for check in result.checks:
             assert check.timestamp is not None
-            assert 'T' in check.timestamp
+            assert "T" in check.timestamp
 
 
 # ============================================================================
@@ -666,19 +671,20 @@ class TestVerifyLinearConnectionWithFlows:
         # Sync flows first
         sync_flows_to_db()
 
-        with patch('requirements.flows.handlers.linear.LinearClient') as MockClient:
+        with patch("requirements.flows.handlers.linear.LinearClient") as MockClient:
             mock_client = Mock()
             mock_client._execute_query.side_effect = [
-                {'viewer': {'id': '1', 'name': 'Test', 'email': 'test@test.com'}},
-                {'issues': {'nodes': []}},
+                {"viewer": {"id": "1", "name": "Test", "email": "test@test.com"}},
+                {"issues": {"nodes": []}},
             ]
             MockClient.return_value = mock_client
 
             from requirements.health import verify_linear_connection
+
             result = verify_linear_connection(
-                api_key='lin_api_test123',
-                workspace='my-workspace',
-                team='my-team',
+                api_key="lin_api_test123",
+                workspace="my-workspace",
+                team="my-team",
             )
 
             assert result.success is True
@@ -686,9 +692,9 @@ class TestVerifyLinearConnectionWithFlows:
             assert len(result.checks) == 3
 
             # Verify flow run was created
-            run = VerificationFlowRun.objects.filter(
-                flow__name='linear-connection'
-            ).latest('started_at')
+            run = VerificationFlowRun.objects.filter(flow__name="linear-connection").latest(
+                "started_at"
+            )
             assert run.status == VerificationFlowStatus.PASSED
             assert run.steps.count() == 3
 
@@ -697,19 +703,20 @@ class TestVerifyLinearConnectionWithFlows:
         # Delete all flows
         VerificationFlow.objects.all().delete()
 
-        with patch('requirements.health.LinearClient') as MockClient:
+        with patch("requirements.health.LinearClient") as MockClient:
             mock_client = Mock()
             mock_client._execute_query.side_effect = [
-                {'viewer': {'id': '1', 'name': 'Test', 'email': 'test@test.com'}},
-                {'issues': {'nodes': []}},
+                {"viewer": {"id": "1", "name": "Test", "email": "test@test.com"}},
+                {"issues": {"nodes": []}},
             ]
             MockClient.return_value = mock_client
 
             from requirements.health import verify_linear_connection
+
             result = verify_linear_connection(
-                api_key='lin_api_test123',
-                workspace='my-workspace',
-                team='my-team',
+                api_key="lin_api_test123",
+                workspace="my-workspace",
+                team="my-team",
             )
 
             assert result.success is True
@@ -721,10 +728,11 @@ class TestVerifyLinearConnectionWithFlows:
         sync_flows_to_db()
 
         from requirements.health import verify_linear_connection
+
         result = verify_linear_connection(
-            api_key='',  # Invalid
-            workspace='my-workspace',
-            team='my-team',
+            api_key="",  # Invalid
+            workspace="my-workspace",
+            team="my-team",
         )
 
         assert result.success is False
@@ -733,8 +741,8 @@ class TestVerifyLinearConnectionWithFlows:
         assert result.checks[0].passed is False
 
         # Verify flow run was created and failed
-        run = VerificationFlowRun.objects.filter(
-            flow__name='linear-connection'
-        ).latest('started_at')
+        run = VerificationFlowRun.objects.filter(flow__name="linear-connection").latest(
+            "started_at"
+        )
         assert run.status == VerificationFlowStatus.FAILED
         assert run.steps.count() == 1

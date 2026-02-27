@@ -4,12 +4,11 @@ This service posts test status updates as comments on Linear issues,
 following the pattern established in the observability/services/datadog_linear.py
 from the Canary project.
 """
-from dataclasses import dataclass
+
 import logging
+from dataclasses import dataclass
 
 import requests
-
-logger = logging.getLogger(__name__)
 
 from requirements.models import (
     Requirement,
@@ -17,10 +16,13 @@ from requirements.models import (
     TestRun,
 )
 
+logger = logging.getLogger(__name__)
+
 
 @dataclass
 class LinearReportResult:
     """Result of a Linear reporting operation."""
+
     success: bool
     message: str
     issues_updated: int = 0
@@ -52,28 +54,30 @@ class LinearReporter:
         """
         self.api_key = api_key
         self.session = requests.Session()
-        self.session.headers.update({
-            'Authorization': api_key,
-            'Content-Type': 'application/json',
-        })
+        self.session.headers.update(
+            {
+                "Authorization": api_key,
+                "Content-Type": "application/json",
+            }
+        )
         # Cache for label IDs
         self._label_ids: dict[str, str] = {}
         self._team_id: str | None = None
 
     def _execute_query(self, query: str, variables: dict | None = None) -> dict:
         """Execute a GraphQL query against Linear API."""
-        payload = {'query': query}
+        payload = {"query": query}
         if variables:
-            payload['variables'] = variables
+            payload["variables"] = variables
 
         response = self.session.post(self.API_URL, json=payload)
         response.raise_for_status()
 
         result = response.json()
-        if 'errors' in result:
+        if "errors" in result:
             raise ValueError(f"GraphQL errors: {result['errors']}")
 
-        return result.get('data', {})
+        return result.get("data", {})
 
     def _get_issue_by_identifier(self, identifier: str) -> dict | None:
         """Get issue details by identifier (e.g., CAN-1234)."""
@@ -99,8 +103,8 @@ class LinearReporter:
         }
         """
         try:
-            data = self._execute_query(query, {'identifier': identifier})
-            return data.get('issue')
+            data = self._execute_query(query, {"identifier": identifier})
+            return data.get("issue")
         except (requests.RequestException, ValueError) as e:
             logger.warning("Failed to get issue %s: %s", identifier, e)
             return None
@@ -124,13 +128,13 @@ class LinearReporter:
             }
         }
         """
-        data = self._execute_query(query, {'teamId': team_id})
-        labels = data.get('team', {}).get('labels', {}).get('nodes', [])
+        data = self._execute_query(query, {"teamId": team_id})
+        labels = data.get("team", {}).get("labels", {}).get("nodes", [])
 
         for label in labels:
-            if label['name'] == name:
-                self._label_ids[cache_key] = label['id']
-                return label['id']
+            if label["name"] == name:
+                self._label_ids[cache_key] = label["id"]
+                return label["id"]
 
         # Create label if not found
         mutation = """
@@ -143,12 +147,15 @@ class LinearReporter:
             }
         }
         """
-        data = self._execute_query(mutation, {
-            'teamId': team_id,
-            'name': name,
-            'color': color,
-        })
-        label_id = data.get('issueLabelCreate', {}).get('issueLabel', {}).get('id')
+        data = self._execute_query(
+            mutation,
+            {
+                "teamId": team_id,
+                "name": name,
+                "color": color,
+            },
+        )
+        label_id = data.get("issueLabelCreate", {}).get("issueLabel", {}).get("id")
         if label_id:
             self._label_ids[cache_key] = label_id
         return label_id
@@ -163,11 +170,14 @@ class LinearReporter:
         }
         """
         try:
-            data = self._execute_query(mutation, {
-                'issueId': issue_id,
-                'body': body,
-            })
-            return data.get('commentCreate', {}).get('success', False)
+            data = self._execute_query(
+                mutation,
+                {
+                    "issueId": issue_id,
+                    "body": body,
+                },
+            )
+            return data.get("commentCreate", {}).get("success", False)
         except (requests.RequestException, ValueError) as e:
             logger.warning("Failed to add comment to issue %s: %s", issue_id, e)
             return False
@@ -182,11 +192,14 @@ class LinearReporter:
         }
         """
         try:
-            data = self._execute_query(mutation, {
-                'issueId': issue_id,
-                'labelIds': label_ids,
-            })
-            return data.get('issueUpdate', {}).get('success', False)
+            data = self._execute_query(
+                mutation,
+                {
+                    "issueId": issue_id,
+                    "labelIds": label_ids,
+                },
+            )
+            return data.get("issueUpdate", {}).get("success", False)
         except (requests.RequestException, ValueError) as e:
             logger.warning("Failed to update labels on issue %s: %s", issue_id, e)
             return False
@@ -256,12 +269,12 @@ class LinearReporter:
             return False  # Issue not found in Linear
 
         # Skip closed issues
-        state_type = issue.get('state', {}).get('type', '')
-        if skip_closed and state_type in ('completed', 'canceled'):
+        state_type = issue.get("state", {}).get("type", "")
+        if skip_closed and state_type in ("completed", "canceled"):
             return False
 
-        team_id = issue.get('team', {}).get('id')
-        issue_id = issue.get('id')
+        team_id = issue.get("team", {}).get("id")
+        issue_id = issue.get("id")
 
         # Get test results for this requirement
         links = TestRequirementLink.objects.filter(
@@ -269,8 +282,8 @@ class LinearReporter:
             last_run_at=test_run.imported_at,
         )
 
-        passed = links.filter(last_status='passed').count()
-        failed = links.filter(last_status__in=['failed', 'error']).count()
+        passed = links.filter(last_status="passed").count()
+        failed = links.filter(last_status__in=["failed", "error"]).count()
         total = links.count()
 
         if total == 0:
@@ -287,7 +300,7 @@ class LinearReporter:
 | Failed | {failed} |
 | Total | {total} |
 
-*From test run at {test_run.imported_at.strftime('%Y-%m-%d %H:%M UTC')}*
+*From test run at {test_run.imported_at.strftime("%Y-%m-%d %H:%M UTC")}*
 """
             if test_run.git_sha:
                 body += f"\nCommit: `{test_run.git_sha[:8]}`"
@@ -300,8 +313,9 @@ class LinearReporter:
         if update_labels and team_id:
             # Get current labels (excluding our managed labels)
             current_labels = [
-                lbl['id'] for lbl in issue.get('labels', {}).get('nodes', [])
-                if lbl['name'] not in [self.LABEL_LINKED, self.LABEL_PASSING, self.LABEL_FAILING]
+                lbl["id"]
+                for lbl in issue.get("labels", {}).get("nodes", [])
+                if lbl["name"] not in [self.LABEL_LINKED, self.LABEL_PASSING, self.LABEL_FAILING]
             ]
 
             # Add linked label

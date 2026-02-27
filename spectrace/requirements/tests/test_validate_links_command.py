@@ -1,4 +1,5 @@
 """Integration tests for the validate_links management command."""
+
 import json
 import tempfile
 from pathlib import Path
@@ -34,9 +35,7 @@ def valid_links_file(sample_requirement):
         ],
         "summary": {"total_links": 1},
     }
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".json", delete=False
-    ) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         json.dump(data, f)
         return Path(f.name)
 
@@ -53,9 +52,7 @@ def links_with_unknown_req_file(db):
             }
         ],
     }
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".json", delete=False
-    ) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         json.dump(data, f)
         return Path(f.name)
 
@@ -64,9 +61,7 @@ def links_with_unknown_req_file(db):
 def empty_links_file(db):
     """Create a temporary links.json with no links."""
     data = {"version": "1.0", "links": []}
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".json", delete=False
-    ) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         json.dump(data, f)
         return Path(f.name)
 
@@ -74,9 +69,7 @@ def empty_links_file(db):
 @pytest.fixture
 def invalid_json_file():
     """Create a temporary file with invalid JSON."""
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".json", delete=False
-    ) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         f.write("{not valid json")
         return Path(f.name)
 
@@ -146,9 +139,7 @@ class TestValidateLinksCommand:
         assert "invalid json" in str(exc_info.value).lower()
 
     @pytest.mark.django_db
-    def test_command_require_coverage_option(
-        self, sample_requirement, empty_links_file, capsys
-    ):
+    def test_command_require_coverage_option(self, sample_requirement, empty_links_file, capsys):
         """--require-coverage option controls which statuses trigger warnings."""
         # With --require-coverage draft (not active), should not warn about active req
         call_command(
@@ -161,9 +152,7 @@ class TestValidateLinksCommand:
         assert "No issues found" in captured.out
 
     @pytest.mark.django_db
-    def test_command_no_require_coverage(
-        self, sample_requirement, empty_links_file, capsys
-    ):
+    def test_command_no_require_coverage(self, sample_requirement, empty_links_file, capsys):
         """Empty --require-coverage produces no warnings."""
         # Pass empty list by providing no values after the flag
         call_command(

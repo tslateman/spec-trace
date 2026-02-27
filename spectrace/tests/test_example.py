@@ -3,6 +3,7 @@
 These tests showcase all supported linking patterns for the
 @pytest.mark.requirement decorator.
 """
+
 import pytest
 
 

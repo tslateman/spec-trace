@@ -16,7 +16,7 @@ Handler signature: (context: dict) -> tuple[VerificationCheck, dict]
 """
 
 # Re-export from standalone package for backward compatibility
-from spectrace_flows import FlowDef, FlowStepDef, get_flow_by_name, register_flow
+from spectrace_flows import FlowDef, FlowStepDef, get_flow_by_name, register_flow  # noqa: F401
 
 # Django-specific flow definitions using Django handlers
 LINEAR_CONNECTION_FLOW = FlowDef(

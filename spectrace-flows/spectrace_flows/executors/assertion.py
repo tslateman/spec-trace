@@ -32,9 +32,7 @@ def _get_nested_value(data: dict, field_path: str) -> tuple[bool, Any]:
     return True, current
 
 
-def execute_assertion_step(
-    step_def: dict, context: dict
-) -> tuple[VerificationCheck, dict]:
+def execute_assertion_step(step_def: dict, context: dict) -> tuple[VerificationCheck, dict]:
     """Execute an assertion on a value in context.
 
     Config options (from step_def):
@@ -66,7 +64,9 @@ def execute_assertion_step(
             VerificationCheck(
                 name=step_name,
                 passed=False,
-                error_message=f"Unknown operator: {operator}. Valid: {', '.join(sorted(valid_operators))}",
+                error_message=(
+                    f"Unknown operator: {operator}. Valid: {', '.join(sorted(valid_operators))}"
+                ),
             ),
             {},
         )
@@ -95,7 +95,9 @@ def execute_assertion_step(
                 VerificationCheck(
                     name=step_name,
                     passed=False,
-                    error_message=f"Source '{source_key}' is not a dict, cannot access field '{field}'",
+                    error_message=(
+                        f"Source '{source_key}' is not a dict, cannot access field '{field}'"
+                    ),
                 ),
                 {},
             )
@@ -173,7 +175,9 @@ def execute_assertion_step(
                 VerificationCheck(
                     name=step_name,
                     passed=False,
-                    error_message=f"Field '{field}' expected '{expected}', got '{_truncate(actual)}'",
+                    error_message=(
+                        f"Field '{field}' expected '{expected}', got '{_truncate(actual)}'"
+                    ),
                 ),
                 {},
             )
@@ -204,7 +208,9 @@ def execute_assertion_step(
                 VerificationCheck(
                     name=step_name,
                     passed=False,
-                    error_message=f"Field '{field}' does not contain '{expected}': {_truncate(actual)}",
+                    error_message=(
+                        f"Field '{field}' does not contain '{expected}': {_truncate(actual)}"
+                    ),
                 ),
                 {},
             )

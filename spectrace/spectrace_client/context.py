@@ -1,4 +1,5 @@
 """Context manager for multi-step validation runs."""
+
 import logging
 import time
 from datetime import datetime
@@ -12,14 +13,14 @@ logger = logging.getLogger(__name__)
 
 class ValidationRun:
     """Context manager for multi-step validation runs.
-    
+
     Usage:
         with ValidationRun("REQ-PMS-001", "PMS Connection") as run:
             run.step("config", passed=True, details="Config found")
             run.step("auth", passed=False, error_message="Login failed")
         # Auto-submits to SpecTrace on __exit__
     """
-    
+
     def __init__(
         self,
         requirement_id: str,
@@ -28,7 +29,7 @@ class ValidationRun:
         client: ValidationClient | None = None,
     ):
         """Initialize validation run.
-        
+
         Args:
             requirement_id: Requirement ID (e.g., "REQ-PMS-OPERA-001")
             name: Human-readable validation name
@@ -39,19 +40,19 @@ class ValidationRun:
         self.name = name
         self.context = context or {}
         self.client = client or ValidationClient.from_settings()
-        
+
         self.steps: list[ValidationStep] = []
         self.result: ValidationResult | None = None
         self.start_time: float | None = None
-    
+
     def __enter__(self) -> "ValidationRun":
         """Enter context manager, start timing."""
         self.start_time = time.time()
         return self
-    
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Exit context manager, compute status, and submit to SpecTrace.
-        
+
         Returns:
             False (doesn't suppress exceptions)
         """
@@ -63,7 +64,7 @@ class ValidationRun:
         else:
             status = self._compute_status()
             message = self._compute_message()
-        
+
         self.result = ValidationResult(
             requirement_id=self.requirement_id,
             name=self.name,
@@ -73,7 +74,7 @@ class ValidationRun:
             context=self.context,
             timestamp=datetime.now(),
         )
-        
+
         # Submit to SpecTrace (best-effort, log on failure)
         try:
             self.client.submit_validation(self.result)
@@ -82,12 +83,12 @@ class ValidationRun:
                 "Failed to submit validation for %s: %s",
                 self.requirement_id,
                 e,
-                exc_info=True
+                exc_info=True,
             )
-        
+
         # Don't suppress exceptions
         return False
-    
+
     def step(
         self,
         name: str,
@@ -97,7 +98,7 @@ class ValidationRun:
         duration_ms: int | None = None,
     ) -> None:
         """Add a validation step result.
-        
+
         Args:
             name: Step name (e.g., "configuration", "authentication")
             passed: Whether the step passed
@@ -114,10 +115,10 @@ class ValidationRun:
             timestamp=datetime.now(),
         )
         self.steps.append(step)
-    
+
     def _compute_status(self) -> ValidationStatus:
         """Compute overall status from steps.
-        
+
         Returns:
             SUCCESS if all steps passed
             DEGRADED if some steps passed, some failed
@@ -126,29 +127,29 @@ class ValidationRun:
         """
         if not self.steps:
             return ValidationStatus.SUCCESS
-        
+
         passed_count = sum(1 for s in self.steps if s.passed)
         failed_count = len(self.steps) - passed_count
-        
+
         if failed_count == 0:
             return ValidationStatus.SUCCESS
         elif passed_count > 0:
             return ValidationStatus.DEGRADED
         else:
             return ValidationStatus.FAILURE
-    
+
     def _compute_message(self) -> str:
         """Generate human-readable summary message.
-        
+
         Returns:
             Message summarizing validation results
         """
         if not self.steps:
             return "Validation completed"
-        
+
         passed = sum(1 for s in self.steps if s.passed)
         failed = len(self.steps) - passed
-        
+
         if failed == 0:
             return f"All {len(self.steps)} checks passed"
         elif passed == 0:

@@ -5,14 +5,17 @@ engine's context-based protocol. Each handler receives a context dict
 and returns a VerificationCheck plus context updates.
 """
 
-from spectrace_flows import VerificationCheck
-
 from requirements.health import (
     check_authentication as health_check_auth,
+)
+from requirements.health import (
     check_configuration as health_check_config,
+)
+from requirements.health import (
     check_permissions as health_check_perms,
 )
 from requirements.linear import LinearClient
+from spectrace_flows import VerificationCheck
 
 
 def check_configuration(context: dict) -> tuple[VerificationCheck, dict]:
@@ -27,9 +30,9 @@ def check_configuration(context: dict) -> tuple[VerificationCheck, dict]:
         VerificationCheck and empty context updates
     """
     check = health_check_config(
-        api_key=context.get('api_key', ''),
-        workspace=context.get('workspace', ''),
-        team=context.get('team', ''),
+        api_key=context.get("api_key", ""),
+        workspace=context.get("workspace", ""),
+        team=context.get("team", ""),
     )
     return check, {}
 
@@ -43,12 +46,12 @@ def check_authentication(context: dict) -> tuple[VerificationCheck, dict]:
     Returns:
         VerificationCheck and context with 'client' for subsequent steps
     """
-    api_key = context.get('api_key', '')
+    api_key = context.get("api_key", "")
     client = LinearClient(api_key)
     check = health_check_auth(client)
 
     if check.passed:
-        return check, {'client': client}
+        return check, {"client": client}
     return check, {}
 
 
@@ -61,13 +64,13 @@ def check_permissions(context: dict) -> tuple[VerificationCheck, dict]:
     Returns:
         VerificationCheck and empty context updates
     """
-    client = context.get('client')
+    client = context.get("client")
 
     if not client:
         return VerificationCheck(
             name="Permissions",
             passed=False,
-            error_message="No Linear client in context (authentication step may have failed)"
+            error_message="No Linear client in context (authentication step may have failed)",
         ), {}
 
     return health_check_perms(client), {}

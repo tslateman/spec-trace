@@ -1,4 +1,5 @@
 """Django management command for extracting test-requirement links."""
+
 import io
 import json
 import sys
@@ -30,40 +31,40 @@ class RequirementCollector:
                     # Get line number from item location
                     line_number = item.location[1] + 1 if item.location else None
 
-                    self.links.append({
-                        "test_nodeid": item.nodeid,
-                        "requirement_id": req_id,
-                        "reason": marker.kwargs.get("reason"),
-                        "test_file": test_file,
-                        "test_function": test_function,
-                        "test_class": test_class,
-                        "line_number": line_number,
-                    })
+                    self.links.append(
+                        {
+                            "test_nodeid": item.nodeid,
+                            "requirement_id": req_id,
+                            "reason": marker.kwargs.get("reason"),
+                            "test_file": test_file,
+                            "test_function": test_function,
+                            "test_class": test_class,
+                            "line_number": line_number,
+                        }
+                    )
 
 
 class Command(BaseCommand):
     """Extract test-requirement links from pytest markers."""
 
-    help = 'Extract test-requirement links from @pytest.mark.requirement markers'
+    help = "Extract test-requirement links from @pytest.mark.requirement markers"
 
     def add_arguments(self, parser):
         """Define command arguments."""
         parser.add_argument(
-            '--output', '-o',
-            type=str,
-            help='Output file path (defaults to stdout)'
+            "--output", "-o", type=str, help="Output file path (defaults to stdout)"
         )
         parser.add_argument(
-            '--path',
+            "--path",
             type=str,
-            default='tests',
-            help='Path to test directory or file (default: tests)'
+            default="tests",
+            help="Path to test directory or file (default: tests)",
         )
         # Note: Django BaseCommand uses -v/--verbosity, so we just use --verbose
         parser.add_argument(
-            '--verbose',
-            action='store_true',
-            help='Show verbose output with each mapping'
+            "--verbose",
+            action="store_true",
+            help="Show verbose output with each mapping",
         )
 
     def handle(self, *args, **options):
@@ -76,8 +77,10 @@ class Command(BaseCommand):
         # Disable pytest-django plugin to avoid DB blocking issues
         pytest_args = [
             "--collect-only",
-            "-p", "no:terminal",
-            "-p", "no:django",
+            "-p",
+            "no:terminal",
+            "-p",
+            "no:django",
             options["path"],
         ]
 
@@ -104,15 +107,15 @@ class Command(BaseCommand):
                 "total_links": len(collector.links),
                 "unique_tests": len(unique_tests),
                 "unique_requirements": len(unique_requirements),
-            }
+            },
         }
 
         # Validate requirement IDs against database
         if collector.links:
             existing_ids = set(
-                Requirement.objects.filter(
-                    external_id__in=unique_requirements
-                ).values_list('external_id', flat=True)
+                Requirement.objects.filter(external_id__in=unique_requirements).values_list(
+                    "external_id", flat=True
+                )
             )
             unknown_ids = unique_requirements - existing_ids
             if unknown_ids:
@@ -124,17 +127,13 @@ class Command(BaseCommand):
         # Verbose output
         if options["verbose"]:
             for link in collector.links:
-                self.stderr.write(
-                    f"  {link['test_nodeid']} -> {link['requirement_id']}"
-                )
+                self.stderr.write(f"  {link['test_nodeid']} -> {link['requirement_id']}")
 
         # Output JSON
         json_output = json.dumps(output, indent=2)
         if options["output"]:
             output_path = Path(options["output"])
             output_path.write_text(json_output)
-            self.stderr.write(
-                self.style.SUCCESS(f"Written to {output_path}")
-            )
+            self.stderr.write(self.style.SUCCESS(f"Written to {output_path}"))
         else:
             self.stdout.write(json_output)

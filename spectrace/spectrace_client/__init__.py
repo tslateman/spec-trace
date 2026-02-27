@@ -5,7 +5,7 @@ of code to validate real integration configurations and report results to SpecTr
 
 Usage:
     from spectrace_client import verify_requirement, ValidationRun
-    
+
     @verify_requirement("REQ-PMS-OPERA-001", name="Opera PMS Connection")
     def verify_opera_connection(hotel, validation_run: ValidationRun):
         validation_run.step("config", passed=True, details="Config found")
@@ -14,15 +14,11 @@ Usage:
 """
 
 # Core validation components
+# Django admin helpers
+from .admin import create_validation_action
 from .client import ValidationClient
 from .context import ValidationRun
 from .decorators import verify_requirement
-
-# Data models
-from .models import ValidationResult, ValidationStatus, ValidationStep
-
-# Django admin helpers
-from .admin import create_validation_action
 
 # Exceptions
 from .exceptions import SpecTraceAPIError, ValidationConfigError
@@ -35,6 +31,9 @@ from .feature_flags import (
     get_model_feature_flags,
     with_feature_flags,
 )
+
+# Data models
+from .models import ValidationResult, ValidationStatus, ValidationStep
 
 __all__ = [
     # Core

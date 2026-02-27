@@ -1,4 +1,5 @@
 """Tests for health check utilities and domain objects."""
+
 import time
 from unittest.mock import Mock, patch
 
@@ -23,49 +24,49 @@ class TestSanitizeResponse:
         """API keys matching lin_api_* pattern are redacted."""
         response = '{"error": "Invalid key: lin_api_ABC123xyz_test"}'
         result = _sanitize_response(response)
-        assert 'lin_api_' not in result
-        assert '[REDACTED]' in result
+        assert "lin_api_" not in result
+        assert "[REDACTED]" in result
 
     def test_sanitize_bearer_token(self):
         """Bearer tokens are redacted."""
-        response = 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test'
+        response = "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test"
         result = _sanitize_response(response)
-        assert 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9' not in result
-        assert 'Bearer [REDACTED]' in result
+        assert "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9" not in result
+        assert "Bearer [REDACTED]" in result
 
     def test_sanitize_authorization_header_json(self):
         """Authorization header values in JSON are redacted."""
         response = '{"headers": {"authorization": "lin_api_secret123"}}'
         result = _sanitize_response(response)
-        assert 'lin_api_secret123' not in result
+        assert "lin_api_secret123" not in result
         assert '"authorization": "[REDACTED]"' in result
 
     def test_truncate_long_response(self):
         """Responses longer than max_length are truncated."""
-        long_response = 'x' * 1000
+        long_response = "x" * 1000
         result = _sanitize_response(long_response, max_length=100)
         assert len(result) < 150  # 100 + truncation message
-        assert '[truncated]' in result
+        assert "[truncated]" in result
 
     def test_no_truncation_short_response(self):
         """Short responses are not truncated."""
-        short_response = 'Error: Not found'
+        short_response = "Error: Not found"
         result = _sanitize_response(short_response)
         assert result == short_response
-        assert '[truncated]' not in result
+        assert "[truncated]" not in result
 
     def test_multiple_credentials(self):
         """Multiple credentials in same response are all redacted."""
-        response = 'key1: lin_api_first, key2: lin_api_second, Bearer token123'
+        response = "key1: lin_api_first, key2: lin_api_second, Bearer token123"
         result = _sanitize_response(response)
-        assert 'lin_api_first' not in result
-        assert 'lin_api_second' not in result
-        assert 'token123' not in result
-        assert result.count('[REDACTED]') >= 2
+        assert "lin_api_first" not in result
+        assert "lin_api_second" not in result
+        assert "token123" not in result
+        assert result.count("[REDACTED]") >= 2
 
     def test_empty_response(self):
         """Empty response returns empty string."""
-        assert _sanitize_response('') == ''
+        assert _sanitize_response("") == ""
 
     def test_safe_content_unchanged(self):
         """Content without credentials is unchanged."""
@@ -105,11 +106,11 @@ class TestVerificationCheck:
         assert check1.timestamp != check2.timestamp
 
         # Timestamp format is ISO 8601 (ends with 'Z')
-        assert check1.timestamp.endswith('Z')
-        assert check2.timestamp.endswith('Z')
+        assert check1.timestamp.endswith("Z")
+        assert check2.timestamp.endswith("Z")
 
         # Timestamp has expected format (contains T separator)
-        assert 'T' in check1.timestamp
+        assert "T" in check1.timestamp
 
     def test_verification_check_failure_fields(self):
         """Error fields are set correctly for failures."""
@@ -220,9 +221,7 @@ class TestCheckConfiguration:
     def test_valid_configuration(self):
         """Valid configuration returns passed=True with details."""
         result = check_configuration(
-            api_key="lin_api_abc123",
-            workspace="my-workspace",
-            team="my-team"
+            api_key="lin_api_abc123", workspace="my-workspace", team="my-team"
         )
 
         assert result.passed is True
@@ -234,11 +233,7 @@ class TestCheckConfiguration:
 
     def test_missing_api_key(self):
         """Empty API key returns specific error message."""
-        result = check_configuration(
-            api_key="",
-            workspace="my-workspace",
-            team="my-team"
-        )
+        result = check_configuration(api_key="", workspace="my-workspace", team="my-team")
 
         assert result.passed is False
         assert result.name == "Configuration"
@@ -247,9 +242,7 @@ class TestCheckConfiguration:
     def test_invalid_api_key_format(self):
         """API key without lin_api_ prefix returns format error."""
         result = check_configuration(
-            api_key="invalid_key_format",
-            workspace="my-workspace",
-            team="my-team"
+            api_key="invalid_key_format", workspace="my-workspace", team="my-team"
         )
 
         assert result.passed is False
@@ -259,11 +252,7 @@ class TestCheckConfiguration:
 
     def test_missing_workspace(self):
         """Empty workspace returns specific error message."""
-        result = check_configuration(
-            api_key="lin_api_abc123",
-            workspace="",
-            team="my-team"
-        )
+        result = check_configuration(api_key="lin_api_abc123", workspace="", team="my-team")
 
         assert result.passed is False
         assert result.name == "Configuration"
@@ -271,11 +260,7 @@ class TestCheckConfiguration:
 
     def test_missing_team(self):
         """Empty team returns specific error message."""
-        result = check_configuration(
-            api_key="lin_api_abc123",
-            workspace="my-workspace",
-            team=""
-        )
+        result = check_configuration(api_key="lin_api_abc123", workspace="my-workspace", team="")
 
         assert result.passed is False
         assert result.name == "Configuration"
@@ -284,43 +269,29 @@ class TestCheckConfiguration:
     def test_none_values_treated_as_missing(self):
         """None values are treated as missing (falsy check)."""
         # None api_key
-        result = check_configuration(
-            api_key=None,
-            workspace="my-workspace",
-            team="my-team"
-        )
+        result = check_configuration(api_key=None, workspace="my-workspace", team="my-team")
         assert result.passed is False
         assert "LINEAR_API_KEY not configured" in result.error_message
 
         # None workspace (with valid api_key)
-        result = check_configuration(
-            api_key="lin_api_abc123",
-            workspace=None,
-            team="my-team"
-        )
+        result = check_configuration(api_key="lin_api_abc123", workspace=None, team="my-team")
         assert result.passed is False
         assert "LINEAR_WORKSPACE not configured" in result.error_message
 
         # None team (with valid api_key and workspace)
-        result = check_configuration(
-            api_key="lin_api_abc123",
-            workspace="my-workspace",
-            team=None
-        )
+        result = check_configuration(api_key="lin_api_abc123", workspace="my-workspace", team=None)
         assert result.passed is False
         assert "LINEAR_TEAM not configured" in result.error_message
 
     def test_check_has_timestamp(self):
         """Configuration check result includes auto-generated timestamp."""
         result = check_configuration(
-            api_key="lin_api_abc123",
-            workspace="my-workspace",
-            team="my-team"
+            api_key="lin_api_abc123", workspace="my-workspace", team="my-team"
         )
 
         assert result.timestamp is not None
-        assert result.timestamp.endswith('Z')
-        assert 'T' in result.timestamp
+        assert result.timestamp.endswith("Z")
+        assert "T" in result.timestamp
 
 
 class TestCheckAuthentication:
@@ -330,10 +301,10 @@ class TestCheckAuthentication:
         """Valid viewer query returns passed=True with user info."""
         mock_client = Mock()
         mock_client._execute_query.return_value = {
-            'viewer': {
-                'id': 'user-123',
-                'name': 'Test User',
-                'email': 'test@example.com'
+            "viewer": {
+                "id": "user-123",
+                "name": "Test User",
+                "email": "test@example.com",
             }
         }
 
@@ -364,8 +335,8 @@ class TestCheckAuthentication:
         assert "Authentication failed" in result.error_message
         # Verify sanitization
         assert result.response_body is not None
-        assert 'lin_api_secret123' not in result.response_body
-        assert '[REDACTED]' in result.response_body
+        assert "lin_api_secret123" not in result.response_body
+        assert "[REDACTED]" in result.response_body
 
     def test_http_403_forbidden(self):
         """HTTP 403 returns failed check with status code."""
@@ -401,9 +372,7 @@ class TestCheckAuthentication:
     def test_network_error(self):
         """Network error (ConnectionError) returns failed check."""
         mock_client = Mock()
-        mock_client._execute_query.side_effect = ConnectionError(
-            "Failed to establish connection"
-        )
+        mock_client._execute_query.side_effect = ConnectionError("Failed to establish connection")
 
         result = check_authentication(mock_client)
 
@@ -429,14 +398,14 @@ class TestCheckAuthentication:
         """Authentication check result includes auto-generated timestamp."""
         mock_client = Mock()
         mock_client._execute_query.return_value = {
-            'viewer': {'id': 'user-123', 'name': 'Test', 'email': 'test@example.com'}
+            "viewer": {"id": "user-123", "name": "Test", "email": "test@example.com"}
         }
 
         result = check_authentication(mock_client)
 
         assert result.timestamp is not None
-        assert result.timestamp.endswith('Z')
-        assert 'T' in result.timestamp
+        assert result.timestamp.endswith("Z")
+        assert "T" in result.timestamp
 
 
 class TestCheckPermissions:
@@ -445,11 +414,7 @@ class TestCheckPermissions:
     def test_successful_permissions_with_issues(self):
         """Successful query with issues returns passed=True."""
         mock_client = Mock()
-        mock_client._execute_query.return_value = {
-            'issues': {
-                'nodes': [{'id': 'issue-123'}]
-            }
-        }
+        mock_client._execute_query.return_value = {"issues": {"nodes": [{"id": "issue-123"}]}}
 
         result = check_permissions(mock_client)
 
@@ -462,11 +427,7 @@ class TestCheckPermissions:
     def test_successful_permissions_no_issues(self):
         """Empty issues result (no issues exist) is still success."""
         mock_client = Mock()
-        mock_client._execute_query.return_value = {
-            'issues': {
-                'nodes': []
-            }
-        }
+        mock_client._execute_query.return_value = {"issues": {"nodes": []}}
 
         result = check_permissions(mock_client)
 
@@ -519,21 +480,19 @@ class TestCheckPermissions:
 
         assert result.passed is False
         assert result.response_body is not None
-        assert 'lin_api_secret123' not in result.response_body
-        assert '[REDACTED]' in result.response_body
+        assert "lin_api_secret123" not in result.response_body
+        assert "[REDACTED]" in result.response_body
 
     def test_check_has_timestamp(self):
         """Permissions check result includes auto-generated timestamp."""
         mock_client = Mock()
-        mock_client._execute_query.return_value = {
-            'issues': {'nodes': []}
-        }
+        mock_client._execute_query.return_value = {"issues": {"nodes": []}}
 
         result = check_permissions(mock_client)
 
         assert result.timestamp is not None
-        assert result.timestamp.endswith('Z')
-        assert 'T' in result.timestamp
+        assert result.timestamp.endswith("Z")
+        assert "T" in result.timestamp
 
 
 class TestVerifyLinearConnection:
@@ -547,23 +506,22 @@ class TestVerifyLinearConnection:
     def setup_flows(self, db):
         """Sync flows to DB before each test."""
         from requirements.flows.sync import sync_flows_to_db
+
         sync_flows_to_db()
 
     def test_all_checks_pass(self):
         """All valid config and mocked API returns success=True."""
-        with patch('requirements.flows.handlers.linear.LinearClient') as MockClient:
+        with patch("requirements.flows.handlers.linear.LinearClient") as MockClient:
             mock_client = Mock()
             # Auth succeeds, then permissions succeeds
             mock_client._execute_query.side_effect = [
-                {'viewer': {'id': '1', 'name': 'Test', 'email': 'test@test.com'}},
-                {'issues': {'nodes': []}}
+                {"viewer": {"id": "1", "name": "Test", "email": "test@test.com"}},
+                {"issues": {"nodes": []}},
             ]
             MockClient.return_value = mock_client
 
             result = verify_linear_connection(
-                api_key='lin_api_test123',
-                workspace='my-workspace',
-                team='engineering'
+                api_key="lin_api_test123", workspace="my-workspace", team="engineering"
             )
 
             assert result.success is True
@@ -573,11 +531,11 @@ class TestVerifyLinearConnection:
 
     def test_config_failure_short_circuits(self):
         """Invalid config returns immediately without API calls."""
-        with patch('requirements.flows.handlers.linear.LinearClient') as MockClient:
+        with patch("requirements.flows.handlers.linear.LinearClient") as MockClient:
             result = verify_linear_connection(
-                api_key='',  # Invalid - missing
-                workspace='my-workspace',
-                team='engineering'
+                api_key="",  # Invalid - missing
+                workspace="my-workspace",
+                team="engineering",
             )
 
             assert result.success is False
@@ -590,7 +548,7 @@ class TestVerifyLinearConnection:
 
     def test_auth_failure_short_circuits(self):
         """Failed auth skips permissions check."""
-        with patch('requirements.flows.handlers.linear.LinearClient') as MockClient:
+        with patch("requirements.flows.handlers.linear.LinearClient") as MockClient:
             mock_client = Mock()
             mock_response = Mock()
             mock_response.status_code = 401
@@ -601,9 +559,7 @@ class TestVerifyLinearConnection:
             MockClient.return_value = mock_client
 
             result = verify_linear_connection(
-                api_key='lin_api_test123',
-                workspace='my-workspace',
-                team='engineering'
+                api_key="lin_api_test123", workspace="my-workspace", team="engineering"
             )
 
             assert result.success is False
@@ -613,7 +569,7 @@ class TestVerifyLinearConnection:
 
     def test_permission_failure(self):
         """All checks run but permissions fails."""
-        with patch('requirements.flows.handlers.linear.LinearClient') as MockClient:
+        with patch("requirements.flows.handlers.linear.LinearClient") as MockClient:
             mock_client = Mock()
             mock_response = Mock()
             mock_response.status_code = 403
@@ -623,8 +579,8 @@ class TestVerifyLinearConnection:
 
             # Auth succeeds, permissions fails
             def side_effect(query):
-                if 'viewer' in query:
-                    return {'viewer': {'id': '1', 'name': 'Test', 'email': 'test@test.com'}}
+                if "viewer" in query:
+                    return {"viewer": {"id": "1", "name": "Test", "email": "test@test.com"}}
                 else:
                     raise http_error
 
@@ -632,9 +588,7 @@ class TestVerifyLinearConnection:
             MockClient.return_value = mock_client
 
             result = verify_linear_connection(
-                api_key='lin_api_test123',
-                workspace='my-workspace',
-                team='engineering'
+                api_key="lin_api_test123", workspace="my-workspace", team="engineering"
             )
 
             assert result.success is False
@@ -645,18 +599,16 @@ class TestVerifyLinearConnection:
 
     def test_checks_in_correct_order(self):
         """Checks are ordered: Configuration, Authentication, Permissions."""
-        with patch('requirements.flows.handlers.linear.LinearClient') as MockClient:
+        with patch("requirements.flows.handlers.linear.LinearClient") as MockClient:
             mock_client = Mock()
             mock_client._execute_query.side_effect = [
-                {'viewer': {'id': '1', 'name': 'Test', 'email': 'test@test.com'}},
-                {'issues': {'nodes': []}}
+                {"viewer": {"id": "1", "name": "Test", "email": "test@test.com"}},
+                {"issues": {"nodes": []}},
             ]
             MockClient.return_value = mock_client
 
             result = verify_linear_connection(
-                api_key='lin_api_test123',
-                workspace='my-workspace',
-                team='engineering'
+                api_key="lin_api_test123", workspace="my-workspace", team="engineering"
             )
 
             check_names = [c.name for c in result.checks]
@@ -664,20 +616,18 @@ class TestVerifyLinearConnection:
 
     def test_all_checks_have_timestamps(self):
         """Every check in result has a timestamp."""
-        with patch('requirements.flows.handlers.linear.LinearClient') as MockClient:
+        with patch("requirements.flows.handlers.linear.LinearClient") as MockClient:
             mock_client = Mock()
             mock_client._execute_query.side_effect = [
-                {'viewer': {'id': '1', 'name': 'Test', 'email': 'test@test.com'}},
-                {'issues': {'nodes': []}}
+                {"viewer": {"id": "1", "name": "Test", "email": "test@test.com"}},
+                {"issues": {"nodes": []}},
             ]
             MockClient.return_value = mock_client
 
             result = verify_linear_connection(
-                api_key='lin_api_test123',
-                workspace='my-workspace',
-                team='engineering'
+                api_key="lin_api_test123", workspace="my-workspace", team="engineering"
             )
 
             for check in result.checks:
                 assert check.timestamp is not None
-                assert 'T' in check.timestamp  # ISO format contains T separator
+                assert "T" in check.timestamp  # ISO format contains T separator

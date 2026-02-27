@@ -94,9 +94,7 @@ def risks(format):
 @click.argument("base_ref")
 @click.argument("head_ref")
 @click.option("--format", type=click.Choice(["text", "json"]), default="text")
-@click.option(
-    "--no-hierarchy", is_flag=True, default=False, help="Skip child requirements"
-)
+@click.option("--no-hierarchy", is_flag=True, default=False, help="Skip child requirements")
 @click.option("--spec-dir", default="specs", help="Spec file directory")
 def impact(base_ref, head_ref, format, no_hierarchy, spec_dir):
     """Analyze impact of spec changes between two git refs."""
@@ -112,12 +110,8 @@ def impact(base_ref, head_ref, format, no_hierarchy, spec_dir):
 
 
 @cli.command()
-@click.option(
-    "--min-runs", type=int, default=10, help="Minimum test runs (default: 10)"
-)
-@click.option(
-    "--min-overlap", type=int, default=5, help="Minimum overlapping runs (default: 5)"
-)
+@click.option("--min-runs", type=int, default=10, help="Minimum test runs (default: 10)")
+@click.option("--min-overlap", type=int, default=5, help="Minimum overlapping runs (default: 5)")
 @click.option("--latest", is_flag=True, default=False, help="Only analyze latest runs")
 @click.option("--alert", is_flag=True, default=False, help="Log and print alerts")
 @click.option("--dry-run", is_flag=True, default=False, help="Detect without logging")
@@ -222,9 +216,7 @@ def agent():
 
 @agent.command()
 @click.argument("agent_id")
-@click.option(
-    "--role", required=True, type=click.Choice(["planner", "coder", "reviewer"])
-)
+@click.option("--role", required=True, type=click.Choice(["planner", "coder", "reviewer"]))
 @click.option("--config", default="{}", help="JSON config string")
 @click.option("--format", type=click.Choice(["text", "json"]), default="text")
 def register(agent_id, role, config, format):
@@ -245,9 +237,7 @@ def tasks(status, sprint, agent, format):
 @agent.command()
 @click.argument("task_id")
 @click.option("--agent", required=True, help="Agent ID")
-@click.option(
-    "--lease-minutes", type=int, default=30, help="Lease duration (default: 30)"
-)
+@click.option("--lease-minutes", type=int, default=30, help="Lease duration (default: 30)")
 @click.option("--format", type=click.Choice(["text", "json"]), default="text")
 def claim(task_id, agent, lease_minutes, format):
     """Claim a task for an agent."""

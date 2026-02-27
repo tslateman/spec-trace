@@ -1,4 +1,5 @@
 """Tests for import_inapp_validations management command."""
+
 import json
 import tempfile
 from pathlib import Path
@@ -43,9 +44,7 @@ def valid_validations_json(sample_requirement):
             }
         ],
     }
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".json", delete=False
-    ) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         json.dump(data, f)
         return Path(f.name)
 
@@ -66,9 +65,7 @@ def failed_validation_json(sample_requirement):
             }
         ],
     }
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".json", delete=False
-    ) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         json.dump(data, f)
         return Path(f.name)
 
@@ -86,9 +83,7 @@ def unknown_requirement_json(db):
             }
         ],
     }
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".json", delete=False
-    ) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         json.dump(data, f)
         return Path(f.name)
 
@@ -97,9 +92,7 @@ def unknown_requirement_json(db):
 def empty_validations_json():
     """Create a JSON file with no validations."""
     data = {"source": "test-app", "validations": []}
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".json", delete=False
-    ) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         json.dump(data, f)
         return Path(f.name)
 
@@ -175,7 +168,7 @@ class TestImportInAppValidations:
     def test_multiple_validations(self, sample_requirement):
         """Multiple validations for same requirement are imported."""
         # Create second requirement
-        req2 = Requirement.add_root(
+        Requirement.add_root(
             external_id="REQ-TEST-002",
             title="Second Requirement",
             status="active",
@@ -197,9 +190,7 @@ class TestImportInAppValidations:
                 },
             ],
         }
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(data, f)
             json_path = Path(f.name)
 

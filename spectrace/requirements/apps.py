@@ -1,4 +1,5 @@
 """Requirements app configuration."""
+
 import sys
 
 from django.apps import AppConfig
@@ -7,9 +8,9 @@ from django.apps import AppConfig
 class RequirementsConfig(AppConfig):
     """Configuration for the requirements app."""
 
-    default_auto_field = 'django.db.models.BigAutoField'
-    name = 'requirements'
-    verbose_name = 'Requirements'
+    default_auto_field = "django.db.models.BigAutoField"
+    name = "requirements"
+    verbose_name = "Requirements"
 
     def ready(self):
         """Called when Django app is ready.
@@ -21,7 +22,7 @@ class RequirementsConfig(AppConfig):
         database might not be ready (makemigrations, migrate).
         """
         # Skip sync during database-affecting management commands
-        skip_commands = {'makemigrations', 'migrate', 'flush', 'sqlmigrate'}
+        skip_commands = {"makemigrations", "migrate", "flush", "sqlmigrate"}
         if any(cmd in sys.argv for cmd in skip_commands):
             return
 

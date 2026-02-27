@@ -24,7 +24,6 @@ from spectrace_flows.types import (
     VerificationCheck,
 )
 
-
 # Map spectrace_flows.FlowSource to Django model enum
 SOURCE_MAP = {
     FlowSource.API: VerificationFlowSource.API,

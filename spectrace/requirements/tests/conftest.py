@@ -1,4 +1,5 @@
 """Shared pytest fixtures for requirements test suite."""
+
 import json
 import tempfile
 from pathlib import Path
@@ -8,13 +9,12 @@ from django.core.cache import cache
 from django.test import Client
 
 from requirements.models import (
-    Requirement,
     SLO,
+    Requirement,
     SLOStatus,
     TestResult,
     TestRun,
 )
-
 
 # ============================================================================
 # Django Test Client
@@ -199,9 +199,7 @@ def make_temp_json_file():
     created_files = []
 
     def _make_file(data: dict) -> Path:
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(data, f)
             created_files.append(f.name)
             return Path(f.name)
@@ -230,9 +228,7 @@ def make_temp_yaml_file():
     created_files = []
 
     def _make_file(content: str) -> Path:
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write(content)
             created_files.append(f.name)
             return Path(f.name)

@@ -11,7 +11,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from .models import Requirement, TestRequirementLink, TestRun, RiskLevel
+from .models import Requirement, RiskLevel, TestRequirementLink, TestRun
 
 
 @dataclass
@@ -44,8 +44,7 @@ class ValidationResult:
         """Convert to JSON-serializable dict."""
         return {
             "errors": [
-                {"type": e.type, "id": e.id, "message": e.message, **e.details}
-                for e in self.errors
+                {"type": e.type, "id": e.id, "message": e.message, **e.details} for e in self.errors
             ],
             "warnings": [
                 {"type": w.type, "id": w.id, "message": w.message, **w.details}
@@ -82,9 +81,7 @@ def validate_links(
     result.links_checked = len(links)
 
     # Get all requirement IDs from database
-    db_requirements = {
-        req.external_id: req for req in Requirement.objects.all()
-    }
+    db_requirements = {req.external_id: req for req in Requirement.objects.all()}
 
     # Track which requirements have linked tests
     requirements_with_tests: set[str] = set()
@@ -107,7 +104,7 @@ def validate_links(
                 ValidationIssue(
                     type="unknown_requirement",
                     id=req_id,
-                    message=f"Referenced in tests but not in database",
+                    message="Referenced in tests but not in database",
                     details={"referenced_by": [test_nodeid]},
                 )
             )
@@ -179,7 +176,7 @@ class DriftResult:
     def has_warnings(self) -> bool:
         return len(self.warnings) > 0
 
-    def merge(self, other: 'DriftResult') -> 'DriftResult':
+    def merge(self, other: "DriftResult") -> "DriftResult":
         """Merge another DriftResult into this one."""
         self.errors.extend(other.errors)
         self.warnings.extend(other.warnings)
@@ -190,8 +187,7 @@ class DriftResult:
         """Convert to JSON-serializable dict."""
         return {
             "errors": [
-                {"type": e.type, "id": e.id, "message": e.message, **e.details}
-                for e in self.errors
+                {"type": e.type, "id": e.id, "message": e.message, **e.details} for e in self.errors
             ],
             "warnings": [
                 {"type": w.type, "id": w.id, "message": w.message, **w.details}
@@ -207,7 +203,7 @@ class DriftResult:
 
 def detect_unmarked_tests(
     test_directory: Path,
-    spec_marker_pattern: str = r'@pytest\.mark\.(spec|linear|requirement)',
+    spec_marker_pattern: str = r"@pytest\.mark\.(spec|linear|requirement)",
 ) -> DriftResult:
     """Detect test files without spec markers.
 
@@ -224,20 +220,20 @@ def detect_unmarked_tests(
     if not test_directory.exists():
         return result
 
-    for test_file in test_directory.rglob('test_*.py'):
+    for test_file in test_directory.rglob("test_*.py"):
         result.items_checked += 1
         content = test_file.read_text()
 
         # Check if file has any spec markers
         if not marker_re.search(content):
             # Check if file has any test functions
-            if re.search(r'def test_', content):
+            if re.search(r"def test_", content):
                 result.warnings.append(
                     ValidationIssue(
-                        type='unmarked_test',
+                        type="unmarked_test",
                         id=str(test_file),
-                        message='Test file has no spec markers',
-                        details={'path': str(test_file)},
+                        message="Test file has no spec markers",
+                        details={"path": str(test_file)},
                     )
                 )
 
@@ -255,13 +251,11 @@ def detect_stale_links() -> DriftResult:
     result = DriftResult()
 
     # Get all test nodeids from the most recent test run
-    latest_run = TestRun.objects.order_by('-imported_at').first()
+    latest_run = TestRun.objects.order_by("-imported_at").first()
     if not latest_run:
         return result
 
-    recent_nodeids = set(
-        latest_run.results.values_list('test_nodeid', flat=True)
-    )
+    recent_nodeids = set(latest_run.results.values_list("test_nodeid", flat=True))
 
     # Check each link
     for link in TestRequirementLink.objects.all():
@@ -270,16 +264,14 @@ def detect_stale_links() -> DriftResult:
         if link.test_nodeid not in recent_nodeids:
             result.errors.append(
                 ValidationIssue(
-                    type='stale_link',
-                    id=f'{link.test_nodeid}:{link.requirement.external_id}',
-                    message='Link references test not in latest run',
+                    type="stale_link",
+                    id=f"{link.test_nodeid}:{link.requirement.external_id}",
+                    message="Link references test not in latest run",
                     details={
-                        'test_nodeid': link.test_nodeid,
-                        'requirement_id': link.requirement.external_id,
-                        'last_status': link.last_status,
-                        'last_run_at': (
-                            link.last_run_at.isoformat() if link.last_run_at else None
-                        ),
+                        "test_nodeid": link.test_nodeid,
+                        "requirement_id": link.requirement.external_id,
+                        "last_status": link.last_status,
+                        "last_run_at": (link.last_run_at.isoformat() if link.last_run_at else None),
                     },
                 )
             )
@@ -297,7 +289,7 @@ def detect_orphan_requirements() -> DriftResult:
     """
     result = DriftResult()
 
-    for req in Requirement.objects.filter(status='active'):
+    for req in Requirement.objects.filter(status="active"):
         result.items_checked += 1
 
         # Skip non-leaf nodes (they're covered by their children)
@@ -308,12 +300,12 @@ def detect_orphan_requirements() -> DriftResult:
         if not req.test_links.exists():
             result.warnings.append(
                 ValidationIssue(
-                    type='orphan_requirement',
+                    type="orphan_requirement",
                     id=req.external_id,
-                    message='Active requirement has no test coverage and no children',
+                    message="Active requirement has no test coverage and no children",
                     details={
-                        'title': req.title,
-                        'source_file': req.source_file,
+                        "title": req.title,
+                        "source_file": req.source_file,
                     },
                 )
             )
@@ -336,7 +328,7 @@ def detect_spec_drift(specs_directory: Path) -> DriftResult:
     result = DriftResult()
 
     # Get latest test run timestamp
-    latest_run = TestRun.objects.order_by('-imported_at').first()
+    latest_run = TestRun.objects.order_by("-imported_at").first()
     if not latest_run:
         return result
 
@@ -345,7 +337,7 @@ def detect_spec_drift(specs_directory: Path) -> DriftResult:
     if not specs_directory.exists():
         return result
 
-    for spec_file in specs_directory.rglob('*.md'):
+    for spec_file in specs_directory.rglob("*.md"):
         result.items_checked += 1
 
         # Get file modification time
@@ -357,21 +349,21 @@ def detect_spec_drift(specs_directory: Path) -> DriftResult:
         if mtime > last_run_time:
             # Find requirements from this file
             req_ids = list(
-                Requirement.objects.filter(
-                    source_file__endswith=spec_file.name
-                ).values_list('external_id', flat=True)
+                Requirement.objects.filter(source_file__endswith=spec_file.name).values_list(
+                    "external_id", flat=True
+                )
             )
 
             result.warnings.append(
                 ValidationIssue(
-                    type='spec_drift',
+                    type="spec_drift",
                     id=str(spec_file),
-                    message='Spec file modified after last test run',
+                    message="Spec file modified after last test run",
                     details={
-                        'path': str(spec_file),
-                        'modified_at': mtime.isoformat(),
-                        'last_test_run': last_run_time.isoformat(),
-                        'affected_requirements': req_ids,
+                        "path": str(spec_file),
+                        "modified_at": mtime.isoformat(),
+                        "last_test_run": last_run_time.isoformat(),
+                        "affected_requirements": req_ids,
                     },
                 )
             )
@@ -423,7 +415,7 @@ def validate_high_risk_requirements() -> DriftResult:
 
     high_risk_reqs = Requirement.objects.filter(
         risk_level__in=[RiskLevel.CRITICAL, RiskLevel.HIGH]
-    ).prefetch_related('test_links', 'slos')
+    ).prefetch_related("test_links", "slos")
 
     for req in high_risk_reqs:
         result.items_checked += 1
@@ -433,32 +425,32 @@ def validate_high_risk_requirements() -> DriftResult:
         if not test_links:
             result.errors.append(
                 ValidationIssue(
-                    type='high_risk_no_tests',
+                    type="high_risk_no_tests",
                     id=req.external_id,
-                    message=f'{req.get_risk_level_display()} requirement has no linked tests',
+                    message=f"{req.get_risk_level_display()} requirement has no linked tests",
                     details={
-                        'risk_level': req.risk_level,
-                        'title': req.title,
+                        "risk_level": req.risk_level,
+                        "title": req.title,
                     },
                 )
             )
             continue
 
         # Check for passing tests
-        failing_tests = [
-            link for link in test_links
-            if link.last_status in ('failed', 'error')
-        ]
+        failing_tests = [link for link in test_links if link.last_status in ("failed", "error")]
         if failing_tests:
             result.errors.append(
                 ValidationIssue(
-                    type='high_risk_failing_tests',
+                    type="high_risk_failing_tests",
                     id=req.external_id,
-                    message=f'{req.get_risk_level_display()} requirement has {len(failing_tests)} failing test(s)',
+                    message=(
+                        f"{req.get_risk_level_display()} requirement"
+                        f" has {len(failing_tests)} failing test(s)"
+                    ),
                     details={
-                        'risk_level': req.risk_level,
-                        'title': req.title,
-                        'failing_tests': [t.test_nodeid for t in failing_tests],
+                        "risk_level": req.risk_level,
+                        "title": req.title,
+                        "failing_tests": [t.test_nodeid for t in failing_tests],
                     },
                 )
             )
@@ -467,12 +459,12 @@ def validate_high_risk_requirements() -> DriftResult:
         if not req.slos.exists():
             result.warnings.append(
                 ValidationIssue(
-                    type='high_risk_no_slo',
+                    type="high_risk_no_slo",
                     id=req.external_id,
-                    message=f'{req.get_risk_level_display()} requirement has no linked SLO',
+                    message=f"{req.get_risk_level_display()} requirement has no linked SLO",
                     details={
-                        'risk_level': req.risk_level,
-                        'title': req.title,
+                        "risk_level": req.risk_level,
+                        "title": req.title,
                     },
                 )
             )
@@ -522,39 +514,42 @@ def validate_changed_files_impact(
     affected_high_risk = Requirement.objects.filter(
         external_id__in=affected_req_ids,
         risk_level__in=[RiskLevel.CRITICAL, RiskLevel.HIGH],
-    ).prefetch_related('test_links')
+    ).prefetch_related("test_links")
 
     for req in affected_high_risk:
         result.items_checked += 1
 
         test_links = list(req.test_links.all())
-        failing_tests = [
-            link for link in test_links
-            if link.last_status in ('failed', 'error')
-        ]
+        failing_tests = [link for link in test_links if link.last_status in ("failed", "error")]
 
         if failing_tests:
             result.errors.append(
                 ValidationIssue(
-                    type='pr_impacts_failing_high_risk',
+                    type="pr_impacts_failing_high_risk",
                     id=req.external_id,
-                    message=f'PR changes affect {req.get_risk_level_display()} requirement with failing tests',
+                    message=(
+                        f"PR changes affect {req.get_risk_level_display()}"
+                        " requirement with failing tests"
+                    ),
                     details={
-                        'risk_level': req.risk_level,
-                        'title': req.title,
-                        'failing_tests': [t.test_nodeid for t in failing_tests],
+                        "risk_level": req.risk_level,
+                        "title": req.title,
+                        "failing_tests": [t.test_nodeid for t in failing_tests],
                     },
                 )
             )
         elif not test_links:
             result.errors.append(
                 ValidationIssue(
-                    type='pr_impacts_untested_high_risk',
+                    type="pr_impacts_untested_high_risk",
                     id=req.external_id,
-                    message=f'PR changes affect {req.get_risk_level_display()} requirement with no tests',
+                    message=(
+                        f"PR changes affect {req.get_risk_level_display()}"
+                        " requirement with no tests"
+                    ),
                     details={
-                        'risk_level': req.risk_level,
-                        'title': req.title,
+                        "risk_level": req.risk_level,
+                        "title": req.title,
                     },
                 )
             )

@@ -29,7 +29,9 @@ def _convert_refs(obj: Any) -> Any:
         return obj
 
 
-def struct_to_json_schema(struct_type: type[Struct]) -> tuple[dict[str, Any], dict[str, Any]]:
+def struct_to_json_schema(
+    struct_type: type[Struct],
+) -> tuple[dict[str, Any], dict[str, Any]]:
     """Convert a msgspec Struct to OpenAPI 3.1 JSON Schema.
 
     Args:

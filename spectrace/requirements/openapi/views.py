@@ -36,8 +36,7 @@ def openapi_spec(request: HttpRequest) -> HttpResponse:
 
     # Determine output format
     use_yaml = format_param == "yaml" or (
-        format_param != "json"
-        and ("yaml" in accept_header or "text/yaml" in accept_header)
+        format_param != "json" and ("yaml" in accept_header or "text/yaml" in accept_header)
     )
 
     if use_yaml:
