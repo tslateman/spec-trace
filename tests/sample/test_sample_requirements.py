@@ -5,6 +5,7 @@ These tests link to sample requirements to show:
 - Failing (red): Tests that intentionally fail
 - Untested (gray): Requirements with no linked tests
 """
+
 import pytest
 
 
@@ -21,11 +22,13 @@ def test_user_login_with_email():
     assert True
 
 
+@pytest.mark.demo
 @pytest.mark.requirement("SAMPLE-AUTH-001-002")
 def test_password_reset_failure():
     """Failing test for password reset.
 
     This intentionally fails to demonstrate 'failing' status.
+    Run with `pytest -m demo` to include demo tests.
     """
     pytest.fail("Password reset email not sent - simulated failure")
 

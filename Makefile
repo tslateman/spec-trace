@@ -1,4 +1,4 @@
-.PHONY: help install install-dev test migrate makemigrations shell run clean setup demo demos
+.PHONY: help install install-dev test lint format check migrate makemigrations shell run clean setup demo demos
 
 # Use venv Python if it exists, otherwise fall back to system python
 PYTHON := $(shell [ -f .venv/bin/python ] && echo .venv/bin/python || echo python)
@@ -15,6 +15,9 @@ help:
 	@echo "  clean           Remove caches and build artifacts"
 	@echo "  setup           Create admin user (admin/admin)"
 	@echo "  demo            Run the SpecTrace demo"
+	@echo "  lint            Run ruff linter"
+	@echo "  format          Check ruff formatting"
+	@echo "  check           Run lint + format + test (matches CI)"
 	@echo "  demos           List all available demos"
 
 install:
@@ -25,7 +28,15 @@ install-dev:
 	git config core.hooksPath .githooks
 
 test:
-	$(PYTHON) -m pytest
+	$(PYTHON) -m pytest -m "not demo"
+
+lint:
+	ruff check spectrace/ tests/ spectrace-flows/
+
+format:
+	ruff format --check spectrace/ tests/ spectrace-flows/
+
+check: lint format test
 
 migrate:
 	$(PYTHON) spectrace/manage.py migrate
