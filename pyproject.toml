@@ -32,6 +32,8 @@ github = [
 dev = [
     "pytest>=9.0,<10.0",
     "pytest-django>=4.11,<5.0",
+    "freezegun>=1.4,<2.0",
+    "responses>=0.25,<1.0",
 ]
 
 [build-system]
