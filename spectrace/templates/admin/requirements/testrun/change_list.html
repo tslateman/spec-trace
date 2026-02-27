@@ -1,0 +1,56 @@
+{% extends "admin/change_list.html" %}
+{% load i18n %}
+
+{% block content_title %}
+<div x-data="{ showHelp: false }">
+    <div class="st-admin-title">
+        {{ block.super }}
+        <button
+            class="st-help-toggle"
+            @click="showHelp = !showHelp"
+            :style="showHelp ? 'background: var(--st-accent-500); color: white; border-color: var(--st-accent-500);' : ''"
+            title="How test runs work"
+            aria-label="How test runs work"
+        >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                <circle cx="12" cy="17" r="0.5" fill="currentColor"></circle>
+            </svg>
+        </button>
+    </div>
+    <div x-show="showHelp" x-collapse class="st-card st-help-panel" style="margin-top: var(--st-space-3);">
+        <div class="st-card-body">
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--st-space-3);">
+                <h3 class="st-heading-3" style="margin: 0;">How Test Runs Work</h3>
+                <button @click="showHelp = false" class="st-btn st-btn--ghost" style="padding: 4px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div style="display: grid; gap: var(--st-space-4); font-size: 0.875rem; color: var(--st-text-muted);">
+                <div>
+                    <strong style="color: var(--st-text);">1. Capture CI Output</strong><br>
+                    Each test run represents a single CI execution imported from pytest/JUnit output.
+                </div>
+                <div>
+                    <strong style="color: var(--st-text);">2. Preserve Raw Detail</strong><br>
+                    Test runs store commit metadata, branch, and exact counts before linking to requirements.
+                </div>
+                <div>
+                    <strong style="color: var(--st-text);">3. Feed Verification Runs</strong><br>
+                    Once tests are linked, these results drive verification status for requirements.
+                </div>
+                <div style="background: var(--st-surface); padding: var(--st-space-3); border-radius: var(--st-radius-sm); margin-top: var(--st-space-2);">
+                    <strong style="color: var(--st-text);">CLI Usage:</strong>
+                    <code style="display: block; margin-top: var(--st-space-2);">pytest --junitxml=results.xml</code>
+                    <code style="display: block; margin-top: var(--st-space-2);">python manage.py import_results results.xml --links links.json</code>
+                    <span style="font-size: 0.8125rem;">Use to record raw test runs before verification linkage.</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

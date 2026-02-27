@@ -650,6 +650,101 @@ html.dark .st-table td {
     gap: var(--st-space-2);
 }
 
+.st-inline-action {
+    display: flex;
+    align-items: center;
+    gap: var(--st-space-2);
+}
+
+.st-admin-title {
+    display: flex;
+    align-items: center;
+    gap: var(--st-space-2);
+}
+
+.st-help-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1.5px solid var(--st-border);
+    background: var(--st-surface);
+    color: var(--st-text-muted);
+    cursor: pointer;
+    transition: all 0.15s var(--st-ease-out);
+}
+
+.st-help-toggle:hover {
+    border-color: var(--st-accent-500);
+    color: var(--st-accent-500);
+}
+
+.st-help-panel {
+    background: var(--st-surface-sunken);
+    border-left: 3px solid var(--st-accent-500);
+    border-radius: var(--st-radius-md);
+}
+
+.st-info {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 1px solid var(--st-border);
+    background: var(--st-surface);
+    color: var(--st-text-subtle);
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: help;
+    padding: 0;
+}
+
+.st-info::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    min-width: 220px;
+    max-width: 320px;
+    padding: var(--st-space-2) var(--st-space-3);
+    border-radius: var(--st-radius-md);
+    background: var(--st-slate-900);
+    color: var(--st-slate-50);
+    font-size: 0.75rem;
+    line-height: 1.4;
+    box-shadow: var(--st-shadow-md);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s var(--st-ease-out);
+    z-index: 20;
+}
+
+.st-info::before {
+    content: '';
+    position: absolute;
+    bottom: calc(100% + 2px);
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: var(--st-slate-900);
+    opacity: 0;
+    transition: opacity 0.15s var(--st-ease-out);
+    z-index: 19;
+}
+
+.st-info:hover::after,
+.st-info:focus::after,
+.st-info:hover::before,
+.st-info:focus::before {
+    opacity: 1;
+}
+
 /* ==========================================================================
    ANIMATIONS
    ========================================================================== */

@@ -2,10 +2,26 @@
 {% load i18n validation_tags %}
 
 {% block page_content %}
+<div x-data="{ showHelp: false }">
     <!-- Header -->
     <header class="st-flex-between mb-6 st-animate-in" style="flex-wrap: wrap; gap: var(--st-space-4);">
         <div>
-            <h1 class="st-heading-1">{{ title }}</h1>
+            <div class="st-admin-title">
+                <h1 class="st-heading-1">{{ title }}</h1>
+                <button
+                    class="st-help-toggle"
+                    @click="showHelp = !showHelp"
+                    :style="showHelp ? 'background: var(--st-accent-500); color: white; border-color: var(--st-accent-500);' : ''"
+                    title="How verification runs work"
+                    aria-label="How verification runs work"
+                >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                        <circle cx="12" cy="17" r="0.5" fill="currentColor"></circle>
+                    </svg>
+                </button>
+            </div>
             <p class="st-caption mt-1">Track verification run history and results</p>
         </div>
         <div class="st-cluster">
@@ -22,6 +38,40 @@
             </a>
         </div>
     </header>
+
+    <div x-show="showHelp" x-collapse class="st-card st-help-panel mb-6 st-animate-in" style="display: none;">
+        <div class="st-card-body">
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--st-space-3);">
+                <h3 class="st-heading-3" style="margin: 0;">How Verification Runs Work</h3>
+                <button @click="showHelp = false" class="st-btn st-btn--ghost" style="padding: 4px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div style="display: grid; gap: var(--st-space-4); font-size: 0.875rem; color: var(--st-text-muted);">
+                <div>
+                    <strong style="color: var(--st-text);">1. Import Results</strong><br>
+                    CI outputs are imported from pytest/JUnit runs and normalized into a single verification batch.
+                </div>
+                <div>
+                    <strong style="color: var(--st-text);">2. Link to Specs</strong><br>
+                    Each test result maps to requirements via <code>@pytest.mark.requirement()</code> or link metadata.
+                </div>
+                <div>
+                    <strong style="color: var(--st-text);">3. Compute Status</strong><br>
+                    Requirements are marked passing, failing, or untested based on linked test outcomes.
+                </div>
+                <div style="background: var(--st-surface); padding: var(--st-space-3); border-radius: var(--st-radius-sm); margin-top: var(--st-space-2);">
+                    <strong style="color: var(--st-text);">CLI Usage:</strong>
+                    <code style="display: block; margin-top: var(--st-space-2);">pytest --junitxml=results.xml</code>
+                    <code style="display: block; margin-top: var(--st-space-2);">python manage.py import_results results.xml --links links.json</code>
+                    <span style="font-size: 0.8125rem;">Use to refresh verification run history after CI executes.</span>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Summary Stats -->
     {% if summary %}
@@ -98,7 +148,9 @@
     <!-- Runs Table -->
     <div class="st-card st-animate-in st-animate-delay-3">
         <div class="st-card-header">
-            <h2 class="st-heading-3">Verification Runs</h2>
+            <div class="st-admin-title">
+                <h2 class="st-heading-3">Verification Runs</h2>
+            </div>
         </div>
         <div style="overflow-x: auto;">
             <table class="st-table">
@@ -191,4 +243,5 @@
         </div>
         {% endif %}
     </div>
+</div>
 {% endblock %}

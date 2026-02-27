@@ -349,6 +349,7 @@ class RequirementAdmin(ModelAdmin):
 class TestRunAdmin(ModelAdmin):
     """Admin interface for TestRun."""
 
+    change_list_template = "admin/requirements/testrun/change_list.html"
     list_display = [
         "source_file",
         "imported_at",

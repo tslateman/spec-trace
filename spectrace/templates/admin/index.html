@@ -101,10 +101,35 @@
                         Traceability Matrix
                     </a>
                     <a href="{% url 'admin-validation-runs' %}" class="st-btn st-btn--secondary" style="width: 100%;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
-                        </svg>
-                        Verification Runs
+                        <span class="st-inline-action">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+                            </svg>
+                            Verification Runs
+                            <span
+                                class="st-info"
+                                role="img"
+                                aria-label="Verification runs help"
+                                data-tooltip="Verification runs are recorded test result batches tied to requirements. Each run shows which specs were verified, failed, or still untested."
+                            >i</span>
+                        </span>
+                    </a>
+                    <a href="{% url 'admin:requirements_testrun_changelist' %}" class="st-btn st-btn--secondary" style="width: 100%;">
+                        <span class="st-inline-action">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M8 3h8a4 4 0 0 1 4 4v10a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4z"></path>
+                                <path d="M9 7h6"></path>
+                                <path d="M9 11h6"></path>
+                                <path d="M9 15h6"></path>
+                            </svg>
+                            Test Runs
+                            <span
+                                class="st-info"
+                                role="img"
+                                aria-label="Test runs help"
+                                data-tooltip="Test runs are raw CI executions (pytest/JUnit). They feed verification runs once tests are linked to requirements."
+                            >i</span>
+                        </span>
                     </a>
                     <a href="{% url 'admin-vendor-coverage' %}" class="st-btn st-btn--secondary" style="width: 100%;">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
