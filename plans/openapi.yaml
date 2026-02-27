@@ -1,0 +1,460 @@
+openapi: 3.0.3
+info:
+  title: SpecTrace API
+  description: >
+    Redesigned SpecTrace API surface mapped to consumer needs: Specs (contract), 
+    Tasks (agents), Results (evidence), and Integrations (external systems).
+  version: 1.0.0
+servers:
+  - url: /
+tags:
+  - name: Specs
+    description: The contract surface. Read-heavy.
+  - name: Tasks
+    description: The agent surface. Read-write.
+  - name: Results
+    description: The evidence surface. Write-heavy.
+  - name: Integrations
+    description: External system hooks. Config.
+
+paths:
+  # ==========================================
+  # /api/specs/
+  # ==========================================
+  /api/specs/schema-check:
+    post:
+      tags: [Specs]
+      summary: Schema-check a spec
+      description: Determines if a spec is well-formed (Markdown frontmatter, YAML syntax, etc.). Replaces legacy 'validation' terminology for schema rules.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                content:
+                  type: string
+                  description: Markdown spec content to check
+      responses:
+        '200':
+          description: Schema-check passed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+        '400':
+          description: Schema-check failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/specs/coverage:
+    get:
+      tags: [Specs]
+      summary: Get spec coverage
+      description: Returns which specs have passing results and which are stale.
+      responses:
+        '200':
+          description: Coverage report
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /api/specs/drift:
+    get:
+      tags: [Specs]
+      summary: Get spec drift
+      description: Enforcement check to determine if the codebase diverges from the documented requirements. Replaces legacy 'validation' terminology for code enforcement.
+      responses:
+        '200':
+          description: Drift report showing actionable diffs
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /api/specs/impact:
+    get:
+      tags: [Specs]
+      summary: Get spec impact analysis
+      description: Returns the dependency graph of affected specs given a code change or spec.
+      parameters:
+        - name: file_path
+          in: query
+          schema:
+            type: string
+        - name: spec_id
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Impact analysis graph
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /api/specs/{external_id}/status:
+    get:
+      tags: [Specs]
+      summary: Get spec status
+      description: Consolidates previous 'requirement' status.
+      parameters:
+        - name: external_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Spec status details
+          content:
+            application/json:
+              schema:
+                type: object
+        '404':
+          description: Spec not found
+
+  /api/specs/{external_id}/context:
+    get:
+      tags: [Specs]
+      summary: Get spec context for agents
+      description: Returns the spec with surrounding context an agent needs (related specs, recent results, coverage gaps).
+      parameters:
+        - name: external_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Agent context payload
+          content:
+            application/json:
+              schema:
+                type: object
+
+  # ==========================================
+  # /api/tasks/
+  # ==========================================
+  /api/tasks/:
+    get:
+      tags: [Tasks]
+      summary: List tasks
+      description: Provides a listing of tasks (e.g., for agents to discover work).
+      parameters:
+        - $ref: '#/components/parameters/LimitParam'
+        - $ref: '#/components/parameters/OffsetParam'
+        - $ref: '#/components/parameters/SortParam'
+        - name: status
+          in: query
+          description: Filter by task status (e.g., pending)
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A list of tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+
+  /api/tasks/agents/register:
+    post:
+      tags: [Tasks]
+      summary: Register an agent
+      description: Register or update agent identity.
+      responses:
+        '200':
+          description: Agent registered
+        '400':
+          description: Invalid registration payload
+
+  /api/tasks/{id}/claim:
+    post:
+      tags: [Tasks]
+      summary: Claim a task
+      description: Transitions an unclaimed task to claimed state by an agent.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Task successfully claimed
+        '400':
+          description: Task cannot be claimed
+
+  /api/tasks/{id}/start:
+    post:
+      tags: [Tasks]
+      summary: Start a task
+      description: Transitions task to in-progress state.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Task started
+
+  /api/tasks/{id}/complete:
+    post:
+      tags: [Tasks]
+      summary: Complete a task
+      description: Submit work for review, transitioning task to completed state.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Task completed
+
+  /api/tasks/{id}/review:
+    post:
+      tags: [Tasks]
+      summary: Review a task
+      description: Submit review (approve, request changes, reject).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Review submitted
+
+  /api/tasks/{id}/merge:
+    post:
+      tags: [Tasks]
+      summary: Merge a task
+      description: Mark an approved task as merged.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Task merged
+
+  # ==========================================
+  # /api/results/
+  # ==========================================
+  /api/results/verification/:
+    post:
+      tags: [Results]
+      summary: Post a verification result
+      description: Record a test verification outcome (e.g. test passing result). Replaces legacy 'validation/result' terminology.
+      responses:
+        '200':
+          description: Verification result recorded
+        '400':
+          description: Invalid payload
+
+  /api/results/verification-runs/:
+    get:
+      tags: [Results]
+      summary: List verification runs
+      description: List test verification runs. Replaces legacy 'validation-runs' terminology.
+      parameters:
+        - $ref: '#/components/parameters/LimitParam'
+        - $ref: '#/components/parameters/OffsetParam'
+      responses:
+        '200':
+          description: List of verification runs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+
+  /api/results/verification-runs/{run_id}:
+    get:
+      tags: [Results]
+      summary: Get verification run details
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Details of the verification run
+        '404':
+          description: Verification run not found
+
+  /api/results/verification-runs/{run_id}/steps:
+    get:
+      tags: [Results]
+      summary: Get verification run steps
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of steps for the run
+
+  /api/results/slo-status/:
+    post:
+      tags: [Results]
+      summary: Update SLO status
+      description: Update SLO status from an observability platform.
+      responses:
+        '200':
+          description: SLO updated
+
+  /api/results/flow-runs/running:
+    get:
+      tags: [Results]
+      summary: Get running flow states
+      responses:
+        '200':
+          description: List of running flows
+
+  /api/results/test-runs/latest:
+    get:
+      tags: [Results]
+      summary: Get latest test runs
+      description: Latest CI test run data.
+      responses:
+        '200':
+          description: Latest test run info
+
+  /api/results/conflicts:
+    get:
+      tags: [Results]
+      summary: Get conflicts
+      description: Surfaces contradictions across specs and results.
+      parameters:
+        - $ref: '#/components/parameters/LimitParam'
+        - $ref: '#/components/parameters/OffsetParam'
+      responses:
+        '200':
+          description: List of conflicts
+
+  /api/results/conflicts/detect:
+    post:
+      tags: [Results]
+      summary: Detect conflicts
+      description: Trigger conflict detection manually.
+      responses:
+        '200':
+          description: Conflict detection started or completed
+
+  /api/results/conflicts/{conflict_id}:
+    get:
+      tags: [Results]
+      summary: Get conflict detail
+      parameters:
+        - name: conflict_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Conflict details
+        '404':
+          description: Conflict not found
+
+  /api/results/conflicts/{conflict_id}/resolve:
+    post:
+      tags: [Results]
+      summary: Resolve conflict
+      parameters:
+        - name: conflict_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Conflict resolved
+        '400':
+          description: Resolution failed
+
+  # ==========================================
+  # /api/integrations/
+  # ==========================================
+  /api/integrations/linear/test-connection/:
+    post:
+      tags: [Integrations]
+      summary: Test Linear connection
+      description: Test the external connection to Linear.
+      responses:
+        '200':
+          description: Connection successful
+        '400':
+          description: Connection failed
+
+  /api/integrations/linear/health/:
+    get:
+      tags: [Integrations]
+      summary: Get Linear integration health
+      responses:
+        '200':
+          description: Health status
+
+  /api/integrations/webhooks/github/:
+    post:
+      tags: [Integrations]
+      summary: GitHub webhook entrypoint
+      responses:
+        '200':
+          description: Webhook received
+
+components:
+  parameters:
+    LimitParam:
+      name: limit
+      in: query
+      description: The maximum number of items to return (default 50, max 100)
+      schema:
+        type: integer
+        default: 50
+        maximum: 100
+    OffsetParam:
+      name: offset
+      in: query
+      description: The number of items to skip before starting to collect the result set
+      schema:
+        type: integer
+        default: 0
+    SortParam:
+      name: sort
+      in: query
+      description: Comma-separated list of fields to sort by. Use '-' prefix for descending.
+      schema:
+        type: string
+        example: "-priority,title"
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Description of the error
