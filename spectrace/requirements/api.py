@@ -212,8 +212,8 @@ def update_slo_status(request, data: SLOStatusRequest | None = None):
 @validate_request(
     request_schema=ValidationResultRequest,
     response_schema=ValidationResultResponse,
-    tags=["Validation"],
-    summary="Submit validation results",
+    tags=["Verification"],
+    summary="Submit verification results",
     methods=["POST"],
     requires_auth=True,
 )
@@ -225,7 +225,7 @@ def submit_validation_result(request, data: ValidationResultRequest | None = Non
     if not data.validations:
         return JsonResponse({"success": False, "error": "No validations in request"}, status=400)
 
-    # Create validation run
+    # Create verification run
     validation_run = InAppValidationRun.objects.create(
         source=data.source,
     )
@@ -451,8 +451,8 @@ def test_linear_connection(request, data: LinearTestRequest | None = None):
 @ratelimit(key="ip", rate=RATE_LIMIT_READ, block=True)
 @validate_request(
     response_schema=ValidationRunsResponse,
-    tags=["Validation Runs"],
-    summary="List validation runs",
+    tags=["Verification Runs"],
+    summary="List verification runs",
     methods=["GET"],
     query_parameters=[
         {"name": "page", "in": "query", "schema": {"type": "integer", "default": 1}},
@@ -481,7 +481,7 @@ def test_linear_connection(request, data: LinearTestRequest | None = None):
     ],
 )
 def list_validation_runs(request, data=None):
-    """List validation runs with filtering and pagination."""
+    """List verification runs with filtering and pagination."""
     # Parse pagination
     page = int(request.GET.get("page", 1))
     per_page = min(int(request.GET.get("per_page", 20)), 100)
@@ -561,18 +561,18 @@ def list_validation_runs(request, data=None):
 @ratelimit(key="ip", rate=RATE_LIMIT_READ, block=True)
 @validate_request(
     response_schema=ValidationRunDetailResponse,
-    tags=["Validation Runs"],
-    summary="Get validation run detail",
+    tags=["Verification Runs"],
+    summary="Get verification run detail",
     methods=["GET"],
 )
 def get_validation_run(request, run_id, data=None):
-    """Get validation run detail with all results."""
+    """Get verification run detail with all results."""
     try:
         run = InAppValidationRun.objects.prefetch_related("results__validation__requirement").get(
             id=run_id
         )
     except InAppValidationRun.DoesNotExist:
-        return JsonResponse({"error": "Validation run not found"}, status=404)
+        return JsonResponse({"error": "Verification run not found"}, status=404)
 
     results_data = []
     for result in run.results.all():
@@ -609,8 +609,8 @@ def get_validation_run(request, run_id, data=None):
 @ratelimit(key="ip", rate=RATE_LIMIT_READ, block=True)
 @validate_request(
     response_schema=ValidationRunStepsResponse,
-    tags=["Validation Runs"],
-    summary="Get validation run steps",
+    tags=["Verification Runs"],
+    summary="Get verification run steps",
     methods=["GET"],
     query_parameters=[
         {
@@ -622,13 +622,13 @@ def get_validation_run(request, run_id, data=None):
     ],
 )
 def get_validation_run_steps(request, run_id, data=None):
-    """Get step-level detail for a validation run."""
+    """Get step-level detail for a verification run."""
     try:
         run = InAppValidationRun.objects.prefetch_related("results__validation__requirement").get(
             id=run_id
         )
     except InAppValidationRun.DoesNotExist:
-        return JsonResponse({"error": "Validation run not found"}, status=404)
+        return JsonResponse({"error": "Verification run not found"}, status=404)
 
     # Optional filter to specific result
     result_id = request.GET.get("result_id")

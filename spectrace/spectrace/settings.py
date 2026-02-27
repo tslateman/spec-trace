@@ -81,7 +81,7 @@ UNFOLD = {
         "show_all_applications": False,
         "navigation": [
             {
-                "title": _("Quick Links"),
+                "title": _("Overview"),
                 "separator": True,
                 "items": [
                     {
@@ -94,26 +94,16 @@ UNFOLD = {
                         "icon": "info",
                         "link": reverse_lazy("admin-about"),
                     },
-                    {
-                        "title": _("Spec Syntax Guide"),
-                        "icon": "article",
-                        "link": reverse_lazy("admin-spec-syntax"),
-                    },
                 ],
             },
             {
-                "title": _("Analysis Tools"),
+                "title": _("Specs"),
                 "separator": True,
                 "items": [
                     {
-                        "title": _("Validation Runs"),
-                        "icon": "fact_check",
-                        "link": reverse_lazy("admin-validation-runs"),
-                    },
-                    {
-                        "title": _("Vendor Coverage"),
-                        "icon": "business",
-                        "link": reverse_lazy("admin-vendor-coverage"),
+                        "title": _("Requirements"),
+                        "icon": "assignment",
+                        "link": reverse_lazy("admin:requirements_requirement_changelist"),
                     },
                     {
                         "title": _("Traceability Matrix"),
@@ -125,21 +115,31 @@ UNFOLD = {
                         "icon": "analytics",
                         "link": reverse_lazy("admin-impact-analysis"),
                     },
+                    {
+                        "title": _("Spec Syntax Guide"),
+                        "icon": "article",
+                        "link": reverse_lazy("admin-spec-syntax"),
+                    },
                 ],
             },
             {
-                "title": _("Data Management"),
+                "title": _("Results"),
                 "separator": True,
                 "items": [
                     {
-                        "title": _("Requirements"),
-                        "icon": "assignment",
-                        "link": reverse_lazy("admin:requirements_requirement_changelist"),
+                        "title": _("Verification Runs"),
+                        "icon": "fact_check",
+                        "link": reverse_lazy("admin-validation-runs"),
                     },
                     {
                         "title": _("Test Runs"),
                         "icon": "science",
                         "link": reverse_lazy("admin:requirements_testrun_changelist"),
+                    },
+                    {
+                        "title": _("Vendor Coverage"),
+                        "icon": "business",
+                        "link": reverse_lazy("admin-vendor-coverage"),
                     },
                 ],
             },

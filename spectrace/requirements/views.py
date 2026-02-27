@@ -368,7 +368,7 @@ def validation_run_list_view(request):
     )
 
     context = {
-        "title": "Validation Runs",
+        "title": "Verification Runs",
         "runs": data["runs"],
         "pagination": data["pagination"],
         "summary": data["summary"],
@@ -463,7 +463,7 @@ def validation_run_compare_view(request):
     recent_runs = InAppValidationRun.objects.order_by("-imported_at")[:20]
 
     context = {
-        "title": "Compare Validation Runs",
+        "title": "Compare Verification Runs",
         "recent_runs": recent_runs,
     }
 

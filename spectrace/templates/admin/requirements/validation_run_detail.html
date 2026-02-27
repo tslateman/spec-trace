@@ -80,7 +80,7 @@
             </li>
             <li class="text-base-400">/</li>
             <li>
-                <a href="{% url 'admin-validation-runs' %}" class="text-base-500 dark:text-base-400 hover:text-primary-600 dark:hover:text-primary-400">Validation Runs</a>
+                <a href="{% url 'admin-validation-runs' %}" class="text-base-500 dark:text-base-400 hover:text-primary-600 dark:hover:text-primary-400">Verification Runs</a>
             </li>
             <li class="text-base-400">/</li>
             <li class="text-base-900 dark:text-white font-medium">Run #{{ run.id }}</li>
@@ -124,7 +124,7 @@
     <!-- Summary Stats -->
     <div class="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
         <div class="bg-white dark:bg-base-900 rounded-lg shadow p-4 border border-base-200 dark:border-base-800">
-            <div class="text-sm text-base-500 dark:text-base-400">Total Validations</div>
+            <div class="text-sm text-base-500 dark:text-base-400">Total Verifications</div>
             <div class="text-3xl font-bold text-base-900 dark:text-white">{{ run.total_validations }}</div>
         </div>
         <div class="bg-white dark:bg-base-900 rounded-lg shadow p-4 border border-base-200 dark:border-base-800 border-l-4 border-l-green-500">
@@ -175,7 +175,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                 </svg>
                 <h2 class="text-lg font-semibold text-base-900 dark:text-white">{{ vendor }}</h2>
-                <span class="text-sm text-base-500 dark:text-base-400">({{ results|length }} validations)</span>
+                <span class="text-sm text-base-500 dark:text-base-400">({{ results|length }} verifications)</span>
             </div>
             <div class="flex gap-2">
                 {% with passed=0 failed=0 %}
@@ -278,7 +278,7 @@
     </div>
     {% empty %}
     <div class="bg-white dark:bg-base-900 rounded-lg shadow border border-base-200 dark:border-base-800 p-8 text-center">
-        <p class="text-base-500 dark:text-base-400">No validation results in this run.</p>
+        <p class="text-base-500 dark:text-base-400">No verification results in this run.</p>
     </div>
     {% endfor %}
 </div>

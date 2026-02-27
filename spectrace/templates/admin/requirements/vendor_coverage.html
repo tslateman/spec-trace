@@ -208,7 +208,7 @@ html.dark .regression-alert__title {
                     </svg>
                 </button>
             </h1>
-            <p class="st-caption mt-1">Validation coverage by integration vendor</p>
+            <p class="st-caption mt-1">Verification coverage by integration vendor</p>
         </div>
         <div class="st-cluster">
             <form method="post" action="{% url 'admin-vendor-load-demo' %}" style="display: inline;">
@@ -279,7 +279,7 @@ html.dark .regression-alert__title {
             <div class="st-metric__value">{{ total_vendors|default:"0" }}</div>
         </div>
         <div class="st-metric st-lift">
-            <div class="st-metric__label">Total Validations</div>
+            <div class="st-metric__label">Total Verifications</div>
             <div class="st-metric__value">{{ total_validations|default:"0" }}</div>
         </div>
         <div class="st-metric st-lift">
@@ -378,8 +378,8 @@ html.dark .regression-alert__title {
                 <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
                 <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
             </svg>
-            <p style="color: var(--st-text-muted); font-size: 1rem; margin-bottom: var(--st-space-2);">No vendors with validations yet</p>
-            <p class="st-caption">Vendors will appear here once validation results are submitted via the SDK.</p>
+            <p style="color: var(--st-text-muted); font-size: 1rem; margin-bottom: var(--st-space-2);">No vendors with verifications yet</p>
+            <p class="st-caption">Vendors will appear here once verification results are submitted via the SDK.</p>
         </div>
     </div>
     {% endif %}
