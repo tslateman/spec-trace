@@ -1,12 +1,17 @@
 import json
 import logging
+from pathlib import Path
+
+from django.conf import settings
 from django.http import JsonResponse
+from django.db.models import Count, Q
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.core.exceptions import ValidationError
 
-from requirements.models import AgentTask, AgentTaskStatus, TestRequirementLink
+from requirements.models import AgentTask, AgentTaskStatus, Requirement, TestRequirementLink
 from requirements.services.agent_tasks import claim_task, submit_for_review, TransitionError
+from requirements.validator import detect_all_drift, detect_spec_drift, detect_stale_links
 
 logger = logging.getLogger(__name__)
 
@@ -173,3 +178,73 @@ def spec_context_view(request, external_id):
         context["fret"] = fret
 
     return _success_response(context)
+
+
+@require_http_methods(["GET"])
+def specs_coverage_view(request):
+    """Returns coverage metrics and lists of stale requirements."""
+    metrics = Requirement.objects.aggregate(
+        total=Count("id"),
+        non_draft=Count("id", filter=~Q(status="draft")),
+        passing=Count("id", filter=Q(verification_status="passing")),
+        failing=Count("id", filter=Q(verification_status="failing")),
+        untested=Count("id", filter=Q(verification_status="untested")),
+    )
+
+    stale_req_ids = set()
+
+    # 1. Stale links (tests missing from latest run)
+    stale_result = detect_stale_links()
+    for error in stale_result.errors:
+        if error.type == "stale_link":
+            stale_req_ids.add(error.details.get("requirement_id"))
+
+    # 2. Spec drift (spec modified after latest run)
+    specs_dir = Path(settings.BASE_DIR).parent / "specs"
+    if specs_dir.exists():
+        drift_result = detect_spec_drift(specs_dir)
+        for warning in drift_result.warnings:
+            if warning.type == "spec_drift":
+                affected = warning.details.get("affected_requirements", [])
+                stale_req_ids.update(affected)
+
+    data = {
+        "metrics": {
+            "total": metrics["total"],
+            "non_draft": metrics["non_draft"],
+            "passing": metrics["passing"],
+            "failing": metrics["failing"],
+            "untested": metrics["untested"],
+            "stale": len(stale_req_ids),
+        },
+        "stale_requirements": sorted(list(stale_req_ids)),
+    }
+
+    return _success_response(data)
+
+
+@require_http_methods(["GET"])
+def specs_drift_view(request):
+    """Returns actionable drift detections."""
+    specs_path_param = request.GET.get("specs_dir")
+    tests_path_param = request.GET.get("tests_dir")
+
+    project_root = Path(settings.BASE_DIR).parent
+
+    if specs_path_param:
+        specs_dir = Path(specs_path_param)
+    else:
+        specs_dir = project_root / "specs"
+
+    if tests_path_param:
+        tests_dir = Path(tests_path_param)
+    else:
+        # Default to checking root for tests, detect_unmarked_tests recursively searches
+        tests_dir = project_root
+
+    result = detect_all_drift(
+        test_directory=tests_dir if tests_dir.exists() else None,
+        specs_directory=specs_dir if specs_dir.exists() else None,
+    )
+
+    return _success_response(result.to_dict())

@@ -150,6 +150,8 @@ api_urlpatterns = [
         api_v1.complete_task_view,
         name="api-v1-tasks-complete",
     ),
+    path("api/v1/specs/coverage/", api_v1.specs_coverage_view, name="api-v1-specs-coverage"),
+    path("api/v1/specs/drift/", api_v1.specs_drift_view, name="api-v1-specs-drift"),
     path(
         "api/v1/specs/<str:external_id>/context",
         api_v1.spec_context_view,
