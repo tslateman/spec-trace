@@ -7,7 +7,7 @@ Include in your project's urls.py:
 from django.urls import path
 from django.views.generic import TemplateView
 
-from requirements import api
+from requirements import api, api_v1
 from requirements.openapi.views import openapi_spec, swagger_ui
 from requirements.views import (
     about_view,
@@ -142,6 +142,19 @@ webhook_urlpatterns = _get_webhook_urlpatterns()
 
 # REST API endpoints
 api_urlpatterns = [
+    # API v1 (New Structure)
+    path("api/v1/tasks/", api_v1.list_tasks, name="api-v1-tasks-list"),
+    path("api/v1/tasks/<str:task_id>/claim", api_v1.claim_task_view, name="api-v1-tasks-claim"),
+    path(
+        "api/v1/tasks/<str:task_id>/complete",
+        api_v1.complete_task_view,
+        name="api-v1-tasks-complete",
+    ),
+    path(
+        "api/v1/specs/<str:external_id>/context",
+        api_v1.spec_context_view,
+        name="api-v1-specs-context",
+    ),
     # External system integration
     path("api/slo/status/", api.update_slo_status, name="api-slo-status"),
     path(
