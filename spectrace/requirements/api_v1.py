@@ -248,3 +248,199 @@ def specs_drift_view(request):
     )
 
     return _success_response(result.to_dict())
+
+@require_http_methods(["GET"])
+def specs_impact_view(request):
+    """Return a dependency graph of affected specs."""
+    spec_id = request.GET.get("spec_id")
+    file_path = request.GET.get("file_path")
+    
+    from requirements.services.impact_analyzer import ImpactAnalyzer, ImpactResult
+    
+    analyzer = ImpactAnalyzer()
+    req_ids = []
+    
+    if spec_id:
+        req_ids = [spec_id]
+    elif file_path:
+        req_ids = analyzer.extract_requirement_ids([file_path], "HEAD")
+    else:
+        return _error_response("Must provide spec_id or file_path", "invalid_query_param")
+    
+    if not req_ids:
+        return _error_response("No requirements found", "not_found", status=404)
+        
+    tests, hierarchy, dependencies = analyzer.get_affected_tests(
+        req_ids, include_hierarchy=True, include_dependents=True
+    )
+    
+    result = ImpactResult(
+        changed_requirements=req_ids,
+        affected_tests=tests,
+        hierarchy_expansion=hierarchy,
+        dependency_expansion=dependencies,
+    )
+    result.risk_score, result.risk_level = analyzer.compute_risk(result)
+    
+    return _success_response({
+        "changed_requirements": result.changed_requirements,
+        "affected_tests": result.affected_tests,
+        "hierarchy_expansion": result.hierarchy_expansion,
+        "dependency_expansion": result.dependency_expansion,
+        "risk_score": result.risk_score,
+        "risk_level": result.risk_level,
+    })
+
+
+@require_http_methods(["GET"])
+def list_conflicts_view(request):
+    """List conflicts with filtering and pagination."""
+    from requirements.models import ConflictLog, ConflictConfidence
+
+    try:
+        limit = int(request.GET.get("limit", 25))
+        limit = min(limit, 100)
+    except ValueError:
+        return _error_response("Invalid limit parameter", "invalid_query_param")
+
+    try:
+        offset = int(request.GET.get("offset", 0))
+    except ValueError:
+        return _error_response("Invalid offset parameter", "invalid_query_param")
+
+    queryset = ConflictLog.objects.select_related("requirement_a", "requirement_b")
+
+    confidence = request.GET.get("confidence")
+    if confidence and confidence in ConflictConfidence.values:
+        queryset = queryset.filter(confidence=confidence)
+
+    pattern = request.GET.get("pattern")
+    if pattern:
+        queryset = queryset.filter(pattern=pattern)
+
+    resolved = request.GET.get("resolved")
+    if resolved is not None and resolved != "":
+        queryset = queryset.filter(resolved=resolved.lower() == "true")
+
+    requirement_id = request.GET.get("requirement_id")
+    if requirement_id:
+        from django.db.models import Q
+        queryset = queryset.filter(
+            Q(requirement_a__external_id=requirement_id)
+            | Q(requirement_b__external_id=requirement_id)
+        )
+
+    queryset = queryset.order_by("-created_at")
+
+    total = queryset.count()
+    conflicts = queryset[offset : offset + limit]
+
+    data = []
+    for c in conflicts:
+        data.append(
+            {
+                "id": c.id,
+                "requirement_a": c.requirement_a.external_id,
+                "requirement_b": c.requirement_b.external_id,
+                "pattern": c.pattern,
+                "confidence": c.confidence,
+                "resolved": c.resolved,
+                "created_at": c.created_at.isoformat(),
+            }
+        )
+
+    meta = {"limit": limit, "offset": offset, "total": total}
+    return _success_response(data, meta=meta)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def detect_conflicts_view(request):
+    """Run conflict detection and log results."""
+    from requirements.services.conflict_detector import ConflictDetector
+
+    try:
+        body = json.loads(request.body) if request.body else {}
+    except json.JSONDecodeError:
+        return _error_response("Invalid JSON body", "invalid_json")
+
+    min_runs = body.get("min_runs", 10)
+    min_overlap = body.get("min_overlap", 5)
+    include_structured = body.get("include_structured", True)
+
+    detector = ConflictDetector(min_runs=min_runs, min_overlap=min_overlap)
+
+    conflicts = detector.detect_mutual_exclusion()
+
+    if include_structured:
+        conflicts.extend(detector.detect_all_structured_conflicts())
+
+    result = detector.log_conflicts(conflicts)
+
+    return _success_response({
+        "conflicts_found": len(conflicts),
+        "logged": result["created_count"],
+        "skipped_existing": result["skipped_count"],
+    })
+
+
+@require_http_methods(["GET"])
+def get_conflict_view(request, conflict_id):
+    """Get full detail for a single conflict."""
+    from requirements.models import ConflictLog
+
+    try:
+        conflict = ConflictLog.objects.select_related("requirement_a", "requirement_b").get(
+            id=conflict_id
+        )
+    except ConflictLog.DoesNotExist:
+        return _error_response("Conflict not found", "not_found", status=404)
+
+    return _success_response(
+        {
+            "id": conflict.id,
+            "requirement_a": conflict.requirement_a.external_id,
+            "requirement_b": conflict.requirement_b.external_id,
+            "requirement_a_title": conflict.requirement_a.title,
+            "requirement_b_title": conflict.requirement_b.title,
+            "pattern": conflict.pattern,
+            "confidence": conflict.confidence,
+            "details": conflict.details,
+            "resolved": conflict.resolved,
+            "resolved_at": conflict.resolved_at.isoformat() if conflict.resolved_at else None,
+            "resolution_notes": conflict.resolution_notes,
+            "created_at": conflict.created_at.isoformat(),
+        }
+    )
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def resolve_conflict_view(request, conflict_id):
+    """Mark a conflict as resolved."""
+    from django.utils import timezone
+    from requirements.models import ConflictLog
+
+    try:
+        body = json.loads(request.body) if request.body else {}
+    except json.JSONDecodeError:
+        return _error_response("Invalid JSON body", "invalid_json")
+
+    try:
+        conflict = ConflictLog.objects.get(id=conflict_id)
+    except ConflictLog.DoesNotExist:
+        return _error_response("Conflict not found", "not_found", status=404)
+
+    if conflict.resolved:
+        return _error_response("Conflict already resolved", "invalid_state")
+
+    now = timezone.now()
+    conflict.resolved = True
+    conflict.resolved_at = now
+    conflict.resolution_notes = body.get("resolution_notes", "")
+    conflict.save()
+
+    return _success_response({
+        "conflict_id": conflict.id,
+        "resolved_at": now.isoformat(),
+    })

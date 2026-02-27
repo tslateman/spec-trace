@@ -157,6 +157,12 @@ api_urlpatterns = [
         api_v1.spec_context_view,
         name="api-v1-specs-context",
     ),
+    path("api/v1/specs/impact/", api_v1.specs_impact_view, name="api-v1-specs-impact"),
+    path("api/v1/results/conflicts/", api_v1.list_conflicts_view, name="api-v1-results-conflicts"),
+    path("api/v1/results/conflicts/detect", api_v1.detect_conflicts_view, name="api-v1-results-conflicts-detect"),
+    path("api/v1/results/conflicts/<int:conflict_id>", api_v1.get_conflict_view, name="api-v1-results-conflict-detail"),
+    path("api/v1/results/conflicts/<int:conflict_id>/resolve", api_v1.resolve_conflict_view, name="api-v1-results-conflict-resolve"),
+
     # External system integration
     path("api/slo/status/", api.update_slo_status, name="api-slo-status"),
     path(
