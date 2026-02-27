@@ -1,4 +1,4 @@
-.PHONY: help install install-dev test lint format check migrate makemigrations shell run clean setup demo demos
+.PHONY: help venv install install-dev test lint format check migrate makemigrations shell run clean setup demo demos
 
 # Use venv Python if it exists, otherwise fall back to system python
 PYTHON := $(shell [ -f .venv/bin/python ] && echo .venv/bin/python || echo python)
@@ -20,10 +20,13 @@ help:
 	@echo "  check           Run lint + format + test (matches CI)"
 	@echo "  demos           List all available demos"
 
-install:
+venv:
+	@test -d .venv || uv venv
+
+install: venv
 	uv pip install -e ./spectrace-flows -e .
 
-install-dev:
+install-dev: venv
 	uv pip install -e ./spectrace-flows -e ".[dev]"
 	git config core.hooksPath .githooks
 

@@ -116,8 +116,7 @@
     </div>
 
     <!-- Demo Guide (shows when flows have runs, dismissible) -->
-    {% for flow in flows %}
-    {% if flow.total_runs > 0 %}
+    {% if has_any_runs %}
     <div x-data="{ dismissed: localStorage.getItem('flow-demo-dismissed') === 'true' }"
          x-show="!dismissed"
          x-transition
@@ -140,7 +139,7 @@
                         </li>
                     </ol>
                     <div style="margin-top: var(--st-space-4);">
-                        <a href="{% url 'admin-flow-runs' flow.name %}" class="st-btn st-btn--primary st-btn--sm">
+                        <a href="{% url 'admin-flow-runs' first_flow_with_runs %}" class="st-btn st-btn--primary st-btn--sm">
                             Start Exploring →
                         </a>
                     </div>
@@ -157,9 +156,7 @@
             </div>
         </div>
     </div>
-    {% break %}
     {% endif %}
-    {% endfor %}
 
     <!-- Flows Grid -->
     <div class="st-stack st-animate-in st-animate-delay-2">

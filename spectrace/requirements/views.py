@@ -506,10 +506,16 @@ def flow_status_list_view(request):
     """
     data = get_flows_overview()
 
+    first_flow_with_runs = next(
+        (f["name"] for f in data["flows"] if f.get("total_runs", 0) > 0), ""
+    )
+
     context = {
         "title": "Flow Status",
         "flows": data["flows"],
         "summary": data["summary"],
+        "has_any_runs": bool(first_flow_with_runs),
+        "first_flow_with_runs": first_flow_with_runs,
     }
 
     return render(request, "admin/requirements/flow_status.html", context)

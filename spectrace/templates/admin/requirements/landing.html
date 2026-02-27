@@ -310,7 +310,7 @@ html.dark .feature-highlight__desc {
             <div class="landing-path__desc">View traceability matrix, vendor coverage, and verification status</div>
         </a>
 
-        <a href="#" id="start-tour" onclick="startGuidedTour(); return false;" class="landing-path st-animate-in st-animate-delay-3">
+        <div id="start-tour" class="landing-path st-animate-in st-animate-delay-3" style="cursor: pointer;">
             <div class="landing-path__icon">
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="12" cy="12" r="10"></circle>
@@ -318,8 +318,11 @@ html.dark .feature-highlight__desc {
                 </svg>
             </div>
             <div class="landing-path__title">Take the Tour</div>
-            <div class="landing-path__desc">Step-by-step walkthrough of the SpecTrace workflow<br><small style="font-size: 0.8125rem;">Or view the <a href="{% url 'spectrace_overview' %}" style="color: var(--st-accent-500); text-decoration: underline;">full presentation</a></small></div>
-        </a>
+            <div class="landing-path__desc">Step-by-step walkthrough of the SpecTrace workflow</div>
+            <div class="landing-path__desc" style="margin-top: var(--st-space-2);">
+                <a href="{% url 'spectrace_overview' %}" style="color: var(--st-accent-500); text-decoration: underline; font-size: 0.8125rem;" onclick="event.stopPropagation();">View full presentation</a>
+            </div>
+        </div>
     </div>
 
     <div class="feature-highlights">
@@ -428,6 +431,7 @@ html.dark .driver-popover-description {
 
 <script>
 function startGuidedTour() {
+    if (typeof driver === 'undefined') return;
     const steps = [
         {
             element: '.landing-stats',
@@ -448,7 +452,7 @@ function startGuidedTour() {
             }
         },
         {
-            element: '.landing-paths a:first-child',
+            element: '.landing-paths > :first-child',
             popover: {
                 title: 'Ready to Explore',
                 description: 'Click Dashboard to see the traceability matrix with sample data. Green = passing tests, Red = failing, Gray = untested.',
@@ -474,11 +478,16 @@ function startGuidedTour() {
     driverObj.drive();
 }
 
-// Auto-start tour if coming from demo hub
 document.addEventListener('DOMContentLoaded', function() {
+    // Click handler for tour card
+    document.getElementById('start-tour').addEventListener('click', function() {
+        startGuidedTour();
+    });
+
+    // Auto-start tour if coming from demo hub
     if (sessionStorage.getItem('startTour') === 'true') {
         sessionStorage.removeItem('startTour');
-        setTimeout(startGuidedTour, 500); // Small delay for page to fully render
+        setTimeout(startGuidedTour, 500);
     }
 });
 </script>

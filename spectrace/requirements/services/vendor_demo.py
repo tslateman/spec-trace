@@ -20,27 +20,27 @@ logger = logging.getLogger(__name__)
 # For vendors with has_regression, pass_count should account for regression validation being FAIL
 VENDOR_CONFIGS = [
     {
-        "name": "Opera",
-        "pass_count": 4,  # 4/5 = 80% (close to plan's 92%)
+        "name": "Stripe",
+        "pass_count": 4,  # 4/5 = 80%
         "validation_count": 5,
         "feature_flags": {"use_new_auth": True, "batch_sync": True},
     },
     {
-        "name": "Mews",
-        "pass_count": 3,  # 3/4 = 75% (close to plan's 78%)
+        "name": "Twilio",
+        "pass_count": 3,  # 3/4 = 75%
         "validation_count": 4,
         "feature_flags": {"use_new_auth": True},
     },
     {
-        "name": "Ambiance",
+        "name": "SendGrid",
         "pass_count": 3,  # 3/3 = 100%
         "validation_count": 3,
         "feature_flags": {},
     },
     {
-        "name": "OpenKey",
-        "pass_count": 3,  # Without regression adjustment; but regression on i=0 → fail
-        "validation_count": 4,  # So: i=0 FAIL (regression), i=1,2 PASS, i=3 FAIL → 2/4 = 50%
+        "name": "Plaid",
+        "pass_count": 3,  # i=0 FAIL (regression), i=1,2 PASS, i=3 FAIL → 2/4 = 50%
+        "validation_count": 4,
         "feature_flags": {"legacy_mode": True},
         "has_regression": True,  # First validation: pass → fail regression
     },

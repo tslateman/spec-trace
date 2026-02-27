@@ -47,7 +47,7 @@ class TestSDKPhase2Integration:
                 ),
             ],
             context={
-                "vendor": "Opera",
+                "vendor": "Stripe",
                 "hotel_id": 123,
                 "feature_flags": {"new_auth": True, "legacy_mode": False},
             },
@@ -68,7 +68,7 @@ class TestSDKPhase2Integration:
 
         # Verify in database
         validation = InAppValidation.objects.get(requirement=req)
-        assert validation.vendor == "Opera"
+        assert validation.vendor == "Stripe"
         assert validation.feature_flags == {"new_auth": True, "legacy_mode": False}
 
         latest_result = validation.latest_result
@@ -76,7 +76,7 @@ class TestSDKPhase2Integration:
         assert len(latest_result.steps) == 3
         assert latest_result.steps[0]["name"] == "config"
         assert latest_result.steps[0]["passed"] is True
-        assert latest_result.context["vendor"] == "Opera"
+        assert latest_result.context["vendor"] == "Stripe"
         assert latest_result.context["hotel_id"] == 123
 
     def test_regression_detection(self):
@@ -84,7 +84,7 @@ class TestSDKPhase2Integration:
         req = Requirement.add_root(external_id="REQ-TEST-002", title="Test Requirement 2")
 
         validation = InAppValidation.objects.create(
-            requirement=req, name="Test Validation", vendor="Mews"
+            requirement=req, name="Test Validation", vendor="Twilio"
         )
 
         from django.utils import timezone
@@ -125,9 +125,9 @@ class TestSDKPhase2Integration:
         req1 = Requirement.add_root(external_id="REQ-V1", title="Req 1")
         req2 = Requirement.add_root(external_id="REQ-V2", title="Req 2")
 
-        InAppValidation.objects.create(requirement=req1, name="Opera Validation", vendor="Opera")
+        InAppValidation.objects.create(requirement=req1, name="Stripe Validation", vendor="Stripe")
 
-        InAppValidation.objects.create(requirement=req2, name="Mews Validation", vendor="Mews")
+        InAppValidation.objects.create(requirement=req2, name="Twilio Validation", vendor="Twilio")
 
         # Access vendor coverage view
         from django.contrib.auth.models import User
@@ -139,7 +139,7 @@ class TestSDKPhase2Integration:
         response = client.get("/admin/vendor-coverage/")
 
         assert response.status_code == 200
-        assert "Opera" in response.content.decode() or "Mews" in response.content.decode()
+        assert "Stripe" in response.content.decode() or "Twilio" in response.content.decode()
 
     def test_backward_compatibility(self):
         """Test that old API calls without new fields still work."""
