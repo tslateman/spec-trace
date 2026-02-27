@@ -1,3 +1,5 @@
+Status: Complete
+
 # OpenAPI Spec Completeness
 
 ## Context
