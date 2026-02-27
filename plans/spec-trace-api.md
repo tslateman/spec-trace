@@ -5,7 +5,7 @@ domain.
 
 **Accountable:** Mainstay (contract stability), Ambassador (API discoverability)
 
-**Status:** Active
+**Status:** Completed
 
 ## Scope
 
