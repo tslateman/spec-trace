@@ -161,6 +161,8 @@ class TestImpactAnalyzerAnalyze:
 
         assert result.changed_requirements == ["REQ-ANALYZE"]
         assert "tests/test_main.py::test_it" in result.affected_tests
+        assert result.risk_score > 0.0
+        assert result.risk_level in ("low", "medium", "high", "critical")
 
     def test_analyze__no_changes(self, tmp_path):
         """Returns empty result when no spec files changed."""
@@ -172,6 +174,8 @@ class TestImpactAnalyzerAnalyze:
         assert result.changed_requirements == []
         assert result.affected_tests == []
         assert result.hierarchy_expansion == {}
+        assert result.risk_score == 0.0
+        assert result.risk_level == "low"
 
     def test_analyze__with_hierarchy(self, db, tmp_path):
         """Analysis includes hierarchy expansion."""
@@ -219,3 +223,94 @@ class TestImpactResult:
         assert result.affected_tests == ["test_a", "test_b"]
         assert result.hierarchy_expansion == {"REQ-001": ["REQ-001-A"]}
         assert result.dependency_expansion == {"REQ-002": ["REQ-003"]}
+
+    def test_impact_result__defaults_to_low_risk(self):
+        """ImpactResult defaults to zero risk score and low level."""
+        result = ImpactResult(
+            changed_requirements=[],
+            affected_tests=[],
+            hierarchy_expansion={},
+            dependency_expansion={},
+        )
+
+        assert result.risk_score == 0.0
+        assert result.risk_level == "low"
+
+
+class TestComputeRisk:
+    """Tests for ImpactAnalyzer.compute_risk method."""
+
+    def test_compute_risk__zero_for_empty_result(self):
+        """Returns 0.0 / low for empty impact."""
+        analyzer = ImpactAnalyzer()
+        result = ImpactResult(
+            changed_requirements=[],
+            affected_tests=[],
+            hierarchy_expansion={},
+            dependency_expansion={},
+        )
+
+        score, level = analyzer.compute_risk(result)
+
+        assert score == 0.0
+        assert level == "low"
+
+    def test_compute_risk__low_for_minimal_change(self):
+        """Single requirement, no tests = low risk."""
+        analyzer = ImpactAnalyzer()
+        result = ImpactResult(
+            changed_requirements=["REQ-001"],
+            affected_tests=[],
+            hierarchy_expansion={},
+            dependency_expansion={},
+        )
+
+        score, level = analyzer.compute_risk(result)
+
+        assert score == 0.03
+        assert level == "low"
+
+    def test_compute_risk__medium_for_moderate_impact(self):
+        """Several requirements, tests, and expansions = medium risk."""
+        analyzer = ImpactAnalyzer()
+        result = ImpactResult(
+            changed_requirements=[f"REQ-{i:03d}" for i in range(5)],
+            affected_tests=[f"test_{i}" for i in range(8)],
+            hierarchy_expansion={"REQ-001": [f"REQ-C{i}" for i in range(5)]},
+            dependency_expansion={"REQ-002": [f"REQ-D{i}" for i in range(3)]},
+        )
+
+        score, level = analyzer.compute_risk(result)
+
+        assert 0.25 <= score < 0.5
+        assert level == "medium"
+
+    def test_compute_risk__critical_for_large_blast_radius(self):
+        """Many requirements, tests, and expansions = critical."""
+        analyzer = ImpactAnalyzer()
+        result = ImpactResult(
+            changed_requirements=[f"REQ-{i:03d}" for i in range(10)],
+            affected_tests=[f"test_{i}" for i in range(20)],
+            hierarchy_expansion={"REQ-001": [f"REQ-C{i}" for i in range(10)]},
+            dependency_expansion={"REQ-002": [f"REQ-D{i}" for i in range(10)]},
+        )
+
+        score, level = analyzer.compute_risk(result)
+
+        assert score >= 0.75
+        assert level == "critical"
+
+    def test_compute_risk__saturates_at_one(self):
+        """Score never exceeds 1.0 regardless of input size."""
+        analyzer = ImpactAnalyzer()
+        result = ImpactResult(
+            changed_requirements=[f"REQ-{i}" for i in range(100)],
+            affected_tests=[f"test_{i}" for i in range(100)],
+            hierarchy_expansion={"R": [f"C{i}" for i in range(100)]},
+            dependency_expansion={"R": [f"D{i}" for i in range(100)]},
+        )
+
+        score, level = analyzer.compute_risk(result)
+
+        assert score <= 1.0
+        assert level == "critical"

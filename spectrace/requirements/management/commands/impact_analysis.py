@@ -78,6 +78,8 @@ class Command(BaseCommand):
             "affected_tests": result.affected_tests,
             "hierarchy_expansion": result.hierarchy_expansion,
             "dependency_expansion": result.dependency_expansion,
+            "risk_score": result.risk_score,
+            "risk_level": result.risk_level,
             "summary": {
                 "requirements_changed": len(result.changed_requirements),
                 "tests_affected": len(result.affected_tests),
@@ -111,6 +113,18 @@ class Command(BaseCommand):
             self.stdout.write("\nDependency Expansion:\n")
             for req_id, dependent_ids in result.dependency_expansion.items():
                 self.stdout.write(f"  {req_id} ← {', '.join(dependent_ids)}\n")
+
+        # Risk assessment
+        risk_styles = {
+            "low": self.style.SUCCESS,
+            "medium": self.style.WARNING,
+            "high": self.style.WARNING,
+            "critical": self.style.ERROR,
+        }
+        style_fn = risk_styles.get(result.risk_level, self.style.WARNING)
+        self.stdout.write(
+            style_fn(f"\nRisk: {result.risk_level.upper()} ({result.risk_score:.2f})\n")
+        )
 
         # Affected tests
         if result.affected_tests:

@@ -21,6 +21,8 @@ class TestImpactAnalysisCommand:
             affected_tests=["tests/test_foo.py::test_bar"],
             hierarchy_expansion={},
             dependency_expansion={},
+            risk_score=0.03,
+            risk_level="low",
         )
 
         with patch(
@@ -41,6 +43,8 @@ class TestImpactAnalysisCommand:
             assert output["changed_requirements"] == ["REQ-001"]
             assert output["affected_tests"] == ["tests/test_foo.py::test_bar"]
             assert output["summary"]["has_impact"] is True
+            assert output["risk_score"] == 0.03
+            assert output["risk_level"] == "low"
 
     def test_command__outputs_text(self, db):
         """Command outputs human-readable text by default."""
@@ -49,6 +53,8 @@ class TestImpactAnalysisCommand:
             affected_tests=["tests/test_foo.py::test_bar"],
             hierarchy_expansion={"REQ-001": ["REQ-001-A"]},
             dependency_expansion={},
+            risk_score=0.14,
+            risk_level="low",
         )
 
         with patch(
@@ -67,6 +73,7 @@ class TestImpactAnalysisCommand:
             assert "REQ-002" in output
             assert "tests/test_foo.py::test_bar" in output
             assert "Hierarchy Expansion" in output
+            assert "Risk: LOW (0.14)" in output
 
     def test_command__exit_0_no_impact(self, db):
         """Command exits 0 when no tests affected."""

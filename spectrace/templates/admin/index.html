@@ -158,6 +158,32 @@
                 </div>
             </div>
 
+            <!-- Spec Coverage -->
+            <div class="st-card st-animate-in" style="animation-delay: 0.38s;">
+                <div class="st-card-header">
+                    <h3 class="st-heading-3">Spec Coverage</h3>
+                </div>
+                <div class="st-card-body">
+                    <div class="st-grid-stats" style="grid-template-columns: 1fr;">
+                        <div class="st-metric st-metric--{% if spec_rate >= 80 %}pass{% elif spec_rate >= 40 %}warn{% else %}fail{% endif %} st-lift">
+                            <div class="st-metric__label">Specification Rate</div>
+                            <div class="st-metric__value">{{ spec_rate|default:"0" }}%</div>
+                            <div class="st-metric__delta" style="color: var(--st-text-subtle);">non-draft requirements</div>
+                        </div>
+                        <div class="st-metric st-metric--{% if struct_rate >= 80 %}pass{% elif struct_rate >= 40 %}warn{% else %}fail{% endif %} st-lift">
+                            <div class="st-metric__label">Structure Rate</div>
+                            <div class="st-metric__value">{{ struct_rate|default:"0" }}%</div>
+                            <div class="st-metric__delta" style="color: var(--st-text-subtle);">avg FRET completeness</div>
+                        </div>
+                        <div class="st-metric st-metric--{% if verif_rate >= 80 %}pass{% elif verif_rate >= 40 %}warn{% else %}fail{% endif %} st-lift">
+                            <div class="st-metric__label">Verification Rate</div>
+                            <div class="st-metric__value">{{ verif_rate|default:"0" }}%</div>
+                            <div class="st-metric__delta" style="color: var(--st-text-subtle);">passing requirements</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Status Legend -->
             <div class="st-card st-animate-in" style="animation-delay: 0.4s;">
                 <div class="st-card-header">

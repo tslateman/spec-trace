@@ -47,6 +47,8 @@ class ImpactResult:
     affected_tests: list[str]  # Test nodeids affected by changes
     hierarchy_expansion: dict[str, list[str]]  # Parent ID -> child IDs included
     dependency_expansion: dict[str, list[str]]  # Req ID -> dependent IDs included
+    risk_score: float = 0.0  # 0.0–1.0 overall risk score
+    risk_level: str = "low"  # "low", "medium", "high", "critical"
 
 
 class ImpactAnalyzer:
@@ -196,6 +198,48 @@ class ImpactAnalyzer:
         tests = list(set(link.test_nodeid for link in links))
         return tests, hierarchy_expansion, dependency_expansion
 
+    def compute_risk(self, result: ImpactResult) -> tuple[float, str]:
+        """Compute risk score and level from impact signals.
+
+        Weighted formula (0.0–1.0 scale):
+            risk = 0.3 * req_signal + 0.3 * test_signal
+                 + 0.2 * hierarchy_signal + 0.2 * dependency_signal
+
+        Components:
+        - req_signal: More changed requirements = higher risk (saturates at 10)
+        - test_signal: More affected tests = higher blast radius (saturates at 20)
+        - hierarchy_signal: Deeper hierarchy expansion = more indirect impact
+        - dependency_signal: Wider dependency expansion = more coupling
+
+        Returns:
+            Tuple of (risk_score, risk_level).
+        """
+        req_count = len(result.changed_requirements)
+        test_count = len(result.affected_tests)
+        hierarchy_count = sum(len(v) for v in result.hierarchy_expansion.values())
+        dependency_count = sum(len(v) for v in result.dependency_expansion.values())
+
+        req_signal = min(1.0, req_count / 10)
+        test_signal = min(1.0, test_count / 20)
+        hierarchy_signal = min(1.0, hierarchy_count / 10)
+        dependency_signal = min(1.0, dependency_count / 10)
+
+        score = round(
+            0.3 * req_signal + 0.3 * test_signal + 0.2 * hierarchy_signal + 0.2 * dependency_signal,
+            2,
+        )
+
+        if score >= 0.75:
+            level = "critical"
+        elif score >= 0.5:
+            level = "high"
+        elif score >= 0.25:
+            level = "medium"
+        else:
+            level = "low"
+
+        return score, level
+
     def analyze(
         self,
         base_ref: str,
@@ -235,12 +279,14 @@ class ImpactAnalyzer:
             changed_ids, include_hierarchy, include_dependents
         )
 
-        return ImpactResult(
+        result = ImpactResult(
             changed_requirements=changed_ids,
             affected_tests=tests,
             hierarchy_expansion=hierarchy,
             dependency_expansion=dependencies,
         )
+        result.risk_score, result.risk_level = self.compute_risk(result)
+        return result
 
 
 def setup_impact_demo(repo_path: Optional[Path] = None) -> dict:

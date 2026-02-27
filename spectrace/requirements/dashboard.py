@@ -1,6 +1,6 @@
 """Dashboard callback for SpecTrace metrics and tree data."""
 
-from django.db.models import Count, Q
+from django.db.models import Avg, Count, Q
 
 from .models import SLO, InAppValidation, Requirement, VerificationMethod
 
@@ -47,6 +47,14 @@ def dashboard_callback(request, context):
         # Requirements with SLO links
         reqs_with_slos = Requirement.objects.filter(slos__isnull=False).distinct().count()
 
+        # Spec coverage metrics
+        coverage_metrics = Requirement.objects.aggregate(
+            non_draft=Count("id", filter=~Q(status="draft")),
+            avg_structure=Avg("structure_completeness"),
+        )
+        non_draft = coverage_metrics["non_draft"]
+        avg_structure = coverage_metrics["avg_structure"] or 0.0
+
         context.update(
             {
                 # Basic verification status
@@ -57,6 +65,10 @@ def dashboard_callback(request, context):
                 "passing_pct": round(status_metrics["passing"] * 100 / total, 1),
                 "failing_pct": round(status_metrics["failing"] * 100 / total, 1),
                 "untested_pct": round(status_metrics["untested"] * 100 / total, 1),
+                # Spec coverage rates
+                "spec_rate": round(non_draft * 100 / total, 1),
+                "struct_rate": round(avg_structure * 100, 1),
+                "verif_rate": round(status_metrics["passing"] * 100 / total, 1),
                 # Verification method breakdown
                 "method_test_count": method_metrics["method_test"],
                 "method_inapp_count": method_metrics["method_inapp"],
@@ -80,6 +92,9 @@ def dashboard_callback(request, context):
                 "passing_pct": 0,
                 "failing_pct": 0,
                 "untested_pct": 0,
+                "spec_rate": 0,
+                "struct_rate": 0,
+                "verif_rate": 0,
                 "method_test_count": 0,
                 "method_inapp_count": 0,
                 "method_both_count": 0,
