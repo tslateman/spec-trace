@@ -2,99 +2,99 @@
   "version": "1.0",
   "links": [
     {
-      "test_nodeid": "spectrace/tests/test_example.py::test_login_success",
-      "requirement_id": "REQ-AUTH-001",
+      "test_nodeid": "spectrace/tests/test_example.py::test_tenant_isolation_middleware",
+      "requirement_id": "REQ-PLAT-001",
       "reason": null,
       "test_file": "tests/test_example.py",
-      "test_function": "test_login_success",
+      "test_function": "test_tenant_isolation_middleware",
       "test_class": null,
       "line_number": 10
     },
     {
-      "test_nodeid": "spectrace/tests/test_example.py::test_login_with_mfa",
-      "requirement_id": "REQ-AUTH-001",
-      "reason": "tests full auth flow",
+      "test_nodeid": "spectrace/tests/test_example.py::test_audit_logs_contain_tenant_id",
+      "requirement_id": "REQ-PLAT-001",
+      "reason": "tests full platform auth and audit",
       "test_file": "tests/test_example.py",
-      "test_function": "test_login_with_mfa",
+      "test_function": "test_audit_logs_contain_tenant_id",
       "test_class": null,
-      "line_number": 17
+      "line_number": 16
     },
     {
-      "test_nodeid": "spectrace/tests/test_example.py::test_login_with_mfa",
-      "requirement_id": "REQ-AUTH-002",
-      "reason": "tests full auth flow",
+      "test_nodeid": "spectrace/tests/test_example.py::test_audit_logs_contain_tenant_id",
+      "requirement_id": "REQ-PLAT-002",
+      "reason": "tests full platform auth and audit",
       "test_file": "tests/test_example.py",
-      "test_function": "test_login_with_mfa",
+      "test_function": "test_audit_logs_contain_tenant_id",
       "test_class": null,
-      "line_number": 17
+      "line_number": 16
     },
     {
-      "test_nodeid": "spectrace/tests/test_example.py::test_login_failure",
-      "requirement_id": "REQ-AUTH-001",
+      "test_nodeid": "spectrace/tests/test_example.py::test_upgrade_tier",
+      "requirement_id": "REQ-BILL-001",
       "reason": null,
       "test_file": "tests/test_example.py",
-      "test_function": "test_login_failure",
+      "test_function": "test_upgrade_tier",
       "test_class": null,
-      "line_number": 24
+      "line_number": 23
     },
     {
-      "test_nodeid": "spectrace/tests/test_example.py::TestAuthentication::test_logout",
-      "requirement_id": "REQ-AUTH-003",
+      "test_nodeid": "spectrace/tests/test_example.py::TestBilling::test_overage_charges",
+      "requirement_id": "REQ-BILL-002",
       "reason": null,
       "test_file": "tests/test_example.py",
-      "test_function": "test_logout",
-      "test_class": "TestAuthentication",
-      "line_number": 34
+      "test_function": "test_overage_charges",
+      "test_class": "TestBilling",
+      "line_number": 33
     },
     {
-      "test_nodeid": "spectrace/tests/test_example.py::test_data_processing[1]",
-      "requirement_id": "REQ-DATA-001",
+      "test_nodeid": "spectrace/tests/test_example.py::test_workspace_limits_by_tier[free-1]",
+      "requirement_id": "REQ-WRK-001",
       "reason": null,
       "test_file": "tests/test_example.py",
-      "test_function": "test_data_processing",
+      "test_function": "test_workspace_limits_by_tier",
       "test_class": null,
-      "line_number": 41
+      "line_number": 40
     },
     {
-      "test_nodeid": "spectrace/tests/test_example.py::test_data_processing[2]",
-      "requirement_id": "REQ-DATA-001",
+      "test_nodeid": "spectrace/tests/test_example.py::test_workspace_limits_by_tier[pro-5]",
+      "requirement_id": "REQ-WRK-001",
       "reason": null,
       "test_file": "tests/test_example.py",
-      "test_function": "test_data_processing",
+      "test_function": "test_workspace_limits_by_tier",
       "test_class": null,
-      "line_number": 41
+      "line_number": 40
     },
     {
-      "test_nodeid": "spectrace/tests/test_example.py::test_data_processing[3]",
-      "requirement_id": "REQ-DATA-001",
+      "test_nodeid": "spectrace/tests/test_example.py::test_workspace_limits_by_tier[enterprise-999]",
+      "requirement_id": "REQ-WRK-001",
       "reason": null,
       "test_file": "tests/test_example.py",
-      "test_function": "test_data_processing",
+      "test_function": "test_workspace_limits_by_tier",
       "test_class": null,
-      "line_number": 41
+      "line_number": 40
     },
     {
-      "test_nodeid": "spectrace/tests/test_example.py::test_data_import",
-      "requirement_id": "REQ-DATA-002",
+      "test_nodeid": "spectrace/tests/test_example.py::test_workspace_sharing_links",
+      "requirement_id": "REQ-WRK-002",
       "reason": null,
       "test_file": "tests/test_example.py",
-      "test_function": "test_data_import",
+      "test_function": "test_workspace_sharing_links",
       "test_class": null,
-      "line_number": 49
+      "line_number": 48
     },
     {
-      "test_nodeid": "spectrace/tests/test_example.py::test_data_import_validation",
-      "requirement_id": "REQ-DATA-002",
+      "test_nodeid": "spectrace/tests/test_example.py::test_sso_jit_provisioning",
+      "requirement_id": "REQ-IAM-001",
       "reason": null,
       "test_file": "tests/test_example.py",
-      "test_function": "test_data_import_validation",
+      "test_function": "test_sso_jit_provisioning",
       "test_class": null,
-      "line_number": 56
+      "line_number": 55
     }
   ],
   "summary": {
     "total_links": 10,
     "unique_tests": 9,
-    "unique_requirements": 5
+    "unique_requirements": 7
   }
 }

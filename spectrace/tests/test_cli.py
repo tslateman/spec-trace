@@ -30,7 +30,6 @@ def test_help__lists_commands(runner):
 def test_specs_help__lists_subcommands(runner):
     result = runner.invoke(cli, ["specs", "--help"])
     assert result.exit_code == 0
-    assert "context" in result.output
     assert "coverage" in result.output
     assert "impact" in result.output
     assert "drift" in result.output
@@ -43,6 +42,7 @@ def test_tasks_help__lists_subcommands(runner):
     assert "list" in result.output
     assert "claim" in result.output
     assert "start" in result.output
+    assert "context" in result.output
     assert "complete" in result.output
     assert "review" in result.output
     assert "merge" in result.output
@@ -69,8 +69,8 @@ def test_version(runner):
 
 
 @patch("spectrace.cli._run")
-def test_specs_context__delegates(mock_run, runner):
-    result = runner.invoke(cli, ["specs", "context", "T-1"])
+def test_tasks_context__delegates(mock_run, runner):
+    result = runner.invoke(cli, ["tasks", "context", "T-1"])
     assert result.exit_code == 0
     mock_run.assert_called_once_with("agent_context", "T-1", format="text")
 
@@ -128,7 +128,9 @@ def test_specs_drift__delegates(mock_run, runner):
 
 @patch("spectrace.cli._run")
 def test_results_conflicts__delegates(mock_run, runner):
-    result = runner.invoke(cli, ["results", "conflicts", "--min-runs", "20", "--alert", "--dry-run"])
+    result = runner.invoke(
+        cli, ["results", "conflicts", "--min-runs", "20", "--alert", "--dry-run"]
+    )
     assert result.exit_code == 0
     mock_run.assert_called_once_with(
         "detect_conflicts",
@@ -151,7 +153,9 @@ def test_results_invariants__delegates(mock_run, runner):
 
 @patch("spectrace.cli._run")
 def test_results_verify__delegates(mock_run, runner):
-    result = runner.invoke(cli, ["results", "verify", "links.json", "--strict", "--check-high-risk"])
+    result = runner.invoke(
+        cli, ["results", "verify", "links.json", "--strict", "--check-high-risk"]
+    )
     assert result.exit_code == 0
     mock_run.assert_called_once_with(
         "validate_links",
@@ -273,6 +277,7 @@ def test_tasks_expire_leases__delegates(mock_run, runner):
 # Deprecation tests
 # =============================================================================
 
+
 @patch("spectrace.cli._run")
 def test_deprecated_coverage(mock_run, runner):
     result = runner.invoke(cli, ["coverage"])
@@ -280,9 +285,12 @@ def test_deprecated_coverage(mock_run, runner):
     assert "DEPRECATED" in result.stderr
     mock_run.assert_called_once()
 
+
 @patch("spectrace.cli._run")
 def test_deprecated_agent_submit(mock_run, runner):
-    result = runner.invoke(cli, ["agent", "submit", "T-1", "--agent", "c-1", "--commit-sha", "abc123"])
+    result = runner.invoke(
+        cli, ["agent", "submit", "T-1", "--agent", "c-1", "--commit-sha", "abc123"]
+    )
     assert result.exit_code == 0
     assert "DEPRECATED" in result.stderr
     mock_run.assert_called_once()
