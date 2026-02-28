@@ -7,6 +7,7 @@
 The agent task pipeline enables multiple AI agents to work on tasks concurrently without conflicts. A **blackboard** (shared database) holds tasks that agents claim, work on, submit for review, and merge.
 
 **Key concepts:**
+
 - **Tasks** move through a state machine from creation to merge
 - **Agents** have roles (planner, coder, reviewer) that determine allowed actions
 - **Leases** prevent stuck claims from blocking work
@@ -45,26 +46,26 @@ DRAFT → UNCLAIMED → CLAIMED → IN_PROGRESS → READY_FOR_REVIEW → APPROVE
 Terminal states: MERGED, ABANDONED, BLOCKED
 ```
 
-| State | Description |
-|-------|-------------|
-| `DRAFT` | Task created but not ready for work |
-| `UNCLAIMED` | Available for agents to claim |
-| `CLAIMED` | Agent has claimed with a lease |
-| `IN_PROGRESS` | Agent is actively working |
-| `READY_FOR_REVIEW` | Work submitted, awaiting review |
-| `CHANGES_REQUESTED` | Reviewer requested changes |
-| `APPROVED` | Review passed, ready to merge |
-| `MERGED` | Work merged (terminal) |
-| `BLOCKED` | Waiting on dependencies |
-| `ABANDONED` | Hypothesis exhausted after max attempts |
+| State               | Description                             |
+| ------------------- | --------------------------------------- |
+| `DRAFT`             | Task created but not ready for work     |
+| `UNCLAIMED`         | Available for agents to claim           |
+| `CLAIMED`           | Agent has claimed with a lease          |
+| `IN_PROGRESS`       | Agent is actively working               |
+| `READY_FOR_REVIEW`  | Work submitted, awaiting review         |
+| `CHANGES_REQUESTED` | Reviewer requested changes              |
+| `APPROVED`          | Review passed, ready to merge           |
+| `MERGED`            | Work merged (terminal)                  |
+| `BLOCKED`           | Waiting on dependencies                 |
+| `ABANDONED`         | Hypothesis exhausted after max attempts |
 
 ## Agent Roles
 
-| Role | Can Do | Cannot Do |
-|------|--------|-----------|
-| `planner` | Create tasks | Claim or review |
-| `coder` | Claim, start, submit | Review |
-| `reviewer` | Review, approve/reject | Claim |
+| Role       | Can Do                 | Cannot Do       |
+| ---------- | ---------------------- | --------------- |
+| `planner`  | Create tasks           | Claim or review |
+| `coder`    | Claim, start, submit   | Review          |
+| `reviewer` | Review, approve/reject | Claim           |
 
 **Self-review is prohibited**: The agent who submitted work cannot review it.
 
@@ -108,6 +109,7 @@ python manage.py agent_claim task-auth-001 --agent coder-1 --lease-minutes 60
 ```
 
 **Errors:**
+
 - `ROLE_NOT_ALLOWED`: Only coders can claim
 - `AGENT_BUSY`: Agent already has a task in progress
 - `DEPENDENCIES_NOT_MET`: Blocking tasks not merged
@@ -147,6 +149,7 @@ python manage.py agent_review task-auth-001 --reviewer reviewer-1 --decision cha
 ```
 
 **Decisions:**
+
 - `approved` → Task moves to APPROVED
 - `changes_requested` → Task moves to CHANGES_REQUESTED (can resubmit)
 - `rejected` → Task moves to ABANDONED
@@ -157,6 +160,73 @@ Mark an approved task as merged.
 
 ```bash
 python manage.py agent_merge <task_id>
+```
+
+### `agent_context`
+
+Assemble a context bundle for an agent task. Bundles task details, linked
+specs (with tree hierarchy, test results, FRET fields), drift detection, and
+optional Lore overlay into a single artifact.
+
+```bash
+python manage.py agent_context <task_id> [--format text|json] [--output <path>]
+```
+
+**CLI shortcut:** `st tasks context <task_id>`
+
+**Options:**
+
+| Flag       | Default | Description                                  |
+| ---------- | ------- | -------------------------------------------- |
+| `--format` | `text`  | Output format: `text` (markdown) or `json`   |
+| `--output` | —       | Write output to file (in addition to stdout) |
+
+**Lore integration:** When the Lore CLI is available (`LORE_CLI` env var or
+`lore` on `PATH`), the bundle includes a Lore Context section with decisions,
+patterns, and failures matching the linked specs' tags and titles. If Lore is
+unavailable, the command succeeds with a warning on stderr and omits the
+section. Lore subprocess has a 30-second timeout.
+
+**Examples:**
+
+```bash
+# Markdown bundle to stdout
+python manage.py agent_context TASK-001
+
+# JSON output
+python manage.py agent_context TASK-001 --format json
+
+# Write to file for agent handoff
+python manage.py agent_context TASK-001 --output /tmp/context.md
+
+# Via CLI
+st tasks context TASK-001 --output /tmp/context.md
+```
+
+**Bundle contents (markdown format):**
+
+```
+# Agent Context Bundle
+
+## Task: {title}
+- ID, Status, Done When, Scope In/Out
+
+## Linked Specs
+### Spec: {title}
+- ID, Status, Priority, Tags, Source, FRET fields
+- Description body
+
+#### Tree Hierarchy
+- Parent and children (treebeard)
+
+#### Test Results
+- Full test nodeid + status list
+
+## Drift
+- Stale links and orphan requirements (when issues found)
+
+## Lore Context (Optional)
+- Decisions, patterns, failures from Lore
 ```
 
 ### `expire_leases`
@@ -178,11 +248,13 @@ python manage.py expire_leases --dry-run
 When an agent claims a task, a **lease** is created with an expiration time (default 30 minutes). This prevents abandoned claims from blocking work.
 
 If the lease expires:
+
 - The `expire_leases` command releases the task back to UNCLAIMED
 - Another agent can claim it
 - History records the release with reason `lease_expired`
 
 **Best practice**: Set lease duration based on expected task complexity:
+
 - Simple fixes: 15-30 minutes
 - Features: 60 minutes
 - Complex refactors: 120 minutes
@@ -197,13 +269,13 @@ This prevents infinite loops when a task's hypothesis is wrong. If an agent can'
 
 The system maintains 5 agent-related invariants, checked via `check_invariants`:
 
-| Code | Rule |
-|------|------|
-| INV-G | CLAIMED/IN_PROGRESS tasks have `claimed_by` set |
-| INV-H | CLAIMED tasks have `lease_expires` set |
-| INV-I | Non-DRAFT tasks have at least one history entry |
+| Code  | Rule                                                 |
+| ----- | ---------------------------------------------------- |
+| INV-G | CLAIMED/IN_PROGRESS tasks have `claimed_by` set      |
+| INV-H | CLAIMED tasks have `lease_expires` set               |
+| INV-I | Non-DRAFT tasks have at least one history entry      |
 | INV-J | APPROVED/MERGED tasks have an approved review record |
-| INV-K | Reviewers cannot review their own work |
+| INV-K | Reviewers cannot review their own work               |
 
 ```bash
 # Check all invariants
@@ -228,6 +300,7 @@ lease_expires=$(echo "$result" | jq -r '.lease_expires')
 ```
 
 **Successful claim:**
+
 ```json
 {
   "success": true,
@@ -241,6 +314,7 @@ lease_expires=$(echo "$result" | jq -r '.lease_expires')
 ```
 
 **Failed claim:**
+
 ```json
 {
   "success": false,
@@ -299,19 +373,19 @@ python manage.py agent_review "$task" --reviewer "$AGENT_ID" --decision approved
 
 ## Error Codes
 
-| Code | Meaning |
-|------|---------|
-| `AGENT_NOT_FOUND` | Agent ID doesn't exist |
-| `AGENT_INACTIVE` | Agent is deactivated |
-| `TASK_NOT_FOUND` | Task ID doesn't exist |
-| `INVALID_TRANSITION` | State change not allowed |
-| `ROLE_NOT_ALLOWED` | Agent role cannot perform action |
-| `AGENT_BUSY` | Agent already has active task |
-| `DEPENDENCIES_NOT_MET` | Blocking tasks not merged |
-| `NOT_OWNER` | Agent doesn't own this task |
-| `NOT_READY_FOR_REVIEW` | Task not in READY_FOR_REVIEW state |
-| `NOT_APPROVED` | Task not in APPROVED state |
-| `SELF_REVIEW_NOT_ALLOWED` | Cannot review own work |
+| Code                      | Meaning                            |
+| ------------------------- | ---------------------------------- |
+| `AGENT_NOT_FOUND`         | Agent ID doesn't exist             |
+| `AGENT_INACTIVE`          | Agent is deactivated               |
+| `TASK_NOT_FOUND`          | Task ID doesn't exist              |
+| `INVALID_TRANSITION`      | State change not allowed           |
+| `ROLE_NOT_ALLOWED`        | Agent role cannot perform action   |
+| `AGENT_BUSY`              | Agent already has active task      |
+| `DEPENDENCIES_NOT_MET`    | Blocking tasks not merged          |
+| `NOT_OWNER`               | Agent doesn't own this task        |
+| `NOT_READY_FOR_REVIEW`    | Task not in READY_FOR_REVIEW state |
+| `NOT_APPROVED`            | Task not in APPROVED state         |
+| `SELF_REVIEW_NOT_ALLOWED` | Cannot review own work             |
 
 ## Database Schema
 

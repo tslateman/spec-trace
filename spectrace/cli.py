@@ -44,13 +44,16 @@ def cli():
 # API Groups
 # ---------------------------------------------------------------------------
 
+
 @cli.group()
 def specs():
     """Spec discovery and analysis commands."""
 
+
 @cli.group()
 def tasks():
     """Agent task lifecycle commands."""
+
 
 @cli.group()
 def results():
@@ -61,18 +64,13 @@ def results():
 # Specs commands
 # ---------------------------------------------------------------------------
 
-@specs.command()
-@click.argument("task_id")
-@click.option("--format", type=click.Choice(["text", "json"]), default="text")
-def context(task_id, format):
-    """Show full context for a task."""
-    _run("agent_context", task_id, format=format)
 
 @specs.command()
 @click.option("--format", type=click.Choice(["text", "json"]), default="text")
 def coverage(format):
     """Show spec coverage summary."""
     _run("spec_coverage", format=format)
+
 
 @specs.command()
 @click.argument("base_ref")
@@ -91,6 +89,7 @@ def impact(base_ref, head_ref, format, no_hierarchy, spec_dir):
         no_hierarchy=no_hierarchy,
         spec_dir=spec_dir,
     )
+
 
 @specs.command()
 @click.option("--tests", type=str, default=None, help="Test directory path")
@@ -113,9 +112,11 @@ def drift(tests, specs, format, check, strict):
         strict=strict,
     )
 
+
 # ---------------------------------------------------------------------------
 # Tasks commands
 # ---------------------------------------------------------------------------
+
 
 @tasks.command()
 @click.argument("agent_id")
@@ -126,6 +127,7 @@ def register(agent_id, role, config, format):
     """Register a new agent."""
     _run("agent_register", agent_id, role=role, config=config, format=format)
 
+
 @tasks.command(name="list")
 @click.option("--status", type=str, default=None, help="Filter by status")
 @click.option("--sprint", type=int, default=None, help="Filter by sprint")
@@ -134,6 +136,7 @@ def register(agent_id, role, config, format):
 def list_tasks(status, sprint, agent, format):
     """List agent tasks."""
     _run("agent_tasks", status=status, sprint=sprint, agent=agent, format=format)
+
 
 @tasks.command()
 @click.argument("task_id")
@@ -150,6 +153,7 @@ def claim(task_id, agent, lease_minutes, format):
         format=format,
     )
 
+
 @tasks.command()
 @click.argument("task_id")
 @click.option("--agent", required=True, help="Agent ID")
@@ -157,6 +161,7 @@ def claim(task_id, agent, lease_minutes, format):
 def start(task_id, agent, format):
     """Start work on a claimed task."""
     _run("agent_start", task_id, agent=agent, format=format)
+
 
 @tasks.command()
 @click.argument("task_id")
@@ -172,6 +177,7 @@ def complete(task_id, agent, commit_sha, format):
         commit_sha=commit_sha,
         format=format,
     )
+
 
 @tasks.command()
 @click.argument("task_id")
@@ -198,12 +204,26 @@ def review(task_id, reviewer, decision, feedback, blocking_issues, suggestions, 
         format=format,
     )
 
+
+@tasks.command()
+@click.argument("task_id")
+@click.option("--format", type=click.Choice(["text", "json"]), default="text")
+@click.option("--output", type=click.Path(), default=None, help="Write output to file")
+def context(task_id, format, output):
+    """Show full context for a task."""
+    kwargs = {"format": format}
+    if output:
+        kwargs["output"] = output
+    _run("agent_context", task_id, **kwargs)
+
+
 @tasks.command()
 @click.argument("task_id")
 @click.option("--format", type=click.Choice(["text", "json"]), default="text")
 def merge(task_id, format):
     """Merge an approved task."""
     _run("agent_merge", task_id, format=format)
+
 
 @tasks.command("expire-leases")
 @click.option("--dry-run", is_flag=True, default=False, help="Report without modifying")
@@ -212,9 +232,11 @@ def expire_leases(dry_run, format):
     """Expire stale task leases."""
     _run("expire_leases", dry_run=dry_run, format=format)
 
+
 # ---------------------------------------------------------------------------
 # Results commands
 # ---------------------------------------------------------------------------
+
 
 @results.command()
 @click.option("--min-runs", type=int, default=10, help="Minimum test runs (default: 10)")
@@ -232,6 +254,7 @@ def conflicts(min_runs, min_overlap, latest, alert, dry_run):
         alert=alert,
         dry_run=dry_run,
     )
+
 
 @results.command()
 @click.argument("links_file")
@@ -258,6 +281,7 @@ def verify(links_file, strict, format, require_coverage, check_high_risk):
         require_coverage=list(require_coverage) if require_coverage else ["active"],
         check_high_risk=check_high_risk,
     )
+
 
 @results.command()
 @click.option("--fix", is_flag=True, default=False, help="Fix auto-fixable violations")
@@ -286,16 +310,11 @@ def invariants(fix, format, check, strict):
     """Check data invariants for consistency."""
     _run("check_invariants", fix=fix, format=format, check=check, strict=strict)
 
+
 # ---------------------------------------------------------------------------
 # Deprecated commands
 # ---------------------------------------------------------------------------
 
-@cli.command(hidden=True)
-@click.argument("task_id")
-@click.option("--format", type=click.Choice(["text", "json"]), default="text")
-def context(task_id, format):
-    click.secho("DEPRECATED: Use 'st specs context' instead.", fg="yellow", err=True)
-    _run("agent_context", task_id, format=format)
 
 @cli.command(hidden=True)
 @click.option("--format", type=click.Choice(["text", "json"]), default="text")
@@ -303,11 +322,13 @@ def coverage(format):
     click.secho("DEPRECATED: Use 'st specs coverage' instead.", fg="yellow", err=True)
     _run("spec_coverage", format=format)
 
+
 @cli.command(hidden=True)
 @click.option("--format", type=click.Choice(["text", "json"]), default="text")
 def risks(format):
     click.secho("DEPRECATED: No longer supported as top-level.", fg="yellow", err=True)
     _run("detect_integration_risks", format=format)
+
 
 @cli.command(hidden=True)
 @click.argument("base_ref")
@@ -327,6 +348,7 @@ def impact(base_ref, head_ref, format, no_hierarchy, spec_dir):
         spec_dir=spec_dir,
     )
 
+
 @cli.command(hidden=True)
 @click.option("--min-runs", type=int, default=10)
 @click.option("--min-overlap", type=int, default=5)
@@ -344,11 +366,14 @@ def conflicts(min_runs, min_overlap, latest, alert, dry_run):
         dry_run=dry_run,
     )
 
+
 @cli.command(hidden=True)
 @click.option("--tests", type=str, default=None)
 @click.option("--specs", type=str, default=None)
 @click.option("--format", type=click.Choice(["text", "json"]), default="text")
-@click.option("--check", type=click.Choice(["all", "unmarked", "stale", "orphan", "drift"]), default="all")
+@click.option(
+    "--check", type=click.Choice(["all", "unmarked", "stale", "orphan", "drift"]), default="all"
+)
 @click.option("--strict", is_flag=True, default=False)
 def drift(tests, specs, format, check, strict):
     click.secho("DEPRECATED: Use 'st specs drift' instead.", fg="yellow", err=True)
@@ -361,18 +386,34 @@ def drift(tests, specs, format, check, strict):
         strict=strict,
     )
 
+
 @cli.command(hidden=True)
 @click.option("--fix", is_flag=True, default=False)
 @click.option("--format", type=click.Choice(["text", "json"]), default="text")
 @click.option(
     "--check",
-    type=click.Choice(["all", "INV-A", "INV-B", "INV-D", "INV-E", "INV-F", "INV-G", "INV-H", "INV-I", "INV-J", "INV-K"]),
+    type=click.Choice(
+        [
+            "all",
+            "INV-A",
+            "INV-B",
+            "INV-D",
+            "INV-E",
+            "INV-F",
+            "INV-G",
+            "INV-H",
+            "INV-I",
+            "INV-J",
+            "INV-K",
+        ]
+    ),
     default="all",
 )
 @click.option("--strict", is_flag=True, default=False)
 def invariants(fix, format, check, strict):
     click.secho("DEPRECATED: Use 'st results invariants' instead.", fg="yellow", err=True)
     _run("check_invariants", fix=fix, format=format, check=check, strict=strict)
+
 
 @cli.command(hidden=True)
 @click.argument("links_file")
@@ -391,9 +432,11 @@ def validate(links_file, strict, format, require_coverage, check_high_risk):
         check_high_risk=check_high_risk,
     )
 
+
 @cli.group(hidden=True)
 def agent():
     pass
+
 
 @agent.command()
 @click.argument("agent_id")
@@ -404,6 +447,7 @@ def register(agent_id, role, config, format):
     click.secho("DEPRECATED: Use 'st tasks register' instead.", fg="yellow", err=True)
     _run("agent_register", agent_id, role=role, config=config, format=format)
 
+
 @agent.command()
 @click.option("--status", type=str, default=None)
 @click.option("--sprint", type=int, default=None)
@@ -412,6 +456,7 @@ def register(agent_id, role, config, format):
 def tasks(status, sprint, agent, format):
     click.secho("DEPRECATED: Use 'st tasks list' instead.", fg="yellow", err=True)
     _run("agent_tasks", status=status, sprint=sprint, agent=agent, format=format)
+
 
 @agent.command()
 @click.argument("task_id")
@@ -428,6 +473,7 @@ def claim(task_id, agent, lease_minutes, format):
         format=format,
     )
 
+
 @agent.command()
 @click.argument("task_id")
 @click.option("--agent", required=True)
@@ -435,6 +481,7 @@ def claim(task_id, agent, lease_minutes, format):
 def start(task_id, agent, format):
     click.secho("DEPRECATED: Use 'st tasks start' instead.", fg="yellow", err=True)
     _run("agent_start", task_id, agent=agent, format=format)
+
 
 @agent.command()
 @click.argument("task_id")
@@ -451,10 +498,13 @@ def submit(task_id, agent, commit_sha, format):
         format=format,
     )
 
+
 @agent.command()
 @click.argument("task_id")
 @click.option("--reviewer", required=True)
-@click.option("--decision", required=True, type=click.Choice(["approved", "changes_requested", "rejected"]))
+@click.option(
+    "--decision", required=True, type=click.Choice(["approved", "changes_requested", "rejected"])
+)
 @click.option("--feedback", default="")
 @click.option("--blocking-issues", multiple=True)
 @click.option("--suggestions", multiple=True)
@@ -472,12 +522,14 @@ def review(task_id, reviewer, decision, feedback, blocking_issues, suggestions, 
         format=format,
     )
 
+
 @agent.command()
 @click.argument("task_id")
 @click.option("--format", type=click.Choice(["text", "json"]), default="text")
 def merge(task_id, format):
     click.secho("DEPRECATED: Use 'st tasks merge' instead.", fg="yellow", err=True)
     _run("agent_merge", task_id, format=format)
+
 
 @agent.command("expire-leases")
 @click.option("--dry-run", is_flag=True, default=False)
@@ -486,7 +538,9 @@ def expire_leases(dry_run, format):
     click.secho("DEPRECATED: Use 'st tasks expire-leases' instead.", fg="yellow", err=True)
     _run("expire_leases", dry_run=dry_run, format=format)
 
+
 # Demo commands
+
 
 @cli.command()
 @click.option("--step", type=int, default=5, help="Run through step N then stop")
