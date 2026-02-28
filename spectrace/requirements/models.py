@@ -1347,6 +1347,43 @@ class AgentTaskReview(models.Model):
         return f"Review of {self.task.external_id}: {self.decision}"
 
 
+class IntentValidationResult(models.Model):
+    """Historical tracking of agent adherence to intent vs execution."""
+
+    task = models.ForeignKey(
+        AgentTask,
+        on_delete=models.CASCADE,
+        related_name="validations",
+        help_text="The task that was validated",
+    )
+    commit_sha = models.CharField(
+        max_length=40, help_text="The commit SHA or diff hash evaluated"
+    )
+
+    # Pillar Scores (0-100)
+    strategic_score = models.IntegerField(help_text="Alignment with global system health")
+    opportunity_score = models.IntegerField(help_text="Efficiency and lack of over-engineering")
+    drift_score = models.IntegerField(help_text="Adherence to FRET and spec criteria")
+
+    # Outcomes
+    passed = models.BooleanField(help_text="Did this evaluation pass the required thresholds?")
+    failure_reasons = models.JSONField(
+        default=list, help_text="List of architectural or FRET violations"
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Intent Validation Result"
+        verbose_name_plural = "Intent Validation Results"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        status = "Passed" if self.passed else "Failed"
+        return f"Validation of {self.task.external_id} ({self.commit_sha[:7]}): {status}"
+
+
+
 # =============================================================================
 # CI/CD Integration Models
 # =============================================================================

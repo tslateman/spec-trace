@@ -485,3 +485,23 @@ Ruthlessly question every document. If an agent never loads it and no test valid
 | History accumulates in ADRs | Current truth in living specs |
 
 Specs define intent. Agents implement. Tests validate. Humans authorize. SpecTrace tracks the links between specs and verification—the spec is the source of truth.
+
+### Agent Guardrails: Intent-to-Execution Validation
+
+To ensure agents do not optimize for local feature maxima at the expense of global system health, SpecTrace enforces a structured evaluation gate:
+
+```bash
+st tasks validate-intent <task_id> --commit-sha <sha> --eval-json result.json
+```
+
+The orchestrator evaluates the code change against the intent using a scorecard and passes the JSON to SpecTrace. 
+
+Metrics tracked over time:
+- **Strategic Alignment:** Does this fit the broader system goals?
+- **Opportunity Cost:** Is the code overly complex or reinventing wheels?
+- **Intent Drift:** Did the agent drift from the FRET specification?
+
+To check historical agent performance:
+```bash
+st tasks validation-stats --timeframe 30d
+```

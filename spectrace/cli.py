@@ -225,6 +225,31 @@ def merge(task_id, format):
     _run("agent_merge", task_id, format=format)
 
 
+
+@tasks.command(name="validate-intent")
+@click.argument("task_id")
+@click.option("--commit-sha", required=True, help="Commit SHA or diff hash evaluated")
+@click.option("--eval-json", required=True, help="Path to JSON file containing evaluation results")
+@click.option("--format", type=click.Choice(["text", "json"]), default="text")
+def validate_intent(task_id, commit_sha, eval_json, format):
+    """Record an intent-to-execution validation result."""
+    _run(
+        "validate_intent",
+        task_id,
+        commit_sha=commit_sha,
+        eval_json=eval_json,
+        format=format,
+    )
+
+
+@tasks.command(name="validation-stats")
+@click.option("--timeframe", default="30d", help="Timeframe to analyze (e.g., '30d', '7d')")
+@click.option("--format", type=click.Choice(["text", "json"]), default="text")
+def validation_stats(timeframe, format):
+    """View historical statistics for intent-to-execution validation."""
+    _run("validation_stats", timeframe=timeframe, format=format)
+
+
 @tasks.command("expire-leases")
 @click.option("--dry-run", is_flag=True, default=False, help="Report without modifying")
 @click.option("--format", type=click.Choice(["text", "json"]), default="text")
