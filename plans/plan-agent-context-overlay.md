@@ -5,7 +5,7 @@ Status: Draft
 ## Context
 
 Spec-trace already has an `agent_context` command. We want a thin overlay
-layer that bundles task context (spec, related specs, recent results/drift,
+layer that bundles task context (specs, related specs, recent results/drift,
 optional Lore items) into a single artifact an agent can load at session
 start.
 
@@ -21,37 +21,49 @@ python spectrace/manage.py agent_context <task_id> --format md
 
 The command should:
 
-- Load the task and its spec (Requirement)
+- Load the task and its linked specs (Requirements)
 - Build a small context bundle with:
-  - Spec text and metadata
-  - Related specs (parents/children)
+  - Task details
+  - Linked specs text and metadata
+  - Related specs (parents/children for each linked spec)
   - Recent results or drift markers
   - Lore overlay output for the spec tags (optional, when Lore is present)
 
 ### 2. Define the bundle schema
 
 Output must be stable and predictable for agents. Use a simple markdown
-structure with headings:
+structure with headings. Since a task can have multiple specs, repeat the spec section for each:
 
 ```
 # Agent Context Bundle
 
-## Task
-- id, title, status, done_when, scope_in, scope_out
+## Task: {task.title}
+- ID: {task.external_id}
+- Status: {task.status}
+- Done When: ...
+- Scope In: ...
+- Scope Out: ...
 
-## Spec
-- external_id, title, status, priority, tags, source_file
-- description
+## Linked Specs
 
-## Related Specs
-- Parents
-- Children
+### Spec: {req.title}
+- ID: {req.external_id}
+- Status: {req.status}
+- Priority: {req.priority}
+- Tags: {req.tags}
+- Source: {req.source_file}
 
-## Recent Evidence
+{req.description}
+
+#### Related Specs
+- Parents: ...
+- Children: ...
+
+#### Recent Evidence
 - Latest verification run summary (if available)
 - Drift warnings (if available)
 
-## Lore (Optional)
+#### Lore (Optional)
 - Tag matches and notes when Lore is installed
 ```
 
@@ -65,7 +77,7 @@ into a `.claude` overlay or an agent handoff file.
 If Lore is not available, the command should still succeed with a warning and
 only include SpecTrace data.
 
-If the task or spec cannot be found, exit with a non-zero status and a clear
+If the task cannot be found, exit with a non-zero status and a clear
 error message.
 
 ## What NOT to Do
@@ -78,19 +90,20 @@ error message.
 
 - `spectrace/requirements/management/commands/agent_context.py` -- extend
   existing command
-- `spectrace/requirements/` (or equivalent) -- helper to assemble context
+- `spectrace/cli.py` -- Move the `context` command from the `specs` group to the `tasks` group, as it takes a `task_id`
 - `README.md` or `docs/agent-tasks.md` -- document the command
 
 ## Acceptance Criteria
 
-- [ ] `agent_context` returns a readable markdown bundle
+- [ ] `agent_context` returns a readable markdown bundle matching the new schema
 - [ ] `--output` writes the file with identical content
 - [ ] Runs without Lore installed
-- [ ] Returns non-zero exit code on missing task/spec
+- [ ] Returns non-zero exit code on missing task
+- [ ] CLI command `st tasks context <task_id>` works correctly
 
 ## Testing
 
 ```bash
-python spectrace/manage.py agent_context REQ-AUTH-001 --format md
-python spectrace/manage.py agent_context REQ-AUTH-001 --format md --output /tmp/context.md
+python spectrace/manage.py agent_context TASK-001 --format md
+python spectrace/manage.py agent_context TASK-001 --format md --output /tmp/context.md
 ```
