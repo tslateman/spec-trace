@@ -75,7 +75,7 @@ def coverage(format):
 @specs.command()
 @click.argument("base_ref")
 @click.argument("head_ref")
-@click.option("--format", type=click.Choice(["text", "json"]), default="text")
+@click.option("--format", type=click.Choice(["text", "json", "md"]), default="text")
 @click.option("--no-hierarchy", is_flag=True, default=False, help="Skip child requirements")
 @click.option("--spec-dir", default="specs", help="Spec file directory")
 def impact(base_ref, head_ref, format, no_hierarchy, spec_dir):
@@ -284,7 +284,7 @@ def conflicts(min_runs, min_overlap, latest, alert, dry_run):
 @results.command()
 @click.argument("links_file")
 @click.option("--strict", is_flag=True, default=False, help="Warnings become errors")
-@click.option("--format", type=click.Choice(["text", "json"]), default="text")
+@click.option("--format", type=click.Choice(["text", "json", "md"]), default="text")
 @click.option(
     "--require-coverage",
     multiple=True,
@@ -358,7 +358,7 @@ def risks(format):
 @cli.command(hidden=True)
 @click.argument("base_ref")
 @click.argument("head_ref")
-@click.option("--format", type=click.Choice(["text", "json"]), default="text")
+@click.option("--format", type=click.Choice(["text", "json", "md"]), default="text")
 @click.option("--no-hierarchy", is_flag=True, default=False)
 @click.option("--spec-dir", default="specs")
 def impact(base_ref, head_ref, format, no_hierarchy, spec_dir):

@@ -9,6 +9,7 @@ from pathlib import Path
 from django.core.management.base import BaseCommand, CommandError
 
 from ...validator import validate_high_risk_requirements, validate_links
+from requirements.models import Requirement
 
 
 class Command(BaseCommand):
@@ -27,7 +28,7 @@ class Command(BaseCommand):
         )
         parser.add_argument(
             "--format",
-            choices=["text", "json"],
+            choices=["text", "json", "md"],
             default="text",
             help="Output format (default: text)",
         )
@@ -75,6 +76,8 @@ class Command(BaseCommand):
         # Output results
         if output_format == "json":
             self.stdout.write(json.dumps(result.to_dict(), indent=2))
+        elif output_format == "md":
+            self._output_md(result, links_file, high_risk_result)
         else:
             self._output_text(result, links_file, high_risk_result)
 
@@ -84,19 +87,97 @@ class Command(BaseCommand):
         elif strict and result.has_warnings:
             sys.exit(1)
 
+    def _get_titles(self, result):
+        """Helper to fetch requirement titles from validation results."""
+        req_ids = set()
+        for issue in result.errors + result.warnings:
+            if ":" in issue.id:
+                req_ids.add(issue.id.split(":")[-1])
+            else:
+                req_ids.add(issue.id)
+            if "requirement_id" in issue.details:
+                req_ids.add(issue.details["requirement_id"])
+
+        reqs = Requirement.objects.filter(external_id__in=req_ids).values_list(
+            "external_id", "title"
+        )
+        return {r[0]: r[1] for r in reqs}
+
+    def _output_md(self, result, links_file, high_risk_result=None):
+        """Output Markdown for PR comments."""
+        lines = []
+        lines.append(f"## 🔍 SpecTrace Link Validation")
+        lines.append(f"**Validating:** `{links_file}`")
+        if high_risk_result:
+            lines.append(f"*(Checked {high_risk_result.items_checked} high-risk requirements)*")
+        lines.append("")
+
+        titles = self._get_titles(result)
+
+        if result.errors:
+            lines.append(f"### ❌ Errors ({len(result.errors)})")
+            for error in result.errors:
+                req_id = error.id.split(":")[-1] if ":" in error.id else error.id
+                title = titles.get(req_id, "")
+                title_str = f": {title}" if title else ""
+
+                msg = f"- **{error.id}**{title_str}: {error.message}"
+                if error.type == "unknown_requirement" and error.details.get("referenced_by"):
+                    tests = error.details["referenced_by"]
+                    if len(tests) == 1:
+                        msg += f" (in `{tests[0]}`)"
+                    else:
+                        msg += f" (in {len(tests)} tests)"
+                elif error.type in ("high_risk_failing_tests", "pr_impacts_failing_high_risk"):
+                    failing = error.details.get("failing_tests", [])
+                    if failing:
+                        msg += f" ({len(failing)} failing)"
+                lines.append(msg)
+            lines.append("")
+
+        if result.warnings:
+            lines.append(f"### ⚠️ Warnings ({len(result.warnings)})")
+            for warning in result.warnings:
+                req_id = warning.id.split(":")[-1] if ":" in warning.id else warning.id
+                title = titles.get(req_id, "")
+                title_str = f": {title}" if title else ""
+                lines.append(f"- **{warning.id}**{title_str}: {warning.message}")
+            lines.append("")
+
+        if not result.errors and not result.warnings:
+            lines.append("✅ **No issues found.**")
+            lines.append("")
+
+        lines.append("---")
+        lines.append(
+            f"*Summary: {result.links_checked} links checked, {len(result.errors)} errors, {len(result.warnings)} warnings*"
+        )
+
+        self.stdout.write("\n".join(lines) + "\n")
+
     def _output_text(self, result, links_file, high_risk_result=None):
         """Output human-readable validation results."""
-        self.stdout.write(f"Validating {links_file} against requirements database...\n")
+        self.stdout.write(
+            self.style.SUCCESS(f"🔍 Validating {links_file} against requirements database...\n")
+        )
 
         if high_risk_result:
             self.stdout.write(
-                f"Also checking {high_risk_result.items_checked} high-risk requirements...\n"
+                self.style.SUCCESS(
+                    f"Also checking {high_risk_result.items_checked} high-risk requirements...\n"
+                )
             )
 
+        titles = self._get_titles(result)
+
         if result.errors:
-            self.stdout.write(self.style.ERROR(f"\nERRORS ({len(result.errors)}):"))
+            self.stdout.write(self.style.ERROR(f"\n❌ ERRORS ({len(result.errors)}):"))
             for error in result.errors:
-                msg = f"  \u2717 {error.id}: {error.message}"
+                req_id = error.id.split(":")[-1] if ":" in error.id else error.id
+                title = titles.get(req_id, "")
+                title_str = f": {title}" if title else ""
+
+                msg = f"  ✗ {error.id}{title_str}: {error.message}"
                 if error.type == "unknown_requirement" and error.details.get("referenced_by"):
                     tests = error.details["referenced_by"]
                     if len(tests) == 1:
@@ -113,13 +194,16 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.ERROR(msg))
 
         if result.warnings:
-            self.stdout.write(self.style.WARNING(f"\nWARNINGS ({len(result.warnings)}):"))
+            self.stdout.write(self.style.WARNING(f"\n⚠️ WARNINGS ({len(result.warnings)}):"))
             for warning in result.warnings:
-                msg = f"  \u26a0 {warning.id}: {warning.message}"
+                req_id = warning.id.split(":")[-1] if ":" in warning.id else warning.id
+                title = titles.get(req_id, "")
+                title_str = f": {title}" if title else ""
+                msg = f"  ⚠ {warning.id}{title_str}: {warning.message}"
                 self.stdout.write(self.style.WARNING(msg))
 
         if not result.errors and not result.warnings:
-            self.stdout.write(self.style.SUCCESS("\nNo issues found."))
+            self.stdout.write(self.style.SUCCESS("\n✅ No issues found."))
 
         # Summary
         self.stdout.write(
