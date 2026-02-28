@@ -383,27 +383,27 @@ and haptic feedback increases awareness.</div>
 
         <h3 class="help-section__subtitle">Hierarchical Requirements</h3>
         <div class="example-block">
-            <div class="example-block__title">specs/mobile_key/index.md (parent)</div>
+            <div class="example-block__title">specs/billing/index.md (parent)</div>
             <div class="example-block__code">---
-id: REQ-MKEY-000
-title: Mobile Key Feature
+id: REQ-BILL-000
+title: Billing
 status: active
 ---
 
-Mobile key enables guests to unlock doors with their phone.</div>
+The billing system manages invoices and payment collection.</div>
         </div>
 
         <div class="example-block">
-            <div class="example-block__title">specs/mobile_key/provisioning.md (child)</div>
+            <div class="example-block__title">specs/billing/invoicing.md (child)</div>
             <div class="example-block__code">---
-id: REQ-MKEY-001
-title: Key Provisioning
-parent: REQ-MKEY-000
+id: REQ-BILL-001
+title: Invoice Generation
+parent: REQ-BILL-000
 status: active
-component: key_provisioning_service
+component: billing_service
 ---
 
-Keys are provisioned after check-in confirmation.</div>
+Invoices are generated after a subscription period closes.</div>
         </div>
     </section>
 

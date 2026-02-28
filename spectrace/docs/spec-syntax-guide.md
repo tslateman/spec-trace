@@ -65,18 +65,18 @@ The system must warn users when battery is critically low.
 Use `parent` to create requirement trees:
 
 ```yaml
-# specs/mobile_key/index.md
+# specs/billing/index.md
 ---
-id: REQ-MKEY-000
-title: Mobile Key Feature
+id: REQ-BILL-000
+title: Billing
 status: active
 ---
 
-# specs/mobile_key/provisioning.md
+# specs/billing/invoicing.md
 ---
-id: REQ-MKEY-001
-title: Key Provisioning
-parent: REQ-MKEY-000
+id: REQ-BILL-001
+title: Invoice Generation
+parent: REQ-BILL-000
 status: active
 ---
 ```
