@@ -159,10 +159,38 @@ api_urlpatterns = [
     ),
     path("api/v1/specs/impact/", api_v1.specs_impact_view, name="api-v1-specs-impact"),
     path("api/v1/results/conflicts/", api_v1.list_conflicts_view, name="api-v1-results-conflicts"),
-    path("api/v1/results/conflicts/detect", api_v1.detect_conflicts_view, name="api-v1-results-conflicts-detect"),
-    path("api/v1/results/conflicts/<int:conflict_id>", api_v1.get_conflict_view, name="api-v1-results-conflict-detail"),
-    path("api/v1/results/conflicts/<int:conflict_id>/resolve", api_v1.resolve_conflict_view, name="api-v1-results-conflict-resolve"),
-
+    path(
+        "api/v1/results/conflicts/detect",
+        api_v1.detect_conflicts_view,
+        name="api-v1-results-conflicts-detect",
+    ),
+    path(
+        "api/v1/results/conflicts/<int:conflict_id>",
+        api_v1.get_conflict_view,
+        name="api-v1-results-conflict-detail",
+    ),
+    path(
+        "api/v1/results/conflicts/<int:conflict_id>/resolve",
+        api_v1.resolve_conflict_view,
+        name="api-v1-results-conflict-resolve",
+    ),
+    # Enforcement runs
+    path(
+        "api/v1/results/enforcement-runs/latest/",
+        api_v1.latest_enforcement_run_view,
+        name="api-v1-enforcement-runs-latest",
+    ),
+    path(
+        "api/v1/results/enforcement-runs/<int:run_id>/diff/",
+        api_v1.enforcement_run_diff_view,
+        name="api-v1-enforcement-run-diff",
+    ),
+    # Spec verification status
+    path(
+        "api/v1/specs/<str:external_id>/status/",
+        api_v1.spec_status_view,
+        name="api-v1-specs-status",
+    ),
     # External system integration
     path("api/slo/status/", api.update_slo_status, name="api-slo-status"),
     path(

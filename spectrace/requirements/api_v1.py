@@ -9,8 +9,21 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.core.exceptions import ValidationError
 
-from requirements.models import AgentTask, AgentTaskStatus, Requirement, TestRequirementLink
+from requirements.models import (
+    AgentTask,
+    AgentTaskStatus,
+    InAppValidation,
+    InAppValidationRun,
+    InAppValidationResult,
+    Requirement,
+    TestRequirementLink,
+)
 from requirements.services.agent_tasks import claim_task, submit_for_review, TransitionError
+from requirements.validation_runs import (
+    build_run_comparison,
+    get_adjacent_runs,
+    get_validation_runs_data,
+)
 from requirements.validator import detect_all_drift, detect_spec_drift, detect_stale_links
 
 logger = logging.getLogger(__name__)
@@ -249,31 +262,32 @@ def specs_drift_view(request):
 
     return _success_response(result.to_dict())
 
+
 @require_http_methods(["GET"])
 def specs_impact_view(request):
     """Return a dependency graph of affected specs."""
     spec_id = request.GET.get("spec_id")
     file_path = request.GET.get("file_path")
-    
+
     from requirements.services.impact_analyzer import ImpactAnalyzer, ImpactResult
-    
+
     analyzer = ImpactAnalyzer()
     req_ids = []
-    
+
     if spec_id:
         req_ids = [spec_id]
     elif file_path:
         req_ids = analyzer.extract_requirement_ids([file_path], "HEAD")
     else:
         return _error_response("Must provide spec_id or file_path", "invalid_query_param")
-    
+
     if not req_ids:
         return _error_response("No requirements found", "not_found", status=404)
-        
+
     tests, hierarchy, dependencies = analyzer.get_affected_tests(
         req_ids, include_hierarchy=True, include_dependents=True
     )
-    
+
     result = ImpactResult(
         changed_requirements=req_ids,
         affected_tests=tests,
@@ -281,15 +295,17 @@ def specs_impact_view(request):
         dependency_expansion=dependencies,
     )
     result.risk_score, result.risk_level = analyzer.compute_risk(result)
-    
-    return _success_response({
-        "changed_requirements": result.changed_requirements,
-        "affected_tests": result.affected_tests,
-        "hierarchy_expansion": result.hierarchy_expansion,
-        "dependency_expansion": result.dependency_expansion,
-        "risk_score": result.risk_score,
-        "risk_level": result.risk_level,
-    })
+
+    return _success_response(
+        {
+            "changed_requirements": result.changed_requirements,
+            "affected_tests": result.affected_tests,
+            "hierarchy_expansion": result.hierarchy_expansion,
+            "dependency_expansion": result.dependency_expansion,
+            "risk_score": result.risk_score,
+            "risk_level": result.risk_level,
+        }
+    )
 
 
 @require_http_methods(["GET"])
@@ -325,6 +341,7 @@ def list_conflicts_view(request):
     requirement_id = request.GET.get("requirement_id")
     if requirement_id:
         from django.db.models import Q
+
         queryset = queryset.filter(
             Q(requirement_a__external_id=requirement_id)
             | Q(requirement_b__external_id=requirement_id)
@@ -377,11 +394,13 @@ def detect_conflicts_view(request):
 
     result = detector.log_conflicts(conflicts)
 
-    return _success_response({
-        "conflicts_found": len(conflicts),
-        "logged": result["created_count"],
-        "skipped_existing": result["skipped_count"],
-    })
+    return _success_response(
+        {
+            "conflicts_found": len(conflicts),
+            "logged": result["created_count"],
+            "skipped_existing": result["skipped_count"],
+        }
+    )
 
 
 @require_http_methods(["GET"])
@@ -440,7 +459,123 @@ def resolve_conflict_view(request, conflict_id):
     conflict.resolution_notes = body.get("resolution_notes", "")
     conflict.save()
 
-    return _success_response({
-        "conflict_id": conflict.id,
-        "resolved_at": now.isoformat(),
-    })
+    return _success_response(
+        {
+            "conflict_id": conflict.id,
+            "resolved_at": now.isoformat(),
+        }
+    )
+
+
+@require_http_methods(["GET"])
+def latest_enforcement_run_view(request):
+    """Return the most recent enforcement run."""
+    filters = {}
+    source = request.GET.get("source")
+    if source:
+        filters["source"] = source
+
+    data = get_validation_runs_data(page=1, per_page=1, filters=filters)
+    runs = data["runs"]
+
+    if not runs:
+        return _error_response("No enforcement runs found", "not_found", status=404)
+
+    run = runs[0]
+    return _success_response(
+        {
+            "run_id": run["id"],
+            "source": run["source"],
+            "imported_at": run["imported_at"].isoformat(),
+            "pass_rate": run["pass_rate"],
+            "total": run["total"],
+            "passed": run["success"],
+            "failed": run["failure"],
+        }
+    )
+
+
+@require_http_methods(["GET"])
+def enforcement_run_diff_view(request, run_id):
+    """Compare a run against its predecessor."""
+    try:
+        run = InAppValidationRun.objects.get(id=run_id)
+    except InAppValidationRun.DoesNotExist:
+        return _error_response("Run not found", "not_found", status=404)
+
+    adjacent = get_adjacent_runs(run)
+    previous = adjacent["previous"]
+
+    if previous is None:
+        return _error_response("No previous run to compare against", "no_predecessor", status=409)
+
+    comparison = build_run_comparison(previous, run)
+
+    return _success_response(
+        {
+            "compared_to": {
+                "id": comparison["run_a"]["id"],
+                "source": comparison["run_a"]["source"],
+                "imported_at": comparison["run_a"]["imported_at"].isoformat(),
+            },
+            "summary": comparison["summary"],
+            "changes": [
+                {
+                    "requirement_id": c["requirement_id"],
+                    "validation_name": c["validation_name"],
+                    "vendor": c["vendor"],
+                    "status_a": c["status_a"],
+                    "status_b": c["status_b"],
+                    "change_type": c["change_type"],
+                }
+                for c in comparison["changes"]
+            ],
+        }
+    )
+
+
+@require_http_methods(["GET"])
+def spec_status_view(request, external_id):
+    """Return verification status for a single requirement."""
+    try:
+        req = Requirement.objects.get(external_id=external_id)
+    except Requirement.DoesNotExist:
+        return _error_response(f"Requirement {external_id} not found", "not_found", status=404)
+
+    # Find the first validation with results for this requirement
+    validation = InAppValidation.objects.filter(requirement=req).prefetch_related("results").first()
+
+    data = {
+        "external_id": req.external_id,
+        "title": req.title,
+        "verification_status": req.verification_status,
+        "last_checked": None,
+        "latest_result": None,
+        "regression": {"is_regression": False},
+    }
+
+    if validation:
+        data["last_checked"] = (
+            validation.last_checked.isoformat() if validation.last_checked else None
+        )
+
+        result = validation.latest_result
+        if result:
+            data["latest_result"] = {
+                "status": result.status,
+                "message": result.message,
+                "checked_at": result.checked_at.isoformat(),
+                "steps_passed": result.steps_passed,
+                "steps_failed": result.steps_failed,
+            }
+
+        regression = validation.detect_regression()
+        data["regression"] = {
+            "is_regression": regression["is_regression"],
+            "previous_status": regression.get("previous_status"),
+            "regressed_at": (
+                regression["regressed_at"].isoformat() if regression.get("regressed_at") else None
+            ),
+        }
+
+    return _success_response(data)
