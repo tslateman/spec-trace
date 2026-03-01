@@ -9,13 +9,13 @@ See: .planning/PROJECT.md (updated 2026-02-03)
 
 ## Current Position
 
-Milestone: v9 Complete (shipped 2026-02-03)
-Phase: Ready for v10
-Plan: Not started
-Status: Milestone shipped, ready for next milestone
-Last activity: 2026-02-03 — Completed v9 Demo & Marketing Polish
+Milestone: v10 (Agent Guardrails & CLI UX)
+Phase: Development
+Plan: Intent-to-Execution Validator & UX enhancements
+Status: Validator models, logic, and CLI commands built. `impact` and `verify` CLI UX improved with Markdown support.
+Last activity: 2026-02-28 — Implemented Intent Validation and CLI UX Markdown formatting
 
-Progress: Ready for next milestone
+Progress: Core guardrails active, CLI outputs improved for PR integrations.
 
 ## Milestone History
 
@@ -63,6 +63,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-03
-Stopped at: v9 milestone complete, ready for v10
-Resume file: None
+Last session: 2026-02-28
+Stopped at: Finished Intent-to-Execution Validator and enhanced CLI validation commands with `--format md`.
+Resume file: thoughts/ledgers/CONTINUITY_20260228.md
