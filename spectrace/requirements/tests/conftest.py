@@ -10,6 +10,10 @@ from django.test import Client
 
 from requirements.models import (
     SLO,
+    Agent,
+    AgentRole,
+    AgentTask,
+    AgentTaskStatus,
     Requirement,
     SLOStatus,
     TestResult,
@@ -88,6 +92,31 @@ def sample_requirements(db):
         verification_status="failing",
     )
     return [req1, req2, req3]
+
+
+# ============================================================================
+# Agent Fixtures
+# ============================================================================
+
+
+@pytest.fixture
+def coder_agent(db):
+    """Create a coder agent."""
+    return Agent.objects.create(
+        agent_id="coder-1",
+        role=AgentRole.CODER,
+        is_active=True,
+    )
+
+
+@pytest.fixture
+def unclaimed_task(db):
+    """Create an unclaimed task."""
+    return AgentTask.objects.create(
+        external_id="task-001",
+        title="Implement login",
+        status=AgentTaskStatus.UNCLAIMED,
+    )
 
 
 # ============================================================================
