@@ -3,11 +3,16 @@
 import logging
 import re
 import subprocess
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
 from requirements.models import Requirement, TestRequirementLink
+
+from .contract_snapshot import ContractSnapshot
+from .git_cochange import GitCoChangeAnalyzer
+from .impact_graph import ImpactGraphBuilder
+from .map_reader import MapReader
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +54,20 @@ class ImpactResult:
     dependency_expansion: dict[str, list[str]]  # Req ID -> dependent IDs included
     risk_score: float = 0.0  # 0.0–1.0 overall risk score
     risk_level: str = "low"  # "low", "medium", "high", "critical"
+
+
+@dataclass
+class CodeImpactResult:
+    """Result of code-level impact analysis across the ecosystem."""
+
+    changed_files: dict[str, list[str]]  # project -> files
+    blast: dict  # BlastResult as dict
+    affected_tests: list[str]
+    risk_score: float = 0.0
+    risk_level: str = "low"
+    edge_summary: dict[str, int] = field(
+        default_factory=lambda: {"annotated": 0, "inferred": 0, "contract": 0}
+    )
 
 
 class ImpactAnalyzer:
@@ -239,6 +258,178 @@ class ImpactAnalyzer:
             level = "low"
 
         return score, level
+
+    def get_all_changed_files(self, base_ref: str, head_ref: str) -> list[str]:
+        """Get all changed files between two refs (not just specs).
+
+        Args:
+            base_ref: Base git ref
+            head_ref: Head git ref
+
+        Returns:
+            List of changed file paths relative to repo root.
+        """
+        validate_git_ref(base_ref)
+        validate_git_ref(head_ref)
+
+        try:
+            result = subprocess.run(
+                ["git", "diff", "--name-only", base_ref, head_ref],
+                cwd=self.repo_path,
+                capture_output=True,
+                text=True,
+                check=True,
+                timeout=30,
+            )
+            return [f for f in result.stdout.strip().split("\n") if f]
+        except subprocess.CalledProcessError as e:
+            logger.error("Git diff failed: %s", e.stderr)
+            raise ValueError(
+                "Git diff failed. Please check that the refs exist and are valid."
+            ) from e
+        except subprocess.TimeoutExpired:
+            raise ValueError("Git diff timed out")
+
+    def code_analyze(
+        self,
+        base_ref: str,
+        head_ref: str,
+        project_roots: Optional[dict[str, Path]] = None,
+    ) -> CodeImpactResult:
+        """Full code impact analysis across the ecosystem.
+
+        1. git diff --name-only base head (all files, not just specs/)
+        2. Build ImpactGraph via ImpactGraphBuilder
+        3. graph.blast_radius(changed_file_nodes)
+        4. Query TestRequirementLink for affected tests
+        5. Compute risk with edge-source weighting
+
+        Risk weights: annotated 1.0x, contract 0.8x, git-inferred 0.6x.
+        Cross-project edges get 1.5x multiplier.
+        """
+        validate_git_ref(base_ref)
+        validate_git_ref(head_ref)
+
+        roots = project_roots or {}
+        if not roots:
+            # Default: use repo_path as the single project
+            roots = {"local": self.repo_path}
+
+        # 1. Get all changed files per project
+        changed_files: dict[str, list[str]] = {}
+        for project, root in roots.items():
+            try:
+                result = subprocess.run(
+                    ["git", "diff", "--name-only", base_ref, head_ref],
+                    cwd=root,
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                    timeout=30,
+                )
+                files = [f for f in result.stdout.strip().split("\n") if f]
+                if files:
+                    changed_files[project] = files
+            except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError):
+                continue
+
+        # 2. Collect edges from all sources
+        map_reader = MapReader(roots)
+        annotated_edges = map_reader.read_all()
+
+        inferred_edges = []
+        for project, root in roots.items():
+            try:
+                analyzer = GitCoChangeAnalyzer(root)
+                inferred_edges.extend(analyzer.to_edges(project))
+            except (ValueError, OSError):
+                continue
+
+        contract_edges = []
+        for project, root in roots.items():
+            snap_path = root / "contract.snapshot.json"
+            if snap_path.exists():
+                try:
+                    snap = ContractSnapshot.load(snap_path)
+                    # Contract edges connect surfaces to project
+                    from .impact_graph import EdgeSource, GraphEdge
+
+                    for surface_name in snap.surfaces:
+                        contract_edges.append(
+                            GraphEdge(
+                                source_id=f"{project}:{surface_name}",
+                                target_id=surface_name,
+                                source=EdgeSource.CONTRACT,
+                                weight=0.8,
+                                project=project,
+                            )
+                        )
+                except (ValueError, OSError):
+                    continue
+
+        # 3. Build graph and compute blast radius
+        builder = ImpactGraphBuilder(roots)
+        graph = builder.build(annotated_edges, inferred_edges, contract_edges)
+
+        all_changed = []
+        for files in changed_files.values():
+            all_changed.extend(files)
+
+        blast = graph.blast_radius(all_changed) if all_changed else graph.blast_radius([])
+
+        # 4. Query for affected tests
+        affected_reqs = blast.affected_requirements
+        affected_tests = []
+        if affected_reqs:
+            try:
+                tests, _, _ = self.get_affected_tests(affected_reqs)
+                affected_tests = tests
+            except Exception:
+                pass
+
+        # 5. Risk scoring with edge-source weighting
+        annotated_weight = len(annotated_edges) * 1.0
+        contract_weight = len(contract_edges) * 0.8
+        inferred_weight = len(inferred_edges) * 0.6
+        cross_project_weight = len(blast.cross_project_edges) * 1.5
+
+        total_weight = annotated_weight + contract_weight + inferred_weight + cross_project_weight
+        edge_factor = min(1.0, total_weight / 50) if total_weight > 0 else 0
+
+        risk_score = round(
+            0.4 * blast.risk_score + 0.3 * min(1.0, len(affected_tests) / 20) + 0.3 * edge_factor,
+            2,
+        )
+
+        if risk_score >= 0.75:
+            risk_level = "critical"
+        elif risk_score >= 0.5:
+            risk_level = "high"
+        elif risk_score >= 0.25:
+            risk_level = "medium"
+        else:
+            risk_level = "low"
+
+        return CodeImpactResult(
+            changed_files=changed_files,
+            blast={
+                "directly_changed": blast.directly_changed,
+                "affected_requirements": blast.affected_requirements,
+                "affected_modules": blast.affected_modules,
+                "affected_projects": sorted(blast.affected_projects),
+                "cross_project_edges": len(blast.cross_project_edges),
+                "graph_risk_score": blast.risk_score,
+                "graph_risk_level": blast.risk_level,
+            },
+            affected_tests=affected_tests,
+            risk_score=risk_score,
+            risk_level=risk_level,
+            edge_summary={
+                "annotated": len(annotated_edges),
+                "inferred": len(inferred_edges),
+                "contract": len(contract_edges),
+            },
+        )
 
     def analyze(
         self,

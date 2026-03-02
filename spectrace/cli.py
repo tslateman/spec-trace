@@ -78,17 +78,25 @@ def coverage(format):
 @click.option("--format", type=click.Choice(["text", "json", "md"]), default="text")
 @click.option("--no-hierarchy", is_flag=True, default=False, help="Skip child requirements")
 @click.option("--spec-dir", default="specs", help="Spec file directory")
-def impact(base_ref, head_ref, format, no_hierarchy, spec_dir):
+@click.option("--code", is_flag=True, default=False, help="Full code impact analysis")
+@click.option("--project-roots", default=None, help="project=path pairs (comma-separated)")
+def impact(base_ref, head_ref, format, no_hierarchy, spec_dir, code, project_roots):
     """Analyze impact of spec changes between two git refs."""
-    _run(
-        "impact_analysis",
-        base_ref,
-        head_ref,
-        format=format,
-        include_hierarchy=not no_hierarchy,
-        no_hierarchy=no_hierarchy,
-        spec_dir=spec_dir,
-    )
+    if code:
+        kwargs = {"format": format}
+        if project_roots:
+            kwargs["project_roots"] = project_roots
+        _run("code_impact_analysis", base_ref, head_ref, **kwargs)
+    else:
+        _run(
+            "impact_analysis",
+            base_ref,
+            head_ref,
+            format=format,
+            include_hierarchy=not no_hierarchy,
+            no_hierarchy=no_hierarchy,
+            spec_dir=spec_dir,
+        )
 
 
 @specs.command()
@@ -111,6 +119,123 @@ def drift(tests, specs, format, check, strict):
         check=check,
         strict=strict,
     )
+
+
+# ---------------------------------------------------------------------------
+# Map commands (spectrace-map.yaml management)
+# ---------------------------------------------------------------------------
+
+
+@specs.group()
+def map():
+    """Manage spectrace-map.yaml files."""
+
+
+@map.command()
+@click.option("--project-root", default=".", help="Project root directory")
+@click.option("--project-name", required=True, help="Project name")
+@click.option("--output", default=None, help="Output path")
+@click.option("--lookback-days", type=int, default=90, help="Git history lookback")
+@click.option("--min-count", type=int, default=3, help="Min co-change count")
+@click.option("--format", type=click.Choice(["text", "json"]), default="text")
+def init(project_root, project_name, output, lookback_days, min_count, format):
+    """Generate spectrace-map.yaml from git co-change inference."""
+    kwargs = {
+        "project_root": project_root,
+        "project_name": project_name,
+        "lookback_days": lookback_days,
+        "min_count": min_count,
+        "format": format,
+    }
+    if output:
+        kwargs["output"] = output
+    _run("map_init", **kwargs)
+
+
+@map.command()
+@click.option("--project-root", default=".", help="Project root directory")
+@click.option("--project-name", required=True, help="Project name")
+@click.option("--check-requirements", is_flag=True, default=False, help="Verify IDs in DB")
+@click.option("--format", type=click.Choice(["text", "json"]), default="text")
+def validate(project_root, project_name, check_requirements, format):
+    """Validate spectrace-map.yaml syntax and references."""
+    _run(
+        "map_validate",
+        project_root=project_root,
+        project_name=project_name,
+        check_requirements=check_requirements,
+        format=format,
+    )
+
+
+@map.command()
+@click.option("--project-root", default=".", help="Project root directory")
+@click.argument("module")
+@click.argument("requirement")
+@click.option("--format", type=click.Choice(["text", "json"]), default="text")
+def promote(project_root, module, requirement, format):
+    """Promote a confirmed inferred edge to annotated in YAML."""
+    _run("map_promote", module, requirement, project_root=project_root, format=format)
+
+
+# ---------------------------------------------------------------------------
+# Contract commands
+# ---------------------------------------------------------------------------
+
+
+@specs.group()
+def contract():
+    """Manage contract snapshots."""
+
+
+@contract.command(name="generate")
+@click.argument("project_root")
+@click.option("--project-name", required=True, help="Project name")
+@click.option("--output", default=None, help="Output path")
+@click.option("--format", type=click.Choice(["text", "json"]), default="text")
+def contract_generate(project_root, project_name, output, format):
+    """Generate contract.snapshot.json for a project."""
+    kwargs = {"project_name": project_name, "format": format}
+    if output:
+        kwargs["output"] = output
+    _run("generate_contract", project_root, **kwargs)
+
+
+@contract.command(name="diff")
+@click.argument("old_snapshot")
+@click.argument("new_snapshot")
+@click.option("--format", type=click.Choice(["text", "json"]), default="text")
+def contract_diff(old_snapshot, new_snapshot, format):
+    """Diff two contract snapshots for breaking changes."""
+    from requirements.services.contract_snapshot import ContractDiffer, ContractSnapshot
+
+    old = ContractSnapshot.load(old_snapshot)
+    new = ContractSnapshot.load(new_snapshot)
+    differ = ContractDiffer()
+    changes = differ.diff(old, new)
+
+    if format == "json":
+        import json
+
+        output = [
+            {
+                "surface": c.surface,
+                "change_type": c.change_type,
+                "breaking": c.breaking,
+                "field": c.field,
+                "detail": c.detail,
+            }
+            for c in changes
+        ]
+        click.echo(json.dumps(output, indent=2))
+    else:
+        if not changes:
+            click.secho("No changes detected.", fg="green")
+            return
+        for c in changes:
+            color = "red" if c.breaking else "green"
+            label = "BREAKING" if c.breaking else "non-breaking"
+            click.secho(f"  [{label}] {c.detail}", fg=color)
 
 
 # ---------------------------------------------------------------------------
@@ -223,7 +348,6 @@ def context(task_id, format, output):
 def merge(task_id, format):
     """Merge an approved task."""
     _run("agent_merge", task_id, format=format)
-
 
 
 @tasks.command(name="validate-intent")
