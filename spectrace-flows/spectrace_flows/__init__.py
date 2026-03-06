@@ -41,6 +41,12 @@ from .engine import (
     load_handler,
 )
 from .parser import FlowParseError, YAMLFlowParser
+from .scenario import Fixture, Scenario, ScenarioResult
+from .scenario_registry import (
+    REGISTERED_SCENARIOS,
+    get_scenario_by_name,
+    register_scenario,
+)
 from .storage import FlowRunStorage, InMemoryStorage
 from .types import (
     FlowRun,
@@ -68,6 +74,13 @@ __all__ = [
     # Parser
     "YAMLFlowParser",
     "FlowParseError",
+    # Scenarios
+    "Fixture",
+    "Scenario",
+    "ScenarioResult",
+    "REGISTERED_SCENARIOS",
+    "get_scenario_by_name",
+    "register_scenario",
     # Storage
     "FlowRunStorage",
     "InMemoryStorage",
