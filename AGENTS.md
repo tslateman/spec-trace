@@ -42,22 +42,26 @@ Location: `~/.config/opencode/opencode.json`
 ### Key Plugin Commands
 
 **subtask2 orchestration:**
+
 - Use `return:` in command frontmatter to chain prompts or commands
 - Use `parallel:` to run multiple subtasks concurrently
 - Use `$TURN[n]` to inject previous conversation context
 - Use `{model:provider/model-id}` for inline model overrides
 
 **plannotator visual review:**
+
 - `/plannotator` - Open visual plan review UI in browser
 - `/plannotator-review` - Review git diffs with inline annotations
 - Annotate, approve, or request changes visually
 
 **opencode-skillful:**
+
 - `skill_find "keyword"` - Search for relevant skills
 - `skill_use "skill_name"` - Load skill into chat context
 - `skill_resource skill_name="..." relative_path="..."` - Read skill resources
 
 **micode workflow:**
+
 - `/init` - Initialize project docs (ARCHITECTURE.md, CODE_STYLE.md)
 - `/ledger` - Create/update session continuity ledger
 - `/search` - Search past plans and ledgers
@@ -80,12 +84,14 @@ Location: `~/.config/opencode/opencode.json`
 #### Using /ledger Command
 
 **When to create a ledger:**
+
 - End of coding session
 - Before context switching to another project
 - After completing significant milestones
 - When you need to pause work for extended period
 
 **What to capture:**
+
 - What was accomplished this session
 - Decisions made and why
 - Current blockers or open questions
@@ -97,12 +103,14 @@ Location: `~/.config/opencode/opencode.json`
 #### Manual Notes in .planning/
 
 Continue using existing structure:
+
 - `STATE.md` - Update after each plan completion
 - `PROJECT.md` - Log key decisions in decisions table
 - `phases/` - Per-phase context and plans
 - `research/` - Research artifacts and evaluations
 
 **Relationship to /ledger:**
+
 - Ledgers are session-oriented (what happened today)
 - .planning/ docs are project-oriented (overall state)
 - Reference ledgers from STATE.md when decisions span sessions
@@ -112,12 +120,14 @@ Continue using existing structure:
 **Optional directory:** `~/.config/opencode/skills/`
 
 **When to create skills:**
+
 - You solve a problem more than once
 - Pattern is reusable across features
 - External expertise needs to be captured (library docs, best practices)
 - Onboarding new team members to patterns
 
 **Skill commands:**
+
 - `skill_find "django testing"` - Search for relevant skills
 - `skill_use "experts/django-patterns"` - Load into context
 - `skill_resource skill_name="..." relative_path="resources/examples.py"` - Read files
@@ -127,11 +137,13 @@ Continue using existing structure:
 Truth Decay = Requirements/decisions degrade as code evolves without updates
 
 **Project-Level Prevention** (SpecTrace's mission):
+
 - Specs in version control (specs/)
 - Test markers link code to requirements (@pytest.mark.requirement)
 - Dashboard shows verification status
 
 **Development-Level Prevention** (Your workflow):
+
 1. **Decision Logging**: Update PROJECT.md decisions table when making architectural choices
 2. **Session Ledgers**: Run /ledger before ending sessions to capture context
 3. **Linking**: Reference requirement IDs in commit messages, ledgers, and .planning/ docs
@@ -140,23 +152,27 @@ Truth Decay = Requirements/decisions degrade as code evolves without updates
 ### Workflow Patterns (Guidelines, Not Rules)
 
 #### Starting New Feature
+
 1. Check STATE.md for current project position
 2. Review relevant past ledgers: `skill_find "continuity"` or manual search
 3. Create phase planning doc in .planning/phases/{phase}/
 4. Start work
 
 #### During Development
+
 - Update STATE.md decisions as you make them
 - Use skill_find when encountering solved problems
 - Create new skills when patterns emerge
 
 #### Ending Session
+
 1. Run `/ledger` to capture session context
 2. Update STATE.md with progress/metrics
 3. Commit work with descriptive messages
 4. Note resume point in ledger
 
 #### Multi-Session Features
+
 - Reference previous ledgers at session start
 - Keep STATE.md current position updated
 - Link ledgers together with "Previous: CONTINUITY_20260120.md" references
@@ -164,20 +180,24 @@ Truth Decay = Requirements/decisions degrade as code evolves without updates
 ### Integration with Other Plugins
 
 **subtask2 + ledger:**
+
 - Use $TURN[n] to reference past decisions from ledgers
 - Chain commands: research → plan → implement → ledger
 
 **plannotator + ledger:**
+
 - Create ledger after plan review sessions
 - Capture review feedback in ledger
 
 **skillful + ledger:**
+
 - Note in ledger when new skills are created
 - Reference skills used during session
 
 ## Commands
 
 ### Testing
+
 ```bash
 # Run all tests
 make test
@@ -198,6 +218,7 @@ pytest -k "pattern"
 ```
 
 ### Development Server
+
 ```bash
 # Start Django development server
 make run
@@ -211,6 +232,7 @@ python spectrace/manage.py shell
 ```
 
 ### Database
+
 ```bash
 # Run migrations
 make migrate
@@ -229,6 +251,7 @@ python spectrace/manage.py parse_specs specs/ --dry-run  # Validate without savi
 ```
 
 ### Installation
+
 ```bash
 # Install package in editable mode (uses uv - recommended)
 make install
@@ -246,6 +269,7 @@ uv pip install -e ".[dev]"
 ```
 
 ### Cleanup
+
 ```bash
 # Remove caches and build artifacts
 make clean
@@ -264,6 +288,7 @@ make clean
 ### Imports
 
 Order imports in three groups separated by blank lines:
+
 1. Standard library imports
 2. Third-party imports (Django, pytest, etc.)
 3. Local application imports
@@ -301,6 +326,7 @@ def parse_file(self, file_path: Path) -> list[dict[str, Any]]:
 ```
 
 Use modern syntax (Python 3.9+):
+
 - `list[Type]` instead of `List[Type]`
 - `dict[K, V]` instead of `Dict[K, V]`
 - `Type | None` instead of `Optional[Type]`
@@ -327,6 +353,7 @@ Raises:
 ```
 
 For single-line docstrings:
+
 ```python
 """Parse a single spec file, return list of requirement dicts."""
 ```
@@ -342,18 +369,18 @@ For single-line docstrings:
 ```python
 class Requirement(MP_Node):
     """A requirement parsed from a spec markdown file."""
-    
+
     external_id = models.CharField(
         max_length=50,
         unique=True,
         db_index=True,
         help_text="Unique ID from spec file (e.g., REQ-AUTH-001)"
     )
-    
+
     class Meta:
         verbose_name = "Requirement"
         verbose_name_plural = "Requirements"
-    
+
     def __str__(self):
         return f"{self.external_id}: {self.title}"
 ```
@@ -441,6 +468,7 @@ spec-trace/
 Specs are markdown files with YAML frontmatter. Two formats supported:
 
 ### Single Requirement File
+
 ```markdown
 ---
 id: REQ-AUTH-001
@@ -453,11 +481,13 @@ status: active
 Users must be able to log in with email and password.
 
 ## Acceptance Criteria
+
 - Email validation
 - Password strength requirements
 ```
 
 ### Multi-Requirement File
+
 ```markdown
 ---
 tags: [auth]
@@ -485,17 +515,20 @@ Logout functionality description...
 ## Common Tasks
 
 ### Adding a New Field to Requirement Model
+
 1. Edit `spectrace/requirements/models.py` to add field
 2. Run `make makemigrations` to create migration
 3. Run `make migrate` to apply migration
 4. Update parser if field should come from spec frontmatter
 
 ### Adding a New Management Command
+
 1. Create file in `spectrace/requirements/management/commands/`
 2. Inherit from `BaseCommand`
 3. Set `help` text and implement `add_arguments` and `handle` methods
 
 ### Parsing New Specs
+
 1. Add markdown files to `specs/` directory following format above
 2. Run `python spectrace/manage.py parse_specs specs/` to import
 3. Check Django admin at http://localhost:8000/admin to verify
