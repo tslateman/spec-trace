@@ -24,6 +24,7 @@ from requirements.models import (
     AgentTaskReview,
     AgentTaskStatus,
 )
+from requirements.services.lore_bridge import notify_lore
 
 
 class TransitionError(Exception):
@@ -443,6 +444,18 @@ def review_task(
         },
     )
 
+    # Write outcome to Lore journal on abandon (fail-open)
+    if task.status == AgentTaskStatus.ABANDONED:
+        notify_lore(
+            task_id=task_id,
+            task_name=task.title,
+            status="ABANDONED",
+            done_when_results=review.done_when_results,
+            attempt_count=task.attempt_count,
+            max_attempts=task.max_attempts,
+            commit_sha=task.commit_sha,
+        )
+
     message = f"Task {decision} by {reviewer_id}"
     if task.status == AgentTaskStatus.ABANDONED and decision == "changes_requested":
         message += f" (abandoned after {task.attempt_count} attempts)"
@@ -496,6 +509,18 @@ def merge_task(task_id: str) -> TransitionResult:
         action="MERGED",
         from_status=from_status,
         to_status=task.status,
+    )
+
+    # Write outcome to Lore journal (fail-open)
+    latest_review = task.reviews.order_by("-created_at").first()
+    notify_lore(
+        task_id=task_id,
+        task_name=task.title,
+        status="MERGED",
+        done_when_results=latest_review.done_when_results if latest_review else None,
+        attempt_count=task.attempt_count,
+        max_attempts=task.max_attempts,
+        commit_sha=task.commit_sha,
     )
 
     return TransitionResult(
