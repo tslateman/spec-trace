@@ -141,10 +141,10 @@ class TestCliCodeFlag:
 
     def test_code_flag_dispatches_to_code_impact(self):
         """The --code flag routes to code_impact_analysis command."""
-        with patch("spectrace.cli._run") as mock_run:
-            with patch("spectrace.cli._bootstrap_django"):
+        with patch("cli._run") as mock_run:
+            with patch("cli._bootstrap_django"):
                 from click.testing import CliRunner
-                from spectrace.cli import cli
+                from cli import cli
 
                 runner = CliRunner()
                 runner.invoke(cli, ["specs", "impact", "HEAD~1", "HEAD", "--code"])
@@ -153,10 +153,10 @@ class TestCliCodeFlag:
 
     def test_without_code_flag_dispatches_to_impact_analysis(self):
         """Without --code, routes to regular impact_analysis."""
-        with patch("spectrace.cli._run") as mock_run:
-            with patch("spectrace.cli._bootstrap_django"):
+        with patch("cli._run") as mock_run:
+            with patch("cli._bootstrap_django"):
                 from click.testing import CliRunner
-                from spectrace.cli import cli
+                from cli import cli
 
                 runner = CliRunner()
                 runner.invoke(cli, ["specs", "impact", "HEAD~1", "HEAD"])

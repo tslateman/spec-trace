@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 from click.testing import CliRunner
-from spectrace.cli import cli
+from cli import cli
 
 
 @pytest.fixture
@@ -68,21 +68,21 @@ def test_version(runner):
 # =============================================================================
 
 
-@patch("spectrace.cli._run")
+@patch("cli._run")
 def test_tasks_context__delegates(mock_run, runner):
     result = runner.invoke(cli, ["tasks", "context", "T-1"])
     assert result.exit_code == 0
     mock_run.assert_called_once_with("agent_context", "T-1", format="text")
 
 
-@patch("spectrace.cli._run")
+@patch("cli._run")
 def test_specs_coverage__delegates(mock_run, runner):
     result = runner.invoke(cli, ["specs", "coverage", "--format", "json"])
     assert result.exit_code == 0
     mock_run.assert_called_once_with("spec_coverage", format="json")
 
 
-@patch("spectrace.cli._run")
+@patch("cli._run")
 def test_specs_impact__delegates(mock_run, runner):
     result = runner.invoke(cli, ["specs", "impact", "main", "feature-x", "--spec-dir", "my-specs"])
     assert result.exit_code == 0
@@ -97,7 +97,7 @@ def test_specs_impact__delegates(mock_run, runner):
     )
 
 
-@patch("spectrace.cli._run")
+@patch("cli._run")
 def test_specs_impact__no_hierarchy(mock_run, runner):
     result = runner.invoke(cli, ["specs", "impact", "a", "b", "--no-hierarchy"])
     assert result.exit_code == 0
@@ -112,7 +112,7 @@ def test_specs_impact__no_hierarchy(mock_run, runner):
     )
 
 
-@patch("spectrace.cli._run")
+@patch("cli._run")
 def test_specs_drift__delegates(mock_run, runner):
     result = runner.invoke(cli, ["specs", "drift", "--check", "orphan", "--strict"])
     assert result.exit_code == 0
@@ -126,7 +126,7 @@ def test_specs_drift__delegates(mock_run, runner):
     )
 
 
-@patch("spectrace.cli._run")
+@patch("cli._run")
 def test_results_conflicts__delegates(mock_run, runner):
     result = runner.invoke(
         cli, ["results", "conflicts", "--min-runs", "20", "--alert", "--dry-run"]
@@ -142,7 +142,7 @@ def test_results_conflicts__delegates(mock_run, runner):
     )
 
 
-@patch("spectrace.cli._run")
+@patch("cli._run")
 def test_results_invariants__delegates(mock_run, runner):
     result = runner.invoke(cli, ["results", "invariants", "--fix", "--check", "INV-A"])
     assert result.exit_code == 0
@@ -151,7 +151,7 @@ def test_results_invariants__delegates(mock_run, runner):
     )
 
 
-@patch("spectrace.cli._run")
+@patch("cli._run")
 def test_results_verify__delegates(mock_run, runner):
     result = runner.invoke(
         cli, ["results", "verify", "links.json", "--strict", "--check-high-risk"]
@@ -167,7 +167,7 @@ def test_results_verify__delegates(mock_run, runner):
     )
 
 
-@patch("spectrace.cli._run")
+@patch("cli._run")
 def test_tasks_register__delegates(mock_run, runner):
     result = runner.invoke(cli, ["tasks", "register", "bot-1", "--role", "coder"])
     assert result.exit_code == 0
@@ -180,7 +180,7 @@ def test_tasks_register__delegates(mock_run, runner):
     )
 
 
-@patch("spectrace.cli._run")
+@patch("cli._run")
 def test_tasks_list__delegates(mock_run, runner):
     result = runner.invoke(cli, ["tasks", "list", "--format", "json"])
     assert result.exit_code == 0
@@ -189,7 +189,7 @@ def test_tasks_list__delegates(mock_run, runner):
     )
 
 
-@patch("spectrace.cli._run")
+@patch("cli._run")
 def test_tasks_claim__delegates(mock_run, runner):
     result = runner.invoke(cli, ["tasks", "claim", "T-1", "--agent", "c-1"])
     assert result.exit_code == 0
@@ -202,14 +202,14 @@ def test_tasks_claim__delegates(mock_run, runner):
     )
 
 
-@patch("spectrace.cli._run")
+@patch("cli._run")
 def test_tasks_start__delegates(mock_run, runner):
     result = runner.invoke(cli, ["tasks", "start", "T-1", "--agent", "c-1"])
     assert result.exit_code == 0
     mock_run.assert_called_once_with("agent_start", "T-1", agent="c-1", format="text")
 
 
-@patch("spectrace.cli._run")
+@patch("cli._run")
 def test_tasks_complete__delegates(mock_run, runner):
     result = runner.invoke(
         cli, ["tasks", "complete", "T-1", "--agent", "c-1", "--commit-sha", "abc123"]
@@ -224,7 +224,7 @@ def test_tasks_complete__delegates(mock_run, runner):
     )
 
 
-@patch("spectrace.cli._run")
+@patch("cli._run")
 def test_tasks_review__delegates(mock_run, runner):
     result = runner.invoke(
         cli,
@@ -259,14 +259,14 @@ def test_tasks_review__delegates(mock_run, runner):
     )
 
 
-@patch("spectrace.cli._run")
+@patch("cli._run")
 def test_tasks_merge__delegates(mock_run, runner):
     result = runner.invoke(cli, ["tasks", "merge", "T-1"])
     assert result.exit_code == 0
     mock_run.assert_called_once_with("agent_merge", "T-1", format="text")
 
 
-@patch("spectrace.cli._run")
+@patch("cli._run")
 def test_tasks_expire_leases__delegates(mock_run, runner):
     result = runner.invoke(cli, ["tasks", "expire-leases", "--dry-run"])
     assert result.exit_code == 0
@@ -278,7 +278,7 @@ def test_tasks_expire_leases__delegates(mock_run, runner):
 # =============================================================================
 
 
-@patch("spectrace.cli._run")
+@patch("cli._run")
 def test_deprecated_coverage(mock_run, runner):
     result = runner.invoke(cli, ["coverage"])
     assert result.exit_code == 0
@@ -286,7 +286,7 @@ def test_deprecated_coverage(mock_run, runner):
     mock_run.assert_called_once()
 
 
-@patch("spectrace.cli._run")
+@patch("cli._run")
 def test_deprecated_agent_submit(mock_run, runner):
     result = runner.invoke(
         cli, ["agent", "submit", "T-1", "--agent", "c-1", "--commit-sha", "abc123"]
