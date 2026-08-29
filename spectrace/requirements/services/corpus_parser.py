@@ -19,6 +19,7 @@ from typing import Any
 import frontmatter
 
 from requirements.models import (
+    CorpusEnforcement,
     CorpusEntry,
     CorpusEntryKind,
     CorpusEntryStatus,
@@ -71,11 +72,38 @@ class CorpusVersionConflict(CorpusParseError):
     """A stored version number was reused for different content."""
 
 
+def version_payload(
+    *,
+    kind: str,
+    title: str,
+    body: str,
+    applies_to: dict[str, list[str]],
+    checks: list[dict[str, Any]],
+    enforcement: str,
+    effective: date | None,
+) -> dict[str, Any]:
+    """The exact set of fields a version pins, for hashing.
+
+    Enforcement belongs here: raising a standard from advisory to blocking changes
+    what the version obliges, so it takes a version bump like any other edit.
+    """
+    return {
+        "kind": kind,
+        "title": title,
+        "body": body,
+        "applies_to": applies_to,
+        "checks": checks,
+        "enforcement": enforcement,
+        "effective": effective,
+    }
+
+
 def compute_content_hash(payload: dict[str, Any]) -> str:
     """Hash the versioned content of an entry.
 
-    The hash covers everything a version pins: body, scope rules, checks, and the
-    metadata that changes meaning (kind, title, effective date).
+    The hash covers everything a version pins: body, scope rules, checks,
+    enforcement posture, and the metadata that changes meaning (kind, title,
+    effective date).
     """
     canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
@@ -284,6 +312,13 @@ def parse_entry_file(file_path: Path) -> dict[str, Any]:
             f"{entry_id}: unknown status '{status}'; allowed: {', '.join(CorpusEntryStatus.values)}"
         )
 
+    enforcement = str(metadata.get("enforcement", CorpusEnforcement.ADVISORY)).strip()
+    if enforcement not in CorpusEnforcement.values:
+        raise CorpusParseError(
+            f"{entry_id}: unknown enforcement '{enforcement}'; "
+            f"allowed: {', '.join(CorpusEnforcement.values)}"
+        )
+
     version = metadata["version"]
     if not isinstance(version, int) or isinstance(version, bool) or version < 1:
         raise CorpusParseError(f"{entry_id}: version must be a positive integer, got {version!r}")
@@ -308,14 +343,15 @@ def parse_entry_file(file_path: Path) -> dict[str, Any]:
     checks = validate_checks(metadata.get("checks"), entry_id)
 
     content_hash = compute_content_hash(
-        {
-            "kind": kind,
-            "title": title,
-            "body": body,
-            "applies_to": applies_to,
-            "checks": checks,
-            "effective": effective,
-        }
+        version_payload(
+            kind=kind,
+            title=title,
+            body=body,
+            applies_to=applies_to,
+            checks=checks,
+            enforcement=enforcement,
+            effective=effective,
+        )
     )
 
     return {
@@ -329,6 +365,7 @@ def parse_entry_file(file_path: Path) -> dict[str, Any]:
         "content_hash": content_hash,
         "applies_to": applies_to,
         "checks": checks,
+        "enforcement": enforcement,
         "effective_date": effective,
         "supersedes": supersedes,
         "source_file": str(file_path),
@@ -396,6 +433,7 @@ def import_corpus_entries(entries: list[dict[str, Any]]) -> dict[str, int]:
                 content_hash=data["content_hash"],
                 applies_to=data["applies_to"],
                 checks=data["checks"],
+                enforcement=data["enforcement"],
                 effective_date=data["effective_date"],
                 source_file=data["source_file"],
             )

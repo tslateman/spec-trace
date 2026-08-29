@@ -7,6 +7,7 @@ status: active
 supersedes: null
 effective: 2026-01-15
 owner: platform
+enforcement: blocking
 applies_to:
   tags: [platform, security]
   components: [api, storage]

@@ -7,6 +7,7 @@ status: superseded
 supersedes: null
 effective: 2025-09-01
 owner: billing
+enforcement: advisory
 applies_to:
   tags: [billing, finance]
   components: [metering]

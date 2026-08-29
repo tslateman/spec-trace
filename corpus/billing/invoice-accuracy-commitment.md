@@ -7,6 +7,7 @@ status: active
 supersedes: null
 effective: 2026-01-20
 owner: billing
+enforcement: advisory
 applies_to:
   tags: [billing, finance]
   components: [invoicing]

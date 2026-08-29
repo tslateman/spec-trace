@@ -7,6 +7,7 @@ status: active
 supersedes: null
 effective: 2026-02-01
 owner: security
+enforcement: blocking
 applies_to:
   tags: [compliance, security]
   components: [audit, storage]

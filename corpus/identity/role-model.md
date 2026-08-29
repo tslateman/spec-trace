@@ -7,6 +7,7 @@ status: active
 supersedes: null
 effective: 2026-02-12
 owner: identity
+enforcement: advisory
 applies_to:
   tags: [permissions, identity]
   components: [auth, api]

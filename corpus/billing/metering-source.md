@@ -7,6 +7,7 @@ status: active
 supersedes: DEC-BILL-001@1
 effective: 2026-01-05
 owner: billing
+enforcement: advisory
 applies_to:
   tags: [billing, finance, subscriptions]
   components: [metering, api]

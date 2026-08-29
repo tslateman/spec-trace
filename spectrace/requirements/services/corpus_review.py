@@ -13,8 +13,12 @@ about what was covered. Each row carries the matcher's structured reasons in
 
 Nothing here decides anything. Applicability comes from `corpus_matcher`,
 findings come from `corpus_checks`, and this module writes down what they said.
+Enforcement posture is no exception: it is read off the entry version the owner
+authored and copied onto every coverage row and finding, so a review record
+still says what blocked on the day it ran after the owner changes their mind.
 """
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -23,6 +27,7 @@ from django.db import transaction
 
 from requirements.constants import FINDING_UNADDRESSED_OBLIGATION
 from requirements.models import (
+    CorpusEnforcement,
     CorpusEntryVersion,
     CorpusSnapshot,
     Requirement,
@@ -129,24 +134,27 @@ def review_requirement(
                 entry_version=item.entry_version,
                 matched_by=item.reasons_as_dicts(),
                 cited=item.entry_id in cited_entry_ids,
+                enforcement=item.entry_version.enforcement,
             )
             for item in applicable
         ]
     )
 
     versions_by_pk = {item.entry_version.pk: item.entry_version for item in applicable}
-    ReviewFinding.objects.bulk_create(
-        [
+    finding_rows = []
+    for finding in findings:
+        entry_version = _finding_entry_version(finding, versions_by_pk)
+        finding_rows.append(
             ReviewFinding(
                 review=review,
-                entry_version=_finding_entry_version(finding, versions_by_pk),
+                entry_version=entry_version,
                 finding_type=finding.finding_type,
                 check_id=finding.check_id,
                 detail=finding.detail,
+                enforcement=entry_version.enforcement,
             )
-            for finding in findings
-        ]
-    )
+        )
+    ReviewFinding.objects.bulk_create(finding_rows)
     return review
 
 
@@ -191,6 +199,7 @@ def review_as_dict(review: SpecReview) -> dict:
                 "kind": row.entry_version.entry.kind,
                 "cited": row.cited,
                 "matched_by": row.matched_by,
+                "enforcement": row.enforcement,
             }
             for row in coverage
         ],
@@ -201,10 +210,27 @@ def review_as_dict(review: SpecReview) -> dict:
                 "entry_version": finding.entry_version.version,
                 "check_id": finding.check_id,
                 "detail": finding.detail,
+                "enforcement": finding.enforcement,
             }
             for finding in findings
         ],
     }
+
+
+def has_blocking_finding(payloads: Sequence[dict], escalate_advisory: bool = False) -> bool:
+    """Whether the reviewed specs hold a finding that blocks.
+
+    A finding blocks when the standard's owner marked that entry version
+    `enforcement: blocking`. `escalate_advisory` is the caller's `--strict`
+    override, which treats every finding as blocking for one run and is recorded
+    nowhere. Nothing here reads how many findings there are or what type they
+    have.
+    """
+    return any(
+        escalate_advisory or finding["enforcement"] == CorpusEnforcement.BLOCKING
+        for payload in payloads
+        for finding in payload["findings"]
+    )
 
 
 def coverage_as_dicts(requirement_id: str = "") -> list[dict]:

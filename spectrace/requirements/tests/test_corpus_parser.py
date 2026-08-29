@@ -5,6 +5,7 @@ from django.core.management import call_command
 from django.core.management.base import CommandError
 
 from requirements.models import (
+    CorpusEnforcement,
     CorpusEntry,
     CorpusEntryKind,
     CorpusEntryStatus,
@@ -39,6 +40,19 @@ checks:
 
 {body}
 """
+
+
+def _with_enforcement(posture: str) -> str:
+    """The default entry template with an explicit enforcement posture."""
+    return ENTRY_TEMPLATE.format(
+        entry_id="STD-TEST-001",
+        kind="standard",
+        title="Test standard",
+        version=1,
+        status="active",
+        supersedes="null",
+        body="Original body text.",
+    ).replace("owner: platform", f"owner: platform\nenforcement: {posture}")
 
 
 @pytest.fixture
@@ -227,6 +241,52 @@ def test_parse_directory__raises_when_version_not_positive_integer(make_corpus_d
 
     with pytest.raises(CorpusParseError, match="version must be a positive integer"):
         CorpusParser().parse_directory(corpus_dir)
+
+
+def test_parse_directory__defaults_enforcement_to_advisory(make_corpus_dir):
+    corpus_dir = make_corpus_dir("std.md")
+
+    entry = CorpusParser().parse_directory(corpus_dir)[0]
+
+    assert entry["enforcement"] == CorpusEnforcement.ADVISORY
+
+
+def test_parse_directory__accepts_blocking_enforcement(make_corpus_dir):
+    corpus_dir = make_corpus_dir("std.md", content=_with_enforcement("blocking"))
+
+    entry = CorpusParser().parse_directory(corpus_dir)[0]
+
+    assert entry["enforcement"] == CorpusEnforcement.BLOCKING
+
+
+@pytest.mark.parametrize("posture", ["critical", "warn", "BLOCKING", "3"])
+def test_parse_directory__rejects_enforcement_outside_the_two_postures(make_corpus_dir, posture):
+    corpus_dir = make_corpus_dir("std.md", content=_with_enforcement(posture))
+
+    with pytest.raises(CorpusParseError, match=f"unknown enforcement '{posture}'"):
+        CorpusParser().parse_directory(corpus_dir)
+
+
+def test_import_to_database__stores_enforcement_on_the_version_row(db, make_corpus_dir):
+    corpus_dir = make_corpus_dir("std.md", content=_with_enforcement("blocking"))
+
+    CorpusParser().import_to_database(corpus_dir)
+
+    assert CorpusEntryVersion.objects.get().enforcement == CorpusEnforcement.BLOCKING
+
+
+def test_import_to_database__raises_conflict_when_enforcement_changes_without_version_bump(
+    db, make_corpus_dir
+):
+    corpus_dir = make_corpus_dir("std.md")
+    parser = CorpusParser()
+    parser.import_to_database(corpus_dir)
+    make_corpus_dir("std.md", content=_with_enforcement("blocking"))
+
+    with pytest.raises(CorpusVersionConflict, match="version 1 changed without a version bump"):
+        parser.import_to_database(corpus_dir)
+
+    assert CorpusEntryVersion.objects.get().enforcement == CorpusEnforcement.ADVISORY
 
 
 @pytest.mark.parametrize(

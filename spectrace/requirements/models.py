@@ -1481,6 +1481,17 @@ class CorpusEntryStatus(models.TextChoices):
     RETIRED = "retired", "Retired"
 
 
+class CorpusEnforcement(models.TextChoices):
+    """Whether a finding against an entry version blocks.
+
+    The entry's owner sets this in frontmatter and nothing else may raise it. It
+    is a posture, not a severity: no rule, caller, or count derives it.
+    """
+
+    ADVISORY = "advisory", "Advisory"
+    BLOCKING = "blocking", "Blocking"
+
+
 class CorpusEntry(models.Model):
     """Stable identity for an org standard, decision, or strategy commitment.
 
@@ -1567,6 +1578,13 @@ class CorpusEntryVersion(models.Model):
         default=list,
         blank=True,
         help_text="Validated structural checks, each with id, field, operator, value",
+    )
+    enforcement = models.CharField(
+        max_length=20,
+        choices=CorpusEnforcement.choices,
+        default=CorpusEnforcement.ADVISORY,
+        db_index=True,
+        help_text="Posture the owner set for this version (advisory, blocking)",
     )
     effective_date = models.DateField(
         null=True, blank=True, db_index=True, help_text="Date this version takes effect"
@@ -1724,6 +1742,13 @@ class ReviewCoverage(models.Model):
         db_index=True,
         help_text="Whether the spec cites this entry via complies_with",
     )
+    enforcement = models.CharField(
+        max_length=20,
+        choices=CorpusEnforcement.choices,
+        default=CorpusEnforcement.ADVISORY,
+        db_index=True,
+        help_text="Posture the entry version carried when this review ran",
+    )
 
     class Meta:
         verbose_name = "Review Coverage"
@@ -1781,6 +1806,13 @@ class ReviewFinding(models.Model):
         help_text="Check id from the entry's checks block (structural checks only)",
     )
     detail = models.TextField(help_text="Deterministic explanation of the rule outcome")
+    enforcement = models.CharField(
+        max_length=20,
+        choices=CorpusEnforcement.choices,
+        default=CorpusEnforcement.ADVISORY,
+        db_index=True,
+        help_text="Posture the entry version carried when this review ran",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

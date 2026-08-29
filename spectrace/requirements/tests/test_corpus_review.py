@@ -11,6 +11,7 @@ from django.core.management.base import CommandError
 from django.test import Client
 
 from requirements.models import (
+    CorpusEnforcement,
     CorpusEntry,
     CorpusEntryKind,
     CorpusEntryStatus,
@@ -27,6 +28,7 @@ from requirements.services.corpus_review import (
     UnknownCitationError,
     coverage_as_dicts,
     current_snapshot,
+    has_blocking_finding,
     resolve_target,
     review_as_dict,
     review_requirement,
@@ -71,6 +73,7 @@ def make_entry_version(db):
         version: int = 1,
         status: str = CorpusEntryStatus.ACTIVE,
         supersedes: CorpusEntryVersion | None = None,
+        enforcement: str = CorpusEnforcement.ADVISORY,
     ) -> CorpusEntryVersion:
         entry, _ = CorpusEntry.objects.update_or_create(
             external_id=entry_id,
@@ -90,6 +93,7 @@ def make_entry_version(db):
             content_hash=digest,
             applies_to=applies_to or {},
             checks=checks or [],
+            enforcement=enforcement,
             supersedes=supersedes,
             source_file=f"corpus/{entry_id.lower()}.md",
         )
@@ -120,6 +124,16 @@ def applicable_entry(make_entry_version):
         "STD-SEC-001",
         applies_to={"tags": ["platform"], "requirement_ids": ["REQ-CORP-*"]},
         checks=[RISK_CHECK],
+    )
+
+
+@pytest.fixture
+def blocking_entry(make_entry_version):
+    """One entry version whose owner marked it blocking."""
+    return make_entry_version(
+        "STD-SEC-002",
+        applies_to={"tags": ["security"]},
+        enforcement=CorpusEnforcement.BLOCKING,
     )
 
 
@@ -487,6 +501,103 @@ class TestCoverageAsDicts:
         assert [row["requirement_id"] for row in rows] == ["REQ-CORP-002"]
 
 
+class TestEnforcementPosture:
+    """Tests for the posture a review records and the exit contract it feeds."""
+
+    def test_review_requirement__copies_owner_posture_onto_coverage_rows(
+        self, platform_requirement, applicable_entry, blocking_entry
+    ):
+        """Each coverage row carries the posture its entry version declared."""
+        review = review_requirement(
+            platform_requirement, current_snapshot(), (), "specs/platform/tenant_isolation.md"
+        )
+
+        postures = {
+            row.entry_version.entry.external_id: row.enforcement for row in review.coverage.all()
+        }
+        assert postures == {
+            "STD-SEC-001": CorpusEnforcement.ADVISORY,
+            "STD-SEC-002": CorpusEnforcement.BLOCKING,
+        }
+
+    def test_review_requirement__copies_owner_posture_onto_findings(
+        self, platform_requirement, applicable_entry, blocking_entry
+    ):
+        """Each finding carries the posture of the entry version it traces to."""
+        review = review_requirement(
+            platform_requirement, current_snapshot(), (), "specs/platform/tenant_isolation.md"
+        )
+
+        postures = {
+            finding.entry_version.entry.external_id: finding.enforcement
+            for finding in review.findings.all()
+        }
+        assert postures == {
+            "STD-SEC-001": CorpusEnforcement.ADVISORY,
+            "STD-SEC-002": CorpusEnforcement.BLOCKING,
+        }
+
+    def test_review_requirement__keeps_the_posture_a_later_version_leaves_behind(
+        self, platform_requirement, make_entry_version
+    ):
+        """A recorded finding keeps the posture that was in force when it ran."""
+        version_one = make_entry_version(
+            "STD-SEC-001",
+            applies_to={"tags": ["platform"]},
+            enforcement=CorpusEnforcement.ADVISORY,
+        )
+        review = review_requirement(
+            platform_requirement, current_snapshot(), (), "specs/platform/tenant_isolation.md"
+        )
+        make_entry_version(
+            "STD-SEC-001",
+            applies_to={"tags": ["platform"]},
+            version=2,
+            enforcement=CorpusEnforcement.BLOCKING,
+            supersedes=version_one,
+        )
+
+        assert review.findings.get().enforcement == CorpusEnforcement.ADVISORY
+
+    def test_has_blocking_finding__is_false_for_advisory_findings_alone(self):
+        """Advisory findings report without blocking."""
+        payloads = [{"findings": [{"enforcement": CorpusEnforcement.ADVISORY}]}]
+
+        assert has_blocking_finding(payloads) is False
+
+    def test_has_blocking_finding__is_true_when_one_finding_blocks(self):
+        """One blocking finding among advisory ones blocks."""
+        payloads = [
+            {
+                "findings": [
+                    {"enforcement": CorpusEnforcement.ADVISORY},
+                    {"enforcement": CorpusEnforcement.BLOCKING},
+                ]
+            }
+        ]
+
+        assert has_blocking_finding(payloads) is True
+
+    def test_has_blocking_finding__is_false_when_there_are_no_findings(self):
+        """A clean review never blocks, escalated or not."""
+        payloads = [{"findings": []}]
+
+        assert has_blocking_finding(payloads) is False
+        assert has_blocking_finding(payloads, escalate_advisory=True) is False
+
+    def test_has_blocking_finding__escalates_advisory_when_the_caller_overrides(self):
+        """The caller's override treats an advisory finding as blocking for one run."""
+        payloads = [{"findings": [{"enforcement": CorpusEnforcement.ADVISORY}]}]
+
+        assert has_blocking_finding(payloads, escalate_advisory=True) is True
+
+    def test_has_blocking_finding__ignores_how_many_advisory_findings_there_are(self):
+        """Piling up advisory findings never crosses into blocking."""
+        payloads = [{"findings": [{"enforcement": CorpusEnforcement.ADVISORY}] * 50}]
+
+        assert has_blocking_finding(payloads) is False
+
+
 class TestCorpusReviewCommand:
     """Tests for the corpus_review management command."""
 
@@ -530,14 +641,34 @@ class TestCorpusReviewCommand:
 
         output = out.getvalue()
         assert "## 📋 SpecTrace Corpus Review" in output
-        assert "| Entry | Version | Kind | Cited | Matched by |" in output
-        assert "| STD-SEC-001 | 1 | standard | no |" in output
-        assert "| Type | Entry | Check | Detail |" in output
+        assert "| Entry | Version | Kind | Enforcement | Cited | Matched by |" in output
+        assert "| STD-SEC-001 | 1 | standard | advisory | no |" in output
+        assert "| Type | Entry | Enforcement | Check | Detail |" in output
 
-    def test_command__strict_exits_nonzero_when_findings_exist(
+    def test_command__exits_nonzero_when_a_blocking_finding_exists(
+        self, platform_requirement, blocking_entry, spec_file
+    ):
+        """A finding against an entry the owner marked blocking fails the run by default."""
+        with pytest.raises(SystemExit) as exit_info:
+            call_command("corpus_review", str(spec_file()), stdout=StringIO())
+
+        assert exit_info.value.code == 1
+
+    def test_command__exits_zero_when_only_advisory_findings_exist(
         self, platform_requirement, applicable_entry, spec_file
     ):
-        """--strict turns findings into a nonzero exit code."""
+        """An advisory finding reports and passes."""
+        out = StringIO()
+
+        call_command("corpus_review", str(spec_file()), stdout=out)
+
+        assert "Unaddressed obligation" in out.getvalue()
+        assert SpecReview.objects.get().outcome == SpecReviewOutcome.FINDINGS
+
+    def test_command__strict_escalates_an_advisory_finding_to_blocking(
+        self, platform_requirement, applicable_entry, spec_file
+    ):
+        """--strict is a caller override that fails the run on advisory findings."""
         with pytest.raises(SystemExit) as exit_info:
             call_command("corpus_review", str(spec_file()), "--strict", stdout=StringIO())
 
@@ -552,6 +683,41 @@ class TestCorpusReviewCommand:
         )
 
         assert SpecReview.objects.get().outcome == SpecReviewOutcome.CLEAN
+
+    def test_command__strict_leaves_the_recorded_posture_advisory(
+        self, platform_requirement, applicable_entry, spec_file
+    ):
+        """The override changes the exit code, never the audit record."""
+        with pytest.raises(SystemExit):
+            call_command("corpus_review", str(spec_file()), "--strict", stdout=StringIO())
+
+        assert ReviewFinding.objects.get().enforcement == CorpusEnforcement.ADVISORY
+
+    def test_command__reports_the_posture_in_text_output(
+        self, platform_requirement, blocking_entry, spec_file
+    ):
+        """Text output names the posture on both the coverage row and the finding."""
+        out = StringIO()
+
+        with pytest.raises(SystemExit):
+            call_command("corpus_review", str(spec_file()), stdout=out)
+
+        output = out.getvalue()
+        assert "STD-SEC-002@1 [not cited] [blocking]" in output
+        assert "✗ [blocking] Unaddressed obligation: STD-SEC-002@1" in output
+
+    def test_command__reports_the_posture_in_json_output(
+        self, platform_requirement, blocking_entry, spec_file
+    ):
+        """--format json carries the posture on coverage rows and findings."""
+        out = StringIO()
+
+        with pytest.raises(SystemExit):
+            call_command("corpus_review", str(spec_file()), "--format", "json", stdout=out)
+
+        review = json.loads(out.getvalue())["reviews"][0]
+        assert review["coverage"][0]["enforcement"] == "blocking"
+        assert review["findings"][0]["enforcement"] == "blocking"
 
     def test_command__records_the_reviewer(self, platform_requirement, applicable_entry, spec_file):
         """--reviewer lands on the review row."""

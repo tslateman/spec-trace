@@ -16,6 +16,7 @@ from requirements.services.corpus_checks import CitationFormatError
 from requirements.services.corpus_review import (
     ReviewTargetError,
     UnknownCitationError,
+    has_blocking_finding,
     review_as_dict,
     review_target,
 )
@@ -53,12 +54,16 @@ class Command(BaseCommand):
         parser.add_argument(
             "--strict",
             action="store_true",
-            help="Exit code 1 when the review produces findings",
+            help=(
+                "Caller override: treat advisory findings as blocking for this run. "
+                "Without it, only findings against an entry the owner marked "
+                "'enforcement: blocking' exit nonzero"
+            ),
         )
 
     def handle(self, *args, **options):
         output_format = options["format"]
-        strict = options["strict"]
+        escalate_advisory = options["strict"]
 
         try:
             reviews = review_target(options["target"], reviewer=options["reviewer"])
@@ -74,7 +79,7 @@ class Command(BaseCommand):
         else:
             self._output_text(payloads)
 
-        if strict and any(payload["findings"] for payload in payloads):
+        if has_blocking_finding(payloads, escalate_advisory):
             sys.exit(1)
 
     def _output_json(self, payloads):
@@ -102,7 +107,8 @@ class Command(BaseCommand):
             for row in payload["coverage"]:
                 citation = "cited" if row["cited"] else "not cited"
                 self.stdout.write(
-                    f"  {row['entry_id']}@{row['entry_version']} [{citation}] {row['title']}"
+                    f"  {row['entry_id']}@{row['entry_version']} [{citation}] "
+                    f"[{row['enforcement']}] {row['title']}"
                 )
                 self.stdout.write(f"    matched by {_rendered_reasons(row['matched_by'])}")
 
@@ -115,7 +121,8 @@ class Command(BaseCommand):
                     check = f" check '{finding['check_id']}'" if finding["check_id"] else ""
                     self.stdout.write(
                         self.style.ERROR(
-                            f"  ✗ {label}: {finding['entry_id']}@{finding['entry_version']}{check}"
+                            f"  ✗ [{finding['enforcement']}] {label}: "
+                            f"{finding['entry_id']}@{finding['entry_version']}{check}"
                         )
                     )
                     self.stdout.write(f"    {finding['detail']}")
@@ -132,13 +139,13 @@ class Command(BaseCommand):
             lines.append("")
             lines.append(f"### Coverage ({len(payload['coverage'])} entry versions)")
             lines.append("")
-            lines.append("| Entry | Version | Kind | Cited | Matched by |")
-            lines.append("|---|---|---|---|---|")
+            lines.append("| Entry | Version | Kind | Enforcement | Cited | Matched by |")
+            lines.append("|---|---|---|---|---|---|")
             for row in payload["coverage"]:
                 cited = "yes" if row["cited"] else "no"
                 lines.append(
                     f"| {row['entry_id']} | {row['entry_version']} | {row['kind']} | "
-                    f"{cited} | {_rendered_reasons(row['matched_by'])} |"
+                    f"{row['enforcement']} | {cited} | {_rendered_reasons(row['matched_by'])} |"
                 )
             lines.append("")
             if not payload["findings"]:
@@ -148,14 +155,14 @@ class Command(BaseCommand):
                 continue
             lines.append(f"### Findings ({len(payload['findings'])})")
             lines.append("")
-            lines.append("| Type | Entry | Check | Detail |")
-            lines.append("|---|---|---|---|")
+            lines.append("| Type | Entry | Enforcement | Check | Detail |")
+            lines.append("|---|---|---|---|---|")
             for finding in payload["findings"]:
                 label = FINDING_LABELS[finding["finding_type"]]
                 check = finding["check_id"] or "—"
                 lines.append(
                     f"| {label} | {finding['entry_id']}@{finding['entry_version']} | "
-                    f"{check} | {finding['detail']} |"
+                    f"{finding['enforcement']} | {check} | {finding['detail']} |"
                 )
         self.stdout.write("\n".join(lines))
 

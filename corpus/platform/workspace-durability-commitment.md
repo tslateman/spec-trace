@@ -7,6 +7,7 @@ status: active
 supersedes: null
 effective: 2026-02-20
 owner: platform
+enforcement: advisory
 applies_to:
   tags: [core, workspaces, collaboration]
   components: [storage, api]
