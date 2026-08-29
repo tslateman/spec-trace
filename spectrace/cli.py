@@ -149,6 +149,26 @@ def corpus_coverage(requirement, format):
     _run("corpus_coverage", requirement=requirement, format=format)
 
 
+@corpus.command(name="suggest")
+@click.option("--requirement", default="", help="Limit to one requirement external ID")
+@click.option("--min-score", type=float, default=None, help="Cosine floor for text similarity")
+@click.option("--format", type=click.Choice(["text", "json", "md"]), default="text")
+def corpus_suggest(requirement, min_score, format):
+    """Propose applies_to widenings that would close corpus scope gaps."""
+    kwargs = {"requirement": requirement, "format": format}
+    if min_score is not None:
+        kwargs["min_score"] = min_score
+    _run("corpus_suggest", **kwargs)
+
+
+@corpus.command(name="drift")
+@click.option("--format", type=click.Choice(["text", "json", "md"]), default="text")
+@click.option("--strict", is_flag=True, default=False, help="Exit nonzero when reviews are stale")
+def corpus_drift(format, strict):
+    """Name the reviews the corpus has moved out from under."""
+    _run("corpus_drift", format=format, strict=strict)
+
+
 # ---------------------------------------------------------------------------
 # Map commands (spectrace-map.yaml management)
 # ---------------------------------------------------------------------------
