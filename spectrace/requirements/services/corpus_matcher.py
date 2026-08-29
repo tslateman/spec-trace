@@ -6,14 +6,17 @@ structured reasons it matched — scope key, pattern, matched value, and the
 requirement in the hierarchy the match came from. The review record persists
 those reasons, so they are data rather than a log line.
 
-Three rules the review path depends on:
+Four rules the review path depends on:
 
 1. An entry version with an empty `applies_to` binds to nothing. Never to
    everything: a half-written entry that fired on every spec would train
    reviewers to ignore output.
 2. Applicability inherits down the requirement hierarchy. A match against an
    ancestor applies to its descendants and names the ancestor it came from.
-3. Ordering is deterministic. The same requirement and snapshot always produce
+3. At most one version of an entry applies. A snapshot holding two versions of
+   one standard would otherwise give it two coverage rows and two findings, and
+   the audit ledger would overstate coverage on every version bump.
+4. Ordering is deterministic. The same requirement and snapshot always produce
    the same sequence.
 """
 
@@ -116,16 +119,17 @@ def match_entry_version(
     return tuple(reasons)
 
 
-def resolve_applicable_entries(
-    requirement: Requirement, snapshot: CorpusSnapshot
-) -> list[ApplicableEntryVersion]:
-    """Corpus entry versions in `snapshot` that apply to `requirement`.
+def current_versions(snapshot: CorpusSnapshot) -> list[CorpusEntryVersion]:
+    """The one version of each entry in `snapshot` that a review may bind.
 
-    Ordered by entry external id, then version number.
+    Retired entries contribute nothing, and neither does a version another entry
+    supersedes inside the same snapshot. Of what survives, an entry contributes
+    its highest version alone: a bump replaces the version before it rather than
+    joining it. Older versions stay in the snapshot, which records what the
+    corpus held, and a review pinned to a snapshot taken before the bump still
+    resolves the version current then.
 
-    Retired entries never apply. A version superseded by another member of the
-    same snapshot never applies either; it resurfaces only when a review pins a
-    snapshot taken before its replacement existed.
+    Ordered by entry external id.
     """
     versions = list(
         snapshot.entry_versions.select_related("entry")
@@ -133,14 +137,37 @@ def resolve_applicable_entries(
         .order_by("entry__external_id", "version")
     )
     member_pks = {version.pk for version in versions}
-    lineage = build_lineage(requirement)
 
-    applicable: list[ApplicableEntryVersion] = []
+    highest: dict[str, CorpusEntryVersion] = {}
     for version in versions:
         if version.entry.status == CorpusEntryStatus.RETIRED:
             continue
         if any(successor.pk in member_pks for successor in version.superseded_by.all()):
             continue
+        held = highest.get(version.entry.external_id)
+        if held is None or version.version > held.version:
+            highest[version.entry.external_id] = version
+
+    return [highest[external_id] for external_id in sorted(highest)]
+
+
+def resolve_applicable_entries(
+    requirement: Requirement, snapshot: CorpusSnapshot
+) -> list[ApplicableEntryVersion]:
+    """Corpus entry versions in `snapshot` that apply to `requirement`.
+
+    Ordered by entry external id, one version per entry.
+
+    Retired entries never apply. A version superseded by another member of the
+    same snapshot never applies either; it resurfaces only when a review pins a
+    snapshot taken before its replacement existed. Scope rules are read off the
+    version `current_versions` selects, so a bump that narrows `applies_to`
+    narrows what binds instead of leaving the older rules in force.
+    """
+    lineage = build_lineage(requirement)
+
+    applicable: list[ApplicableEntryVersion] = []
+    for version in current_versions(snapshot):
         reasons = match_entry_version(version, lineage)
         if reasons:
             applicable.append(ApplicableEntryVersion(entry_version=version, reasons=reasons))

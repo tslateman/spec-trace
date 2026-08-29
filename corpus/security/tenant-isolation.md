@@ -2,10 +2,10 @@
 id: STD-SEC-001
 kind: standard
 title: Tenant data isolation
-version: 3
+version: 4
 status: active
 supersedes: null
-effective: 2026-01-15
+effective: 2026-08-29
 owner: platform
 enforcement: blocking
 applies_to:

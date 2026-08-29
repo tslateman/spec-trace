@@ -171,6 +171,67 @@ class TestReviewRequirement:
         surfaced = [row.entry_version.entry.external_id for row in review.coverage.all()]
         assert surfaced == ["STD-SEC-001", "STD-SEC-002"]
 
+    def test_review_requirement__writes_one_coverage_row_per_entry_after_a_version_bump(
+        self, platform_requirement, make_entry_version
+    ):
+        """A bumped entry is covered once, at the version the bump made current."""
+        make_entry_version(
+            "STD-SEC-001",
+            applies_to={"tags": ["platform"]},
+            version=3,
+            enforcement=CorpusEnforcement.ADVISORY,
+        )
+        make_entry_version(
+            "STD-SEC-001",
+            applies_to={"tags": ["platform"]},
+            version=4,
+            enforcement=CorpusEnforcement.BLOCKING,
+        )
+
+        review = review_requirement(
+            platform_requirement, current_snapshot(), (), "specs/platform/tenant_isolation.md"
+        )
+
+        assert [(row.entry_version.version, row.enforcement) for row in review.coverage.all()] == [
+            (4, CorpusEnforcement.BLOCKING)
+        ]
+
+    def test_review_requirement__records_one_finding_per_entry_after_a_version_bump(
+        self, platform_requirement, make_entry_version
+    ):
+        """A bumped entry faults once, so the ledger counts the standard once."""
+        make_entry_version(
+            "STD-SEC-001", applies_to={"tags": ["platform"]}, checks=[CONDITION_CHECK], version=3
+        )
+        make_entry_version(
+            "STD-SEC-001", applies_to={"tags": ["platform"]}, checks=[CONDITION_CHECK], version=4
+        )
+
+        review = review_requirement(
+            platform_requirement,
+            current_snapshot(),
+            ("STD-SEC-001@4",),
+            "specs/platform/tenant_isolation.md",
+        )
+
+        assert [
+            (finding.entry_version.version, finding.check_id) for finding in review.findings.all()
+        ] == [(4, "trigger-stated")]
+
+    def test_review_requirement__resolves_the_version_current_in_the_pinned_snapshot(
+        self, platform_requirement, make_entry_version
+    ):
+        """A review pinned before a bump still covers the version current then."""
+        make_entry_version("STD-SEC-001", applies_to={"tags": ["platform"]}, version=3)
+        pinned = current_snapshot()
+        make_entry_version("STD-SEC-001", applies_to={"tags": ["platform"]}, version=4)
+
+        review = review_requirement(
+            platform_requirement, pinned, (), "specs/platform/tenant_isolation.md"
+        )
+
+        assert [row.entry_version.version for row in review.coverage.all()] == [3]
+
     def test_review_requirement__writes_coverage_row_when_entry_produces_no_finding(
         self, platform_requirement, applicable_entry
     ):

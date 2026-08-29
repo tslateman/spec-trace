@@ -307,9 +307,45 @@ def test_resolve_applicable_entries__keeps_superseded_version_when_snapshot_pred
     assert [item.entry_id for item in applicable] == ["DEC-BILL-001"]
 
 
-def test_resolve_applicable_entries__orders_by_entry_id_then_version(
+def test_resolve_applicable_entries__applies_only_the_highest_version_of_an_entry(
     make_entry_version, platform_requirement
 ):
+    third = make_entry_version("STD-SEC-001", {"tags": ["platform"]}, version=3)
+    fourth = make_entry_version("STD-SEC-001", {"tags": ["platform"]}, version=4)
+    snapshot = CorpusSnapshot.capture([third, fourth])
+
+    applicable = resolve_applicable_entries(platform_requirement, snapshot)
+
+    assert [(item.entry_id, item.entry_version.version) for item in applicable] == [
+        ("STD-SEC-001", 4)
+    ]
+
+
+def test_resolve_applicable_entries__resolves_the_version_current_in_a_pinned_snapshot(
+    make_entry_version, platform_requirement
+):
+    third = make_entry_version("STD-SEC-001", {"tags": ["platform"]}, version=3)
+    make_entry_version("STD-SEC-001", {"tags": ["platform"]}, version=4)
+    pinned = CorpusSnapshot.capture([third])
+
+    applicable = resolve_applicable_entries(platform_requirement, pinned)
+
+    assert [(item.entry_id, item.entry_version.version) for item in applicable] == [
+        ("STD-SEC-001", 3)
+    ]
+
+
+def test_resolve_applicable_entries__reads_scope_rules_off_the_highest_version(
+    make_entry_version, platform_requirement
+):
+    third = make_entry_version("STD-SEC-001", {"tags": ["platform"]}, version=3)
+    fourth = make_entry_version("STD-SEC-001", {"tags": ["billing"]}, version=4)
+    snapshot = CorpusSnapshot.capture([third, fourth])
+
+    assert resolve_applicable_entries(platform_requirement, snapshot) == []
+
+
+def test_resolve_applicable_entries__orders_by_entry_id(make_entry_version, platform_requirement):
     third = make_entry_version("STD-SEC-002", {"tags": ["platform"]})
     second = make_entry_version("STD-SEC-001", {"tags": ["platform"]}, version=2)
     first = make_entry_version("STD-SEC-001", {"tags": ["platform"]}, version=1)
@@ -318,7 +354,6 @@ def test_resolve_applicable_entries__orders_by_entry_id_then_version(
     applicable = resolve_applicable_entries(platform_requirement, snapshot)
 
     assert [(item.entry_id, item.entry_version.version) for item in applicable] == [
-        ("STD-SEC-001", 1),
         ("STD-SEC-001", 2),
         ("STD-SEC-002", 1),
     ]
