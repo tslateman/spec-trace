@@ -38,6 +38,7 @@ and the API v1 surface.
 - Move the corpus blocking decision to the standard's owner (`97ca8cf`)
 - Hold check ids stable across corpus version edits (`45b0843`)
 - Let a spec author declare risk_level in frontmatter (`2b62f8a`)
+- Generate the changelog's Unreleased section from the commit log (`0b2e94a`)
 
 ### Fixed
 
