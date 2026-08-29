@@ -1684,15 +1684,6 @@ class SpecReview(models.Model):
         db_index=True,
         help_text="Whether the review produced findings",
     )
-    invalidated_at = models.DateTimeField(
-        null=True,
-        blank=True,
-        db_index=True,
-        help_text="When corpus drift made this review stale",
-    )
-    invalidation_reason = models.TextField(
-        blank=True, help_text="Why this review went stale (entry IDs and versions)"
-    )
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:

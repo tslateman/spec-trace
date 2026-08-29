@@ -236,21 +236,6 @@ class Migration(migrations.Migration):
                         max_length=20,
                     ),
                 ),
-                (
-                    "invalidated_at",
-                    models.DateTimeField(
-                        blank=True,
-                        db_index=True,
-                        help_text="When corpus drift made this review stale",
-                        null=True,
-                    ),
-                ),
-                (
-                    "invalidation_reason",
-                    models.TextField(
-                        blank=True, help_text="Why this review went stale (entry IDs and versions)"
-                    ),
-                ),
                 ("created_at", models.DateTimeField(auto_now_add=True, db_index=True)),
                 (
                     "requirement",
