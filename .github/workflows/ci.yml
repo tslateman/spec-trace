@@ -41,7 +41,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install ruff
-        run: pip install ruff
+        run: pip install ruff==0.15.4
 
       - name: Lint (ruff check)
         run: ruff check spectrace/ spectrace-flows/
