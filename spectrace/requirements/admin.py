@@ -4,8 +4,8 @@ import json
 
 from django.contrib import admin
 from django.urls import reverse
-from django.utils.html import format_html
-from unfold.admin import ModelAdmin
+from django.utils.html import format_html, format_html_join
+from unfold.admin import ModelAdmin, TabularInline
 
 from .models import (
     SLO,
@@ -15,10 +15,16 @@ from .models import (
     AgentTaskHistory,
     AgentTaskReview,
     ConflictLog,
+    CorpusEntry,
+    CorpusEntryVersion,
+    CorpusSnapshot,
     InAppValidation,
     InAppValidationResult,
     InAppValidationRun,
     Requirement,
+    ReviewCoverage,
+    ReviewFinding,
+    SpecReview,
     TestRequirementLink,
     TestResult,
     TestRun,
@@ -1224,3 +1230,162 @@ class AgentTaskReviewAdmin(ModelAdmin):
         return format_html('<ul style="margin: 0; padding-left: 20px;">{}</ul>', format_html(items))
 
     suggestions_display.short_description = "Suggestions"  # type: ignore[attr-defined]
+
+
+# ============================================================================
+# Corpus review admin
+# ============================================================================
+
+
+class CorpusEntryVersionInline(TabularInline):
+    """Versions of one corpus entry, newest first. Versions are immutable."""
+
+    model = CorpusEntryVersion
+    extra = 0
+    can_delete = False
+    fields = ["version", "effective_date", "content_hash", "supersedes", "source_file"]
+    readonly_fields = fields
+    ordering = ["-version"]
+
+    def has_add_permission(self, request, obj):
+        return False
+
+
+class ReviewCoverageInline(TabularInline):
+    """Every entry version the review surfaced, finding or not."""
+
+    model = ReviewCoverage
+    extra = 0
+    can_delete = False
+    fields = ["entry_version", "cited", "matched_by_display"]
+    readonly_fields = fields
+
+    def has_add_permission(self, request, obj):
+        return False
+
+    def matched_by_display(self, obj):
+        """Render the persisted match reasons as scope_key=value pairs."""
+        if not obj.matched_by:
+            return format_html('<span style="color: #6b7280;">None</span>')
+        items = format_html_join(
+            "",
+            "<li>{}={} ({})</li>",
+            (
+                (
+                    reason["scope_key"],
+                    reason["matched_value"],
+                    reason["matched_requirement_id"],
+                )
+                for reason in obj.matched_by
+            ),
+        )
+        return format_html('<ul style="margin: 0; padding-left: 20px;">{}</ul>', items)
+
+    matched_by_display.short_description = "Matched By"  # type: ignore[attr-defined]
+
+
+class ReviewFindingInline(TabularInline):
+    """Findings the review produced, each naming an entry version."""
+
+    model = ReviewFinding
+    extra = 0
+    can_delete = False
+    fields = ["finding_type", "entry_version", "check_id", "detail"]
+    readonly_fields = fields
+
+    def has_add_permission(self, request, obj):
+        return False
+
+
+@admin.register(CorpusEntry)
+class CorpusEntryAdmin(ModelAdmin):
+    """Admin interface for corpus entries with their versions inline."""
+
+    list_display = ["external_id", "title", "kind", "status", "owner", "source_file", "updated_at"]
+    list_filter = ["kind", "status", "owner"]
+    search_fields = ["external_id", "title", "owner", "source_file"]
+    readonly_fields = ["created_at", "updated_at"]
+    inlines = [CorpusEntryVersionInline]
+
+
+@admin.register(CorpusEntryVersion)
+class CorpusEntryVersionAdmin(ModelAdmin):
+    """Admin interface for immutable corpus entry versions."""
+
+    list_display = ["__str__", "entry", "version", "effective_date", "source_file", "created_at"]
+    list_filter = ["entry__kind", "entry__status", "effective_date"]
+    search_fields = ["entry__external_id", "entry__title", "content_hash", "body"]
+    readonly_fields = [
+        "entry",
+        "version",
+        "body",
+        "content_hash",
+        "applies_to",
+        "checks",
+        "effective_date",
+        "supersedes",
+        "source_file",
+        "created_at",
+    ]
+
+    def has_add_permission(self, request):
+        return False
+
+
+@admin.register(CorpusSnapshot)
+class CorpusSnapshotAdmin(ModelAdmin):
+    """Admin interface for pinned corpus snapshots."""
+
+    list_display = ["snapshot_hash", "version_count", "created_at"]
+    search_fields = ["snapshot_hash"]
+    readonly_fields = ["snapshot_hash", "entry_version_hashes", "created_at"]
+    filter_horizontal = ["entry_versions"]
+
+    def version_count(self, obj):
+        """Number of entry versions the snapshot pins."""
+        return len(obj.entry_version_hashes)
+
+    version_count.short_description = "Versions"  # type: ignore[attr-defined]
+
+
+@admin.register(SpecReview)
+class SpecReviewAdmin(ModelAdmin):
+    """Admin interface for spec reviews with coverage and findings inline."""
+
+    list_display = [
+        "requirement",
+        "outcome_badge",
+        "coverage_count",
+        "finding_count",
+        "spec_file",
+        "reviewer",
+        "created_at",
+    ]
+    list_filter = ["outcome", "reviewer", "created_at"]
+    search_fields = ["requirement__external_id", "spec_file", "reviewer"]
+    readonly_fields = ["requirement", "snapshot", "spec_file", "reviewer", "outcome", "created_at"]
+    inlines = [ReviewCoverageInline, ReviewFindingInline]
+
+    def outcome_badge(self, obj):
+        """Display the review outcome as a colored badge."""
+        color = "#ef4444" if obj.outcome == "findings" else "#22c55e"
+        return format_html(
+            '<span style="display: inline-block; padding: 2px 8px; border-radius: 4px; '
+            'font-size: 11px; font-weight: 500; color: white; background-color: {};">{}</span>',
+            color,
+            obj.get_outcome_display(),
+        )
+
+    outcome_badge.short_description = "Outcome"  # type: ignore[attr-defined]
+
+    def coverage_count(self, obj):
+        """How many entry versions this review surfaced."""
+        return obj.coverage.count()
+
+    coverage_count.short_description = "Entries Surfaced"  # type: ignore[attr-defined]
+
+    def finding_count(self, obj):
+        """How many findings this review produced."""
+        return obj.findings.count()
+
+    finding_count.short_description = "Findings"  # type: ignore[attr-defined]

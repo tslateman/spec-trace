@@ -60,6 +60,11 @@ def results():
     """Verification and evidence commands."""
 
 
+@cli.group()
+def corpus():
+    """Corpus-backed spec review commands."""
+
+
 # ---------------------------------------------------------------------------
 # Specs commands
 # ---------------------------------------------------------------------------
@@ -119,6 +124,29 @@ def drift(tests, specs, format, check, strict):
         check=check,
         strict=strict,
     )
+
+
+# ---------------------------------------------------------------------------
+# Corpus commands
+# ---------------------------------------------------------------------------
+
+
+@corpus.command(name="review")
+@click.argument("target")
+@click.option("--format", type=click.Choice(["text", "json", "md"]), default="text")
+@click.option("--reviewer", default="", help="Who ran the review")
+@click.option("--strict", is_flag=True, default=False, help="Exit nonzero when findings exist")
+def corpus_review(target, format, reviewer, strict):
+    """Review a spec against the corpus and record coverage and findings."""
+    _run("corpus_review", target, format=format, reviewer=reviewer, strict=strict)
+
+
+@corpus.command(name="coverage")
+@click.option("--requirement", default="", help="Limit to one requirement external ID")
+@click.option("--format", type=click.Choice(["text", "json", "md"]), default="text")
+def corpus_coverage(requirement, format):
+    """Show which corpus entries each requirement's latest review surfaced."""
+    _run("corpus_coverage", requirement=requirement, format=format)
 
 
 # ---------------------------------------------------------------------------
