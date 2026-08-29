@@ -50,7 +50,7 @@ include = ["spectrace*", "requirements*"]
 
 [tool.ruff]
 target-version = "py312"
-src = ["spectrace", "tests", "spectrace-flows"]
+src = ["spectrace", "spectrace-flows"]
 line-length = 100
 
 [tool.ruff.lint]
@@ -61,10 +61,13 @@ select = ["E", "F", "I", "W"]
 "*/examples/*.py" = ["E501", "W293"]
 "spectrace/requirements/api.py" = ["E402"]
 "spectrace/verify_phase1.py" = ["E402"]
+"scripts/demo.py" = ["E402"]
+"scripts/demo_pipeline.py" = ["E402"]
+"scripts/setup.py" = ["E402"]
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "spectrace.settings"
-testpaths = ["spectrace", "tests", "spectrace-flows/tests"]
+testpaths = ["spectrace", "spectrace-flows/tests"]
 python_files = ["test_*.py", "*_test.py"]
 pythonpath = ["spectrace"]
 addopts = ["--import-mode=importlib"]

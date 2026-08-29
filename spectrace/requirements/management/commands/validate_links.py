@@ -8,8 +8,9 @@ from pathlib import Path
 
 from django.core.management.base import BaseCommand, CommandError
 
-from ...validator import validate_high_risk_requirements, validate_links
 from requirements.models import Requirement
+
+from ...validator import validate_high_risk_requirements, validate_links
 
 
 class Command(BaseCommand):
@@ -106,7 +107,7 @@ class Command(BaseCommand):
     def _output_md(self, result, links_file, high_risk_result=None):
         """Output Markdown for PR comments."""
         lines = []
-        lines.append(f"## 🔍 SpecTrace Link Validation")
+        lines.append("## 🔍 SpecTrace Link Validation")
         lines.append(f"**Validating:** `{links_file}`")
         if high_risk_result:
             lines.append(f"*(Checked {high_risk_result.items_checked} high-risk requirements)*")
@@ -150,7 +151,8 @@ class Command(BaseCommand):
 
         lines.append("---")
         lines.append(
-            f"*Summary: {result.links_checked} links checked, {len(result.errors)} errors, {len(result.warnings)} warnings*"
+            f"*Summary: {result.links_checked} links checked, "
+            f"{len(result.errors)} errors, {len(result.warnings)} warnings*"
         )
 
         self.stdout.write("\n".join(lines) + "\n")

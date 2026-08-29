@@ -44,7 +44,7 @@ jobs:
         run: pip install ruff
 
       - name: Lint (ruff check)
-        run: ruff check spectrace/ tests/ spectrace-flows/
+        run: ruff check spectrace/ spectrace-flows/
 
       - name: Format (ruff format)
-        run: ruff format --check spectrace/ tests/ spectrace-flows/
+        run: ruff format --check spectrace/ spectrace-flows/

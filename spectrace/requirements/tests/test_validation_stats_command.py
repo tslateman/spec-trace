@@ -5,7 +5,6 @@ from io import StringIO
 
 import pytest
 from django.core.management import call_command
-from django.utils import timezone
 
 from requirements.models import AgentTask, IntentValidationResult
 
@@ -22,7 +21,7 @@ def tasks(db):
 def populate_results(tasks):
     """Populate intent validation results."""
     t1, t2 = tasks
-    
+
     # 1 passing
     IntentValidationResult.objects.create(
         task=t1,
@@ -32,7 +31,7 @@ def populate_results(tasks):
         drift_score=85,
         passed=True,
     )
-    
+
     # 1 failing
     IntentValidationResult.objects.create(
         task=t2,
@@ -41,7 +40,7 @@ def populate_results(tasks):
         opportunity_score=70,
         drift_score=65,
         passed=False,
-        failure_reasons=["Hardcoded test", "Bad naming convention"]
+        failure_reasons=["Hardcoded test", "Bad naming convention"],
     )
 
 
@@ -50,9 +49,9 @@ def test_validation_stats_command_text(populate_results):
     """Test text output of validation stats."""
     out = StringIO()
     call_command("validation_stats", stdout=out)
-    
+
     output = out.getvalue()
-    
+
     assert "Intent Validation Stats" in output
     assert "Total Evaluations: 2" in output
     assert "Pass Rate: 50.0%" in output
@@ -65,9 +64,9 @@ def test_validation_stats_command_json(populate_results):
     """Test JSON output of validation stats."""
     out = StringIO()
     call_command("validation_stats", format="json", stdout=out)
-    
+
     data = json.loads(out.getvalue())
-    
+
     assert data["total_evaluations"] == 2
     assert data["passed"] == 1
     assert data["failed"] == 1
@@ -81,5 +80,5 @@ def test_validation_stats_command_empty():
     """Test stats with no data."""
     out = StringIO()
     call_command("validation_stats", stdout=out)
-    
+
     assert "No validation results found" in out.getvalue()

@@ -34,10 +34,10 @@ test:
 	$(PYTHON) -m pytest -m "not demo"
 
 lint:
-	ruff check spectrace/ tests/ spectrace-flows/
+	ruff check spectrace/ spectrace-flows/
 
 format:
-	ruff format --check spectrace/ tests/ spectrace-flows/
+	ruff format --check spectrace/ spectrace-flows/
 
 check: lint format test
 

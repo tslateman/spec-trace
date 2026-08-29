@@ -27,7 +27,6 @@ from spectrace_flows.scenario_registry import (
 )
 from spectrace_flows.types import VerificationCheck
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

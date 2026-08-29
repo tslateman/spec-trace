@@ -134,11 +134,7 @@ Examples:
     # Filter by audience if specified
     if args.audience:
         term = args.audience.lower()
-        demos = [
-            d
-            for d in demos
-            if any(term in a.lower() for a in d.get("audience", []))
-        ]
+        demos = [d for d in demos if any(term in a.lower() for a in d.get("audience", []))]
         if not demos:
             print(f"No demos found for audience matching '{args.audience}'")
             sys.exit(1)

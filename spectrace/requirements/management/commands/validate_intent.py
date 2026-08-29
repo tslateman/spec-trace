@@ -6,7 +6,7 @@ import sys
 
 from django.core.management.base import BaseCommand, CommandError
 
-from requirements.intent_validator import record_validation, ValidationError
+from requirements.intent_validator import ValidationError, record_validation
 
 
 class Command(BaseCommand):
@@ -77,7 +77,7 @@ class Command(BaseCommand):
             self.stdout.write(f"  Strategic: {result.strategic_score}")
             self.stdout.write(f"  Opportunity: {result.opportunity_score}")
             self.stdout.write(f"  Drift: {result.drift_score}")
-            
+
             if not result.passed and result.failure_reasons:
                 self.stdout.write("\nFailure Reasons:")
                 for reason in result.failure_reasons:

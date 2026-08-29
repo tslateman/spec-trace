@@ -1,10 +1,9 @@
 """Tests for intent validation logic."""
 
 import pytest
-from django.core.management import call_command
 
-from requirements.intent_validator import record_validation, ValidationError
-from requirements.models import AgentTask, IntentValidationResult
+from requirements.intent_validator import ValidationError, record_validation
+from requirements.models import AgentTask
 
 
 @pytest.fixture
@@ -24,11 +23,11 @@ def test_record_validation_success(task):
         "strategic_score": 85,
         "opportunity_score": 90,
         "drift_score": 95,
-        "failure_reasons": []
+        "failure_reasons": [],
     }
-    
+
     result = record_validation(task.external_id, "abc1234", eval_data)
-    
+
     assert result.task == task
     assert result.commit_sha == "abc1234"
     assert result.strategic_score == 85
@@ -44,7 +43,7 @@ def test_record_validation_auto_fail_threshold(task):
         "opportunity_score": 90,
         "drift_score": 95,
     }
-    
+
     result = record_validation(task.external_id, "abc1234", eval_data)
     assert result.passed is False
 
@@ -57,9 +56,9 @@ def test_record_validation_explicit_fail(task):
         "opportunity_score": 90,
         "drift_score": 90,
         "passed": False,
-        "failure_reasons": ["Hardcoded a password"]
+        "failure_reasons": ["Hardcoded a password"],
     }
-    
+
     result = record_validation(task.external_id, "abc1234", eval_data)
     assert result.passed is False
     assert "Hardcoded a password" in result.failure_reasons
@@ -73,6 +72,6 @@ def test_record_validation_invalid_task():
         "opportunity_score": 90,
         "drift_score": 90,
     }
-    
+
     with pytest.raises(ValidationError, match="Task not found"):
         record_validation("NONEXISTENT", "abc1234", eval_data)

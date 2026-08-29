@@ -8,10 +8,11 @@ Demonstrates:
 - Async tests for concurrent uploads
 """
 
-import pytest
 import asyncio
-from conftest import MockDocument, MockDocumentProcessor
 
+import pytest
+
+from conftest import MockDocument
 
 # =============================================================================
 # DOC-ING-001: Ingestion Subsystem (parent requirement)
@@ -172,8 +173,7 @@ def test_gps_extraction_from_exif(processor, sample_jpeg):
 async def test_concurrent_file_validation(processor):
     """Validate multiple files can be processed concurrently."""
     documents = [
-        MockDocument(f"doc_{i}.pdf", b"content", "application/pdf", 1024)
-        for i in range(5)
+        MockDocument(f"doc_{i}.pdf", b"content", "application/pdf", 1024) for i in range(5)
     ]
 
     async def validate_async(doc):

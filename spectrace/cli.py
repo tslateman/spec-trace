@@ -513,27 +513,27 @@ def invariants(fix, format, check, strict):
 # ---------------------------------------------------------------------------
 
 
-@cli.command(hidden=True)
+@cli.command("coverage", hidden=True)
 @click.option("--format", type=click.Choice(["text", "json"]), default="text")
-def coverage(format):
+def deprecated_coverage(format):
     click.secho("DEPRECATED: Use 'st specs coverage' instead.", fg="yellow", err=True)
     _run("spec_coverage", format=format)
 
 
-@cli.command(hidden=True)
+@cli.command("risks", hidden=True)
 @click.option("--format", type=click.Choice(["text", "json"]), default="text")
-def risks(format):
+def deprecated_risks(format):
     click.secho("DEPRECATED: No longer supported as top-level.", fg="yellow", err=True)
     _run("detect_integration_risks", format=format)
 
 
-@cli.command(hidden=True)
+@cli.command("impact", hidden=True)
 @click.argument("base_ref")
 @click.argument("head_ref")
 @click.option("--format", type=click.Choice(["text", "json", "md"]), default="text")
 @click.option("--no-hierarchy", is_flag=True, default=False)
 @click.option("--spec-dir", default="specs")
-def impact(base_ref, head_ref, format, no_hierarchy, spec_dir):
+def deprecated_impact(base_ref, head_ref, format, no_hierarchy, spec_dir):
     click.secho("DEPRECATED: Use 'st specs impact' instead.", fg="yellow", err=True)
     _run(
         "impact_analysis",
@@ -546,13 +546,13 @@ def impact(base_ref, head_ref, format, no_hierarchy, spec_dir):
     )
 
 
-@cli.command(hidden=True)
+@cli.command("conflicts", hidden=True)
 @click.option("--min-runs", type=int, default=10)
 @click.option("--min-overlap", type=int, default=5)
 @click.option("--latest", is_flag=True, default=False)
 @click.option("--alert", is_flag=True, default=False)
 @click.option("--dry-run", is_flag=True, default=False)
-def conflicts(min_runs, min_overlap, latest, alert, dry_run):
+def deprecated_conflicts(min_runs, min_overlap, latest, alert, dry_run):
     click.secho("DEPRECATED: Use 'st results conflicts' instead.", fg="yellow", err=True)
     _run(
         "detect_conflicts",
@@ -564,7 +564,7 @@ def conflicts(min_runs, min_overlap, latest, alert, dry_run):
     )
 
 
-@cli.command(hidden=True)
+@cli.command("drift", hidden=True)
 @click.option("--tests", type=str, default=None)
 @click.option("--specs", type=str, default=None)
 @click.option("--format", type=click.Choice(["text", "json"]), default="text")
@@ -572,7 +572,7 @@ def conflicts(min_runs, min_overlap, latest, alert, dry_run):
     "--check", type=click.Choice(["all", "unmarked", "stale", "orphan", "drift"]), default="all"
 )
 @click.option("--strict", is_flag=True, default=False)
-def drift(tests, specs, format, check, strict):
+def deprecated_drift(tests, specs, format, check, strict):
     click.secho("DEPRECATED: Use 'st specs drift' instead.", fg="yellow", err=True)
     _run(
         "detect_drift",
@@ -584,7 +584,7 @@ def drift(tests, specs, format, check, strict):
     )
 
 
-@cli.command(hidden=True)
+@cli.command("invariants", hidden=True)
 @click.option("--fix", is_flag=True, default=False)
 @click.option("--format", type=click.Choice(["text", "json"]), default="text")
 @click.option(
@@ -607,18 +607,18 @@ def drift(tests, specs, format, check, strict):
     default="all",
 )
 @click.option("--strict", is_flag=True, default=False)
-def invariants(fix, format, check, strict):
+def deprecated_invariants(fix, format, check, strict):
     click.secho("DEPRECATED: Use 'st results invariants' instead.", fg="yellow", err=True)
     _run("check_invariants", fix=fix, format=format, check=check, strict=strict)
 
 
-@cli.command(hidden=True)
+@cli.command("validate", hidden=True)
 @click.argument("links_file")
 @click.option("--strict", is_flag=True, default=False)
 @click.option("--format", type=click.Choice(["text", "json"]), default="text")
 @click.option("--require-coverage", multiple=True)
 @click.option("--check-high-risk", is_flag=True, default=False)
-def validate(links_file, strict, format, require_coverage, check_high_risk):
+def deprecated_validate(links_file, strict, format, require_coverage, check_high_risk):
     click.secho("DEPRECATED: Use 'st results verify' instead.", fg="yellow", err=True)
     _run(
         "validate_links",
@@ -635,32 +635,32 @@ def agent():
     pass
 
 
-@agent.command()
+@agent.command("register")
 @click.argument("agent_id")
 @click.option("--role", required=True, type=click.Choice(["planner", "coder", "reviewer"]))
 @click.option("--config", default="{}", help="JSON config string")
 @click.option("--format", type=click.Choice(["text", "json"]), default="text")
-def register(agent_id, role, config, format):
+def deprecated_register(agent_id, role, config, format):
     click.secho("DEPRECATED: Use 'st tasks register' instead.", fg="yellow", err=True)
     _run("agent_register", agent_id, role=role, config=config, format=format)
 
 
-@agent.command()
+@agent.command("tasks")
 @click.option("--status", type=str, default=None)
 @click.option("--sprint", type=int, default=None)
 @click.option("--agent", type=str, default=None)
 @click.option("--format", type=click.Choice(["text", "json"]), default="text")
-def tasks(status, sprint, agent, format):
+def deprecated_tasks(status, sprint, agent, format):
     click.secho("DEPRECATED: Use 'st tasks list' instead.", fg="yellow", err=True)
     _run("agent_tasks", status=status, sprint=sprint, agent=agent, format=format)
 
 
-@agent.command()
+@agent.command("claim")
 @click.argument("task_id")
 @click.option("--agent", required=True)
 @click.option("--lease-minutes", type=int, default=30)
 @click.option("--format", type=click.Choice(["text", "json"]), default="text")
-def claim(task_id, agent, lease_minutes, format):
+def deprecated_claim(task_id, agent, lease_minutes, format):
     click.secho("DEPRECATED: Use 'st tasks claim' instead.", fg="yellow", err=True)
     _run(
         "agent_claim",
@@ -671,21 +671,21 @@ def claim(task_id, agent, lease_minutes, format):
     )
 
 
-@agent.command()
+@agent.command("start")
 @click.argument("task_id")
 @click.option("--agent", required=True)
 @click.option("--format", type=click.Choice(["text", "json"]), default="text")
-def start(task_id, agent, format):
+def deprecated_start(task_id, agent, format):
     click.secho("DEPRECATED: Use 'st tasks start' instead.", fg="yellow", err=True)
     _run("agent_start", task_id, agent=agent, format=format)
 
 
-@agent.command()
+@agent.command("submit")
 @click.argument("task_id")
 @click.option("--agent", required=True)
 @click.option("--commit-sha", required=True)
 @click.option("--format", type=click.Choice(["text", "json"]), default="text")
-def submit(task_id, agent, commit_sha, format):
+def deprecated_submit(task_id, agent, commit_sha, format):
     click.secho("DEPRECATED: Use 'st tasks complete' instead.", fg="yellow", err=True)
     _run(
         "agent_submit",
@@ -696,7 +696,7 @@ def submit(task_id, agent, commit_sha, format):
     )
 
 
-@agent.command()
+@agent.command("review")
 @click.argument("task_id")
 @click.option("--reviewer", required=True)
 @click.option(
@@ -706,7 +706,7 @@ def submit(task_id, agent, commit_sha, format):
 @click.option("--blocking-issues", multiple=True)
 @click.option("--suggestions", multiple=True)
 @click.option("--format", type=click.Choice(["text", "json"]), default="text")
-def review(task_id, reviewer, decision, feedback, blocking_issues, suggestions, format):
+def deprecated_review(task_id, reviewer, decision, feedback, blocking_issues, suggestions, format):
     click.secho("DEPRECATED: Use 'st tasks review' instead.", fg="yellow", err=True)
     _run(
         "agent_review",
@@ -720,10 +720,10 @@ def review(task_id, reviewer, decision, feedback, blocking_issues, suggestions, 
     )
 
 
-@agent.command()
+@agent.command("merge")
 @click.argument("task_id")
 @click.option("--format", type=click.Choice(["text", "json"]), default="text")
-def merge(task_id, format):
+def deprecated_merge(task_id, format):
     click.secho("DEPRECATED: Use 'st tasks merge' instead.", fg="yellow", err=True)
     _run("agent_merge", task_id, format=format)
 
@@ -731,7 +731,7 @@ def merge(task_id, format):
 @agent.command("expire-leases")
 @click.option("--dry-run", is_flag=True, default=False)
 @click.option("--format", type=click.Choice(["text", "json"]), default="text")
-def expire_leases(dry_run, format):
+def deprecated_expire_leases(dry_run, format):
     click.secho("DEPRECATED: Use 'st tasks expire-leases' instead.", fg="yellow", err=True)
     _run("expire_leases", dry_run=dry_run, format=format)
 

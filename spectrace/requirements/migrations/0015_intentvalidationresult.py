@@ -5,29 +5,65 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('requirements', '0014_add_risk_level_field'),
+        ("requirements", "0014_add_risk_level_field"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='IntentValidationResult',
+            name="IntentValidationResult",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('commit_sha', models.CharField(help_text='The commit SHA or diff hash evaluated', max_length=40)),
-                ('strategic_score', models.IntegerField(help_text='Alignment with global system health')),
-                ('opportunity_score', models.IntegerField(help_text='Efficiency and lack of over-engineering')),
-                ('drift_score', models.IntegerField(help_text='Adherence to FRET and spec criteria')),
-                ('passed', models.BooleanField(help_text='Did this evaluation pass the required thresholds?')),
-                ('failure_reasons', models.JSONField(default=list, help_text='List of architectural or FRET violations')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('task', models.ForeignKey(help_text='The task that was validated', on_delete=django.db.models.deletion.CASCADE, related_name='validations', to='requirements.agenttask')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                    ),
+                ),
+                (
+                    "commit_sha",
+                    models.CharField(
+                        help_text="The commit SHA or diff hash evaluated", max_length=40
+                    ),
+                ),
+                (
+                    "strategic_score",
+                    models.IntegerField(help_text="Alignment with global system health"),
+                ),
+                (
+                    "opportunity_score",
+                    models.IntegerField(help_text="Efficiency and lack of over-engineering"),
+                ),
+                (
+                    "drift_score",
+                    models.IntegerField(help_text="Adherence to FRET and spec criteria"),
+                ),
+                (
+                    "passed",
+                    models.BooleanField(
+                        help_text="Did this evaluation pass the required thresholds?"
+                    ),
+                ),
+                (
+                    "failure_reasons",
+                    models.JSONField(
+                        default=list, help_text="List of architectural or FRET violations"
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "task",
+                    models.ForeignKey(
+                        help_text="The task that was validated",
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="validations",
+                        to="requirements.agenttask",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Intent Validation Result',
-                'verbose_name_plural': 'Intent Validation Results',
-                'ordering': ['-created_at'],
+                "verbose_name": "Intent Validation Result",
+                "verbose_name_plural": "Intent Validation Results",
+                "ordering": ["-created_at"],
             },
         ),
     ]

@@ -30,9 +30,9 @@ from requirements.models import Requirement
 
 def banner(text: str) -> None:
     """Print a section banner."""
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"  {text}")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
     sys.stdout.flush()
 
 
@@ -124,12 +124,14 @@ def step_3_extract_links() -> None:
             test_name = link["test_function"]
             if link["test_class"]:
                 test_name = f"{link['test_class']}.{test_name}"
-            reason = f' ({link["reason"]})' if link["reason"] else ""
+            reason = f" ({link['reason']})" if link["reason"] else ""
             print(f"    - {test_name}{reason}")
 
-    print(f"\nSummary: {data['summary']['total_links']} links, "
-          f"{data['summary']['unique_tests']} tests, "
-          f"{data['summary']['unique_requirements']} requirements")
+    print(
+        f"\nSummary: {data['summary']['total_links']} links, "
+        f"{data['summary']['unique_tests']} tests, "
+        f"{data['summary']['unique_requirements']} requirements"
+    )
 
 
 def step_4_run_tests() -> None:
@@ -164,10 +166,10 @@ def step_5_summary() -> None:
 
 def main() -> None:
     """Run the full demo."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("  SpecTrace Demo")
     print("  Requirements Traceability System")
-    print("="*60)
+    print("=" * 60)
 
     step_1_parse_specs()
     step_2_show_requirements()

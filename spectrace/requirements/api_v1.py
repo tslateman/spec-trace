@@ -3,22 +3,19 @@ import logging
 from pathlib import Path
 
 from django.conf import settings
-from django.http import JsonResponse
 from django.db.models import Count, Q
+from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
-from django.core.exceptions import ValidationError
 
 from requirements.models import (
     AgentTask,
-    AgentTaskStatus,
     InAppValidation,
     InAppValidationRun,
-    InAppValidationResult,
     Requirement,
     TestRequirementLink,
 )
-from requirements.services.agent_tasks import claim_task, submit_for_review, TransitionError
+from requirements.services.agent_tasks import TransitionError, claim_task, submit_for_review
 from requirements.validation_runs import (
     build_run_comparison,
     get_adjacent_runs,
@@ -120,7 +117,7 @@ def claim_task_view(request, task_id):
         return _success_response(result.to_dict())
     except TransitionError as e:
         return _error_response(str(e), code=e.code)
-    except Exception as e:
+    except Exception:
         logger.exception("Error claiming task")
         return _error_response("Internal server error", "internal_error", status=500)
 
@@ -144,14 +141,14 @@ def complete_task_view(request, task_id):
         return _success_response(result.to_dict())
     except TransitionError as e:
         return _error_response(str(e), code=e.code)
-    except Exception as e:
+    except Exception:
         logger.exception("Error completing task")
         return _error_response("Internal server error", "internal_error", status=500)
 
 
 @require_http_methods(["GET"])
 def spec_context_view(request, external_id):
-    from requirements.models import Requirement, TestRequirementLink
+    from requirements.models import Requirement
 
     # Retrieve the Requirement for context
     try:
@@ -311,7 +308,7 @@ def specs_impact_view(request):
 @require_http_methods(["GET"])
 def list_conflicts_view(request):
     """List conflicts with filtering and pagination."""
-    from requirements.models import ConflictLog, ConflictConfidence
+    from requirements.models import ConflictConfidence, ConflictLog
 
     try:
         limit = int(request.GET.get("limit", 25))
@@ -438,6 +435,7 @@ def get_conflict_view(request, conflict_id):
 def resolve_conflict_view(request, conflict_id):
     """Mark a conflict as resolved."""
     from django.utils import timezone
+
     from requirements.models import ConflictLog
 
     try:
