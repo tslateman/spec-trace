@@ -311,6 +311,16 @@ Example in CI pipeline:
 - [ROADMAP.md](ROADMAP.md) — what's next, in priority order
 - [CHANGELOG.md](CHANGELOG.md) — milestone history, v1 through today
 
+The changelog's Unreleased section is generated from the commit log:
+
+```bash
+make changelog                              # Regenerate before pushing
+python scripts/changelog.py check           # Fail when it is stale (CI gate)
+python scripts/changelog.py release v11     # Promote Unreleased to a version
+```
+
+`make install-dev` installs a pre-push hook that runs the check.
+
 ## License
 
 MIT

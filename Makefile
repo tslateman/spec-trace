@@ -1,4 +1,4 @@
-.PHONY: help venv install install-dev test lint format check migrate makemigrations shell run clean setup demo demos
+.PHONY: help venv install install-dev test lint format check changelog migrate makemigrations shell run clean setup demo demos
 
 # Use venv Python if it exists, otherwise fall back to system python
 PYTHON := $(shell [ -f .venv/bin/python ] && echo .venv/bin/python || echo python)
@@ -19,6 +19,7 @@ help:
 	@echo "  format          Check ruff formatting"
 	@echo "  check           Run lint + format + test (matches CI)"
 	@echo "  demos           List all available demos"
+	@echo "  changelog       Regenerate the Unreleased section of CHANGELOG.md"
 
 venv:
 	@test -d .venv || uv venv
@@ -40,6 +41,9 @@ format:
 	ruff format --check spectrace/ spectrace-flows/
 
 check: lint format test
+
+changelog:
+	$(PYTHON) scripts/changelog.py update
 
 migrate:
 	$(PYTHON) spectrace/manage.py migrate

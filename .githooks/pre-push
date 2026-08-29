@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Reject a push whose commits are missing from CHANGELOG.md's Unreleased section.
+#
+# Install: git config core.hooksPath .githooks
+# Bypass:  git push --no-verify
+
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+python3 "$repo_root/scripts/changelog.py" check
