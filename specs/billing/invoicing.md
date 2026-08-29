@@ -5,6 +5,9 @@ status: active
 priority: medium
 tags: [billing, finance]
 parent: REQ-BILL-001
+complies_with:
+  - DEC-BILL-001@1
+  - DEC-BILL-002@1
 ---
 
 # Usage-Based Invoicing
