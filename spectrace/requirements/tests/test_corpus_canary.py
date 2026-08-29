@@ -17,6 +17,7 @@ The planted defects:
 | Two applicable entries that contradict | conflicting_obligations on CONFLICT-A |
 | Two versions of one entry in one snapshot | one applicable version, one coverage row |
 | Undeclared check-id rename across versions | CorpusCheckLineageError from the parser |
+| Citation of a version above the newest | UnknownCitationError naming CANARY-STD-STALE@9 |
 
 The fixtures live under the test tree on purpose. `parse_corpus corpus/` and a
 real review must never see them, and `TestFixtureInvisibility` asserts that
@@ -34,10 +35,14 @@ from requirements.constants import (
     FINDING_UNADDRESSED_OBLIGATION,
     FINDING_UNMET_CHECK,
 )
-from requirements.models import CorpusEntryVersion, Requirement
+from requirements.models import CorpusEntryVersion, Requirement, SpecReview
 from requirements.parser import SpecParser
 from requirements.services.corpus_parser import CorpusCheckLineageError, CorpusParser
-from requirements.services.corpus_review import review_as_dict, review_target
+from requirements.services.corpus_review import (
+    UnknownCitationError,
+    review_as_dict,
+    review_target,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 REAL_CORPUS_DIR = REPO_ROOT / "corpus"
@@ -49,8 +54,10 @@ CANARY_CORPUS_V2 = CANARY_DIR / "corpus_v2"
 CANARY_CORPUS_UNDECLARED_RENAME = CANARY_DIR / "corpus_undeclared_rename"
 CANARY_SPECS_DIR = CANARY_DIR / "specs"
 CANARY_SPEC = CANARY_SPECS_DIR / "canary_spec.md"
+CANARY_UNSTORED_VERSION_SPEC = CANARY_SPECS_DIR / "canary_unstored_version_spec.md"
 
 CANARY_REQUIREMENT_ID = "REQ-CANARY-001"
+CANARY_UNSTORED_REQUIREMENT_ID = "REQ-CANARY-002"
 CANARY_ENTRY_PREFIX = "CANARY-"
 
 PLANTED_FINDINGS = {
@@ -167,6 +174,34 @@ class TestPlantedVersionBump:
         assert [(f["finding_type"], f["entry_version"]) for f in findings] == [
             (FINDING_STALE_CITATION, 2)
         ]
+
+
+class TestPlantedUnstoredVersion:
+    """The citation that reads as compliant: a version above every stored one."""
+
+    def test_review_target__rejects_the_planted_citation_above_the_newest_version(
+        self, canary_corpus, canary_requirement
+    ):
+        """CANARY-STD-STALE holds 1 and 2, and the planted spec cites 9."""
+        with pytest.raises(UnknownCitationError, match=r"CANARY-STD-STALE@9.*holds versions 1, 2"):
+            review_target(str(CANARY_UNSTORED_VERSION_SPEC))
+
+    def test_review_target__writes_no_review_for_the_planted_unstored_version(
+        self, canary_corpus, canary_requirement
+    ):
+        """The planted spec records nothing, so no ledger row claims the obligation was met."""
+        with pytest.raises(UnknownCitationError):
+            review_target(str(CANARY_UNSTORED_VERSION_SPEC))
+
+        assert not SpecReview.objects.filter(
+            requirement__external_id=CANARY_UNSTORED_REQUIREMENT_ID
+        ).exists()
+
+    def test_canary_corpus__holds_no_version_the_planted_spec_cites(self, canary_corpus):
+        """The plant is only a plant while version 9 stays absent."""
+        assert not CorpusEntryVersion.objects.filter(
+            entry__external_id="CANARY-STD-STALE", version=9
+        ).exists()
 
 
 class TestPlantedUndeclaredRename:

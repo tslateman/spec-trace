@@ -14,6 +14,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 CHECKS = REPO_ROOT / "spectrace/requirements/services/corpus_checks.py"
 MATCHER = REPO_ROOT / "spectrace/requirements/services/corpus_matcher.py"
 PARSER = REPO_ROOT / "spectrace/requirements/services/corpus_parser.py"
+REVIEW = REPO_ROOT / "spectrace/requirements/services/corpus_review.py"
 CANARY = "spectrace/requirements/tests/test_corpus_canary.py"
 
 MUTATIONS = [
@@ -60,6 +61,13 @@ MUTATIONS = [
         "        held = highest.get(key)\n"
         "        if held is None or version.version > held.version:\n"
         "            highest[key] = version",
+    ),
+    (
+        "unstored version: citation above the newest accepted",
+        REVIEW,
+        "    parsed_citations = parse_citations(citations)\n"
+        "    assert_citations_within_corpus(parsed_citations)\n",
+        "    parsed_citations = parse_citations(citations)\n",
     ),
     (
         "check-id lineage: undeclared rename accepted",

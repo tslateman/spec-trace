@@ -128,6 +128,22 @@ def applicable_entry(make_entry_version):
 
 
 @pytest.fixture
+def sec_lineage(make_entry_version):
+    """STD-SEC-001 at versions 3 and 4, the lineage the live corpus holds.
+
+    Version 4 declares no `supersedes`, matching `corpus/security/`, so the
+    stale path runs on the version comparison rather than on supersession.
+    """
+    make_entry_version("STD-SEC-001", applies_to={"tags": ["platform"]}, version=3)
+    return make_entry_version(
+        "STD-SEC-001",
+        applies_to={"tags": ["platform"]},
+        version=4,
+        enforcement=CorpusEnforcement.BLOCKING,
+    )
+
+
+@pytest.fixture
 def blocking_entry(make_entry_version):
     """One entry version whose owner marked it blocking."""
     return make_entry_version(
@@ -382,6 +398,86 @@ class TestReviewRequirement:
         assert SpecReview.objects.count() == 0
         assert ReviewCoverage.objects.count() == 0
         assert ReviewFinding.objects.count() == 0
+
+    def test_review_requirement__raises_when_citation_names_version_above_the_newest(
+        self, platform_requirement, sec_lineage
+    ):
+        """A version digit typed above every stored version stops the review."""
+        with pytest.raises(UnknownCitationError, match=r"STD-SEC-001@9.*holds versions 3, 4"):
+            review_requirement(
+                platform_requirement,
+                current_snapshot(),
+                ("STD-SEC-001@9",),
+                "specs/platform/tenant_isolation.md",
+            )
+
+    def test_review_requirement__writes_nothing_when_a_cited_version_was_never_stored(
+        self, platform_requirement, sec_lineage
+    ):
+        """The unstored version leaves no ledger, exactly as an unknown entry does."""
+        with pytest.raises(UnknownCitationError):
+            review_requirement(
+                platform_requirement,
+                current_snapshot(),
+                ("STD-SEC-001@9",),
+                "specs/platform/tenant_isolation.md",
+            )
+
+        assert SpecReview.objects.count() == 0
+        assert ReviewCoverage.objects.count() == 0
+        assert ReviewFinding.objects.count() == 0
+
+    def test_review_requirement__records_stale_citation_for_a_stored_older_version(
+        self, platform_requirement, sec_lineage
+    ):
+        """Citing the superseded version of the same lineage still faults as stale."""
+        review = review_requirement(
+            platform_requirement,
+            current_snapshot(),
+            ("STD-SEC-001@3",),
+            "specs/platform/tenant_isolation.md",
+        )
+
+        finding = review.findings.get()
+        assert finding.finding_type == "stale_citation"
+        assert finding.entry_version.version == 4
+
+    def test_review_requirement__records_stale_citation_for_a_version_bumped_in_place(
+        self, platform_requirement, make_entry_version
+    ):
+        """An older version with no row left is stale, not unknown.
+
+        `corpus/security/tenant-isolation.md` was bumped from 3 to 4 in place, so
+        a corpus imported from files alone holds 4 and nothing else while
+        `specs/platform/tenant_isolation.md` still cites 3. That citation faults
+        as stale; only a version above 4 is unknown.
+        """
+        make_entry_version("STD-SEC-001", applies_to={"tags": ["platform"]}, version=4)
+
+        review = review_requirement(
+            platform_requirement,
+            current_snapshot(),
+            ("STD-SEC-001@3",),
+            "specs/platform/tenant_isolation.md",
+        )
+
+        finding = review.findings.get()
+        assert finding.finding_type == "stale_citation"
+        assert finding.entry_version.version == 4
+
+    def test_review_requirement__records_no_citation_finding_for_the_current_version(
+        self, platform_requirement, sec_lineage
+    ):
+        """Citing the newest stored version stays clean."""
+        review = review_requirement(
+            platform_requirement,
+            current_snapshot(),
+            ("STD-SEC-001@4",),
+            "specs/platform/tenant_isolation.md",
+        )
+
+        assert review.findings.count() == 0
+        assert review.coverage.get().cited is True
 
     def test_review_requirement__pins_the_snapshot_it_ran_against(
         self, platform_requirement, applicable_entry

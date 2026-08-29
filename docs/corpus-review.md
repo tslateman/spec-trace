@@ -303,9 +303,19 @@ Error: complies_with entry 'STD-SEC-002' must look like ENTRY-ID@VERSION, e.g. S
 
 A citation without a version is rejected before any review runs.
 
-A citation naming a version **higher** than any that exists — `STD-SEC-001@9`
-when the corpus holds `@4` — produces no finding at all and no error, provided
-the entry itself applies. See [Known gaps](#known-gaps).
+A citation naming a version **above** every version the entry holds aborts the
+same way, and the message names the versions that exist:
+
+```bash
+Error: spec cites STD-SEC-001@9, which the corpus does not contain; STD-SEC-001 holds versions 3, 4
+```
+
+An unknown entry and a version digit typed too high are one authoring mistake,
+so they get one treatment. A cited version at or **below** the newest is a
+different case and stays a `stale_citation` finding even when no row holds it:
+bumping a corpus file in place leaves no row for the version it replaced, and
+`specs/platform/tenant_isolation.md` citing `STD-SEC-001@3` is stale rather than
+unknown.
 
 A spec file is reviewed atomically. If any one of its requirements raises on a
 citation, the file records no review at all rather than half a ledger.
@@ -338,11 +348,6 @@ type.
 
 ## Known gaps
 
-- A `complies_with` citation naming a version **higher** than the applicable one
-  produces no finding. `STD-SEC-001@9` against a corpus holding `@4` is silently
-  accepted, because the citation rules test `citation.version < item.version`
-  and supersession, and neither holds. A typo in the version digit therefore
-  reads as a satisfied obligation.
 - Nothing scales review depth to blast radius. `risk_level` and the impact
   analyzer exist and the review path does not read them.
 

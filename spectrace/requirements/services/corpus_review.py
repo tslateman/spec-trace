@@ -38,6 +38,7 @@ from requirements.models import (
 )
 from requirements.parser import SpecParser
 from requirements.services.corpus_checks import (
+    Citation,
     finding_identifier,
     parse_citations,
     review_findings,
@@ -79,6 +80,42 @@ def read_citations(spec_path: Path) -> tuple[str, ...]:
     )
 
 
+def assert_citations_within_corpus(citations: Sequence[Citation]) -> None:
+    """Raise UnknownCitationError for a citation naming a version the corpus outranks.
+
+    Citing an unknown entry already aborts the review, and citing a version
+    above every version that entry holds is the same authoring mistake: nothing
+    downstream can fault it. The citation rules fault a citation for naming an
+    older version than the one that applies and never for naming a newer one, so
+    `STD-SEC-001@9` where the corpus holds 3 and 4 passes unexamined and the
+    obligation reads as met.
+
+    A cited version at or below the newest is left alone even when no row holds
+    it. That citation is not silently accepted — it produces `stale_citation`
+    naming the version that applies — and a corpus file bumped in place keeps no
+    row for the version it replaced, so `specs/platform/tenant_isolation.md`
+    citing `STD-SEC-001@3` is the ordinary stale case rather than a typo.
+
+    The message names the entry, the cited version, and the versions the corpus
+    holds, which is what an author fixing the digit needs.
+    """
+    stored: dict[str, set[int]] = {}
+    for entry_id, version in CorpusEntryVersion.objects.filter(
+        entry__external_id__in={citation.entry_id for citation in citations}
+    ).values_list("entry__external_id", "version"):
+        stored.setdefault(entry_id, set()).add(version)
+
+    for citation in citations:
+        held = stored.get(citation.entry_id, set())
+        if held and citation.version <= max(held):
+            continue
+        rendered = f"versions {', '.join(str(version) for version in sorted(held))}"
+        raise UnknownCitationError(
+            f"spec cites {citation}, which the corpus does not contain; "
+            f"{citation.entry_id} holds {rendered if held else 'no versions'}"
+        )
+
+
 def resolve_target(target: str) -> ReviewTarget:
     """Resolve a spec path or a requirement external id into a review target.
 
@@ -116,12 +153,19 @@ def review_requirement(
 ) -> SpecReview:
     """Run one requirement against one snapshot and persist the whole outcome.
 
+    Every citation is checked against the corpus before anything is evaluated,
+    so a citation naming a version above the newest one raises
+    UnknownCitationError instead of reading as a satisfied obligation.
+
     Writes one SpecReview, one ReviewCoverage row per applicable entry version,
     and one ReviewFinding per rule outcome.
     """
+    parsed_citations = parse_citations(citations)
+    assert_citations_within_corpus(parsed_citations)
+
     applicable = resolve_applicable_entries(requirement, snapshot)
     findings = review_findings(requirement, [item.entry_version for item in applicable], citations)
-    cited_entry_ids = {citation.entry_id for citation in parse_citations(citations)}
+    cited_entry_ids = {citation.entry_id for citation in parsed_citations}
 
     review = SpecReview.objects.create(
         requirement=requirement,
