@@ -659,6 +659,74 @@ class TestEnforcementPosture:
         assert has_blocking_finding(payloads) is False
 
 
+class TestFindingIdentity:
+    """Tests for the version-independent identifier review output cites."""
+
+    def test_review_as_dict__cites_entry_and_check_without_the_version(
+        self, platform_requirement, make_entry_version
+    ):
+        """A check finding is identified by entry and check id, version reported apart."""
+        make_entry_version(
+            "STD-SEC-001",
+            applies_to={"tags": ["platform"]},
+            checks=[CONDITION_CHECK],
+            version=4,
+        )
+        review = review_requirement(
+            platform_requirement,
+            current_snapshot(),
+            ("STD-SEC-001@4",),
+            "specs/platform/tenant_isolation.md",
+        )
+
+        finding = next(
+            row for row in review_as_dict(review)["findings"] if row["check_id"] == "trigger-stated"
+        )
+        assert finding["finding_id"] == "STD-SEC-001#trigger-stated"
+        assert finding["entry_version"] == 4
+
+    def test_review_as_dict__gives_a_check_free_finding_the_entry_id_alone(
+        self, platform_requirement, applicable_entry
+    ):
+        """An unaddressed obligation names no check, so the entry id is the identifier."""
+        review = review_requirement(
+            platform_requirement, current_snapshot(), (), "specs/platform/tenant_isolation.md"
+        )
+
+        finding = review_as_dict(review)["findings"][0]
+        assert finding["finding_type"] == "unaddressed_obligation"
+        assert finding["finding_id"] == "STD-SEC-001"
+
+    def test_review_as_dict__keeps_one_identifier_across_a_version_bump(
+        self, platform_requirement, make_entry_version
+    ):
+        """Bumping the entry that raised a finding leaves the finding id unchanged."""
+        make_entry_version(
+            "STD-SEC-001", applies_to={"tags": ["platform"]}, checks=[CONDITION_CHECK], version=3
+        )
+        earlier = review_requirement(
+            platform_requirement,
+            current_snapshot(),
+            ("STD-SEC-001@3",),
+            "specs/platform/tenant_isolation.md",
+        )
+        make_entry_version(
+            "STD-SEC-001", applies_to={"tags": ["platform"]}, checks=[CONDITION_CHECK], version=4
+        )
+
+        later = review_requirement(
+            platform_requirement,
+            current_snapshot(),
+            ("STD-SEC-001@4",),
+            "specs/platform/tenant_isolation.md",
+        )
+
+        earlier_finding = review_as_dict(earlier)["findings"][0]
+        later_finding = review_as_dict(later)["findings"][0]
+        assert earlier_finding["finding_id"] == later_finding["finding_id"]
+        assert (earlier_finding["entry_version"], later_finding["entry_version"]) == (3, 4)
+
+
 class TestCorpusReviewCommand:
     """Tests for the corpus_review management command."""
 
@@ -704,7 +772,36 @@ class TestCorpusReviewCommand:
         assert "## 📋 SpecTrace Corpus Review" in output
         assert "| Entry | Version | Kind | Enforcement | Cited | Matched by |" in output
         assert "| STD-SEC-001 | 1 | standard | advisory | no |" in output
-        assert "| Type | Entry | Enforcement | Check | Detail |" in output
+        assert "| Type | Finding | Version | Enforcement | Detail |" in output
+        assert "| Unaddressed obligation | STD-SEC-001 | 1 | advisory |" in output
+
+    def test_command__names_the_finding_by_entry_and_check_in_text_output(
+        self, platform_requirement, make_entry_version, spec_file
+    ):
+        """Text output cites the stable identifier and reports the version beside it."""
+        make_entry_version(
+            "STD-SEC-001",
+            applies_to={"tags": ["platform"]},
+            checks=[CONDITION_CHECK],
+            version=4,
+        )
+        out = StringIO()
+
+        call_command("corpus_review", str(spec_file("STD-SEC-001@4")), stdout=out)
+
+        assert "STD-SEC-001#trigger-stated (version 4)" in out.getvalue()
+
+    def test_command__emits_the_finding_identifier_in_json(
+        self, platform_requirement, applicable_entry, spec_file
+    ):
+        """--format json carries finding_id alongside the version it was raised at."""
+        out = StringIO()
+
+        call_command("corpus_review", str(spec_file()), "--format", "json", stdout=out)
+
+        finding = json.loads(out.getvalue())["reviews"][0]["findings"][0]
+        assert finding["finding_id"] == "STD-SEC-001"
+        assert finding["entry_version"] == 1
 
     def test_command__exits_nonzero_when_a_blocking_finding_exists(
         self, platform_requirement, blocking_entry, spec_file
@@ -765,7 +862,7 @@ class TestCorpusReviewCommand:
 
         output = out.getvalue()
         assert "STD-SEC-002@1 [not cited] [blocking]" in output
-        assert "✗ [blocking] Unaddressed obligation: STD-SEC-002@1" in output
+        assert "✗ [blocking] Unaddressed obligation: STD-SEC-002 (version 1)" in output
 
     def test_command__reports_the_posture_in_json_output(
         self, platform_requirement, blocking_entry, spec_file

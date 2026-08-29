@@ -118,11 +118,10 @@ class Command(BaseCommand):
                 self.stdout.write(f"\nFindings ({len(payload['findings'])}):")
                 for finding in payload["findings"]:
                     label = FINDING_LABELS[finding["finding_type"]]
-                    check = f" check '{finding['check_id']}'" if finding["check_id"] else ""
                     self.stdout.write(
                         self.style.ERROR(
-                            f"  ✗ [{finding['enforcement']}] {label}: "
-                            f"{finding['entry_id']}@{finding['entry_version']}{check}"
+                            f"  ✗ [{finding['enforcement']}] {label}: {finding['finding_id']} "
+                            f"(version {finding['entry_version']})"
                         )
                     )
                     self.stdout.write(f"    {finding['detail']}")
@@ -155,14 +154,13 @@ class Command(BaseCommand):
                 continue
             lines.append(f"### Findings ({len(payload['findings'])})")
             lines.append("")
-            lines.append("| Type | Entry | Enforcement | Check | Detail |")
+            lines.append("| Type | Finding | Version | Enforcement | Detail |")
             lines.append("|---|---|---|---|---|")
             for finding in payload["findings"]:
                 label = FINDING_LABELS[finding["finding_type"]]
-                check = finding["check_id"] or "—"
                 lines.append(
-                    f"| {label} | {finding['entry_id']}@{finding['entry_version']} | "
-                    f"{finding['enforcement']} | {check} | {finding['detail']} |"
+                    f"| {label} | {finding['finding_id']} | {finding['entry_version']} | "
+                    f"{finding['enforcement']} | {finding['detail']} |"
                 )
         self.stdout.write("\n".join(lines))
 

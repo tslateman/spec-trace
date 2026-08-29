@@ -103,6 +103,18 @@ class RequirementFacts:
         return cls(external_id=requirement.external_id, fields=values)
 
 
+def finding_identifier(entry_id: str, check_id: str = "") -> str:
+    """The stable id of a finding: the entry id, plus the check id when it has one.
+
+    Written `STD-SEC-001#risk-classified`. The version is reported beside this
+    id and never inside it, so a consumer tracking a finding keeps tracking the
+    same one after the standard is edited. `corpus_parser.validate_check_lineage`
+    is what makes that promise good; `corpus_parser.resolve_check_id` follows a
+    declared rename forward.
+    """
+    return f"{entry_id}#{check_id}" if check_id else entry_id
+
+
 @dataclass(frozen=True)
 class Finding:
     """One deterministic rule outcome, traceable to an entry version."""
@@ -113,6 +125,11 @@ class Finding:
     detail: str
     check_id: str = ""
     entry_version_pk: int | None = None
+
+    @property
+    def finding_id(self) -> str:
+        """The version-independent identifier this finding is cited by."""
+        return finding_identifier(self.entry_id, self.check_id)
 
 
 def parse_citations(values: Iterable[str]) -> tuple[Citation, ...]:

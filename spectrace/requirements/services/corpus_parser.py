@@ -7,11 +7,16 @@ The parser owns two contracts the rest of the milestone rests on:
 2. The `checks` predicate grammar is closed and validated here, at parse time.
    Unknown fields or operators reject the file. Nothing is ever evaluated as an
    expression; the parsed structure is stored for the check evaluator to read.
+3. Check ids are stable across versions. A finding cites `ENTRY-ID#check-id`
+   with no version in it, so a new version that drops or renames a check id
+   raises CorpusCheckLineageError unless the file declares the change —
+   `renamed_from` on the replacing check, or `retired_checks` on the entry.
 """
 
 import hashlib
 import json
 import re
+from collections.abc import Sequence
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -27,6 +32,8 @@ from requirements.models import (
 )
 
 APPLIES_TO_KEYS = frozenset({"tags", "components", "paths", "requirement_ids"})
+
+CHECK_KEYS = frozenset({"id", "assert", "renamed_from"})
 
 CHECK_FIELDS = frozenset(
     {
@@ -70,6 +77,10 @@ class CorpusParseError(Exception):
 
 class CorpusVersionConflict(CorpusParseError):
     """A stored version number was reused for different content."""
+
+
+class CorpusCheckLineageError(CorpusParseError):
+    """A new version dropped or renamed a check id without declaring the change."""
 
 
 def version_payload(
@@ -216,7 +227,12 @@ def _parse_scalar_value(raw: str, entry_id: str, check_id: str, operator: str) -
 
 
 def validate_checks(raw_checks: Any, entry_id: str) -> list[dict[str, Any]]:
-    """Validate and parse the whole `checks` block of an entry."""
+    """Validate and parse the whole `checks` block of an entry.
+
+    A check may carry `renamed_from`, naming the id it held in the previous
+    version. The key is stored on the check, so a consumer holding the old id can
+    follow the rename forward with `resolve_check_id`.
+    """
     if raw_checks is None:
         return []
     if not isinstance(raw_checks, list):
@@ -232,11 +248,11 @@ def validate_checks(raw_checks: Any, entry_id: str) -> list[dict[str, Any]]:
             raise CorpusParseError(
                 f"{entry_id}: check at position {position} must be a mapping with id and assert"
             )
-        unknown = set(raw_check) - {"id", "assert"}
+        unknown = set(raw_check) - CHECK_KEYS
         if unknown:
             raise CorpusParseError(
                 f"{entry_id}: check at position {position} has unknown keys "
-                f"{sorted(unknown)}; only 'id' and 'assert' are allowed"
+                f"{sorted(unknown)}; allowed keys: {', '.join(sorted(CHECK_KEYS))}"
             )
         check_id = raw_check.get("id")
         if not isinstance(check_id, str) or not check_id.strip():
@@ -250,9 +266,48 @@ def validate_checks(raw_checks: Any, entry_id: str) -> list[dict[str, Any]]:
             raise CorpusParseError(f"{entry_id}: check '{check_id}' is missing an assert")
 
         predicate = parse_check_assertion(raw_check["assert"], entry_id, check_id)
-        parsed.append({"id": check_id, "assert": raw_check["assert"].strip(), **predicate})
+        check = {"id": check_id, "assert": raw_check["assert"].strip(), **predicate}
+
+        renamed_from = raw_check.get("renamed_from")
+        if renamed_from is not None:
+            if not isinstance(renamed_from, str) or not renamed_from.strip():
+                raise CorpusParseError(
+                    f"{entry_id}: check '{check_id}' renamed_from must be a non-empty check id, "
+                    f"got {renamed_from!r}"
+                )
+            check["renamed_from"] = renamed_from.strip()
+
+        parsed.append(check)
 
     return parsed
+
+
+def validate_retired_checks(raw_retired: Any, entry_id: str) -> list[str]:
+    """Validate the entry-level `retired_checks` block.
+
+    Each id names a check the previous version defined and this version drops on
+    purpose. An absent block yields [], which forbids dropping anything.
+    """
+    if raw_retired is None:
+        return []
+    if not isinstance(raw_retired, list):
+        raise CorpusParseError(
+            f"{entry_id}: retired_checks must be a list, got {type(raw_retired).__name__}"
+        )
+
+    retired: list[str] = []
+    for position, raw_id in enumerate(raw_retired):
+        if not isinstance(raw_id, str) or not raw_id.strip():
+            raise CorpusParseError(
+                f"{entry_id}: retired_checks entry at position {position} must be a check id, "
+                f"got {raw_id!r}"
+            )
+        retired_id = raw_id.strip()
+        if retired_id in retired:
+            raise CorpusParseError(f"{entry_id}: duplicate retired_checks entry '{retired_id}'")
+        retired.append(retired_id)
+
+    return retired
 
 
 def validate_applies_to(raw_applies_to: Any, entry_id: str) -> dict[str, list[str]]:
@@ -287,6 +342,86 @@ def validate_applies_to(raw_applies_to: Any, entry_id: str) -> dict[str, list[st
             validated[key] = cleaned
 
     return validated
+
+
+def validate_check_lineage(
+    data: dict[str, Any], previous_version: int, previous_checks: Sequence[dict[str, Any]]
+) -> None:
+    """Hold check ids stable from one version of an entry to the next.
+
+    A finding cites `ENTRY-ID#check-id` and carries the version beside it, never
+    inside it, so a check id that disappears breaks every reference to it. This
+    version must therefore account for each id the previous version defined:
+    keep it, replace it with a check declaring `renamed_from`, or name it in
+    `retired_checks`. Silence raises CorpusCheckLineageError.
+    """
+    entry_id = data["external_id"]
+    version = data["version"]
+    previous_ids = {check["id"] for check in previous_checks}
+    current_ids = {check["id"] for check in data["checks"]}
+    renames = {
+        check["renamed_from"]: check["id"] for check in data["checks"] if "renamed_from" in check
+    }
+    retired = set(data["retired_checks"])
+
+    for old_id, new_id in sorted(renames.items()):
+        if old_id not in previous_ids:
+            raise CorpusCheckLineageError(
+                f"{entry_id} version {version}: check '{new_id}' declares renamed_from "
+                f"'{old_id}', which version {previous_version} does not define"
+            )
+        if old_id in current_ids:
+            raise CorpusCheckLineageError(
+                f"{entry_id} version {version}: check '{new_id}' declares renamed_from "
+                f"'{old_id}', which this version still defines as a check of its own"
+            )
+
+    unknown_retired = sorted(retired - previous_ids)
+    if unknown_retired:
+        raise CorpusCheckLineageError(
+            f"{entry_id} version {version}: retired_checks names "
+            f"{_rendered_ids(unknown_retired)}, which version {previous_version} does not define"
+        )
+
+    undeclared = sorted(previous_ids - current_ids - set(renames) - retired)
+    if not undeclared:
+        return
+
+    added = sorted(current_ids - previous_ids - set(renames.values()))
+    if added:
+        raise CorpusCheckLineageError(
+            f"{entry_id} version {version} drops check {_rendered_ids(undeclared)} while adding "
+            f"{_rendered_ids(added)}. Findings cite {entry_id}#{undeclared[0]} without a version, "
+            f"so declare `renamed_from: {undeclared[0]}` on check '{added[0]}', or list "
+            f"{_rendered_ids(undeclared)} under `retired_checks`."
+        )
+
+    raise CorpusCheckLineageError(
+        f"{entry_id} version {version} drops check {_rendered_ids(undeclared)}, which version "
+        f"{previous_version} defines, and declares nothing. Findings cite "
+        f"{entry_id}#{undeclared[0]} without a version, so list {_rendered_ids(undeclared)} under "
+        f"`retired_checks`, or declare `renamed_from: {undeclared[0]}` on the replacing check."
+    )
+
+
+def _rendered_ids(check_ids: Sequence[str]) -> str:
+    return ", ".join(f"'{check_id}'" for check_id in check_ids)
+
+
+def resolve_check_id(entry_id: str, check_id: str) -> str:
+    """The id a check known as `check_id` carries in the newest stored version.
+
+    Follows `renamed_from` declarations forward, so a consumer holding the
+    identifier a finding cited before a rename lands on the current check.
+    """
+    current = check_id
+    for version in CorpusEntryVersion.objects.filter(entry__external_id=entry_id).order_by(
+        "version"
+    ):
+        for check in version.checks:
+            if check.get("renamed_from") == current:
+                current = check["id"]
+    return current
 
 
 def parse_entry_file(file_path: Path) -> dict[str, Any]:
@@ -341,6 +476,14 @@ def parse_entry_file(file_path: Path) -> dict[str, Any]:
     body = post.content.strip()
     applies_to = validate_applies_to(metadata.get("applies_to"), entry_id)
     checks = validate_checks(metadata.get("checks"), entry_id)
+    retired_checks = validate_retired_checks(metadata.get("retired_checks"), entry_id)
+
+    still_defined = sorted({check["id"] for check in checks} & set(retired_checks))
+    if still_defined:
+        raise CorpusParseError(
+            f"{entry_id}: retired_checks names {_rendered_ids(still_defined)}, "
+            f"which this version still defines"
+        )
 
     content_hash = compute_content_hash(
         version_payload(
@@ -365,6 +508,7 @@ def parse_entry_file(file_path: Path) -> dict[str, Any]:
         "content_hash": content_hash,
         "applies_to": applies_to,
         "checks": checks,
+        "retired_checks": retired_checks,
         "enforcement": enforcement,
         "effective_date": effective,
         "supersedes": supersedes,
@@ -406,7 +550,12 @@ class CorpusParser:
 
 
 def import_corpus_entries(entries: list[dict[str, Any]]) -> dict[str, int]:
-    """Write parsed entry dicts to the database, enforcing version immutability."""
+    """Write parsed entry dicts to the database, enforcing version immutability.
+
+    An incoming version with a stored predecessor must account for that
+    predecessor's check ids before anything is written; see
+    `validate_check_lineage`.
+    """
     counts = {"entries_created": 0, "versions_created": 0, "versions_unchanged": 0}
     versions_by_key: dict[tuple[str, int], CorpusEntryVersion] = {}
 
@@ -423,6 +572,10 @@ def import_corpus_entries(entries: list[dict[str, Any]]) -> dict[str, int]:
         )
         if entry_created:
             counts["entries_created"] += 1
+
+        previous = entry.versions.filter(version__lt=data["version"]).order_by("-version").first()
+        if previous is not None:
+            validate_check_lineage(data, previous.version, previous.checks)
 
         stored = entry.versions.filter(version=data["version"]).first()
         if stored is None:

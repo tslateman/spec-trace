@@ -37,7 +37,11 @@ from requirements.models import (
     SpecReviewOutcome,
 )
 from requirements.parser import SpecParser
-from requirements.services.corpus_checks import parse_citations, review_findings
+from requirements.services.corpus_checks import (
+    finding_identifier,
+    parse_citations,
+    review_findings,
+)
 from requirements.services.corpus_matcher import resolve_applicable_entries
 
 
@@ -174,7 +178,11 @@ def review_target(target: str, reviewer: str = "") -> list[SpecReview]:
 
 
 def review_as_dict(review: SpecReview) -> dict:
-    """Serializable form of one persisted review, ordered for stable output."""
+    """Serializable form of one persisted review, ordered for stable output.
+
+    Each finding carries `finding_id`, the version-independent identifier, and
+    reports `entry_version` as a separate field.
+    """
     coverage = review.coverage.select_related("entry_version__entry").order_by(
         "entry_version__entry__external_id", "entry_version__version"
     )
@@ -206,6 +214,9 @@ def review_as_dict(review: SpecReview) -> dict:
         "findings": [
             {
                 "finding_type": finding.finding_type,
+                "finding_id": finding_identifier(
+                    finding.entry_version.entry.external_id, finding.check_id
+                ),
                 "entry_id": finding.entry_version.entry.external_id,
                 "entry_version": finding.entry_version.version,
                 "check_id": finding.check_id,
