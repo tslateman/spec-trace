@@ -1,5 +1,6 @@
 """Requirement model for storing parsed spec requirements."""
 
+import hashlib
 from functools import cached_property
 
 from django.db import models
@@ -1356,9 +1357,7 @@ class IntentValidationResult(models.Model):
         related_name="validations",
         help_text="The task that was validated",
     )
-    commit_sha = models.CharField(
-        max_length=40, help_text="The commit SHA or diff hash evaluated"
-    )
+    commit_sha = models.CharField(max_length=40, help_text="The commit SHA or diff hash evaluated")
 
     # Pillar Scores (0-100)
     strategic_score = models.IntegerField(help_text="Alignment with global system health")
@@ -1381,7 +1380,6 @@ class IntentValidationResult(models.Model):
     def __str__(self):
         status = "Passed" if self.passed else "Failed"
         return f"Validation of {self.task.external_id} ({self.commit_sha[:7]}): {status}"
-
 
 
 # =============================================================================
@@ -1465,3 +1463,339 @@ class WebhookEvent(models.Model):
 
     def __str__(self):
         return f"{self.event_type}.{self.action} from {self.repository} ({self.status})"
+
+
+class CorpusEntryKind(models.TextChoices):
+    """What kind of obligation a corpus entry expresses."""
+
+    STANDARD = "standard", "Standard"
+    DECISION = "decision", "Decision"
+    COMMITMENT = "commitment", "Commitment"
+
+
+class CorpusEntryStatus(models.TextChoices):
+    """Lifecycle state of a corpus entry."""
+
+    ACTIVE = "active", "Active"
+    SUPERSEDED = "superseded", "Superseded"
+    RETIRED = "retired", "Retired"
+
+
+class CorpusEntry(models.Model):
+    """Stable identity for an org standard, decision, or strategy commitment.
+
+    Body text, scope rules, and checks live on CorpusEntryVersion. This model
+    carries only the fields that survive a version bump.
+    """
+
+    external_id = models.CharField(
+        max_length=50,
+        unique=True,
+        db_index=True,
+        help_text="Unique ID from the corpus file (e.g., STD-SEC-001)",
+    )
+    kind = models.CharField(
+        max_length=20,
+        choices=CorpusEntryKind.choices,
+        db_index=True,
+        help_text="Kind of obligation (standard, decision, commitment)",
+    )
+    title = models.CharField(max_length=200, help_text="Short descriptive title")
+    owner = models.CharField(
+        max_length=100,
+        blank=True,
+        db_index=True,
+        help_text="Team accountable for this entry (e.g., platform)",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=CorpusEntryStatus.choices,
+        default=CorpusEntryStatus.ACTIVE,
+        db_index=True,
+        help_text="Lifecycle state (active, superseded, retired)",
+    )
+    source_file = models.CharField(
+        max_length=500, help_text="Relative path to the corpus markdown file"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Corpus Entry"
+        verbose_name_plural = "Corpus Entries"
+        ordering = ["external_id"]
+
+    def __str__(self):
+        return f"{self.external_id}: {self.title}"
+
+    @property
+    def current_version(self) -> "CorpusEntryVersion | None":
+        """Highest-numbered stored version, or None when nothing is parsed yet."""
+        return self.versions.order_by("-version").first()
+
+
+class CorpusEntryVersion(models.Model):
+    """One immutable revision of a corpus entry.
+
+    Written once by the corpus parser and never updated. Re-parsing a file whose
+    content hash differs from the stored hash for the same version number is an
+    error, not an update: the audit trail depends on a version number pinning
+    exactly one body.
+    """
+
+    entry = models.ForeignKey(
+        CorpusEntry,
+        on_delete=models.CASCADE,
+        related_name="versions",
+        help_text="The entry this revision belongs to",
+    )
+    version = models.PositiveIntegerField(
+        db_index=True, help_text="Version number from the corpus file frontmatter"
+    )
+    body = models.TextField(help_text="Markdown body of the entry at this version")
+    content_hash = models.CharField(
+        max_length=64,
+        db_index=True,
+        help_text="SHA-256 over the versioned content (body, applies_to, checks, metadata)",
+    )
+    applies_to = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Validated scope rules (tags, components, paths, requirement_ids)",
+    )
+    checks = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Validated structural checks, each with id, field, operator, value",
+    )
+    effective_date = models.DateField(
+        null=True, blank=True, db_index=True, help_text="Date this version takes effect"
+    )
+    supersedes = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="superseded_by",
+        help_text="The entry version this one replaces",
+    )
+    source_file = models.CharField(
+        max_length=500, help_text="Relative path to the corpus markdown file"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Corpus Entry Version"
+        verbose_name_plural = "Corpus Entry Versions"
+        ordering = ["entry__external_id", "-version"]
+        constraints = [
+            models.UniqueConstraint(fields=["entry", "version"], name="unique_corpus_entry_version")
+        ]
+
+    def __str__(self):
+        return f"{self.entry.external_id}@{self.version}"
+
+
+class CorpusSnapshot(models.Model):
+    """An ordered set of entry versions, addressed by a single hash.
+
+    A review pins the corpus it was run against by pointing at a snapshot, so a
+    later corpus change cannot silently rewrite what a reviewer was shown.
+    """
+
+    snapshot_hash = models.CharField(
+        max_length=64,
+        unique=True,
+        db_index=True,
+        help_text="SHA-256 over the ordered entry version content hashes",
+    )
+    entry_version_hashes = models.JSONField(
+        default=list, help_text="Ordered content hashes of the member entry versions"
+    )
+    entry_versions = models.ManyToManyField(
+        CorpusEntryVersion,
+        related_name="snapshots",
+        help_text="Entry versions captured in this snapshot",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        verbose_name = "Corpus Snapshot"
+        verbose_name_plural = "Corpus Snapshots"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.snapshot_hash[:12]} ({len(self.entry_version_hashes)} versions)"
+
+    @staticmethod
+    def compute_hash(content_hashes: list[str]) -> str:
+        """Hash an already-ordered list of entry version content hashes."""
+        return hashlib.sha256("\n".join(content_hashes).encode("utf-8")).hexdigest()
+
+    @classmethod
+    def capture(cls, versions) -> "CorpusSnapshot":
+        """Get or create the snapshot for an iterable of CorpusEntryVersion rows.
+
+        Ordering is canonical (entry external_id, then version), so the same set
+        of versions always yields the same snapshot_hash regardless of input order.
+        """
+        ordered = sorted(versions, key=lambda v: (v.entry.external_id, v.version))
+        hashes = [v.content_hash for v in ordered]
+        snapshot, created = cls.objects.get_or_create(
+            snapshot_hash=cls.compute_hash(hashes),
+            defaults={"entry_version_hashes": hashes},
+        )
+        if created:
+            snapshot.entry_versions.set(ordered)
+        return snapshot
+
+
+class SpecReviewOutcome(models.TextChoices):
+    """Result of a corpus-backed spec review."""
+
+    CLEAN = "clean", "Clean"
+    FINDINGS = "findings", "Findings"
+
+
+class SpecReview(models.Model):
+    """An auditable record that a spec was checked against a pinned corpus."""
+
+    requirement = models.ForeignKey(
+        Requirement,
+        on_delete=models.CASCADE,
+        related_name="corpus_reviews",
+        help_text="The requirement that was reviewed",
+    )
+    snapshot = models.ForeignKey(
+        CorpusSnapshot,
+        on_delete=models.PROTECT,
+        related_name="reviews",
+        help_text="Corpus snapshot this review was run against",
+    )
+    spec_file = models.CharField(
+        max_length=500, blank=True, help_text="Relative path to the reviewed spec file"
+    )
+    reviewer = models.CharField(
+        max_length=100, blank=True, db_index=True, help_text="Who ran the review"
+    )
+    outcome = models.CharField(
+        max_length=20,
+        choices=SpecReviewOutcome.choices,
+        db_index=True,
+        help_text="Whether the review produced findings",
+    )
+    invalidated_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text="When corpus drift made this review stale",
+    )
+    invalidation_reason = models.TextField(
+        blank=True, help_text="Why this review went stale (entry IDs and versions)"
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        verbose_name = "Spec Review"
+        verbose_name_plural = "Spec Reviews"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Review of {self.requirement.external_id}: {self.outcome}"
+
+
+class ReviewCoverage(models.Model):
+    """Proof that one entry version was surfaced during one review.
+
+    A row exists for every applicable entry version, finding or not. Absence of a
+    row means the entry was never put in front of the reviewer.
+    """
+
+    review = models.ForeignKey(
+        SpecReview,
+        on_delete=models.CASCADE,
+        related_name="coverage",
+        help_text="The review that surfaced this entry version",
+    )
+    entry_version = models.ForeignKey(
+        CorpusEntryVersion,
+        on_delete=models.PROTECT,
+        related_name="coverage_rows",
+        help_text="The entry version that was surfaced",
+    )
+    matched_by = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Scope rule keys that matched (tags, components, paths, requirement_ids)",
+    )
+    cited = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text="Whether the spec cites this entry via complies_with",
+    )
+
+    class Meta:
+        verbose_name = "Review Coverage"
+        verbose_name_plural = "Review Coverage"
+        ordering = ["entry_version__entry__external_id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["review", "entry_version"], name="unique_review_coverage_row"
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.review_id}: {self.entry_version} (cited={self.cited})"
+
+
+class FindingType(models.TextChoices):
+    """Deterministic coverage failures a rule engine can assert."""
+
+    UNADDRESSED_OBLIGATION = "unaddressed_obligation", "Unaddressed Obligation"
+    STALE_CITATION = "stale_citation", "Stale Citation"
+    ORPHAN_CITATION = "orphan_citation", "Orphan Citation"
+    UNMET_CHECK = "unmet_check", "Unmet Structural Check"
+    CONFLICTING_OBLIGATIONS = "conflicting_obligations", "Conflicting Obligations"
+
+
+class ReviewFinding(models.Model):
+    """One rule outcome recorded against a review.
+
+    Every finding names an entry version. Structural check failures also name the
+    check id from the entry's checks block.
+    """
+
+    review = models.ForeignKey(
+        SpecReview,
+        on_delete=models.CASCADE,
+        related_name="findings",
+        help_text="The review that produced this finding",
+    )
+    entry_version = models.ForeignKey(
+        CorpusEntryVersion,
+        on_delete=models.PROTECT,
+        related_name="findings",
+        help_text="The entry version the finding traces to",
+    )
+    finding_type = models.CharField(
+        max_length=30,
+        choices=FindingType.choices,
+        db_index=True,
+        help_text="Which coverage rule fired",
+    )
+    check_id = models.CharField(
+        max_length=100,
+        blank=True,
+        db_index=True,
+        help_text="Check id from the entry's checks block (structural checks only)",
+    )
+    detail = models.TextField(help_text="Deterministic explanation of the rule outcome")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Review Finding"
+        verbose_name_plural = "Review Findings"
+        ordering = ["entry_version__entry__external_id", "check_id"]
+
+    def __str__(self):
+        return f"{self.finding_type} on {self.entry_version}"
