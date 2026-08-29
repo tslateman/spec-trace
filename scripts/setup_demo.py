@@ -15,6 +15,7 @@ Usage:
     # Or from spectrace directory:
     python ../scripts/setup_demo.py
 """
+
 import os
 import subprocess
 import sys
@@ -26,10 +27,10 @@ def run_command(cmd: list[str], cwd: Path, check: bool = True) -> subprocess.Com
     print(f"  → {' '.join(cmd)}")
     result = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True)
     if result.stdout:
-        for line in result.stdout.strip().split('\n'):
+        for line in result.stdout.strip().split("\n"):
             print(f"    {line}")
     if result.stderr and result.returncode != 0:
-        for line in result.stderr.strip().split('\n'):
+        for line in result.stderr.strip().split("\n"):
             print(f"    [err] {line}")
     if check and result.returncode != 0:
         print(f"  ✗ Command failed with exit code {result.returncode}")
@@ -64,28 +65,31 @@ def main():
 
     # 1. Run migrations
     print("[1/6] Running database migrations...")
-    run_command(
-        ["python", "manage.py", "migrate", "--verbosity=0"],
-        cwd=spectrace_dir
-    )
+    run_command(["python", "manage.py", "migrate", "--verbosity=0"], cwd=spectrace_dir)
     print("  ✓ Migrations complete")
     print()
 
     # 2. Import specs (clear and reimport)
     print("[2/6] Importing requirements from specs...")
     run_command(
-        ["python", "manage.py", "parse_specs", str(specs_dir), "--clear"],
-        cwd=spectrace_dir
+        ["python", "manage.py", "parse_specs", str(specs_dir), "--clear"], cwd=spectrace_dir
     )
     print()
 
     # 3. Run tests and generate JUnit XML
     print("[3/6] Running tests and generating JUnit XML...")
     result = run_command(
-        ["python", "-m", "pytest", "tests/test_example.py",
-         "--junitxml=test_results.xml", "-v", "--tb=no"],
+        [
+            "python",
+            "-m",
+            "pytest",
+            "tests/test_example.py",
+            "--junitxml=test_results.xml",
+            "-v",
+            "--tb=no",
+        ],
         cwd=spectrace_dir,
-        check=False  # Tests may fail intentionally
+        check=False,  # Tests may fail intentionally
     )
     print("  ✓ Test results written to test_results.xml")
     print()
@@ -94,7 +98,7 @@ def main():
     print("[4/6] Extracting test-requirement links...")
     run_command(
         ["python", "manage.py", "extract_links", "--path", "tests/", "-o", "links.json"],
-        cwd=spectrace_dir
+        cwd=spectrace_dir,
     )
     print()
 
@@ -102,7 +106,7 @@ def main():
     print("[5/6] Importing test results and updating verification status...")
     run_command(
         ["python", "manage.py", "import_results", "test_results.xml", "--links", "links.json"],
-        cwd=spectrace_dir
+        cwd=spectrace_dir,
     )
     print()
 
@@ -125,7 +129,7 @@ else:
         cwd=spectrace_dir,
         capture_output=True,
         text=True,
-        env={**os.environ, "DJANGO_SETTINGS_MODULE": "spectrace.settings"}
+        env={**os.environ, "DJANGO_SETTINGS_MODULE": "spectrace.settings"},
     )
     if result.stdout:
         print(result.stdout.strip())

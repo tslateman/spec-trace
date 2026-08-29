@@ -8,8 +8,8 @@ Demonstrates:
 """
 
 import pytest
-from conftest import MockDocument, MockDocumentProcessor
 
+from conftest import MockDocument
 
 # =============================================================================
 # DOC-TRF-001: Transform Subsystem (parent requirement)

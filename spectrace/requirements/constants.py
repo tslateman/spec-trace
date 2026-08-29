@@ -42,3 +42,10 @@ LINEAR_HEALTH_CACHE_TIMEOUT = 60  # seconds
 MAX_PAGE_NUMBER = 10000
 MAX_PER_PAGE = 100
 DEFAULT_PER_PAGE = 25
+
+# Corpus Review Finding Types (mirror requirements.models.FindingType values)
+FINDING_UNADDRESSED_OBLIGATION = "unaddressed_obligation"
+FINDING_STALE_CITATION = "stale_citation"
+FINDING_ORPHAN_CITATION = "orphan_citation"
+FINDING_UNMET_CHECK = "unmet_check"
+FINDING_CONFLICTING_OBLIGATIONS = "conflicting_obligations"

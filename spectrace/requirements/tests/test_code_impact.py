@@ -144,6 +144,7 @@ class TestCliCodeFlag:
         with patch("cli._run") as mock_run:
             with patch("cli._bootstrap_django"):
                 from click.testing import CliRunner
+
                 from cli import cli
 
                 runner = CliRunner()
@@ -156,6 +157,7 @@ class TestCliCodeFlag:
         with patch("cli._run") as mock_run:
             with patch("cli._bootstrap_django"):
                 from click.testing import CliRunner
+
                 from cli import cli
 
                 runner = CliRunner()

@@ -2,7 +2,6 @@
 
 import json
 from io import StringIO
-from pathlib import Path
 
 import pytest
 from django.core.management import call_command
@@ -41,7 +40,7 @@ def fail_eval_json_path(tmp_path):
         "strategic_score": 60,
         "opportunity_score": 90,
         "drift_score": 95,
-        "failure_reasons": ["Bad architecture"]
+        "failure_reasons": ["Bad architecture"],
     }
     path.write_text(json.dumps(data))
     return str(path)
@@ -58,11 +57,11 @@ def test_validate_intent_command_success(task, eval_json_path):
         eval_json=eval_json_path,
         stdout=out,
     )
-    
+
     output = out.getvalue()
     assert "PASSED" in output
     assert "Strategic: 85" in output
-    
+
     # Verify DB record
     result = IntentValidationResult.objects.get(task=task)
     assert result.passed is True
@@ -73,7 +72,7 @@ def test_validate_intent_command_success(task, eval_json_path):
 def test_validate_intent_command_failure(task, fail_eval_json_path):
     """Test command execution fails and exits when validation fails."""
     out = StringIO()
-    
+
     with pytest.raises(SystemExit) as exc_info:
         call_command(
             "validate_intent",
@@ -82,14 +81,14 @@ def test_validate_intent_command_failure(task, fail_eval_json_path):
             eval_json=fail_eval_json_path,
             stdout=out,
         )
-        
+
     assert exc_info.value.code == 1
-    
+
     output = out.getvalue()
     assert "FAILED" in output
     assert "Strategic: 60" in output
     assert "Bad architecture" in output
-    
+
     # Verify DB record
     result = IntentValidationResult.objects.get(task=task)
     assert result.passed is False

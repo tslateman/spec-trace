@@ -4,7 +4,7 @@ import json
 from datetime import timedelta
 
 from django.core.management.base import BaseCommand
-from django.db.models import Avg, Count
+from django.db.models import Avg
 from django.utils import timezone
 
 from requirements.models import IntentValidationResult
@@ -48,7 +48,9 @@ class Command(BaseCommand):
             if fmt == "json":
                 self.stdout.write(json.dumps({"error": "No validation results found in timeframe"}))
             else:
-                self.stdout.write(self.style.WARNING(f"No validation results found in the last {timeframe_str}."))
+                self.stdout.write(
+                    self.style.WARNING(f"No validation results found in the last {timeframe_str}.")
+                )
             return
 
         # Calculate stats
@@ -68,10 +70,8 @@ class Command(BaseCommand):
         for result in qs.filter(passed=False):
             for reason in result.failure_reasons:
                 failure_reasons_tally[reason] = failure_reasons_tally.get(reason, 0) + 1
-        
-        top_failures = sorted(
-            failure_reasons_tally.items(), key=lambda x: x[1], reverse=True
-        )[:5]
+
+        top_failures = sorted(failure_reasons_tally.items(), key=lambda x: x[1], reverse=True)[:5]
 
         if fmt == "json":
             output = {
@@ -92,13 +92,15 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS(f"Intent Validation Stats (Last {timeframe_str})"))
             self.stdout.write("=" * 40)
             self.stdout.write(f"Total Evaluations: {total_count}")
-            self.stdout.write(f"Pass Rate: {pass_rate:.1f}% ({passed_count} passed, {failed_count} failed)")
+            self.stdout.write(
+                f"Pass Rate: {pass_rate:.1f}% ({passed_count} passed, {failed_count} failed)"
+            )
             self.stdout.write("-" * 40)
             self.stdout.write("Average Scores:")
             self.stdout.write(f"  Strategic Alignment: {avgs['avg_strategic']:.1f}/100")
             self.stdout.write(f"  Opportunity Cost:    {avgs['avg_opportunity']:.1f}/100")
             self.stdout.write(f"  Intent Drift:        {avgs['avg_drift']:.1f}/100")
-            
+
             if top_failures:
                 self.stdout.write("-" * 40)
                 self.stdout.write("Top Failure Reasons:")

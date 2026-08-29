@@ -2,8 +2,6 @@
 
 from unittest.mock import patch
 
-import pytest
-
 from requirements.models import (
     Agent,
     AgentRole,
@@ -209,9 +207,7 @@ class TestReviewAbandonNotifiesLore:
     def test_hypothesis_exhaustion_calls_notify_lore(self, mock_notify, db):
         """Task abandoned via hypothesis exhaustion writes to Lore."""
         coder = Agent.objects.create(agent_id="coder-exhaust", role=AgentRole.CODER, is_active=True)
-        reviewer = Agent.objects.create(
-            agent_id="reviewer-exhaust", role=AgentRole.REVIEWER, is_active=True
-        )
+        Agent.objects.create(agent_id="reviewer-exhaust", role=AgentRole.REVIEWER, is_active=True)
         AgentTask.objects.create(
             external_id="task-exhaust-lore",
             title="Exhaustion test",
@@ -238,9 +234,7 @@ class TestReviewAbandonNotifiesLore:
     def test_approved_review_does_not_notify(self, mock_notify, db):
         """Approved review (non-terminal) does not write to Lore."""
         coder = Agent.objects.create(agent_id="coder-approve", role=AgentRole.CODER, is_active=True)
-        reviewer = Agent.objects.create(
-            agent_id="reviewer-approve", role=AgentRole.REVIEWER, is_active=True
-        )
+        Agent.objects.create(agent_id="reviewer-approve", role=AgentRole.REVIEWER, is_active=True)
         AgentTask.objects.create(
             external_id="task-approve",
             title="Approved task",

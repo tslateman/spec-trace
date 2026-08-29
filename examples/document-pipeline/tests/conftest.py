@@ -4,9 +4,10 @@ This conftest.py demonstrates pytest fixtures that might be used
 in a real document processing pipeline test suite.
 """
 
-import pytest
-from pathlib import Path
 from dataclasses import dataclass
+from pathlib import Path
+
+import pytest
 
 
 @dataclass
@@ -55,14 +56,10 @@ class MockDocumentProcessor:
             return ProcessingResult(success=False, error="File exceeds 100MB limit")
 
         if doc.extension not in self.ALLOWED_EXTENSIONS:
-            return ProcessingResult(
-                success=False, error=f"File type {doc.extension} not allowed"
-            )
+            return ProcessingResult(success=False, error=f"File type {doc.extension} not allowed")
 
         if doc.mime_type not in self.ALLOWED_MIME_TYPES:
-            return ProcessingResult(
-                success=False, error=f"MIME type {doc.mime_type} not allowed"
-            )
+            return ProcessingResult(success=False, error=f"MIME type {doc.mime_type} not allowed")
 
         return ProcessingResult(success=True, document_id="doc_123")
 

@@ -6,7 +6,11 @@ from typing import Any, TypedDict
 
 import frontmatter
 
-from requirements.models import Requirement, VerificationMethod
+from requirements.models import Requirement, RiskLevel, VerificationMethod
+
+
+class InvalidRiskLevelError(ValueError):
+    """A spec declared a `risk_level` outside the RiskLevel choices."""
 
 
 class RequirementData(TypedDict, total=False):
@@ -21,6 +25,7 @@ class RequirementData(TypedDict, total=False):
     tags: list[str]
     priority: str
     status: str
+    risk_level: str
     parent_id: str | None
     source_file: str
     verification_method: str
@@ -48,6 +53,30 @@ def normalize_verification_method(value: str | None) -> str:
     return value
 
 
+def resolve_risk_level(value: Any, source_file: str) -> str:
+    """Validate an authored risk level against the RiskLevel choices.
+
+    Args:
+        value: Raw `risk_level` value from frontmatter, or None when unstated
+        source_file: Spec file the value came from, named in the error
+
+    Returns:
+        A RiskLevel value; UNCLASSIFIED when the spec states none
+
+    Raises:
+        InvalidRiskLevelError: The value is outside the RiskLevel choices
+    """
+    if value is None:
+        return RiskLevel.UNCLASSIFIED
+    if value not in RiskLevel.values:
+        allowed = ", ".join(RiskLevel.values)
+        raise InvalidRiskLevelError(
+            f"{source_file or 'requirement data'}: risk_level '{value}' is not a "
+            f"RiskLevel. Use one of: {allowed}"
+        )
+    return value
+
+
 def _extract_requirement_fields(req_data: dict[str, Any]) -> dict[str, Any]:
     """Extract database fields from requirement data dict.
 
@@ -63,6 +92,9 @@ def _extract_requirement_fields(req_data: dict[str, Any]) -> dict[str, Any]:
         "tags": req_data.get("tags", []),
         "priority": req_data.get("priority", ""),
         "status": req_data.get("status", "draft"),
+        "risk_level": resolve_risk_level(
+            req_data.get("risk_level"), req_data.get("source_file", "")
+        ),
         "source_file": req_data.get("source_file", ""),
         "verification_method": normalize_verification_method(req_data.get("verification_method")),
         # Structured fields (FRET-inspired)
@@ -194,6 +226,7 @@ class SpecParser:
         tags: [auth, security]
         priority: high
         status: active
+        risk_level: critical  # optional, one of the RiskLevel choices
         parent: REQ-YYY  # optional, for explicit hierarchy
         ---
 
@@ -244,6 +277,7 @@ class SpecParser:
             "tags": post.metadata.get("tags", []),
             "priority": post.metadata.get("priority", ""),
             "status": post.metadata.get("status", "draft"),
+            "risk_level": post.metadata.get("risk_level"),
             "parent_id": post.metadata.get("parent"),
             "source_file": str(file_path),
             "verification_method": post.metadata.get(
@@ -286,6 +320,7 @@ class SpecParser:
         shared_tags = post.metadata.get("tags", [])
         shared_priority = post.metadata.get("priority", "")
         shared_status = post.metadata.get("status", "draft")
+        shared_risk_level = post.metadata.get("risk_level")
         shared_verification_method = post.metadata.get(
             "verification_method", VerificationMethod.UNSPECIFIED
         )
@@ -329,6 +364,7 @@ class SpecParser:
                     "tags": shared_tags,
                     "priority": shared_priority,
                     "status": shared_status,
+                    "risk_level": shared_risk_level,
                     "parent_id": parent_id,
                     "source_file": str(file_path),
                     "verification_method": shared_verification_method,

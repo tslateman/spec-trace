@@ -31,7 +31,7 @@ sys.path.insert(0, str(SPECTRACE_DIR))
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "spectrace.settings")
 django.setup()
 
-from requirements.models import Requirement, SLO, VerificationMethod
+from requirements.models import SLO, Requirement, VerificationMethod
 
 
 def banner(text: str) -> None:

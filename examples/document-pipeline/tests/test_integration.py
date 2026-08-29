@@ -6,10 +6,11 @@ Demonstrates:
 - Cross-subsystem integration
 """
 
-import pytest
 import asyncio
-from conftest import MockDocument, MockDocumentProcessor, MockStorageBackend
 
+import pytest
+
+from conftest import MockDocument
 
 # =============================================================================
 # End-to-End Pipeline Tests
@@ -191,15 +192,14 @@ async def test_concurrent_pipeline_processing(processor, storage):
         if not validation.success:
             return {"doc": doc.filename, "success": False}
 
-        conversion = processor.convert_to_pdf(doc)
+        processor.convert_to_pdf(doc)
         encryption = processor.encrypt_document(doc)
         storage.store(encryption.document_id, doc.content)
 
         return {"doc": doc.filename, "success": True}
 
     documents = [
-        MockDocument(f"concurrent_{i}.pdf", b"content", "application/pdf", 1024)
-        for i in range(10)
+        MockDocument(f"concurrent_{i}.pdf", b"content", "application/pdf", 1024) for i in range(10)
     ]
 
     results = await asyncio.gather(*[process_document(doc) for doc in documents])

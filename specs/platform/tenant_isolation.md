@@ -4,6 +4,9 @@ title: Tenant Data Isolation
 status: active
 priority: high
 tags: [platform, security, compliance]
+complies_with:
+  - STD-SEC-001@3
+  - STD-SEC-002@1
 ---
 
 # Tenant Data Isolation

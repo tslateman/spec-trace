@@ -38,19 +38,19 @@ make run
 
 SpecTrace includes a Makefile for common development tasks (uses `uv` for package management):
 
-| Command | Description |
-|---------|-------------|
-| `make help` | Show all available commands |
-| `make install` | Install package in editable mode (uses `uv pip install`) |
-| `make install-dev` | Install with dev dependencies (uses `uv pip install`) |
-| `make test` | Run tests with pytest |
-| `make migrate` | Run Django migrations |
-| `make makemigrations` | Create new migrations |
-| `make shell` | Open Django shell |
-| `make run` | Start development server |
-| `make clean` | Remove caches and build artifacts |
-| `make setup` | Create admin user (admin/admin) |
-| `make demo` | Run the SpecTrace demo |
+| Command               | Description                                              |
+| --------------------- | -------------------------------------------------------- |
+| `make help`           | Show all available commands                              |
+| `make install`        | Install package in editable mode (uses `uv pip install`) |
+| `make install-dev`    | Install with dev dependencies (uses `uv pip install`)    |
+| `make test`           | Run tests with pytest                                    |
+| `make migrate`        | Run Django migrations                                    |
+| `make makemigrations` | Create new migrations                                    |
+| `make shell`          | Open Django shell                                        |
+| `make run`            | Start development server                                 |
+| `make clean`          | Remove caches and build artifacts                        |
+| `make setup`          | Create admin user (admin/admin)                          |
+| `make demo`           | Run the SpecTrace demo                                   |
 
 **Note:** If you don't have `uv` installed, the Makefile commands will fail. Install it first: `pip install uv`
 
@@ -87,6 +87,7 @@ See the **[Document Pipeline Example](examples/document-pipeline/)** for a compr
 - CI/CD workflow example
 
 Run the demo:
+
 ```bash
 make demo
 # or: python scripts/demo_pipeline.py
@@ -102,7 +103,7 @@ id: REQ-AUTH-001
 title: User Login
 priority: high
 tags: [authentication, security]
-verification_method: test  # test, inapp, or both
+verification_method: test # test, inapp, or both
 ---
 
 Users must be able to log in with email and password.
@@ -130,31 +131,86 @@ def test_login_creates_session():
 
 SpecTrace provides Django management commands for various operations:
 
-| Command | Description |
-|---------|-------------|
-| `parse_specs <dir>` | Import requirements from markdown specs |
-| `extract_links` | Extract test-requirement links from test files |
-| `import_results <xml>` | Import pytest JUnit XML and compute status |
-| `validate_links <json>` | Validate links for drift detection (CI) |
-| `import_slos <dir>` | Import SLOs from OpenSLO YAML files |
-| `update_slo_status --from-json <file>` | Update SLO status from observability data |
-| `import_inapp_validations <json>` | Import in-app validation results |
-| `check_invariants` | Validate data consistency (INV-A through INV-K) |
+| Command                                | Description                                                 |
+| -------------------------------------- | ----------------------------------------------------------- |
+| `parse_specs <dir>`                    | Import requirements from markdown specs                     |
+| `extract_links`                        | Extract test-requirement links from test files              |
+| `import_results <xml>`                 | Import pytest JUnit XML and compute status                  |
+| `validate_links <json>`                | Validate links for drift detection (CI)                     |
+| `import_slos <dir>`                    | Import SLOs from OpenSLO YAML files                         |
+| `update_slo_status --from-json <file>` | Update SLO status from observability data                   |
+| `import_inapp_validations <json>`      | Import in-app validation results                            |
+| `check_invariants`                     | Validate data consistency (INV-A through INV-K)             |
+| `parse_corpus <dir>`                   | Import corpus entries from markdown into immutable versions |
 
 **Agent Task Commands** (see [docs/agent-tasks.md](docs/agent-tasks.md)):
 
-| Command | Description |
-|---------|-------------|
+| Command          | Description                                          |
+| ---------------- | ---------------------------------------------------- |
 | `agent_register` | Register an agent with role (planner/coder/reviewer) |
-| `agent_tasks` | List tasks with filtering |
-| `agent_claim` | Claim an unclaimed task with lease |
-| `agent_start` | Begin work on claimed task |
-| `agent_submit` | Submit work for review |
-| `agent_review` | Approve or request changes |
-| `agent_merge` | Mark approved task as merged |
-| `expire_leases` | Release stale task claims (cron) |
+| `agent_tasks`    | List tasks with filtering                            |
+| `agent_claim`    | Claim an unclaimed task with lease                   |
+| `agent_start`    | Begin work on claimed task                           |
+| `agent_submit`   | Submit work for review                               |
+| `agent_review`   | Approve or request changes                           |
+| `agent_merge`    | Mark approved task as merged                         |
+| `expire_leases`  | Release stale task claims (cron)                     |
 
 All commands are run via: `python spectrace/manage.py <command>`
+
+## Corpus Review
+
+The corpus is a git-tracked set of org standards, decisions, and commitments in
+`corpus/`, versioned and parsed like specs. A review names every entry a spec
+touches, at a pinned corpus version, and records the check as an auditable
+artifact.
+
+```bash
+# Import the corpus
+python spectrace/manage.py parse_corpus corpus/
+
+# Review one spec against it
+spectrace corpus review specs/platform/tenant_isolation.md --format md
+```
+
+Specs cite entries in frontmatter, with a version on every citation:
+
+```yaml
+---
+id: REQ-PLAT-001
+tags: [platform, security, compliance]
+complies_with:
+  - STD-SEC-001@4
+  - STD-SEC-002@1
+---
+```
+
+The engine is deterministic. It emits five finding types —
+`unaddressed_obligation`, `stale_citation`, `orphan_citation`, `unmet_check`,
+`conflicting_obligations` — plus a coverage row for every applicable entry
+version, finding or not. Nothing judges whether a spec honors an obligation; the
+record proves what was put in front of the reviewer.
+
+| Command                            | Description                                        |
+| ---------------------------------- | -------------------------------------------------- |
+| `spectrace corpus review <target>` | Review a spec and record coverage plus findings    |
+| `spectrace corpus coverage`        | The audit ledger: each requirement's latest review |
+| `spectrace corpus drift`           | Reviews the corpus has moved out from under        |
+| `spectrace corpus suggest`         | Propose `applies_to` widenings for a human         |
+
+All four take `--format text|json|md`. `corpus review` exits 1 when a finding
+carries `enforcement: blocking`; `--strict` escalates advisory findings for one
+run. `corpus suggest` always exits 0 — a suggestion is not a finding.
+
+`.claude/skills/spec-review/SKILL.md` drives the tool from a Claude Code agent
+and formats the result. It adds no finding the tool did not emit.
+
+Docs:
+
+- [docs/corpus-review.md](docs/corpus-review.md) — one spec end to end, the
+  ledger, drift, enforcement
+- [docs/corpus-authoring.md](docs/corpus-authoring.md) — frontmatter, scope
+  rules, the predicate grammar, versioning
 
 ## Verification Status
 
@@ -195,11 +251,11 @@ Import with: `python spectrace/manage.py import_slos slos/`
 
 External systems can push status updates:
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/slo/status/` | POST | Update SLO status from observability platforms |
-| `/api/validation/result/` | POST | Submit in-app validation results |
-| `/api/requirement/<id>/status/` | GET | Get requirement verification status |
+| Endpoint                        | Method | Description                                    |
+| ------------------------------- | ------ | ---------------------------------------------- |
+| `/api/slo/status/`              | POST   | Update SLO status from observability platforms |
+| `/api/validation/result/`       | POST   | Submit in-app validation results               |
+| `/api/requirement/<id>/status/` | GET    | Get requirement verification status            |
 
 ### Example: Update SLO Status
 
@@ -238,6 +294,7 @@ python spectrace/manage.py validate_links links.json --strict
 - `--format json` - Output JSON for programmatic parsing
 
 Example in CI pipeline:
+
 ```yaml
 # .github/workflows/test.yml
 - name: Run tests

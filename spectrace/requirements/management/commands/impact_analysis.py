@@ -7,8 +7,9 @@ import sys
 
 from django.core.management.base import BaseCommand, CommandError
 
-from ...services.impact_analyzer import ImpactAnalyzer
 from requirements.models import Requirement
+
+from ...services.impact_analyzer import ImpactAnalyzer
 
 
 class Command(BaseCommand):
@@ -91,66 +92,67 @@ class Command(BaseCommand):
         }
         self.stdout.write(json.dumps(output, indent=2))
 
-
     def _get_titles(self, req_ids):
         """Helper to fetch requirement titles."""
-        reqs = Requirement.objects.filter(external_id__in=req_ids).values_list("external_id", "title")
+        reqs = Requirement.objects.filter(external_id__in=req_ids).values_list(
+            "external_id", "title"
+        )
         return {r[0]: r[1] for r in reqs}
 
     def _output_md(self, result, base_ref, head_ref):
         """Output Markdown for PR comments."""
         lines = []
-        lines.append(f"## 🔍 SpecTrace Impact Analysis")
+        lines.append("## 🔍 SpecTrace Impact Analysis")
         lines.append(f"**Comparing:** `{base_ref}` → `{head_ref}`")
         lines.append("")
-        
+
         if not result.changed_requirements:
             lines.append("✅ **No spec files changed.**")
             self.stdout.write("\n".join(lines) + "\n")
             return
-            
+
         all_ids = set(result.changed_requirements)
         for child_ids in result.hierarchy_expansion.values():
             all_ids.update(child_ids)
         for dep_ids in result.dependency_expansion.values():
             all_ids.update(dep_ids)
-            
+
         titles = self._get_titles(all_ids)
-        
+
         lines.append(f"### 📝 Changed Requirements ({len(result.changed_requirements)})")
         for req_id in result.changed_requirements:
-            title = titles.get(req_id, 'Unknown Title')
+            title = titles.get(req_id, "Unknown Title")
             lines.append(f"- **{req_id}**: {title}")
-            
+
         if result.hierarchy_expansion:
             lines.append("")
             lines.append("### 🌳 Hierarchy Expansion")
             for parent_id, child_ids in result.hierarchy_expansion.items():
                 lines.append(f"- **{parent_id}** children:")
                 for cid in child_ids:
-                    title = titles.get(cid, 'Unknown Title')
+                    title = titles.get(cid, "Unknown Title")
                     lines.append(f"  - {cid}: {title}")
-                    
+
         if result.dependency_expansion:
             lines.append("")
             lines.append("### 🔗 Dependency Expansion")
             for req_id, dependent_ids in result.dependency_expansion.items():
                 lines.append(f"- **{req_id}** is depended on by:")
                 for did in dependent_ids:
-                    title = titles.get(did, 'Unknown Title')
+                    title = titles.get(did, "Unknown Title")
                     lines.append(f"  - {did}: {title}")
-                    
-        risk_emoji = {
-            "low": "🟢",
-            "medium": "🟡",
-            "high": "🟠",
-            "critical": "🔴"
-        }.get(result.risk_level, "⚪")
-        
+
+        risk_emoji = {"low": "🟢", "medium": "🟡", "high": "🟠", "critical": "🔴"}.get(
+            result.risk_level, "⚪"
+        )
+
         lines.append("")
-        lines.append(f"### 🚦 Risk Assessment")
-        lines.append(f"**Level:** {risk_emoji} {result.risk_level.upper()} *(Score: {result.risk_score:.2f})*")
-        
+        lines.append("### 🚦 Risk Assessment")
+        lines.append(
+            f"**Level:** {risk_emoji} {result.risk_level.upper()} "
+            f"*(Score: {result.risk_score:.2f})*"
+        )
+
         lines.append("")
         if result.affected_tests:
             lines.append(f"### 🧪 Affected Tests ({len(result.affected_tests)})")
@@ -161,7 +163,7 @@ class Command(BaseCommand):
             lines.append("```")
         else:
             lines.append("✅ **No tests affected by these changes.**")
-            
+
         self.stdout.write("\n".join(lines) + "\n")
 
     def _output_text(self, result, base_ref, head_ref):
@@ -178,13 +180,15 @@ class Command(BaseCommand):
             all_ids.update(child_ids)
         for dep_ids in result.dependency_expansion.values():
             all_ids.update(dep_ids)
-            
+
         titles = self._get_titles(all_ids)
 
         # Changed requirements
-        self.stdout.write(self.style.SUCCESS(f"\n📝 Changed Requirements ({len(result.changed_requirements)}):\n"))
+        self.stdout.write(
+            self.style.SUCCESS(f"\n📝 Changed Requirements ({len(result.changed_requirements)}):\n")
+        )
         for req_id in result.changed_requirements:
-            title = titles.get(req_id, 'Unknown Title')
+            title = titles.get(req_id, "Unknown Title")
             self.stdout.write(f"  • {self.style.SUCCESS(req_id)}: {title}\n")
 
         # Hierarchy expansion
@@ -193,7 +197,7 @@ class Command(BaseCommand):
             for parent_id, child_ids in result.hierarchy_expansion.items():
                 self.stdout.write(f"  {parent_id} children:\n")
                 for cid in child_ids:
-                    title = titles.get(cid, 'Unknown Title')
+                    title = titles.get(cid, "Unknown Title")
                     self.stdout.write(f"    ↳ {cid}: {title}\n")
 
         # Dependency expansion
@@ -202,7 +206,7 @@ class Command(BaseCommand):
             for req_id, dependent_ids in result.dependency_expansion.items():
                 self.stdout.write(f"  {req_id} is depended on by:\n")
                 for did in dependent_ids:
-                    title = titles.get(did, 'Unknown Title')
+                    title = titles.get(did, "Unknown Title")
                     self.stdout.write(f"    ↳ {did}: {title}\n")
 
         # Risk assessment
