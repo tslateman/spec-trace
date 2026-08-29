@@ -306,6 +306,11 @@ Example in CI pipeline:
     python spectrace/manage.py validate_links links.json --strict
 ```
 
+## Project Status
+
+- [ROADMAP.md](ROADMAP.md) — what's next, in priority order
+- [CHANGELOG.md](CHANGELOG.md) — milestone history, v1 through today
+
 ## License
 
 MIT
