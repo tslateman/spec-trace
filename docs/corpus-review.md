@@ -78,7 +78,7 @@ spectrace corpus review specs/platform/tenant_isolation.md --reviewer alice
 
 ```
 Review of REQ-PLAT-001 (specs/platform/tenant_isolation.md)
-Snapshot: 7eb744af998d
+Snapshot: 74ac5e6694ba
 
 Coverage (3 entry versions surfaced):
   COM-PLAT-001@2 [not cited] [advisory] Workspace durability and recovery window
@@ -125,9 +125,12 @@ carry `enforcement: blocking`. See [Enforcement](#enforcement-belongs-to-the-own
 
 ### A spec whose findings are all advisory
 
-`specs/billing/invoicing.md` cites the other end of a supersession chain:
+`specs/billing/invoicing.md` cites the other end of a supersession chain, and
+classifies itself:
 
 ```yaml
+risk_level: high
+verification_method: test
 complies_with:
   - DEC-BILL-001@1
   - DEC-BILL-002@1
@@ -139,7 +142,7 @@ spectrace corpus review specs/billing/invoicing.md
 
 ```
 Review of REQ-BILL-002 (specs/billing/invoicing.md)
-Snapshot: 7eb744af998d
+Snapshot: 74ac5e6694ba
 
 Coverage (2 entry versions surfaced):
   COM-BILL-001@1 [not cited] [advisory] Invoice accuracy guarantee
@@ -147,16 +150,18 @@ Coverage (2 entry versions surfaced):
   DEC-BILL-002@1 [cited] [advisory] Event stream is the metering source of truth
     matched by tags=billing, tags=finance, paths=specs/billing/invoicing.md, requirement_ids=REQ-BILL-002, tags=billing (via REQ-BILL-001), tags=subscriptions (via REQ-BILL-001), paths=specs/billing/subscriptions.md (via REQ-BILL-001), requirement_ids=REQ-BILL-001 (via REQ-BILL-001)
 
-Findings (4):
+Findings (2):
   ✗ [advisory] Unaddressed obligation: COM-BILL-001 (version 1)
     COM-BILL-001@1 applies to REQ-BILL-002 but the spec does not cite it in complies_with
   ✗ [advisory] Orphan citation: DEC-BILL-001 (version 1)
     spec cites DEC-BILL-001@1, which does not apply to REQ-BILL-002
-  ✗ [advisory] Unmet structural check: DEC-BILL-002#metering-tested (version 1)
-    DEC-BILL-002@1 check 'metering-tested' requires 'verification_method in [test, both]'; REQ-BILL-002 has verification_method='unspecified'
-  ✗ [advisory] Unmet structural check: DEC-BILL-002#risk-classified (version 1)
-    DEC-BILL-002@1 check 'risk-classified' requires 'risk_level in [critical, high]'; REQ-BILL-002 has risk_level='unclassified'
 ```
+
+`DEC-BILL-002@1` is cited, applies, and faults nothing. Its three checks —
+`risk-classified`, `metering-tested`, `no-batch-dependency` — all hold, because
+the spec declares `risk_level: high` and `verification_method: test` and reads
+no batch table. That coverage row is the shape a reviewer wants: the obligation
+was surfaced, acknowledged, and satisfied, recorded at a pinned version.
 
 `DEC-BILL-002@1` supersedes `DEC-BILL-001@1`, so the old decision no longer
 binds and the citation to it is an **orphan**, not a stale citation. The
@@ -172,14 +177,26 @@ run:
 spectrace corpus review specs/billing/invoicing.md --strict   # exit 1
 ```
 
-### Why every seed review shows `unmet_check` on `risk-classified`
+### Why one spec passes `risk-classified` and the other does not
 
-`risk_level` is not a spec frontmatter field. It is computed by the impact
-analyzer and set through the API, so a freshly parsed seed spec carries
-`risk_level='unclassified'` and fails the `risk-classified` check that every
-seed corpus entry defines. That is the tool working: an unclassified
-requirement genuinely has not stated its blast radius. Classify the requirement
-and the check passes.
+`risk_level` is a spec frontmatter field, declared by the author beside
+`priority` and `verification_method`, and validated against the `RiskLevel`
+choices at import. A value outside them names the file and refuses to import:
+
+```
+InvalidRiskLevelError: specs/billing/invoicing.md: risk_level 'severe' is not a
+RiskLevel. Use one of: critical, high, medium, low, unclassified
+```
+
+`specs/billing/invoicing.md` declares `high`, so `DEC-BILL-002#risk-classified`
+holds. `specs/platform/tenant_isolation.md` declares nothing, defaults to
+`unclassified`, and fails the same check on two entries. Both outcomes are the
+tool working. A spec that has not stated its blast radius genuinely has not
+stated it, and declaring one line of frontmatter clears the finding.
+
+Every check field is one of these three things — author-set, system-computed, or
+populated by nothing at all. The full table is in
+[Writing a corpus entry](corpus-authoring.md#what-populates-a-check-field).
 
 ## Enforcement belongs to the owner
 
@@ -204,12 +221,12 @@ as advisory, and they stay as written. Rewriting them would destroy the evidence
 ## Reading the coverage ledger in an audit
 
 ```bash
-spectrace corpus coverage --format text
-spectrace corpus coverage --requirement REQ-BILL-002 --format json
+spectrace corpus coverage --requirement REQ-BILL-002 --format text
+spectrace corpus coverage --format json
 ```
 
 ```
-REQ-BILL-002: 2 entries surfaced at 7eb744af998d on 2026-08-29T20:23:01.851676+00:00
+REQ-BILL-002: 2 entries surfaced at 74ac5e6694ba on 2026-08-29T20:23:01.851676+00:00
   COM-BILL-001@1 [not cited] Invoice accuracy guarantee
   DEC-BILL-002@1 [cited] Event stream is the metering source of truth
   unaddressed: COM-BILL-001@1
@@ -237,19 +254,54 @@ spectrace corpus drift --format text
 spectrace corpus drift --format json --strict
 ```
 
+Against a corpus that has not moved since the reviews ran, drift says so and
+exits 0:
+
 ```
-Corpus snapshot: 7eb744af998d
+Corpus snapshot: 74ac5e6694ba
+
+✓ No stale reviews
+
+No newly applicable entries
+
+Summary: 0 of 2 reviews stale, 0 entry versions newly applicable across 0 specs
+```
+
+Seeing the other answer takes a corpus that moved between a review and the
+drift run. `DEC-BILL-002` supersedes `DEC-BILL-001`, and both entries are files
+on disk, so importing them in two steps stages the move without editing
+anything tracked:
+
+```bash
+mkdir -p /tmp/corpus-legacy/billing
+cp corpus/billing/metering-source-legacy.md /tmp/corpus-legacy/billing/
+python spectrace/manage.py parse_corpus /tmp/corpus-legacy/
+spectrace corpus review specs/billing/subscriptions.md
+python spectrace/manage.py parse_corpus corpus/
+spectrace corpus drift --format text
+```
+
+The review runs while `DEC-BILL-001@1` is the only entry in the corpus, so it
+covers that version. The second import brings in the successor:
+
+```
+Corpus snapshot: 74ac5e6694ba
 
 Stale reviews (1):
-  ✗ REQ-PLAT-002 (specs/platform/audit_logging.md) reviewed at 2026-08-29T19:07:47.390430+00:00 on e6cd1e1123aa
-    STD-SEC-001@4 entered the corpus after this review, which covers STD-SEC-001@3
+  ✗ REQ-BILL-001 (specs/billing/subscriptions.md) reviewed at 2026-08-29T20:46:19.051191+00:00 on 9ea12bf141d6
+    DEC-BILL-002@1 entered the corpus after this review and supersedes DEC-BILL-001@1
 
 Newly applicable (1 specs):
-  REQ-PLAT-002:
-    STD-SEC-001@4 (standard) Tenant data isolation
+  REQ-BILL-001:
+    COM-BILL-001@1 (commitment) Invoice accuracy guarantee
+    DEC-BILL-002@1 (decision) Event stream is the metering source of truth
 
-Summary: 1 of 3 reviews stale, 1 entry versions newly applicable across 1 specs
+Summary: 1 of 1 reviews stale, 2 entry versions newly applicable across 1 specs
 ```
+
+The review is stale for a reason it can name: the decision it surfaced has been
+replaced. Two other entries now reach the same spec and no review has ever put
+them in front of anyone.
 
 Staleness is derived, never stored. A review pins a snapshot and records which
 entry versions it surfaced; the corpus as it stands now is another snapshot.
@@ -307,15 +359,17 @@ A citation naming a version **above** every version the entry holds aborts the
 same way, and the message names the versions that exist:
 
 ```bash
-Error: spec cites STD-SEC-001@9, which the corpus does not contain; STD-SEC-001 holds versions 3, 4
+Error: spec cites STD-SEC-001@9, which the corpus does not contain; STD-SEC-001 holds version 4
 ```
 
 An unknown entry and a version digit typed too high are one authoring mistake,
 so they get one treatment. A cited version at or **below** the newest is a
-different case and stays a `stale_citation` finding even when no row holds it:
-bumping a corpus file in place leaves no row for the version it replaced, and
-`specs/platform/tenant_isolation.md` citing `STD-SEC-001@3` is stale rather than
-unknown.
+different case and stays a `stale_citation` finding even when no row holds it.
+That is what `specs/platform/tenant_isolation.md` does: it cites
+`STD-SEC-001@3`, the corpus file declares version 4, and a clone that never
+held a row for version 3 still reports the citation as stale. The finding is
+decided by the two version numbers, so it needs no database history — see
+[the version model](corpus-authoring.md#the-version-model).
 
 A spec file is reviewed atomically. If any one of its requirements raises on a
 citation, the file records no review at all rather than half a ledger.
@@ -348,8 +402,10 @@ type.
 
 ## Known gaps
 
-- Nothing scales review depth to blast radius. `risk_level` and the impact
-  analyzer exist and the review path does not read them.
+- Nothing scales review depth to blast radius. A check reads `risk_level` as a
+  predicate, and nothing asks for more scrutiny of a `critical` requirement than
+  of a `low` one. The impact analyzer computes its own risk level for a change
+  set and no review path reads it.
 
 ## Related
 

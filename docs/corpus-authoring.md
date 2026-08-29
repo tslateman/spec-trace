@@ -92,6 +92,35 @@ any other. That is deliberate: escalation changes what the standard demands of
 a spec, and a review record has to be able to say which posture was in force
 when it ran.
 
+### The version model
+
+**One file per entry, at its current version.** `corpus/security/tenant-isolation.md`
+carries `version: 4` and nothing else on disk carries version 3. Bumping an
+entry means editing that one file and raising the number in it.
+
+**The database accumulates the history.** Each import writes a new immutable
+`CorpusEntryVersion` row, and the earlier rows stay. A checkout that parsed the
+file at version 3 and again at version 4 holds both; snapshots pinned by reviews
+point at the version that was current when each ran.
+
+**A fresh deployment starts at the current version.** `make migrate &&
+parse_corpus corpus/` on a clone yields one version per entry — the version its
+file declares. There is no earlier history to import, because the earlier bodies
+live in git, not in `corpus/`.
+
+Three consequences worth stating plainly:
+
+- Nothing documented or demonstrated may depend on a version absent from the
+  corpus files. `spectrace/requirements/tests/test_docs_walkthrough.py` seeds a
+  fresh database from `corpus/` and `specs/`, runs the commands
+  [Corpus-backed spec review](corpus-review.md) prints, and compares the output
+  against the documented blocks.
+- A spec citing a version below the one on disk gets a `stale_citation` finding
+  whether or not a row for that version exists. The finding compares two numbers.
+- A supersession demo needs no history at all, because supersession crosses
+  entries: `metering-source-legacy.md` holds `DEC-BILL-001` and
+  `metering-source.md` holds `DEC-BILL-002`, both on disk.
+
 ## Scope rules: `applies_to`
 
 Four keys, all optional, all lists. An entry version binds to a requirement when
@@ -160,6 +189,48 @@ depends_on
 intersection, `contains` uses membership, `==` holds only when the list is
 exactly the one value. The rest are scalars, where `contains` is a substring
 test.
+
+### What populates a check field
+
+A check is only worth writing if something can satisfy it. Each of the thirteen
+fields is filled by the spec author, computed by a command, or filled by nothing
+at all — and a check on a field nothing fills is permanently red, which teaches
+reviewers to skip the findings table.
+
+| Field                 | Filled by                                                   | Where               |
+| --------------------- | ----------------------------------------------------------- | ------------------- |
+| `risk_level`          | Author, in frontmatter. Validated against `RiskLevel`       | `parse_specs`       |
+| `verification_method` | Author, in frontmatter. Unknown values become `unspecified` | `parse_specs`       |
+| `priority`            | Author, in frontmatter. Free text                           | `parse_specs`       |
+| `status`              | Author, in frontmatter. Defaults to `draft`                 | `parse_specs`       |
+| `tags`                | Author, in frontmatter. List                                | `parse_specs`       |
+| `component`           | Author, in frontmatter (FRET)                               | `parse_specs`       |
+| `timing`              | Author, in frontmatter (FRET)                               | `parse_specs`       |
+| `scope`               | Author, in frontmatter (FRET)                               | `parse_specs`       |
+| `condition`           | Author, in frontmatter (FRET)                               | `parse_specs`       |
+| `response`            | Author, in frontmatter (FRET)                               | `parse_specs`       |
+| `depends_on`          | Author, in frontmatter. Ids resolved after import           | `parse_specs`       |
+| `verification_status` | System, from linked test results                            | `import_results`    |
+| `slo_status`          | System, from linked SLOs                                    | `update_slo_status` |
+
+Nothing is unpopulated today. `risk_level` was, until a spec author could
+declare it: every seed entry asserts `risk_level in [critical, high]`, the spec
+parser read eleven frontmatter keys and not that one, and every real review
+reported the same unmeetable finding.
+
+Two things to know before writing a check:
+
+**Computed fields are the good case, not a trap.** `verification_status` and
+`slo_status` come from `import_results` and `update_slo_status`, so a check on
+them asks whether the tests pass or the SLO holds — a question the author
+answers by doing the work, not by editing frontmatter. They read `untested` and
+`not_linked` in a database that has imported neither.
+
+**Only `risk_level` rejects a bad value.** `verification_method` normalizes an
+unknown value to `unspecified` and says nothing, so `verification_method: tests`
+silently fails every `verification_method in [test, both]` check. `priority` and
+`status` are free text and validate nothing at all. A check reading them is a
+string comparison against whatever the author typed.
 
 Values are bare words (`[A-Za-z0-9._-]+`) or quoted strings. Quoting is the
 only way to carry a space, which keeps composed expressions such as `a and b`

@@ -3,6 +3,8 @@ id: REQ-BILL-002
 title: Usage-Based Invoicing
 status: active
 priority: medium
+risk_level: high
+verification_method: test
 tags: [billing, finance]
 parent: REQ-BILL-001
 complies_with:
