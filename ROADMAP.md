@@ -10,23 +10,7 @@ Last reviewed: 2026-08-30.
 
 ## Now
 
-### 1. Cut a release
-
-Ten milestones shipped and the last tag is `v9` from February. Tag names run
-`v1`, `v3`, `v4.0`, `v9`; `pyproject.toml` still says `0.1.0`. Six months of
-work — API v1, the impact graph, corpus review — carries no version anyone can
-install or cite.
-
-Pick one scheme, apply it backward in name only, and tag from here forward.
-
-`python scripts/changelog.py release <version>` promotes the notes and opens a
-fresh Unreleased section. CI already fails when the section falls behind the
-commit log.
-
-**Done when:** `pyproject.toml` matches the newest tag, tags follow one pattern,
-and CHANGELOG's Unreleased section is empty.
-
-### 2. Retire the unversioned API
+### 1. Retire the unversioned API
 
 `/api/v1/` and the original `/api/` paths both serve traffic. Nine legacy
 endpoints — SLO status, validation result, requirement status, Linear health,
@@ -36,7 +20,7 @@ decided the outcome: everything under `/api/v1/`, unversioned paths redirect.
 **Done when:** every endpoint answers under `/api/v1/`, legacy paths redirect,
 and the OpenAPI spec lists one surface.
 
-### 3. Bootstrap the impact graph
+### 2. Bootstrap the impact graph
 
 `map_init`, `map_validate`, `map_promote`, `code_impact_analysis`, and
 `generate_contract` all exist. No `spectrace-map.yaml` exists in any project, so
@@ -52,7 +36,7 @@ markdown comment on PRs.
 
 ## Next
 
-### 4. Wire the intent validator into the submit path
+### 3. Wire the intent validator into the submit path
 
 One agent writes the code and the tests from the same reading of the spec. A
 misread spec produces tests that encode the misreading and pass. `validate_intent`
@@ -62,7 +46,7 @@ checks execution against stated intent, and it runs only when someone asks it to
 **Done when:** `agent_submit` runs `validate_intent` and records the verdict on the
 task, and a task whose tests pass against the wrong intent fails to submit.
 
-### 5. Coverage trend snapshots
+### 4. Coverage trend snapshots
 
 `spec_coverage` reports today's numbers and forgets them. `CorpusSnapshot`
 stores corpus versions; nothing stores coverage over time. Deferred out of v10
@@ -72,7 +56,7 @@ Phase 2 and still the blocker under the trends chart.
 reports change against the previous snapshot, and the dashboard charts the
 series.
 
-### 6. Grow the corpus beyond four domains
+### 5. Grow the corpus beyond four domains
 
 `corpus/` holds billing, identity, platform, and security. Coverage claims are
 worth what the corpus covers. Decide which standards, decisions, and
@@ -86,18 +70,23 @@ SpecTrace's own domain lands in `meta/corpus/`.
 **Done when:** the corpus covers the domains the specs actually touch, and CI
 fails on a stale review.
 
-### 7. Refresh the planning record
+### 6. Refresh the planning record
 
 `docs/current-state.md` was last updated 2026-02-27 and describes the project as
 of v10. `.planning/MILESTONES.md` stops at v9. `.planning/STATE.md` stops at
 2026-02-28. All three describe a project six months younger than the one in the
-repository, and item 3 above exists because the docs and the code disagreed.
+repository, and item 2 above exists because the docs and the code disagreed.
 
 **Done when:** `consolidate` regenerates `current-state.md` from the live
 database, and STATE.md and MILESTONES.md carry the milestone this roadmap's
 "Now" section produces.
 
 ## Later
+
+- **Tag the three milestones that never shipped one.** `v0.2.0`, `v0.5.0`, and
+  `v0.10.0` have CHANGELOG sections and no tag. Placing them means finding the
+  commit each milestone ended on; `.planning/MILESTONES.md` records a git range
+  for some, and stops at v9.
 
 - **CI webhooks for test results.** The GitHub webhook handler exists for
   events; JUnit results still arrive through `import_results`. Receiving them

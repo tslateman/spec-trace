@@ -1,6 +1,6 @@
 [project]
 name = "spectrace"
-version = "0.1.0"
+version = "0.11.0"
 description = "Requirements traceability system connecting specs to verified tests"
 readme = "README.md"
 requires-python = ">=3.12"

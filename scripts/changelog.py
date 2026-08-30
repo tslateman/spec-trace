@@ -78,7 +78,13 @@ def git(*args):
 
 
 def newest_tag():
-    tags = git("tag", "--sort=-creatordate").split()
+    """Return the highest version tag.
+
+    Sorts by version rather than date: tags created in one batch share a
+    creation second, and git falls back to refname order, which puts v0.1.0
+    above v0.11.0.
+    """
+    tags = git("tag", "--sort=-v:refname").split()
     return tags[0] if tags else None
 
 
