@@ -107,7 +107,8 @@ entire ecosystem, at module level.
 - `spectrace impact --code <base>..<head>` — CLI command
 - Exit code 0 (low/medium) or 1 (high/critical) for gate behavior
 - `--format markdown` for PR comment output
-- `--strict` flag for future hard-gate mode
+- The hard gate arrives by dropping `continue-on-error` from the CI step;
+  the CLI carries no flag for it
 
 ### Bootstrap
 
