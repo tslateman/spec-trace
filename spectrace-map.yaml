@@ -1,0 +1,91 @@
+project: spectrace
+modules:
+  spectrace/requirements/parser.py:
+    requirements: [REQ-CORE-001]
+  spectrace/requirements/management/commands/parse_specs.py:
+    requirements: [REQ-CORE-001]
+  spectrace/requirements/services/requirement_parser.py:
+    requirements: [REQ-CORE-001]
+  spectrace/requirements/management/commands/extract_links.py:
+    requirements: [REQ-CORE-002]
+  spectrace/requirements/management/commands/import_test_links.py:
+    requirements: [REQ-CORE-002]
+  spectrace/requirements/pytest_plugin.py:
+    requirements: [REQ-CORE-002]
+  spectrace/requirements/importer.py:
+    requirements: [REQ-CORE-003]
+  spectrace/requirements/management/commands/import_results.py:
+    requirements: [REQ-CORE-003, REQ-CORE-004]
+  spectrace/requirements/status.py:
+    requirements: [REQ-CORE-004]
+  spectrace/requirements/validator.py:
+    requirements: [REQ-CORE-005, REQ-SPEC-003]
+  spectrace/requirements/management/commands/validate_links.py:
+    requirements: [REQ-CORE-005]
+  spectrace/requirements/models.py:
+    requirements: [REQ-CORE-000]
+  spectrace/cli.py:
+    requirements: [REQ-CORE-000]
+  spectrace/requirements/api_v1.py:
+    requirements:
+      [
+        REQ-RSLT-000,
+        REQ-RSLT-001,
+        REQ-RSLT-002,
+        REQ-RSLT-003,
+        REQ-RSLT-004,
+        REQ-RSLT-005,
+        REQ-RSLT-006,
+        REQ-SPEC-000,
+        REQ-SPEC-001,
+        REQ-SPEC-002,
+        REQ-SPEC-003,
+        REQ-SPEC-004,
+        REQ-SPEC-005,
+        REQ-TASK-000,
+        REQ-TASK-001,
+        REQ-TASK-002,
+        REQ-TASK-003,
+      ]
+  spectrace/requirements/urls.py:
+    requirements: [REQ-RSLT-000, REQ-SPEC-000, REQ-TASK-000]
+  spectrace/requirements/services/agent_tasks.py:
+    requirements: [REQ-TASK-002, REQ-TASK-003]
+  spectrace/requirements/services/conflict_detector.py:
+    requirements: [REQ-RSLT-002]
+  spectrace/requirements/management/commands/detect_conflicts.py:
+    requirements: [REQ-RSLT-002]
+  spectrace/requirements/validation_runs.py:
+    requirements: [REQ-RSLT-005, REQ-RSLT-006]
+  spectrace/requirements/services/impact_analyzer.py:
+    requirements: [REQ-SPEC-004]
+  spectrace/requirements/services/dependency_validator.py:
+    requirements: [REQ-SPEC-004]
+  spectrace/requirements/management/commands/impact_analysis.py:
+    requirements: [REQ-SPEC-004]
+  spectrace/requirements/management/commands/spec_coverage.py:
+    requirements: [REQ-SPEC-002]
+  spectrace/requirements/management/commands/detect_drift.py:
+    requirements: [REQ-SPEC-003]
+  spectrace/requirements/tests/test_api_v1_specs.py:
+    requirements: [REQ-SPEC-001, REQ-SPEC-002, REQ-SPEC-003, REQ-SPEC-004, REQ-SPEC-005]
+  spectrace/requirements/tests/test_api_v1_tasks.py:
+    requirements: [REQ-TASK-001, REQ-TASK-002, REQ-TASK-003]
+  spectrace/requirements/tests/test_api_v1_results.py:
+    requirements:
+      [
+        REQ-RSLT-001,
+        REQ-RSLT-002,
+        REQ-RSLT-003,
+        REQ-RSLT-004,
+        REQ-RSLT-005,
+        REQ-RSLT-006,
+      ]
+  spectrace/requirements/tests/test_status.py:
+    requirements: [REQ-CORE-004]
+  spectrace/requirements/tests/test_validator.py:
+    requirements: [REQ-CORE-005]
+  spectrace/requirements/tests/test_validate_links_command.py:
+    requirements: [REQ-CORE-005]
+  spectrace/requirements/tests/test_spec_risk_level.py:
+    requirements: [REQ-CORE-001]

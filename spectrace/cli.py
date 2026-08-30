@@ -80,24 +80,27 @@ def coverage(format):
 @specs.command()
 @click.argument("base_ref")
 @click.argument("head_ref")
-@click.option("--format", type=click.Choice(["text", "json", "md"]), default="text")
+@click.option("--format", type=click.Choice(["text", "json", "md", "markdown"]), default="text")
 @click.option("--no-hierarchy", is_flag=True, default=False, help="Skip child requirements")
 @click.option("--spec-dir", default="specs", help="Spec file directory")
 @click.option("--code", is_flag=True, default=False, help="Full code impact analysis")
 @click.option("--project-roots", default=None, help="project=path pairs (comma-separated)")
-def impact(base_ref, head_ref, format, no_hierarchy, spec_dir, code, project_roots):
+@click.option("--output", default=None, help="Write the report to this file instead of stdout")
+def impact(base_ref, head_ref, format, no_hierarchy, spec_dir, code, project_roots, output):
     """Analyze impact of spec changes between two git refs."""
     if code:
         kwargs = {"format": format}
         if project_roots:
             kwargs["project_roots"] = project_roots
+        if output:
+            kwargs["output"] = output
         _run("code_impact_analysis", base_ref, head_ref, **kwargs)
     else:
         _run(
             "impact_analysis",
             base_ref,
             head_ref,
-            format=format,
+            format="md" if format == "markdown" else format,
             include_hierarchy=not no_hierarchy,
             no_hierarchy=no_hierarchy,
             spec_dir=spec_dir,

@@ -1,0 +1,83 @@
+{
+  "project": "spectrace",
+  "surfaces": {
+    "cli/spectrace": {
+      "entry_point": "spectrace.cli:main",
+      "format": "cli"
+    },
+    "demos.yaml": {
+      "fields": [
+        "demos"
+      ],
+      "format": "yaml"
+    },
+    "examples/document-pipeline/ci/github-actions.yml": {
+      "fields": [
+        "True",
+        "env",
+        "jobs",
+        "name"
+      ],
+      "format": "yaml"
+    },
+    "examples/document-pipeline/slos/api-availability.yaml": {
+      "fields": [
+        "apiVersion",
+        "kind",
+        "metadata",
+        "spec"
+      ],
+      "format": "yaml"
+    },
+    "examples/document-pipeline/slos/processing-latency.yaml": {
+      "fields": [
+        "apiVersion",
+        "kind",
+        "metadata",
+        "spec"
+      ],
+      "format": "yaml"
+    },
+    "flows/example-api-check.yaml": {
+      "fields": [
+        "description",
+        "id",
+        "requirements",
+        "steps",
+        "title",
+        "version"
+      ],
+      "format": "yaml"
+    },
+    "flows/linear-connection.yaml": {
+      "fields": [
+        "description",
+        "id",
+        "requirements",
+        "steps",
+        "title",
+        "version"
+      ],
+      "format": "yaml"
+    },
+    "plans/openapi.yaml": {
+      "fields": [
+        "components",
+        "info",
+        "openapi",
+        "paths",
+        "servers",
+        "tags"
+      ],
+      "format": "yaml"
+    },
+    "spectrace-map.yaml": {
+      "fields": [
+        "modules",
+        "project"
+      ],
+      "format": "yaml"
+    }
+  },
+  "version": "1.0"
+}

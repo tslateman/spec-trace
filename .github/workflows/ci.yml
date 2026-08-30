@@ -94,3 +94,71 @@ jobs:
 
       - name: Check every requirement keeps its tests
         run: python spectrace/manage.py validate_links links.json --check-high-risk
+
+  impact:
+    name: Impact
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    # Writing the PR comment needs more than the read-only default above.
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The analysis diffs the PR base against its head, so shallow fails.
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: |
+          pip install uv
+          uv pip install --system -e ./spectrace-flows -e ".[dev]"
+
+      # Affected tests come from the link database. Build it first, and let a
+      # failure here fail the job rather than report an empty blast radius.
+      - name: Build the requirement database
+        run: |
+          python spectrace/manage.py migrate --no-input
+          python spectrace/manage.py parse_specs specs
+          python spectrace/manage.py parse_specs meta/specs
+          python spectrace/manage.py extract_links --path spectrace --output links.json
+          python spectrace/manage.py import_test_links links.json
+
+      # Informed-consent gate: exit 1 reports high or critical risk and must not
+      # block the merge. Drop continue-on-error to make the gate blocking.
+      - name: Analyze code impact
+        id: analyze
+        continue-on-error: true
+        run: |
+          python spectrace/manage.py code_impact_analysis \
+            "${{ github.event.pull_request.base.sha }}" \
+            "${{ github.event.pull_request.head.sha }}" \
+            --format markdown \
+            --output impact.md
+
+      # continue-on-error hides a crash as well as a risk verdict. The marker
+      # only reaches the report when the analysis finished, so grep tells the
+      # two apart and a broken run never passes as "no impact".
+      - name: Confirm the analysis finished
+        run: |
+          if ! grep -q '<!-- spectrace-impact-gate' impact.md; then
+            echo "::error::Impact analysis did not finish (analyze step: ${{ steps.analyze.outcome }})"
+            exit 1
+          fi
+
+      - name: Add the report to the job summary
+        run: cat impact.md >> "$GITHUB_STEP_SUMMARY"
+
+      # GITHUB_TOKEN is read-only on pull requests from forks, so posting there
+      # would fail. The job summary above still carries the report.
+      - name: Post the impact comment
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python spectrace/manage.py post_impact_comment --body-file impact.md

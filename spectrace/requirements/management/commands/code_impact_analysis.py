@@ -2,10 +2,41 @@
 
 import json
 import sys
+from pathlib import Path
 
 from django.core.management.base import BaseCommand, CommandError
 
 from ...services.impact_analyzer import ImpactAnalyzer
+from ...services.impact_markdown import render_markdown
+
+BLOCKING_LEVELS = ("high", "critical")
+
+
+def parse_project_roots(raw: str) -> dict[str, Path]:
+    """Parse comma-separated ``name=path`` pairs into project roots.
+
+    Raises:
+        CommandError: If a pair omits ``=`` or names a directory that is absent.
+    """
+    roots: dict[str, Path] = {}
+    for pair in raw.split(","):
+        pair = pair.strip()
+        if not pair:
+            continue
+        if "=" not in pair:
+            raise CommandError(
+                f"Invalid --project-roots entry {pair!r}. "
+                "Expected name=path pairs, e.g. praxis=/path/to/praxis"
+            )
+        name, path = pair.split("=", 1)
+        root = Path(path.strip()).expanduser()
+        if not root.is_dir():
+            raise CommandError(f"Project root for {name.strip()!r} is not a directory: {root}")
+        roots[name.strip()] = root
+
+    if not roots:
+        raise CommandError("--project-roots was given but named no projects")
+    return roots
 
 
 class Command(BaseCommand):
@@ -24,7 +55,7 @@ class Command(BaseCommand):
         )
         parser.add_argument(
             "--format",
-            choices=["text", "json", "md"],
+            choices=["text", "json", "md", "markdown"],
             default="text",
             help="Output format (default: text)",
         )
@@ -34,22 +65,21 @@ class Command(BaseCommand):
             default=None,
             help="Comma-separated project=path pairs (e.g., lore=/path/to/lore,praxis=/path)",
         )
+        parser.add_argument(
+            "--output",
+            type=str,
+            default=None,
+            help="Write the report to this file instead of stdout",
+        )
 
     def handle(self, *args, **options):
         base_ref = options["base_ref"]
         head_ref = options["head_ref"]
         output_format = options["format"]
 
-        # Parse project roots
         project_roots = None
         if options["project_roots"]:
-            from pathlib import Path
-
-            project_roots = {}
-            for pair in options["project_roots"].split(","):
-                if "=" in pair:
-                    name, path = pair.split("=", 1)
-                    project_roots[name.strip()] = Path(path.strip())
+            project_roots = parse_project_roots(options["project_roots"])
 
         analyzer = ImpactAnalyzer()
 
@@ -59,18 +89,23 @@ class Command(BaseCommand):
             raise CommandError(str(e))
 
         if output_format == "json":
-            self._output_json(result)
-        elif output_format == "md":
-            self._output_md(result, base_ref, head_ref)
+            report = self._render_json(result)
+        elif output_format in ("md", "markdown"):
+            report = render_markdown(result, base_ref, head_ref)
         else:
-            self._output_text(result, base_ref, head_ref)
+            report = self._render_text(result, base_ref, head_ref)
 
-        # Exit code 1 for high/critical risk (CI gate)
-        if result.risk_level in ("high", "critical"):
+        destination = options.get("output")
+        if destination:
+            Path(destination).write_text(report)
+        else:
+            self.stdout.write(report)
+
+        if result.risk_level in BLOCKING_LEVELS:
             sys.exit(1)
 
-    def _output_json(self, result):
-        """Output structured JSON."""
+    def _render_json(self, result) -> str:
+        """Render structured JSON."""
         output = {
             "changed_files": result.changed_files,
             "blast": result.blast,
@@ -78,6 +113,7 @@ class Command(BaseCommand):
             "risk_score": result.risk_score,
             "risk_level": result.risk_level,
             "edge_summary": result.edge_summary,
+            "traversed_edges": result.traversed_edges,
             "summary": {
                 "files_changed": sum(len(v) for v in result.changed_files.values()),
                 "tests_affected": len(result.affected_tests),
@@ -85,122 +121,41 @@ class Command(BaseCommand):
                 "projects_affected": len(result.blast.get("affected_projects", [])),
             },
         }
-        self.stdout.write(json.dumps(output, indent=2))
+        return json.dumps(output, indent=2)
 
-    def _output_md(self, result, base_ref, head_ref):
-        """Output Markdown for PR comments."""
-        lines = []
-        lines.append("## Code Impact Analysis")
-        lines.append(f"**Comparing:** `{base_ref}` .. `{head_ref}`")
-        lines.append("")
+    def _render_text(self, result, base_ref, head_ref) -> str:
+        """Render human-readable text."""
+        lines = [
+            f"Code Impact Analysis: {base_ref} .. {head_ref}",
+            "=" * 50,
+            "",
+        ]
 
         total_files = sum(len(v) for v in result.changed_files.values())
         if not total_files:
-            lines.append("No code files changed.")
-            self.stdout.write("\n".join(lines) + "\n")
-            return
+            lines.append(self.style.SUCCESS("No code files changed."))
+            return "\n".join(lines) + "\n"
 
-        # Changed files
-        lines.append(f"### Changed Files ({total_files})")
+        lines.append(f"Changed Files ({total_files}):")
         for project, files in sorted(result.changed_files.items()):
             for f in files:
-                lines.append(f"- `[{project}]` {f}")
-        lines.append("")
+                lines.append(f"  [{project}] {f}")
 
-        # Blast radius
         blast = result.blast
         reqs = blast.get("affected_requirements", [])
         mods = blast.get("affected_modules", [])
         projs = blast.get("affected_projects", [])
 
-        if reqs:
-            lines.append(f"### Affected Requirements ({len(reqs)})")
-            for r in reqs:
-                lines.append(f"- {r}")
-            lines.append("")
+        for heading, items in (
+            ("Affected Requirements", reqs),
+            ("Affected Modules", mods),
+            ("Affected Projects", projs),
+        ):
+            if items:
+                lines.append("")
+                lines.append(f"{heading} ({len(items)}):")
+                lines.extend(f"  {item}" for item in items)
 
-        if mods:
-            lines.append(f"### Affected Modules ({len(mods)})")
-            for m in mods:
-                lines.append(f"- {m}")
-            lines.append("")
-
-        if projs:
-            lines.append(f"### Affected Projects ({len(projs)})")
-            for p in projs:
-                lines.append(f"- {p}")
-            lines.append("")
-
-        # Risk
-        risk_emoji = {
-            "low": "LOW",
-            "medium": "MEDIUM",
-            "high": "HIGH",
-            "critical": "CRITICAL",
-        }.get(result.risk_level, "UNKNOWN")
-
-        lines.append("### Risk Assessment")
-        lines.append(f"**Level:** {risk_emoji} (Score: {result.risk_score:.2f})")
-        lines.append("")
-
-        # Edge summary
-        edges = result.edge_summary
-        lines.append("### Edge Sources")
-        lines.append(
-            f"Annotated: {edges['annotated']} | "
-            f"Inferred: {edges['inferred']} | "
-            f"Contract: {edges['contract']}"
-        )
-        lines.append("")
-
-        # Tests
-        if result.affected_tests:
-            lines.append(f"### Affected Tests ({len(result.affected_tests)})")
-            lines.append("```bash")
-            for test in sorted(result.affected_tests):
-                lines.append(f"pytest {test}")
-            lines.append("```")
-
-        self.stdout.write("\n".join(lines) + "\n")
-
-    def _output_text(self, result, base_ref, head_ref):
-        """Output human-readable text."""
-        self.stdout.write(f"Code Impact Analysis: {base_ref} .. {head_ref}\n")
-        self.stdout.write("=" * 50 + "\n")
-
-        total_files = sum(len(v) for v in result.changed_files.values())
-        if not total_files:
-            self.stdout.write(self.style.SUCCESS("\nNo code files changed.\n"))
-            return
-
-        # Changed files
-        self.stdout.write(f"\nChanged Files ({total_files}):\n")
-        for project, files in sorted(result.changed_files.items()):
-            for f in files:
-                self.stdout.write(f"  [{project}] {f}\n")
-
-        # Blast radius
-        blast = result.blast
-        reqs = blast.get("affected_requirements", [])
-        mods = blast.get("affected_modules", [])
-        projs = blast.get("affected_projects", [])
-
-        if reqs:
-            self.stdout.write(f"\nAffected Requirements ({len(reqs)}):\n")
-            for r in reqs:
-                self.stdout.write(f"  {r}\n")
-
-        if mods:
-            self.stdout.write(f"\nAffected Modules ({len(mods)}):\n")
-            for m in mods:
-                self.stdout.write(f"  {m}\n")
-
-        if projs:
-            self.stdout.write(f"\nAffected Projects ({len(projs)}):\n")
-            for p in projs:
-                self.stdout.write(f"  {p}\n")
-
-        # Risk
         risk_styles = {
             "low": self.style.SUCCESS,
             "medium": self.style.WARNING,
@@ -208,22 +163,20 @@ class Command(BaseCommand):
             "critical": self.style.ERROR,
         }
         style_fn = risk_styles.get(result.risk_level, self.style.WARNING)
-        self.stdout.write(
-            style_fn(f"\nRisk: {result.risk_level.upper()} ({result.risk_score:.2f})\n")
+        lines.append("")
+        lines.append(style_fn(f"Risk: {result.risk_level.upper()} ({result.risk_score:.2f})"))
+
+        edges = result.traversed_edges
+        lines.append("")
+        lines.append(
+            f"Edges carrying this change: {edges['annotated']} annotated, "
+            f"{edges['contract']} contract, "
+            f"{edges['inferred']} inferred"
         )
 
-        # Edge summary
-        edges = result.edge_summary
-        self.stdout.write(
-            f"\nEdges: {edges['annotated']} annotated, "
-            f"{edges['inferred']} inferred, "
-            f"{edges['contract']} contract\n"
-        )
-
-        # Tests
         if result.affected_tests:
-            self.stdout.write(
-                self.style.WARNING(f"\nAffected Tests ({len(result.affected_tests)}):\n")
-            )
-            for test in sorted(result.affected_tests):
-                self.stdout.write(f"  {test}\n")
+            lines.append("")
+            lines.append(self.style.WARNING(f"Affected Tests ({len(result.affected_tests)}):"))
+            lines.extend(f"  {test}" for test in sorted(result.affected_tests))
+
+        return "\n".join(lines) + "\n"
