@@ -123,6 +123,32 @@ UNFOLD = {
                 ],
             },
             {
+                "title": _("Standards"),
+                "separator": True,
+                "items": [
+                    {
+                        "title": _("Corpus Entries"),
+                        "icon": "gavel",
+                        "link": reverse_lazy("admin:requirements_corpusentry_changelist"),
+                    },
+                    {
+                        "title": _("Corpus Versions"),
+                        "icon": "history",
+                        "link": reverse_lazy("admin:requirements_corpusentryversion_changelist"),
+                    },
+                    {
+                        "title": _("Corpus Snapshots"),
+                        "icon": "photo_camera",
+                        "link": reverse_lazy("admin:requirements_corpussnapshot_changelist"),
+                    },
+                    {
+                        "title": _("Spec Reviews"),
+                        "icon": "rule",
+                        "link": reverse_lazy("admin:requirements_specreview_changelist"),
+                    },
+                ],
+            },
+            {
                 "title": _("Results"),
                 "separator": True,
                 "items": [
