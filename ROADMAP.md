@@ -50,25 +50,9 @@ promote the ones that hold, and generate contract snapshots.
 and tests for a real diff in at least two projects, and the CI gate posts a
 markdown comment on PRs.
 
-### 4. Verify SpecTrace with SpecTrace
-
-`.github/workflows/ci.yml` runs three jobs: Test, Lint, Changelog. It never runs
-`validate_links`, which SpecTrace ships as the CI drift detector. Running the
-gates by hand reports `0 links checked, 9 warnings`, and all nine name demo
-requirements. Across 1031 test functions, 45 commands, and 14 `/api/v1/`
-endpoints, no requirement describes SpecTrace itself.
-
-Spec the core traceability loop and the API v1 surface top-down, mark the tests
-that verify them, and gate the result. See
-[plans/spectrace-self-verification.md](plans/spectrace-self-verification.md).
-
-**Done when:** a CI job fails on a broken requirement link, `validate_links`
-reports 0 errors against SpecTrace's own spec tree, and the gate is green before
-`v11` is tagged.
-
 ## Next
 
-### 5. Wire the intent validator into the submit path
+### 4. Wire the intent validator into the submit path
 
 One agent writes the code and the tests from the same reading of the spec. A
 misread spec produces tests that encode the misreading and pass. `validate_intent`
@@ -78,7 +62,7 @@ checks execution against stated intent, and it runs only when someone asks it to
 **Done when:** `agent_submit` runs `validate_intent` and records the verdict on the
 task, and a task whose tests pass against the wrong intent fails to submit.
 
-### 6. Coverage trend snapshots
+### 5. Coverage trend snapshots
 
 `spec_coverage` reports today's numbers and forgets them. `CorpusSnapshot`
 stores corpus versions; nothing stores coverage over time. Deferred out of v10
@@ -88,21 +72,21 @@ Phase 2 and still the blocker under the trends chart.
 reports change against the previous snapshot, and the dashboard charts the
 series.
 
-### 7. Grow the corpus beyond four domains
+### 6. Grow the corpus beyond four domains
 
 `corpus/` holds billing, identity, platform, and security. Coverage claims are
 worth what the corpus covers. Decide which standards, decisions, and
 commitments belong in it next, so a moved standard fails a build instead of
 aging quietly.
 
-Item 4 leaves `corpus drift --strict` here: corpus entries scope through
-`applies_to.paths`, so none match a SpecTrace spec until this item authors a
-corpus for SpecTrace's own domain.
+This item also owns `corpus drift --strict` in CI. Corpus entries scope through
+`applies_to.paths`, so none match a SpecTrace spec until a corpus for
+SpecTrace's own domain lands in `meta/corpus/`.
 
 **Done when:** the corpus covers the domains the specs actually touch, and CI
 fails on a stale review.
 
-### 8. Refresh the planning record
+### 7. Refresh the planning record
 
 `docs/current-state.md` was last updated 2026-02-27 and describes the project as
 of v10. `.planning/MILESTONES.md` stops at v9. `.planning/STATE.md` stops at
