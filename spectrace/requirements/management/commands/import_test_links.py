@@ -8,6 +8,18 @@ from django.core.management.base import BaseCommand, CommandError
 from requirements.models import Requirement, TestRequirementLink
 
 
+def _requirement_ids(link: dict) -> list[str]:
+    """Return the requirement external IDs a link record names.
+
+    Accepts both link shapes: `linear_issue_ids` from the pytest plugin and
+    `requirement_id` from the `extract_links` command.
+    """
+    if "linear_issue_ids" in link:
+        return link["linear_issue_ids"]
+    requirement_id = link.get("requirement_id")
+    return [requirement_id] if requirement_id else []
+
+
 class Command(BaseCommand):
     """Import test-Linear issue links from .spectrace/links.json."""
 
@@ -52,7 +64,7 @@ class Command(BaseCommand):
 
         for link in links:
             test_nodeid = link["test_nodeid"]
-            issue_ids = link.get("linear_issue_ids", [])
+            issue_ids = _requirement_ids(link)
 
             for issue_id in issue_ids:
                 # Look up requirement by external_id (Linear identifier like CAN-1234)
@@ -88,6 +100,11 @@ class Command(BaseCommand):
         if dry_run:
             self.stdout.write(
                 self.style.SUCCESS(f"Would create/update links for {len(links)} tests")
+            )
+        elif created_count == 0 and updated_count == 0:
+            raise CommandError(
+                f"{len(links)} links in {links_path} resolved to no requirement. "
+                f"Unmatched IDs: {', '.join(sorted(not_found_issues)) or 'none named'}"
             )
         else:
             self.stdout.write(

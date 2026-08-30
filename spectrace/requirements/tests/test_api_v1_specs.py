@@ -93,6 +93,7 @@ def requirement_with_validation(db, sample_requirement):
 
 
 @pytest.mark.django_db
+@pytest.mark.requirement("REQ-SPEC-001")
 def test_spec_context__returns_requirement_details(client, sample_requirement):
     resp = client.get("/api/v1/specs/REQ-TEST-001/context")
     assert resp.status_code == 200
@@ -107,6 +108,7 @@ def test_spec_context__returns_requirement_details(client, sample_requirement):
 
 
 @pytest.mark.django_db
+@pytest.mark.requirement("REQ-SPEC-001")
 def test_spec_context__includes_test_results(client, requirement_with_test_links):
     resp = client.get("/api/v1/specs/REQ-TEST-001/context")
     assert resp.status_code == 200
@@ -119,6 +121,7 @@ def test_spec_context__includes_test_results(client, requirement_with_test_links
 
 
 @pytest.mark.django_db
+@pytest.mark.requirement("REQ-SPEC-001")
 def test_spec_context__includes_dependencies(client, db):
     parent = Requirement.add_root(
         external_id="REQ-PARENT",
@@ -146,6 +149,7 @@ def test_spec_context__includes_dependencies(client, db):
 
 
 @pytest.mark.django_db
+@pytest.mark.requirement("REQ-SPEC-001")
 def test_spec_context__includes_fret_fields(client, requirement_with_fret):
     resp = client.get("/api/v1/specs/REQ-FRET-001/context")
     assert resp.status_code == 200
@@ -161,6 +165,7 @@ def test_spec_context__includes_fret_fields(client, requirement_with_fret):
 
 
 @pytest.mark.django_db
+@pytest.mark.requirement("REQ-SPEC-001")
 def test_spec_context__omits_fret_when_empty(client, sample_requirement):
     resp = client.get("/api/v1/specs/REQ-TEST-001/context")
     assert resp.status_code == 200
@@ -168,6 +173,7 @@ def test_spec_context__omits_fret_when_empty(client, sample_requirement):
 
 
 @pytest.mark.django_db
+@pytest.mark.requirement("REQ-SPEC-001")
 def test_spec_context__returns_404_for_unknown(client, db):
     resp = client.get("/api/v1/specs/REQ-NOPE/context")
     assert resp.status_code == 404
@@ -182,6 +188,7 @@ def test_spec_context__returns_404_for_unknown(client, db):
 @pytest.mark.django_db
 @patch("requirements.api_v1.detect_spec_drift", autospec=True)
 @patch("requirements.api_v1.detect_stale_links", autospec=True)
+@pytest.mark.requirement("REQ-SPEC-002")
 def test_specs_coverage__returns_metrics(mock_stale, mock_drift, client, sample_requirement):
     mock_stale.return_value = MagicMock(errors=[])
     mock_drift.return_value = MagicMock(warnings=[])
@@ -197,6 +204,7 @@ def test_specs_coverage__returns_metrics(mock_stale, mock_drift, client, sample_
 @pytest.mark.django_db
 @patch("requirements.api_v1.detect_spec_drift", autospec=True)
 @patch("requirements.api_v1.detect_stale_links", autospec=True)
+@pytest.mark.requirement("REQ-SPEC-002")
 def test_specs_coverage__includes_stale_requirements(
     mock_stale, mock_drift, client, sample_requirement
 ):
@@ -225,6 +233,7 @@ def test_specs_coverage__includes_stale_requirements(
 
 @pytest.mark.django_db
 @patch("requirements.api_v1.detect_all_drift", autospec=True)
+@pytest.mark.requirement("REQ-SPEC-003")
 def test_specs_drift__returns_drift_data(mock_drift, client):
     mock_drift.return_value = MagicMock(
         to_dict=MagicMock(return_value={"errors": [], "warnings": []})
@@ -236,6 +245,7 @@ def test_specs_drift__returns_drift_data(mock_drift, client):
 
 @pytest.mark.django_db
 @patch("requirements.api_v1.detect_all_drift", autospec=True)
+@pytest.mark.requirement("REQ-SPEC-003")
 def test_specs_drift__accepts_custom_dirs(mock_drift, client, tmp_path):
     specs = tmp_path / "specs"
     tests = tmp_path / "tests"
@@ -254,6 +264,7 @@ def test_specs_drift__accepts_custom_dirs(mock_drift, client, tmp_path):
 
 @pytest.mark.django_db
 @patch("requirements.api_v1.detect_all_drift", autospec=True)
+@pytest.mark.requirement("REQ-SPEC-003")
 def test_specs_drift__uses_defaults_when_no_params(mock_drift, client):
     mock_drift.return_value = MagicMock(to_dict=MagicMock(return_value={}))
     resp = client.get("/api/v1/specs/drift/")
@@ -268,6 +279,7 @@ def test_specs_drift__uses_defaults_when_no_params(mock_drift, client):
 
 @pytest.mark.django_db
 @patch("requirements.services.impact_analyzer.ImpactAnalyzer")
+@pytest.mark.requirement("REQ-SPEC-004")
 def test_specs_impact__returns_impact_for_spec_id(mock_analyzer_cls, client):
     analyzer = mock_analyzer_cls.return_value
     analyzer.get_affected_tests.return_value = (
@@ -289,6 +301,7 @@ def test_specs_impact__returns_impact_for_spec_id(mock_analyzer_cls, client):
 
 @pytest.mark.django_db
 @patch("requirements.services.impact_analyzer.ImpactAnalyzer")
+@pytest.mark.requirement("REQ-SPEC-004")
 def test_specs_impact__returns_impact_for_file_path(mock_analyzer_cls, client):
     analyzer = mock_analyzer_cls.return_value
     analyzer.extract_requirement_ids.return_value = ["REQ-001"]
@@ -305,6 +318,7 @@ def test_specs_impact__returns_impact_for_file_path(mock_analyzer_cls, client):
 
 
 @pytest.mark.django_db
+@pytest.mark.requirement("REQ-SPEC-004")
 def test_specs_impact__rejects_missing_params(client):
     resp = client.get("/api/v1/specs/impact/")
     assert resp.status_code == 400
@@ -313,6 +327,7 @@ def test_specs_impact__rejects_missing_params(client):
 
 @pytest.mark.django_db
 @patch("requirements.services.impact_analyzer.ImpactAnalyzer")
+@pytest.mark.requirement("REQ-SPEC-004")
 def test_specs_impact__returns_404_when_no_reqs_found(mock_analyzer_cls, client):
     analyzer = mock_analyzer_cls.return_value
     analyzer.extract_requirement_ids.return_value = []
@@ -328,6 +343,7 @@ def test_specs_impact__returns_404_when_no_reqs_found(mock_analyzer_cls, client)
 
 
 @pytest.mark.django_db
+@pytest.mark.requirement("REQ-SPEC-005")
 def test_spec_status__returns_basic_status(client, sample_requirement):
     resp = client.get("/api/v1/specs/REQ-TEST-001/status/")
     assert resp.status_code == 200
@@ -341,6 +357,7 @@ def test_spec_status__returns_basic_status(client, sample_requirement):
 
 
 @pytest.mark.django_db
+@pytest.mark.requirement("REQ-SPEC-005")
 def test_spec_status__includes_latest_result(client, requirement_with_validation):
     req, validation = requirement_with_validation
 
@@ -357,6 +374,7 @@ def test_spec_status__includes_latest_result(client, requirement_with_validation
 
 
 @pytest.mark.django_db
+@pytest.mark.requirement("REQ-SPEC-005")
 def test_spec_status__detects_regression(client, requirement_with_validation):
     req, validation = requirement_with_validation
 
@@ -370,6 +388,7 @@ def test_spec_status__detects_regression(client, requirement_with_validation):
 
 
 @pytest.mark.django_db
+@pytest.mark.requirement("REQ-SPEC-005")
 def test_spec_status__returns_404_for_unknown(client, db):
     resp = client.get("/api/v1/specs/REQ-NOPE/status/")
     assert resp.status_code == 404

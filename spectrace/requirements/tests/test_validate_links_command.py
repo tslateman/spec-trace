@@ -74,6 +74,7 @@ def invalid_json_file():
         return Path(f.name)
 
 
+@pytest.mark.requirement("REQ-CORE-005")
 class TestValidateLinksCommand:
     """Integration tests for the validate_links management command."""
 

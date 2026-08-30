@@ -59,6 +59,7 @@ def spec_file(tmp_path):
     return write
 
 
+@pytest.mark.requirement("REQ-CORE-001")
 class TestParsingAnAuthoredRiskLevel:
     """The frontmatter key reaches the requirement dict and then the row."""
 

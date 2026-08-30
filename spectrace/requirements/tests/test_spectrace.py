@@ -5,6 +5,7 @@ from io import StringIO
 
 import pytest
 from django.core.management import call_command
+from django.core.management.base import CommandError
 from django.utils import timezone
 
 from requirements.importer import update_test_requirement_links
@@ -178,8 +179,8 @@ class TestImportTestLinksCommand:
         assert link.needs_review is True  # New links flagged for review
         assert "new link" in link.review_reason
 
-    def test_import_links__warns_on_missing_requirement(self, db, tmp_path):
-        """Import warns when requirement not found."""
+    def test_import_links__fails_when_no_link_resolves_to_a_requirement(self, db, tmp_path):
+        """Import raises rather than reporting zero links as success."""
         links_json = tmp_path / "links.json"
         links_json.write_text(
             json.dumps(
@@ -194,13 +195,10 @@ class TestImportTestLinksCommand:
             )
         )
 
-        out = StringIO()
-        err = StringIO()
-        call_command("import_test_links", str(links_json), stdout=out, stderr=err)
+        with pytest.raises(CommandError, match="MISSING-999"):
+            call_command("import_test_links", str(links_json))
 
         assert TestRequirementLink.objects.count() == 0
-        output = out.getvalue()
-        assert "MISSING-999" in output
 
     def test_import_links__updates_existing(
         self, db, sample_requirement, test_requirement_link, tmp_path

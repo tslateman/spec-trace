@@ -2,6 +2,22 @@
 
 Requirements traceability for Python projects. Connect specs to tests, see what's verified.
 
+## Scope
+
+SpecTrace reads git, specs, and test results. It consumes what your other tools emit,
+and never instruments, polls, or scrapes a running system:
+
+- Observability platforms push SLO status in through `update_slo_status --from-json` or
+  `POST /api/slo/status/`. Datadog, groundcover, New Relic — SpecTrace needs the mapping
+  from their output to a requirement ID, nothing more.
+- Test runners hand over JUnit XML through `import_results`.
+- Runtime checks arrive as JSON through `import_inapp_validations`.
+
+Pick your APM. SpecTrace answers a different question: which requirements passing tests
+verify, and what a change puts at risk.
+
+A rule engine asserts coverage. Reviewers judge whether a spec honors an obligation.
+
 ## Prerequisites
 
 SpecTrace uses [uv](https://github.com/astral-sh/uv) for fast, reliable package management:

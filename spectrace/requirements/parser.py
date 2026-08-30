@@ -174,8 +174,14 @@ def import_requirements_to_database(
                 setattr(req, field, value)
             req.save()
         else:
-            # Find parent
-            parent = existing.get(parent_id)
+            # Find parent. Reload it: treebeard derives a child's path from the
+            # parent's stored path and numchild, which a cached instance loses
+            # as soon as a sibling is added.
+            parent = (
+                Requirement.objects.filter(external_id=parent_id).first()
+                if parent_id in existing
+                else None
+            )
             if parent is None:
                 # Parent not found, create as root with warning
                 print(f"Warning: Parent {parent_id} not found for {external_id}, creating as root")

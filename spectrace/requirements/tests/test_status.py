@@ -34,6 +34,7 @@ def test_run(db):
     return TestRun.objects.create(source_file="results.xml")
 
 
+@pytest.mark.requirement("REQ-CORE-004")
 class TestComputeVerificationStatus:
     """Tests for basic verification status computation."""
 
@@ -133,6 +134,7 @@ class TestComputeUnifiedVerificationStatus:
         assert status == "passing"
 
 
+@pytest.mark.requirement("REQ-CORE-004")
 class TestUpdateAllVerificationStatuses:
     """Tests for bulk status update function.
 

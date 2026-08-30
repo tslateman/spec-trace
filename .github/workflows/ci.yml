@@ -64,3 +64,33 @@ jobs:
 
       - name: Check CHANGELOG.md covers every commit
         run: python scripts/changelog.py check
+
+  verification:
+    name: Verification
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: |
+          pip install uv
+          uv pip install --system -e ./spectrace-flows -e ".[dev]"
+
+      - name: Build the requirement database
+        run: |
+          python spectrace/manage.py migrate --no-input
+          python spectrace/manage.py parse_specs specs
+          python spectrace/manage.py parse_specs meta/specs
+
+      - name: Link tests to requirements
+        run: |
+          python spectrace/manage.py extract_links --path spectrace --output links.json
+          python spectrace/manage.py import_test_links links.json
+
+      - name: Check every requirement keeps its tests
+        run: python spectrace/manage.py validate_links links.json --check-high-risk

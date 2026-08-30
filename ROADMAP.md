@@ -6,7 +6,7 @@ open work. `.planning/STATE.md` tracks the current position,
 [CHANGELOG.md](CHANGELOG.md) records what landed. When those disagree with this
 file about what comes next, this file wins.
 
-Last reviewed: 2026-08-29.
+Last reviewed: 2026-08-30.
 
 ## Now
 
@@ -18,6 +18,10 @@ work — API v1, the impact graph, corpus review — carries no version anyone c
 install or cite.
 
 Pick one scheme, apply it backward in name only, and tag from here forward.
+
+`python scripts/changelog.py release <version>` promotes the notes and opens a
+fresh Unreleased section. CI already fails when the section falls behind the
+commit log.
 
 **Done when:** `pyproject.toml` matches the newest tag, tags follow one pattern,
 and CHANGELOG's Unreleased section is empty.
@@ -46,9 +50,35 @@ promote the ones that hold, and generate contract snapshots.
 and tests for a real diff in at least two projects, and the CI gate posts a
 markdown comment on PRs.
 
+### 4. Verify SpecTrace with SpecTrace
+
+`.github/workflows/ci.yml` runs three jobs: Test, Lint, Changelog. It never runs
+`validate_links`, which SpecTrace ships as the CI drift detector. Running the
+gates by hand reports `0 links checked, 9 warnings`, and all nine name demo
+requirements. Across 1031 test functions, 45 commands, and 14 `/api/v1/`
+endpoints, no requirement describes SpecTrace itself.
+
+Spec the core traceability loop and the API v1 surface top-down, mark the tests
+that verify them, and gate the result. See
+[plans/spectrace-self-verification.md](plans/spectrace-self-verification.md).
+
+**Done when:** a CI job fails on a broken requirement link, `validate_links`
+reports 0 errors against SpecTrace's own spec tree, and the gate is green before
+`v11` is tagged.
+
 ## Next
 
-### 4. Coverage trend snapshots
+### 5. Wire the intent validator into the submit path
+
+One agent writes the code and the tests from the same reading of the spec. A
+misread spec produces tests that encode the misreading and pass. `validate_intent`
+checks execution against stated intent, and it runs only when someone asks it to;
+`agent_submit.py` never calls it.
+
+**Done when:** `agent_submit` runs `validate_intent` and records the verdict on the
+task, and a task whose tests pass against the wrong intent fails to submit.
+
+### 6. Coverage trend snapshots
 
 `spec_coverage` reports today's numbers and forgets them. `CorpusSnapshot`
 stores corpus versions; nothing stores coverage over time. Deferred out of v10
@@ -58,17 +88,21 @@ Phase 2 and still the blocker under the trends chart.
 reports change against the previous snapshot, and the dashboard charts the
 series.
 
-### 5. Grow the corpus beyond four domains
+### 7. Grow the corpus beyond four domains
 
 `corpus/` holds billing, identity, platform, and security. Coverage claims are
 worth what the corpus covers. Decide which standards, decisions, and
-commitments belong in it next, and put `corpus drift --strict` in CI so a moved
-standard fails a build instead of aging quietly.
+commitments belong in it next, so a moved standard fails a build instead of
+aging quietly.
+
+Item 4 leaves `corpus drift --strict` here: corpus entries scope through
+`applies_to.paths`, so none match a SpecTrace spec until this item authors a
+corpus for SpecTrace's own domain.
 
 **Done when:** the corpus covers the domains the specs actually touch, and CI
-fails on stale reviews.
+fails on a stale review.
 
-### 6. Refresh the planning record
+### 8. Refresh the planning record
 
 `docs/current-state.md` was last updated 2026-02-27 and describes the project as
 of v10. `.planning/MILESTONES.md` stops at v9. `.planning/STATE.md` stops at
@@ -84,8 +118,6 @@ database, and STATE.md and MILESTONES.md carry the milestone this roadmap's
 - **CI webhooks for test results.** The GitHub webhook handler exists for
   events; JUnit results still arrive through `import_results`. Receiving them
   directly closes the loop.
-- **Intent validator in the review path.** `validate_intent` runs on demand.
-  Wiring it to the agent submit step would catch drift before merge.
 - **Flow scenarios against real integrations.** The Scenario DSL runs flows;
   vendor scenarios are still demo data.
 
@@ -93,10 +125,13 @@ database, and STATE.md and MILESTONES.md carry the milestone this roadmap's
 
 Decided against, with the reasoning, so these stop coming back:
 
-- **Production telemetry or runtime tracing.** SpecTrace reads git, specs, and
-  test results. Runtime observability is a different product.
 - **Automated rollback or fix suggestions.** The gate informs; humans decide.
 - **Function-level impact granularity.** Module level is the unit. Finer
   granularity multiplies the graph without changing the decision it supports.
 - **Judging whether a spec honors an obligation.** A rule engine asserts
   coverage. Reviewers judge. See `docs/corpus-review.md`.
+- **Collecting production telemetry.** SpecTrace reads git, specs, and test
+  results. Observability platforms push SLO status in through
+  `update_slo_status` and `POST /api/slo/status/`; SpecTrace consumes what
+  Datadog, groundcover, and New Relic emit and instruments nothing itself. See
+  the Scope section of [README.md](README.md).

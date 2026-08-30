@@ -72,6 +72,7 @@ def resolved_conflict(db, sample_requirement, sample_requirement_b):
 
 @pytest.mark.django_db
 @patch("requirements.api_v1.get_validation_runs_data", autospec=True)
+@pytest.mark.requirement("REQ-RSLT-005")
 def test_latest_run__returns_latest(mock_get_runs, client):
     mock_get_runs.return_value = {
         "runs": [
@@ -105,6 +106,7 @@ def test_latest_run__returns_latest(mock_get_runs, client):
 
 @pytest.mark.django_db
 @patch("requirements.api_v1.get_validation_runs_data", autospec=True)
+@pytest.mark.requirement("REQ-RSLT-005")
 def test_latest_run__returns_404_when_empty(mock_get_runs, client):
     mock_get_runs.return_value = {
         "runs": [],
@@ -120,6 +122,7 @@ def test_latest_run__returns_404_when_empty(mock_get_runs, client):
 
 @pytest.mark.django_db
 @patch("requirements.api_v1.get_validation_runs_data", autospec=True)
+@pytest.mark.requirement("REQ-RSLT-005")
 def test_latest_run__filters_by_source(mock_get_runs, client):
     mock_get_runs.return_value = {
         "runs": [
@@ -150,6 +153,7 @@ def test_latest_run__filters_by_source(mock_get_runs, client):
 @pytest.mark.django_db
 @patch("requirements.api_v1.build_run_comparison", autospec=True)
 @patch("requirements.api_v1.get_adjacent_runs", autospec=True)
+@pytest.mark.requirement("REQ-RSLT-006")
 def test_run_diff__returns_comparison(mock_adjacent, mock_comparison, client, validation_run):
     prev_run = MagicMock()
     mock_adjacent.return_value = {"previous": prev_run, "next": None}
@@ -197,6 +201,7 @@ def test_run_diff__returns_comparison(mock_adjacent, mock_comparison, client, va
 
 
 @pytest.mark.django_db
+@pytest.mark.requirement("REQ-RSLT-006")
 def test_run_diff__returns_404_for_unknown_run(client):
     resp = client.get("/api/v1/results/enforcement-runs/99999/diff/")
     assert resp.status_code == 404
@@ -206,6 +211,7 @@ def test_run_diff__returns_404_for_unknown_run(client):
 
 @pytest.mark.django_db
 @patch("requirements.api_v1.get_adjacent_runs", autospec=True)
+@pytest.mark.requirement("REQ-RSLT-006")
 def test_run_diff__returns_409_when_no_predecessor(mock_adjacent, client, validation_run):
     mock_adjacent.return_value = {"previous": None, "next": None}
 
@@ -221,6 +227,7 @@ def test_run_diff__returns_409_when_no_predecessor(mock_adjacent, client, valida
 
 
 @pytest.mark.django_db
+@pytest.mark.requirement("REQ-RSLT-001")
 def test_list_conflicts__returns_empty_list(client):
     resp = client.get("/api/v1/results/conflicts/")
     assert resp.status_code == 200
@@ -230,6 +237,7 @@ def test_list_conflicts__returns_empty_list(client):
 
 
 @pytest.mark.django_db
+@pytest.mark.requirement("REQ-RSLT-001")
 def test_list_conflicts__returns_conflicts_with_meta(client, sample_conflict):
     resp = client.get("/api/v1/results/conflicts/")
     assert resp.status_code == 200
@@ -246,6 +254,7 @@ def test_list_conflicts__returns_conflicts_with_meta(client, sample_conflict):
 
 
 @pytest.mark.django_db
+@pytest.mark.requirement("REQ-RSLT-001")
 def test_list_conflicts__filters_by_confidence(client, sample_conflict):
     resp = client.get("/api/v1/results/conflicts/", {"confidence": "high"})
     body = resp.json()
@@ -257,6 +266,7 @@ def test_list_conflicts__filters_by_confidence(client, sample_conflict):
 
 
 @pytest.mark.django_db
+@pytest.mark.requirement("REQ-RSLT-001")
 def test_list_conflicts__filters_by_pattern(client, sample_conflict):
     resp = client.get("/api/v1/results/conflicts/", {"pattern": "mutual_exclusion"})
     body = resp.json()
@@ -268,6 +278,7 @@ def test_list_conflicts__filters_by_pattern(client, sample_conflict):
 
 
 @pytest.mark.django_db
+@pytest.mark.requirement("REQ-RSLT-001")
 def test_list_conflicts__filters_by_resolved(client, sample_conflict, resolved_conflict):
     resp_unresolved = client.get("/api/v1/results/conflicts/", {"resolved": "false"})
     body_unresolved = resp_unresolved.json()
@@ -281,6 +292,7 @@ def test_list_conflicts__filters_by_resolved(client, sample_conflict, resolved_c
 
 
 @pytest.mark.django_db
+@pytest.mark.requirement("REQ-RSLT-001")
 def test_list_conflicts__filters_by_requirement_id(client, sample_conflict):
     resp = client.get("/api/v1/results/conflicts/", {"requirement_id": "REQ-TEST-001"})
     body = resp.json()
@@ -292,6 +304,7 @@ def test_list_conflicts__filters_by_requirement_id(client, sample_conflict):
 
 
 @pytest.mark.django_db
+@pytest.mark.requirement("REQ-RSLT-001")
 def test_list_conflicts__respects_limit_and_offset(client, sample_conflict, resolved_conflict):
     resp = client.get("/api/v1/results/conflicts/", {"limit": "1", "offset": "0"})
     body = resp.json()
@@ -307,6 +320,7 @@ def test_list_conflicts__respects_limit_and_offset(client, sample_conflict, reso
 
 
 @pytest.mark.django_db
+@pytest.mark.requirement("REQ-RSLT-001")
 def test_list_conflicts__rejects_invalid_limit(client):
     resp = client.get("/api/v1/results/conflicts/", {"limit": "abc"})
     assert resp.status_code == 400
@@ -315,6 +329,7 @@ def test_list_conflicts__rejects_invalid_limit(client):
 
 
 @pytest.mark.django_db
+@pytest.mark.requirement("REQ-RSLT-001")
 def test_list_conflicts__rejects_invalid_offset(client):
     resp = client.get("/api/v1/results/conflicts/", {"offset": "xyz"})
     assert resp.status_code == 400
@@ -329,6 +344,7 @@ def test_list_conflicts__rejects_invalid_offset(client):
 
 @pytest.mark.django_db
 @patch("requirements.services.conflict_detector.ConflictDetector", autospec=True)
+@pytest.mark.requirement("REQ-RSLT-002")
 def test_detect_conflicts__returns_results(mock_detector_cls, client):
     mock_detector = mock_detector_cls.return_value
     mock_detector.detect_mutual_exclusion.return_value = ["conflict1", "conflict2"]
@@ -351,6 +367,7 @@ def test_detect_conflicts__returns_results(mock_detector_cls, client):
 
 @pytest.mark.django_db
 @patch("requirements.services.conflict_detector.ConflictDetector", autospec=True)
+@pytest.mark.requirement("REQ-RSLT-002")
 def test_detect_conflicts__passes_custom_params(mock_detector_cls, client):
     mock_detector = mock_detector_cls.return_value
     mock_detector.detect_mutual_exclusion.return_value = []
@@ -368,6 +385,7 @@ def test_detect_conflicts__passes_custom_params(mock_detector_cls, client):
 
 @pytest.mark.django_db
 @patch("requirements.services.conflict_detector.ConflictDetector", autospec=True)
+@pytest.mark.requirement("REQ-RSLT-002")
 def test_detect_conflicts__excludes_structured_when_false(mock_detector_cls, client):
     mock_detector = mock_detector_cls.return_value
     mock_detector.detect_mutual_exclusion.return_value = ["conflict1"]
@@ -385,6 +403,7 @@ def test_detect_conflicts__excludes_structured_when_false(mock_detector_cls, cli
 
 
 @pytest.mark.django_db
+@pytest.mark.requirement("REQ-RSLT-002")
 def test_detect_conflicts__rejects_invalid_json(client):
     resp = client.post(
         "/api/v1/results/conflicts/detect",
@@ -398,6 +417,7 @@ def test_detect_conflicts__rejects_invalid_json(client):
 
 @pytest.mark.django_db
 @patch("requirements.services.conflict_detector.ConflictDetector", autospec=True)
+@pytest.mark.requirement("REQ-RSLT-002")
 def test_detect_conflicts__handles_empty_body(mock_detector_cls, client):
     mock_detector = mock_detector_cls.return_value
     mock_detector.detect_mutual_exclusion.return_value = []
@@ -419,6 +439,7 @@ def test_detect_conflicts__handles_empty_body(mock_detector_cls, client):
 
 
 @pytest.mark.django_db
+@pytest.mark.requirement("REQ-RSLT-003")
 def test_get_conflict__returns_detail(client, sample_conflict):
     resp = client.get(f"/api/v1/results/conflicts/{sample_conflict.id}")
     assert resp.status_code == 200
@@ -439,6 +460,7 @@ def test_get_conflict__returns_detail(client, sample_conflict):
 
 
 @pytest.mark.django_db
+@pytest.mark.requirement("REQ-RSLT-003")
 def test_get_conflict__returns_404_for_unknown(client):
     resp = client.get("/api/v1/results/conflicts/99999")
     assert resp.status_code == 404
@@ -452,6 +474,7 @@ def test_get_conflict__returns_404_for_unknown(client):
 
 
 @pytest.mark.django_db
+@pytest.mark.requirement("REQ-RSLT-004")
 def test_resolve_conflict__marks_resolved(client, sample_conflict):
     resp = client.post(
         f"/api/v1/results/conflicts/{sample_conflict.id}/resolve",
@@ -469,6 +492,7 @@ def test_resolve_conflict__marks_resolved(client, sample_conflict):
 
 
 @pytest.mark.django_db
+@pytest.mark.requirement("REQ-RSLT-004")
 def test_resolve_conflict__saves_resolution_notes(client, sample_conflict):
     resp = client.post(
         f"/api/v1/results/conflicts/{sample_conflict.id}/resolve",
@@ -483,6 +507,7 @@ def test_resolve_conflict__saves_resolution_notes(client, sample_conflict):
 
 
 @pytest.mark.django_db
+@pytest.mark.requirement("REQ-RSLT-004")
 def test_resolve_conflict__returns_404_for_unknown(client):
     resp = client.post(
         "/api/v1/results/conflicts/99999/resolve",
@@ -495,6 +520,7 @@ def test_resolve_conflict__returns_404_for_unknown(client):
 
 
 @pytest.mark.django_db
+@pytest.mark.requirement("REQ-RSLT-004")
 def test_resolve_conflict__rejects_already_resolved(client, resolved_conflict):
     resp = client.post(
         f"/api/v1/results/conflicts/{resolved_conflict.id}/resolve",
@@ -507,6 +533,7 @@ def test_resolve_conflict__rejects_already_resolved(client, resolved_conflict):
 
 
 @pytest.mark.django_db
+@pytest.mark.requirement("REQ-RSLT-004")
 def test_resolve_conflict__rejects_invalid_json(client, sample_conflict):
     resp = client.post(
         f"/api/v1/results/conflicts/{sample_conflict.id}/resolve",
@@ -519,6 +546,7 @@ def test_resolve_conflict__rejects_invalid_json(client, sample_conflict):
 
 
 @pytest.mark.django_db
+@pytest.mark.requirement("REQ-RSLT-004")
 def test_resolve_conflict__handles_empty_body(client, sample_conflict):
     resp = client.post(
         f"/api/v1/results/conflicts/{sample_conflict.id}/resolve",

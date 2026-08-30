@@ -43,6 +43,7 @@ def sample_links_data():
     }
 
 
+@pytest.mark.requirement("REQ-CORE-005")
 class TestValidateLinks:
     """Tests for the validate_links function."""
 

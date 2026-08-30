@@ -58,6 +58,7 @@ def multiple_tasks(db, coder_agent):
 
 
 @pytest.mark.django_db
+@pytest.mark.requirement("REQ-TASK-001")
 def test_list_tasks__returns_empty_list(client):
     resp = client.get("/api/v1/tasks/")
     assert resp.status_code == 200
@@ -67,6 +68,7 @@ def test_list_tasks__returns_empty_list(client):
 
 
 @pytest.mark.django_db
+@pytest.mark.requirement("REQ-TASK-001")
 def test_list_tasks__returns_tasks_with_pagination_meta(client, unclaimed_task):
     resp = client.get("/api/v1/tasks/")
     body = resp.json()
@@ -81,6 +83,7 @@ def test_list_tasks__returns_tasks_with_pagination_meta(client, unclaimed_task):
 
 
 @pytest.mark.django_db
+@pytest.mark.requirement("REQ-TASK-001")
 def test_list_tasks__filters_by_status(client, multiple_tasks):
     resp = client.get("/api/v1/tasks/", {"status": AgentTaskStatus.UNCLAIMED})
     body = resp.json()
@@ -91,6 +94,7 @@ def test_list_tasks__filters_by_status(client, multiple_tasks):
 
 
 @pytest.mark.django_db
+@pytest.mark.requirement("REQ-TASK-001")
 def test_list_tasks__respects_limit_and_offset(client, multiple_tasks):
     resp = client.get("/api/v1/tasks/", {"limit": "2", "offset": "0", "sort": "external_id"})
     body = resp.json()
@@ -110,6 +114,7 @@ def test_list_tasks__respects_limit_and_offset(client, multiple_tasks):
 
 
 @pytest.mark.django_db
+@pytest.mark.requirement("REQ-TASK-001")
 def test_list_tasks__clamps_limit_to_100(client, unclaimed_task):
     resp = client.get("/api/v1/tasks/", {"limit": "999"})
     body = resp.json()
@@ -118,6 +123,7 @@ def test_list_tasks__clamps_limit_to_100(client, unclaimed_task):
 
 
 @pytest.mark.django_db
+@pytest.mark.requirement("REQ-TASK-001")
 def test_list_tasks__rejects_invalid_limit(client):
     resp = client.get("/api/v1/tasks/", {"limit": "abc"})
     assert resp.status_code == 400
@@ -126,6 +132,7 @@ def test_list_tasks__rejects_invalid_limit(client):
 
 
 @pytest.mark.django_db
+@pytest.mark.requirement("REQ-TASK-001")
 def test_list_tasks__rejects_invalid_offset(client):
     resp = client.get("/api/v1/tasks/", {"offset": "xyz"})
     assert resp.status_code == 400
@@ -134,6 +141,7 @@ def test_list_tasks__rejects_invalid_offset(client):
 
 
 @pytest.mark.django_db
+@pytest.mark.requirement("REQ-TASK-001")
 def test_list_tasks__sorts_by_field(client, multiple_tasks):
     resp = client.get("/api/v1/tasks/", {"sort": "title"})
     body = resp.json()
@@ -149,6 +157,7 @@ def test_list_tasks__sorts_by_field(client, multiple_tasks):
 
 @pytest.mark.django_db
 @patch("requirements.api_v1.claim_task", autospec=True)
+@pytest.mark.requirement("REQ-TASK-002")
 def test_claim_task__succeeds(mock_claim, client, unclaimed_task):
     mock_claim.return_value = TransitionResult(
         success=True,
@@ -173,6 +182,7 @@ def test_claim_task__succeeds(mock_claim, client, unclaimed_task):
 
 @pytest.mark.django_db
 @patch("requirements.api_v1.claim_task", autospec=True)
+@pytest.mark.requirement("REQ-TASK-002")
 def test_claim_task__returns_transition_error(mock_claim, client, unclaimed_task):
     mock_claim.side_effect = TransitionError("Already claimed", code="ALREADY_CLAIMED")
 
@@ -188,6 +198,7 @@ def test_claim_task__returns_transition_error(mock_claim, client, unclaimed_task
 
 
 @pytest.mark.django_db
+@pytest.mark.requirement("REQ-TASK-002")
 def test_claim_task__rejects_missing_agent_id(client, unclaimed_task):
     resp = client.post(
         "/api/v1/tasks/task-001/claim",
@@ -200,6 +211,7 @@ def test_claim_task__rejects_missing_agent_id(client, unclaimed_task):
 
 
 @pytest.mark.django_db
+@pytest.mark.requirement("REQ-TASK-002")
 def test_claim_task__rejects_invalid_json(client, unclaimed_task):
     resp = client.post(
         "/api/v1/tasks/task-001/claim",
@@ -218,6 +230,7 @@ def test_claim_task__rejects_invalid_json(client, unclaimed_task):
 
 @pytest.mark.django_db
 @patch("requirements.api_v1.submit_for_review", autospec=True)
+@pytest.mark.requirement("REQ-TASK-003")
 def test_complete_task__succeeds(mock_submit, client, claimed_task):
     mock_submit.return_value = TransitionResult(
         success=True,
@@ -240,6 +253,7 @@ def test_complete_task__succeeds(mock_submit, client, claimed_task):
 
 
 @pytest.mark.django_db
+@pytest.mark.requirement("REQ-TASK-003")
 def test_complete_task__rejects_missing_fields(client, claimed_task):
     # Missing commit_sha
     resp = client.post(
