@@ -217,7 +217,7 @@ def _extract_yaml_keys(path: Path) -> list[str]:
         with open(path) as f:
             data = yaml.safe_load(f)
         if isinstance(data, dict):
-            return sorted(data.keys())
+            return sorted(str(key) for key in data)
     except (yaml.YAMLError, OSError):
         pass
     return []

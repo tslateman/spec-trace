@@ -66,6 +66,13 @@ class TestContractSnapshotGenerate:
         snap = ContractSnapshot.generate(project_root, "test")
         assert "cli/mytool" in snap.surfaces
 
+    def test_generate__extracts_non_string_yaml_keys(self, tmp_path):
+        workflow = tmp_path / "ci" / "release.yml"
+        workflow.parent.mkdir(parents=True)
+        workflow.write_text("name: release\non:\n  push:\n    branches: [main]\n")
+        snap = ContractSnapshot.generate(tmp_path, "test")
+        assert snap.surfaces["ci/release.yml"]["fields"] == ["True", "name"]
+
     def test_skips_hidden_dirs(self, tmp_path):
         hidden = tmp_path / ".git" / "data"
         hidden.mkdir(parents=True)
