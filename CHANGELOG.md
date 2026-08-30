@@ -39,6 +39,8 @@ and the API v1 surface.
 - Hold check ids stable across corpus version edits (`45b0843`)
 - Let a spec author declare risk_level in frontmatter (`2b62f8a`)
 - Generate the changelog's Unreleased section from the commit log (`0b2e94a`)
+- Give the corpus models a door in the admin sidebar (`6fe3b6b`)
+- Verify SpecTrace with SpecTrace (`c960c00`)
 
 ### Fixed
 
@@ -81,6 +83,7 @@ and the API v1 surface.
 - Refresh GitNexus symbol counts after reindex (`c317d59`)
 - Refresh GitNexus symbol counts after corpus reindex (`5d28044`)
 - Refresh GitNexus symbol counts after reindex (`639e3b1`)
+- Remove GitNexus from the project (`30ccf78`)
 
 <!-- changelog:/auto -->
 
