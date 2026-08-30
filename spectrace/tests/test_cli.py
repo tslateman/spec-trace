@@ -1,5 +1,6 @@
 """Tests for the spectrace Click CLI wrapper."""
 
+from importlib.metadata import version
 from unittest.mock import patch
 
 import pytest
@@ -61,7 +62,7 @@ def test_results_help__lists_subcommands(runner):
 def test_version(runner):
     result = runner.invoke(cli, ["--version"])
     assert result.exit_code == 0
-    assert "0.1.0" in result.output
+    assert version("spectrace") in result.output
 
 
 # =============================================================================
