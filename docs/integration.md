@@ -21,6 +21,7 @@ dependencies = [
 ```
 
 Pin to a specific commit for stability:
+
 ```
 spectrace @ git+https://github.com/tslateman/spec-trace.git@25c836e
 ```
@@ -70,22 +71,31 @@ urlpatterns = [
     path("admin/matrix/", matrix_view, name="admin-matrix"),
 
     # Just the API
-    path("api/validation/result/", api.submit_validation_result),
+    path(
+        "api/v1/results/enforcement/",
+        api.submit_validation_result,
+        name="api-v1-results-enforcement",
+    ),
 ]
 ```
+
+Keep the `name=` when you wire routes by hand. The redirects that serve the
+retired `/api/` paths resolve their targets by URL name, so a route registered
+without its name breaks them.
 
 ## Public API Surface
 
 ### Django Apps
 
-| App | Purpose | Required |
-|-----|---------|----------|
-| `requirements` | Core traceability engine | Yes |
-| `spectrace_client` | In-app validation SDK | Optional |
+| App                | Purpose                  | Required |
+| ------------------ | ------------------------ | -------- |
+| `requirements`     | Core traceability engine | Yes      |
+| `spectrace_client` | In-app validation SDK    | Optional |
 
 ### Models (requirements.models)
 
 **Core models** (stable):
+
 - `Requirement` - Hierarchical requirements with verification status
 - `TestRun` - Test execution records
 - `TestResult` - Individual test outcomes linked to requirements
@@ -93,11 +103,13 @@ urlpatterns = [
 - `InAppValidation` - Validation results from production systems
 
 **Agent coordination** (stable):
+
 - `Agent` - Registered agents with roles
 - `AgentTask` - Tasks with claim/review workflow
 - `TaskComment` - Review comments on tasks
 
 **Flow tracking** (stable):
+
 - `VerificationFlow` - Multi-step verification flow definitions
 - `VerificationFlowRun` - Execution instances
 - `VerificationFlowStep` - Individual step outcomes
@@ -131,14 +143,46 @@ python manage.py agent_claim <task_id> --agent my-agent
 
 ### REST API Endpoints
 
-| Endpoint | Method | Purpose |
-|----------|--------|---------|
-| `/api/slo/status/` | POST | Update SLO status from observability |
-| `/api/validation/result/` | POST | Submit in-app validation results |
-| `/api/requirement/<id>/status/` | GET | Get requirement verification status |
-| `/api/validation-runs/` | GET | List validation runs |
-| `/api/validation-runs/<id>/` | GET | Get validation run details |
-| `/api/integrations/linear/health/` | GET | Linear integration health check |
+Every endpoint lives under `/api/v1/`. The full catalog is in
+[docs/api-contract.md](api-contract.md) §2; these are the ones integrators reach for first.
+
+| Endpoint                                 | Method | Purpose                              |
+| ---------------------------------------- | ------ | ------------------------------------ |
+| `/api/v1/integrations/slo/status/`       | POST   | Update SLO status from observability |
+| `/api/v1/results/enforcement/`           | POST   | Submit in-app validation results     |
+| `/api/v1/specs/<external_id>/status/`    | GET    | Get requirement verification status  |
+| `/api/v1/results/enforcement-runs/`      | GET    | List enforcement runs                |
+| `/api/v1/results/enforcement-runs/<id>/` | GET    | Get enforcement run details          |
+| `/api/v1/integrations/linear/health/`    | GET    | Linear integration health check      |
+
+`POST /api/v1/integrations/slo/status/` and `POST /api/v1/results/enforcement/`
+require an API key once `SPECTRACE_API_KEY` is set. Send it as `X-API-Key`:
+
+```bash
+curl -X POST http://localhost:8000/api/v1/results/enforcement/ \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: $SPECTRACE_API_KEY" \
+  -d '{
+    "source": "production-app",
+    "validations": [
+      {"requirement_id": "REQ-AUTH-001", "name": "Login Flow", "status": "success"}
+    ]
+  }'
+```
+
+### Retired `/api/` Paths
+
+The unversioned surface is retired. Old paths redirect to their `/api/v1/`
+successor — 301 for GET, HEAD, and OPTIONS, 308 for everything else — and carry
+`Deprecation`, `Link`, and `Sunset: Sat, 28 Nov 2026 00:00:00 GMT`. The
+redirects are removed after that date, so move your callers to `/api/v1/`.
+
+The GitHub webhook is the exception: `POST /api/webhooks/github/` serves the
+same view as `/api/v1/integrations/webhooks/github/` rather than redirecting,
+because GitHub records a redirect as a failed delivery and drops the payload.
+Point your GitHub App at the `/api/v1/` path.
+
+See [docs/api-contract.md](api-contract.md) §1 for the path-by-path mapping.
 
 ### Pytest Marker
 
@@ -155,6 +199,7 @@ def test_login_creates_session():
 ```
 
 Register in your `conftest.py` or `pyproject.toml`:
+
 ```toml
 [tool.pytest.ini_options]
 markers = [
@@ -218,5 +263,5 @@ MY_DOMAIN_FLOW = FlowDefinition(
 SpecTrace follows semantic versioning once stable. Current version: **0.1.0** (pre-release).
 
 | SpecTrace | Python | Django |
-|-----------|--------|--------|
-| 0.1.x | ≥3.12 | 5.2.x |
+| --------- | ------ | ------ |
+| 0.1.x     | ≥3.12  | 5.2.x  |

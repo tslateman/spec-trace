@@ -1,88 +1,112 @@
 # API Contract — SpecTrace v1
 
-This contract defines the endpoint restructure for SpecTrace's REST API. It maps every existing endpoint to its new URL, catalogs the new API surface by group, and specifies the deprecation strategy for old URLs.
+This contract describes SpecTrace's REST API. It maps every retired URL to its `/api/v1/` successor, catalogs the shipped surface by group, and specifies how the retired URLs behave until they are removed.
 
 ### Versioning
 
-This contract uses unversioned URLs (`/api/specs/`, `/api/results/`, etc.). URL prefix versioning (`/api/v1/`) is deferred to a later phase. When versioning ships, all endpoints will move under `/api/v1/` and unversioned `/api/` paths will redirect to `/api/v1/`. See `docs/api-naming-conventions.md` §6 for the versioning strategy.
+Every endpoint lives under `/api/v1/`, grouped into `/api/v1/specs/`, `/api/v1/tasks/`, `/api/v1/results/`, and `/api/v1/integrations/`. Two infrastructure paths stay unversioned because they describe the whole surface: `/api/openapi.json` and `/api/docs/`.
+
+The unversioned `/api/` surface is retired. Each old path answers with a redirect to its successor — see §3. See `docs/api-naming-conventions.md` §6 for the versioning rationale.
 
 ---
 
 ## 1. Endpoint Mapping Table
 
-All 17 existing endpoints with their new URLs. Endpoints move into four domain groups: `/api/specs/`, `/api/tasks/`, `/api/results/`, `/api/integrations/`. Infrastructure endpoints stay unchanged.
+Every retired URL with its `/api/v1/` successor and the status the old path returns today.
 
-| #   | Method | Old URL                                     | New URL                                         | Group        |
-| --- | ------ | ------------------------------------------- | ----------------------------------------------- | ------------ |
-| 1   | POST   | `/api/slo/status/`                          | `/api/integrations/slo/status/`                 | Integrations |
-| 2   | POST   | `/api/validation/result/`                   | `/api/results/enforcement/`                     | Results      |
-| 3   | GET    | `/api/requirement/{id}/status/`             | `/api/specs/{id}/status/`                       | Specs        |
-| 4   | POST   | `/api/integrations/linear/test-connection/` | `/api/integrations/linear/test-connection/`     | Integrations |
-| 5   | GET    | `/api/integrations/linear/health/`          | `/api/integrations/linear/health/`              | Integrations |
-| 6   | GET    | `/api/validation-runs/`                     | `/api/results/enforcement-runs/`                | Results      |
-| 7   | GET    | `/api/validation-runs/{run_id}/`            | `/api/results/enforcement-runs/{run_id}/`       | Results      |
-| 8   | GET    | `/api/validation-runs/{run_id}/steps/`      | `/api/results/enforcement-runs/{run_id}/steps/` | Results      |
-| 9   | GET    | `/api/flow-runs/running/`                   | `/api/tasks/flow-runs/running/`                 | Tasks        |
-| 10  | GET    | `/api/test-runs/latest/`                    | `/api/results/test-runs/latest/`                | Results      |
-| 11  | GET    | `/api/conflicts/`                           | `/api/results/conflicts/`                       | Results      |
-| 12  | POST   | `/api/conflicts/detect/`                    | `/api/results/conflicts/detect/`                | Results      |
-| 13  | GET    | `/api/conflicts/{id}/`                      | `/api/results/conflicts/{id}/`                  | Results      |
-| 14  | POST   | `/api/conflicts/{id}/resolve/`              | `/api/results/conflicts/{id}/resolve/`          | Results      |
-| 15  | POST   | `/api/webhooks/github/`                     | `/api/integrations/webhooks/github/`            | Integrations |
-| 16  | GET    | `/api/openapi.json`                         | `/api/openapi.json`                             | Infra        |
-| 17  | GET    | `/api/docs/`                                | `/api/docs/`                                    | Infra        |
+| #   | Method | Retired URL                                 | `/api/v1/` successor                               | Status     |
+| --- | ------ | ------------------------------------------- | -------------------------------------------------- | ---------- |
+| 1   | POST   | `/api/slo/status/`                          | `/api/v1/integrations/slo/status/`                 | 308        |
+| 2   | POST   | `/api/validation/result/`                   | `/api/v1/results/enforcement/`                     | 308        |
+| 3   | GET    | `/api/requirement/{id}/status/`             | `/api/v1/specs/{id}/status/`                       | 301        |
+| 4   | POST   | `/api/integrations/linear/test-connection/` | `/api/v1/integrations/linear/test-connection/`     | 308        |
+| 5   | GET    | `/api/integrations/linear/health/`          | `/api/v1/integrations/linear/health/`              | 301        |
+| 6   | GET    | `/api/validation-runs/`                     | `/api/v1/results/enforcement-runs/`                | 301        |
+| 7   | GET    | `/api/validation-runs/{run_id}/`            | `/api/v1/results/enforcement-runs/{run_id}/`       | 301        |
+| 8   | GET    | `/api/validation-runs/{run_id}/steps/`      | `/api/v1/results/enforcement-runs/{run_id}/steps/` | 301        |
+| 9   | GET    | `/api/flow-runs/running/`                   | `/api/v1/tasks/flow-runs/running/`                 | 301        |
+| 10  | GET    | `/api/test-runs/latest/`                    | `/api/v1/results/test-runs/latest/`                | 301        |
+| 11  | GET    | `/api/conflicts/`                           | `/api/v1/results/conflicts/`                       | 301        |
+| 12  | POST   | `/api/conflicts/detect/`                    | `/api/v1/results/conflicts/detect`                 | 308        |
+| 13  | GET    | `/api/conflicts/{id}/`                      | `/api/v1/results/conflicts/{id}`                   | 301        |
+| 14  | POST   | `/api/conflicts/{id}/resolve/`              | `/api/v1/results/conflicts/{id}/resolve`           | 308        |
+| 15  | POST   | `/api/webhooks/github/`                     | `/api/v1/integrations/webhooks/github/`            | Live alias |
+| 16  | GET    | `/api/openapi.json`                         | unchanged                                          | Serves     |
+| 17  | GET    | `/api/docs/`                                | unchanged                                          | Serves     |
+
+The status column reports what the method in that row receives. Each redirect picks 301 or 308 from the request method, not from the route — see §3.
+
+Rows 12, 13, and 14 have **no trailing slash** on the successor. Copy them exactly; a trailing slash returns 404.
+
+Row 15 serves the retired path with the same view as its successor rather than redirecting. GitHub does not follow redirects on webhook delivery, so a 308 would be recorded as a failed delivery and the payload dropped. The alias becomes a redirect once the GitHub App's webhook URL points at `/api/v1/integrations/webhooks/github/`.
 
 ---
 
-## 2. New Endpoint Catalog
+## 2. Endpoint Catalog
 
-### `/api/specs/` — Contract Surface
+The shipped surface, by group. Paths without a trailing slash are marked; copy those exactly.
 
-Read-heavy endpoints that answer "what does the spec say?" Agents and dashboards read these to understand requirements, coverage, and drift.
+**Auth model:** three endpoints require an API key — `POST /api/v1/integrations/slo/status/`, `POST /api/v1/results/enforcement/`, and `POST /api/v1/integrations/linear/test-connection/`. These accept data from systems outside the deployment, so they authenticate the sender. Everything else is open, including the writes under `/api/v1/tasks/` and `/api/v1/results/conflicts/`, which agents inside the deployment call. Set `SPECTRACE_API_KEY` to enforce the key; leaving it unset bypasses the check and logs a warning.
 
-| Method | URL                       | Description                           | Auth | Request Schema | Response Schema             |
-| ------ | ------------------------- | ------------------------------------- | ---- | -------------- | --------------------------- |
-| GET    | `/api/specs/{id}/status/` | Get requirement status by external ID | None | —              | `RequirementStatusResponse` |
+### `/api/v1/specs/` — Contract Surface
 
-### `/api/tasks/` — Agent Surface
+Read-only endpoints that answer "what does the spec say?" Agents and dashboards read these for requirements, coverage, drift, and impact.
 
-Agent registration, task lifecycle, lease management, and flow orchestration.
+| Method | URL                                   | Description                                        | Auth | Response Schema |
+| ------ | ------------------------------------- | -------------------------------------------------- | ---- | --------------- |
+| GET    | `/api/v1/specs/coverage/`             | Coverage metrics and stale requirements            | None | `data` / `meta` |
+| GET    | `/api/v1/specs/drift/`                | Drift detections                                   | None | `data` / `meta` |
+| GET    | `/api/v1/specs/impact/`               | Dependency graph of affected specs                 | None | `data` / `meta` |
+| GET    | `/api/v1/specs/{external_id}/context` | Surrounding context for one requirement (no slash) | None | `data` / `meta` |
+| GET    | `/api/v1/specs/{external_id}/status/` | Verification status for one requirement            | None | `data` / `meta` |
 
-| Method | URL                             | Description                             | Auth | Request Schema | Response Schema               |
-| ------ | ------------------------------- | --------------------------------------- | ---- | -------------- | ----------------------------- |
-| GET    | `/api/tasks/{task_id}/context/` | Get full spec context for an agent task | None | —              | (see `agent_context` command) |
-| GET    | `/api/tasks/flow-runs/running/` | List currently running flow executions  | None | —              | `RunningFlowRunsResponse`     |
+### `/api/v1/tasks/` — Agent Surface
 
-### `/api/results/` — Evidence Surface
+Task listing, the claim/complete lifecycle, and flow orchestration.
+
+| Method | URL                                | Description                              | Auth | Response Schema           |
+| ------ | ---------------------------------- | ---------------------------------------- | ---- | ------------------------- |
+| GET    | `/api/v1/tasks/`                   | List agent tasks                         | None | `data` / `meta`           |
+| GET    | `/api/v1/tasks/flow-runs/running/` | List currently running flow executions   | None | `RunningFlowRunsResponse` |
+| POST   | `/api/v1/tasks/{task_id}/claim`    | Claim a task and take a lease (no slash) | None | `data` / `meta`           |
+| POST   | `/api/v1/tasks/{task_id}/complete` | Complete a claimed task (no slash)       | None | `data` / `meta`           |
+
+`claim` takes `agent_id` and an optional `lease_minutes` (default 30) in the JSON body.
+
+### `/api/v1/results/` — Evidence Surface
 
 External systems push enforcement evidence here. Dashboards read enforcement history, test runs, and conflict data.
 
-**Auth model:** Read endpoints (GET) require no authentication — conflict and enforcement data is non-sensitive operational state. Write endpoints (POST) require an API key because they mutate data: submitting evidence, triggering detection, or resolving conflicts.
+| Method | URL                                                | Description                              | Auth    | Request Schema            | Response Schema               |
+| ------ | -------------------------------------------------- | ---------------------------------------- | ------- | ------------------------- | ----------------------------- |
+| POST   | `/api/v1/results/enforcement/`                     | Submit enforcement evidence from product | API key | `ValidationResultRequest` | `ValidationResultResponse`    |
+| GET    | `/api/v1/results/enforcement-runs/`                | List enforcement run history             | None    | —                         | `ValidationRunsResponse`      |
+| GET    | `/api/v1/results/enforcement-runs/latest/`         | Most recent enforcement run              | None    | —                         | `data` / `meta`               |
+| GET    | `/api/v1/results/enforcement-runs/{run_id}/`       | Single enforcement run detail            | None    | —                         | `ValidationRunDetailResponse` |
+| GET    | `/api/v1/results/enforcement-runs/{run_id}/diff/`  | Compare a run against its predecessor    | None    | —                         | `data` / `meta`               |
+| GET    | `/api/v1/results/enforcement-runs/{run_id}/steps/` | Step-level verification evidence         | None    | —                         | `ValidationRunStepsResponse`  |
+| GET    | `/api/v1/results/test-runs/latest/`                | Latest CI/CD test run                    | None    | —                         | `LatestTestRunResponse`       |
+| GET    | `/api/v1/results/conflicts/`                       | List detected conflicts                  | None    | —                         | `data` / `meta`               |
+| POST   | `/api/v1/results/conflicts/detect`                 | Run conflict detection (no slash)        | None    | —                         | `data` / `meta`               |
+| GET    | `/api/v1/results/conflicts/{id}`                   | Conflict detail (no slash)               | None    | —                         | `data` / `meta`               |
+| POST   | `/api/v1/results/conflicts/{id}/resolve`           | Resolve a conflict (no slash)            | None    | —                         | `data` / `meta`               |
 
-| Method | URL                                             | Description                              | Auth    | Request Schema             | Response Schema                |
-| ------ | ----------------------------------------------- | ---------------------------------------- | ------- | -------------------------- | ------------------------------ |
-| POST   | `/api/results/enforcement/`                     | Submit enforcement evidence from product | API key | `EnforcementResultRequest` | `EnforcementResultResponse`    |
-| GET    | `/api/results/enforcement-runs/`                | List enforcement run history             | None    | —                          | `EnforcementRunsResponse`      |
-| GET    | `/api/results/enforcement-runs/{run_id}/`       | Get single enforcement run detail        | None    | —                          | `EnforcementRunDetailResponse` |
-| GET    | `/api/results/enforcement-runs/{run_id}/steps/` | Get step-level verification evidence     | None    | —                          | `VerificationStepsResponse`    |
-| GET    | `/api/results/test-runs/latest/`                | Get latest CI/CD test run                | None    | —                          | `LatestTestRunResponse`        |
-| GET    | `/api/results/conflicts/`                       | List detected conflicts                  | None    | —                          | `ConflictListResponse`         |
-| POST   | `/api/results/conflicts/detect/`                | Run conflict detection                   | API key | `ConflictDetectRequest`    | `ConflictDetectResponse`       |
-| GET    | `/api/results/conflicts/{id}/`                  | Get conflict detail                      | None    | —                          | `ConflictDetailResponse`       |
-| POST   | `/api/results/conflicts/{id}/resolve/`          | Resolve a conflict                       | API key | `ConflictResolveRequest`   | `ConflictResolveResponse`      |
+Schema names still read "Validation" because the Django models and their serializers keep those names. The URLs say "enforcement" — see §4.
 
-### `/api/integrations/` — External System Hooks
+### `/api/v1/integrations/` — External System Hooks
 
 Webhook receivers, health checks, and SLO pushes from observability platforms.
 
-| Method | URL                                         | Description                             | Auth                  | Request Schema      | Response Schema        |
-| ------ | ------------------------------------------- | --------------------------------------- | --------------------- | ------------------- | ---------------------- |
-| POST   | `/api/integrations/slo/status/`             | Push SLO status from observability tool | API key               | `SLOStatusRequest`  | `SLOStatusResponse`    |
-| POST   | `/api/integrations/linear/test-connection/` | Test Linear integration connection      | API key               | `LinearTestRequest` | `LinearTestResponse`   |
-| GET    | `/api/integrations/linear/health/`          | Check Linear integration health         | None                  | —                   | `LinearHealthResponse` |
-| POST   | `/api/integrations/webhooks/github/`        | Receive GitHub webhook events           | HMAC-SHA256 signature | (GitHub event body) | —                      |
+| Method | URL                                            | Description                             | Auth                  | Request Schema      | Response Schema        |
+| ------ | ---------------------------------------------- | --------------------------------------- | --------------------- | ------------------- | ---------------------- |
+| POST   | `/api/v1/integrations/slo/status/`             | Push SLO status from observability tool | API key               | `SLOStatusRequest`  | `SLOStatusResponse`    |
+| POST   | `/api/v1/integrations/linear/test-connection/` | Test Linear integration connection      | API key               | `LinearTestRequest` | `LinearTestResponse`   |
+| GET    | `/api/v1/integrations/linear/health/`          | Check Linear integration health         | None                  | —                   | `LinearHealthResponse` |
+| POST   | `/api/v1/integrations/webhooks/github/`        | Receive GitHub webhook events           | HMAC-SHA256 signature | (GitHub event body) | —                      |
 
-### Infrastructure (unchanged)
+The webhook routes register only when `jwt` is importable and `GITHUB_WEBHOOK_SECRET` is set. Without both, neither the `/api/v1/` path nor its legacy alias exists, and the OpenAPI spec omits them.
+
+### Infrastructure (unversioned)
 
 | Method | URL                 | Description             | Auth |
 | ------ | ------------------- | ----------------------- | ---- |
@@ -95,51 +119,65 @@ Webhook receivers, health checks, and SLO pushes from observability platforms.
 
 ### Redirect Behavior
 
-Old URLs redirect to new URLs. GET endpoints return **301 (Moved Permanently)**. POST endpoints return **308 (Permanent Redirect)** to preserve the HTTP method and request body.
+Each retired URL redirects to its `/api/v1/` successor. The status depends on the **request method**, not on the route: safe methods (GET, HEAD, OPTIONS) get **301 Moved Permanently**; every other method gets **308 Permanent Redirect**, which preserves the method and request body.
 
-| Method | Redirect Code | Reason                           |
-| ------ | ------------- | -------------------------------- |
-| GET    | 301           | Method preservation guaranteed   |
-| POST   | 308           | Prevents method downgrade to GET |
+| Request method     | Redirect code | Reason                           |
+| ------------------ | ------------- | -------------------------------- |
+| GET, HEAD, OPTIONS | 301           | Method preservation guaranteed   |
+| POST, PUT, DELETE  | 308           | Prevents method downgrade to GET |
+
+Deciding per request means a route that serves both GET and POST answers each caller correctly.
+
+Query strings pass through to the successor URL. Path captures pass through as keyword arguments, so a legacy route and its successor name their captures identically.
 
 **GET example:**
 
 ```http
 HTTP/1.1 301 Moved Permanently
-Location: /api/specs/REQ-042/status/
+Location: /api/v1/specs/REQ-042/status/
 Deprecation: true
-Link: </api/specs/REQ-042/status/>; rel="successor-version"
-Sunset: Sat, 13 Jun 2026 00:00:00 GMT
+Link: </api/v1/specs/REQ-042/status/>; rel="successor-version"
+Sunset: Sat, 28 Nov 2026 00:00:00 GMT
 Content-Type: application/json
 
-{"message": "This endpoint has moved to /api/specs/REQ-042/status/", "code": "ENDPOINT_MOVED"}
+{"message": "This endpoint has moved to /api/v1/specs/REQ-042/status/", "code": "ENDPOINT_MOVED"}
 ```
 
 **POST example:**
 
 ```http
 HTTP/1.1 308 Permanent Redirect
-Location: /api/results/enforcement/
+Location: /api/v1/results/enforcement/
 Deprecation: true
-Link: </api/results/enforcement/>; rel="successor-version"
-Sunset: Sat, 13 Jun 2026 00:00:00 GMT
+Link: </api/v1/results/enforcement/>; rel="successor-version"
+Sunset: Sat, 28 Nov 2026 00:00:00 GMT
 Content-Type: application/json
 
-{"message": "This endpoint has moved to /api/results/enforcement/", "code": "ENDPOINT_MOVED"}
+{"message": "This endpoint has moved to /api/v1/results/enforcement/", "code": "ENDPOINT_MOVED"}
 ```
 
 Redirect bodies use `message` (not `error`) because a redirect is not an error. The `error` key is reserved for 4xx/5xx responses per the naming conventions.
 
+### The GitHub Webhook Exception
+
+`POST /api/webhooks/github/` serves the webhook view directly instead of redirecting. GitHub does not follow redirects on webhook delivery: a 308 shows up in the App's delivery log as a failure, and the payload is dropped without reaching SpecTrace.
+
+Point the GitHub App's webhook URL at `/api/v1/integrations/webhooks/github/`. Once no deliveries arrive on the old path, replace the alias with a redirect.
+
+The alias stays out of the OpenAPI spec, so the spec describes one surface.
+
 ### Headers
 
-Every response from an old URL includes three headers:
+Every redirect from a retired URL carries four headers:
 
-| Header        | Format                        | Example                                                |
-| ------------- | ----------------------------- | ------------------------------------------------------ |
-| `Deprecation` | `true` (per RFC 8594)         | `true`                                                 |
-| `Link`        | Successor URL with rel        | `</api/results/enforcement/>; rel="successor-version"` |
-| `Sunset`      | HTTP-date (RFC 7231 §7.1.1.1) | `Sat, 13 Jun 2026 00:00:00 GMT`                        |
-| `Location`    | New URL path                  | `/api/results/enforcement/`                            |
+| Header        | Format                        | Example                                                   |
+| ------------- | ----------------------------- | --------------------------------------------------------- |
+| `Deprecation` | `true` (per RFC 8594)         | `true`                                                    |
+| `Link`        | Successor URL with rel        | `</api/v1/results/enforcement/>; rel="successor-version"` |
+| `Sunset`      | HTTP-date (RFC 7231 §7.1.1.1) | `Sat, 28 Nov 2026 00:00:00 GMT`                           |
+| `Location`    | Successor URL path            | `/api/v1/results/enforcement/`                            |
+
+The webhook alias carries none of these — it returns whatever the webhook view returns.
 
 ### Known Consumers
 
@@ -149,32 +187,34 @@ The API currently serves three consumer types:
 2. **CI pipelines** — push test results, query enforcement run history
 3. **SpecTrace dashboard** — reads requirement status, conflict data, flow run status
 
-All consumers are internal. No external third-party integrations exist today. The 90-day sunset window is conservative for an internal-only API but provides margin for any undiscovered consumers.
+GitHub is the one external sender, and it reaches the webhook alias rather than a redirect. Every other consumer is internal. The 90-day sunset window is conservative for an internal API but leaves margin for any undiscovered caller.
 
 ### Timeline
 
-| Phase          | Duration     | Dates                   | Old URL Behavior                            |
+| Phase          | Duration     | Dates                   | Retired URL behavior                        |
 | -------------- | ------------ | ----------------------- | ------------------------------------------- |
-| **Dual-serve** | 90 days      | 2026-03-15 → 2026-06-13 | 301/308 redirect + `Deprecation` + `Sunset` |
-| **Sunset**     | After day 90 | 2026-06-14 onward       | 410 Gone + JSON error body                  |
+| **Dual-serve** | 90 days      | 2026-08-30 → 2026-11-28 | 301/308 redirect + `Deprecation` + `Sunset` |
+| **Sunset**     | After day 90 | 2026-11-29 onward       | 410 Gone + JSON error body                  |
+
+The sunset date lives in one place — `LEGACY_API_SUNSET` in `spectrace/requirements/api_redirects.py`. Change it there and every redirect follows.
 
 ### Dual-Serve Phase Details
 
 During the 90-day transition:
 
-1. **New URLs** serve requests directly. No deprecation headers.
-2. **Old URLs** redirect to the corresponding new URL. GET returns 301; POST returns 308. Query parameters and request bodies pass through unchanged.
-3. **Monitoring** tracks hit counts on old URLs. If traffic drops to zero before sunset, the old routes can be removed early.
+1. **`/api/v1/` URLs** serve requests directly. No deprecation headers.
+2. **Retired URLs** redirect to the successor. Safe methods get 301, everything else 308. Query strings and request bodies pass through unchanged.
+3. **Monitoring** tracks hit counts on retired URLs. If traffic drops to zero before sunset, the routes can be removed early.
 
 ### After Sunset
 
-Old URLs return **410 Gone** with a JSON body:
+Retired URLs return **410 Gone** with a JSON body:
 
 ```http
 HTTP/1.1 410 Gone
 Content-Type: application/json
 
-{"error": "This endpoint was removed on 2026-06-14. Use /api/results/enforcement/ instead.", "code": "ENDPOINT_REMOVED"}
+{"error": "This endpoint was removed on 2026-11-29. Use /api/v1/results/enforcement/ instead.", "code": "ENDPOINT_REMOVED"}
 ```
 
 ---
@@ -187,19 +227,19 @@ The codebase uses "validation" for four distinct concepts. This glossary assigns
 
 **Enforcement** — Runtime behavior matching. The product reports whether running code matches the spec. Appears in: `submit_validation_result`, `InAppValidation*` models, enforcement runs.
 
-- API URLs use "enforcement": `/api/results/enforcement/`, `/api/results/enforcement-runs/`
-- Schema names use "Enforcement": `EnforcementResultRequest`, `EnforcementRunsResponse`
-- Django models keep their current names (`InAppValidation`, `InAppValidationRun`, `InAppValidationResult`). The API layer maps to "enforcement" at the serialization boundary.
+- API URLs use "enforcement": `/api/v1/results/enforcement/`, `/api/v1/results/enforcement-runs/`
+- Django models keep their current names (`InAppValidation`, `InAppValidationRun`, `InAppValidationResult`)
+- Schema names still read "Validation" (`ValidationResultRequest`, `ValidationRunsResponse`). Renaming them to "Enforcement" is proposed, not shipped — the rename changes the published OpenAPI component names, so it waits for `/api/v2/`.
 
 **Verification** — Step-level evidence within an enforcement run. Each step proves one aspect of the spec holds (or fails). Appears in: `get_validation_run_steps`, step-level data.
 
-- API URLs use "steps" under enforcement runs: `/api/results/enforcement-runs/{run_id}/steps/`
-- Schema names use "Verification": `VerificationStep`, `VerificationStepsResponse`
+- API URLs use "steps" under enforcement runs: `/api/v1/results/enforcement-runs/{run_id}/steps/`
+- Shipped schema names read `ValidationStep` and `ValidationRunStepsResponse`. "Verification" is the proposed rename, deferred with the rest.
 
 **Schema-check** — Static validation that YAML link files are well-formed. Checks structure and references, not runtime behavior. Appears in: `validate_links` CLI command.
 
 - CLI keeps `spectrace validate` — "validate my links file" reads naturally
-- Proposed API URL: `/api/specs/validate-links/`
+- Proposed API URL: `/api/v1/specs/validate-links/` (not shipped)
 - Concept name in docs: "schema-check"
 
 **Input validation** — HTTP request body, path parameter, and format checking. Standard web framework concern. Appears in: `@validate_request`, `validate_flow_path`, `validate_git_ref`.
@@ -209,35 +249,39 @@ The codebase uses "validation" for four distinct concepts. This glossary assigns
 
 ### Quick Reference
 
-| Term                 | Definition                                  | API term         | Example URL                                 |
-| -------------------- | ------------------------------------------- | ---------------- | ------------------------------------------- |
-| **Enforcement**      | Runtime code-matches-spec checks            | `enforcement`    | `/api/results/enforcement/`                 |
-| **Verification**     | Step-level evidence within enforcement runs | `steps`          | `/api/results/enforcement-runs/{id}/steps/` |
-| **Schema-check**     | Static YAML link file structure validation  | `validate-links` | `/api/specs/validate-links/`                |
-| **Input validation** | HTTP request/path format checking           | `validate`       | (decorator, not an endpoint)                |
+| Term                 | Definition                                  | API term         | Example URL                                    |
+| -------------------- | ------------------------------------------- | ---------------- | ---------------------------------------------- |
+| **Enforcement**      | Runtime code-matches-spec checks            | `enforcement`    | `/api/v1/results/enforcement/`                 |
+| **Verification**     | Step-level evidence within enforcement runs | `steps`          | `/api/v1/results/enforcement-runs/{id}/steps/` |
+| **Schema-check**     | Static YAML link file structure validation  | `validate-links` | `/api/v1/specs/validate-links/` (not shipped)  |
+| **Input validation** | HTTP request/path format checking           | `validate`       | (decorator, not an endpoint)                   |
 
 ### CLI-to-API Mapping
 
-Every CLI command with its current and proposed API endpoint.
+Every CLI command with its API endpoint, shipped or proposed.
 
-| CLI Command                        | Management Command         | Current API Endpoint          | Proposed API Endpoint                 |
-| ---------------------------------- | -------------------------- | ----------------------------- | ------------------------------------- |
-| `spectrace context <task_id>`      | `agent_context`            | —                             | `/api/tasks/{task_id}/context/`       |
-| `spectrace coverage`               | `spec_coverage`            | —                             | `/api/specs/coverage/`                |
-| `spectrace risks`                  | `detect_integration_risks` | —                             | `/api/specs/integration-risks/`       |
-| `spectrace demo`                   | `demo_impact`              | —                             | (web UI only, no API planned)         |
-| `spectrace impact <base> <head>`   | `impact_analysis`          | — (web UI POST exists)        | `/api/specs/impact/`                  |
-| `spectrace conflicts`              | `detect_conflicts`         | POST `/api/conflicts/detect/` | POST `/api/results/conflicts/detect/` |
-| `spectrace drift`                  | `detect_drift`             | —                             | `/api/specs/drift/`                   |
-| `spectrace invariants`             | `check_invariants`         | —                             | `/api/specs/invariants/`              |
-| `spectrace validate <links_file>`  | `validate_links`           | —                             | `/api/specs/validate-links/`          |
-| `spectrace agent register`         | `agent_register`           | —                             | `/api/tasks/agents/register/`         |
-| `spectrace agent tasks`            | `agent_tasks`              | —                             | `/api/tasks/`                         |
-| `spectrace agent claim <task_id>`  | `agent_claim`              | —                             | `/api/tasks/{task_id}/claim/`         |
-| `spectrace agent start <task_id>`  | `agent_start`              | —                             | `/api/tasks/{task_id}/start/`         |
-| `spectrace agent submit <task_id>` | `agent_submit`             | —                             | `/api/tasks/{task_id}/submit/`        |
-| `spectrace agent review <task_id>` | `agent_review`             | —                             | `/api/tasks/{task_id}/review/`        |
-| `spectrace agent merge <task_id>`  | `agent_merge`              | —                             | `/api/tasks/{task_id}/merge/`         |
-| `spectrace agent expire-leases`    | `expire_leases`            | —                             | `/api/tasks/leases/expire/`           |
+| CLI Command                        | Management Command         | Shipped API endpoint                    | Proposed API endpoint              |
+| ---------------------------------- | -------------------------- | --------------------------------------- | ---------------------------------- |
+| `spectrace coverage`               | `spec_coverage`            | GET `/api/v1/specs/coverage/`           | —                                  |
+| `spectrace impact <base> <head>`   | `impact_analysis`          | GET `/api/v1/specs/impact/`             | —                                  |
+| `spectrace conflicts`              | `detect_conflicts`         | POST `/api/v1/results/conflicts/detect` | —                                  |
+| `spectrace drift`                  | `detect_drift`             | GET `/api/v1/specs/drift/`              | —                                  |
+| `spectrace agent tasks`            | `agent_tasks`              | GET `/api/v1/tasks/`                    | —                                  |
+| `spectrace agent claim <task_id>`  | `agent_claim`              | POST `/api/v1/tasks/{task_id}/claim`    | —                                  |
+| `spectrace agent submit <task_id>` | `agent_submit`             | POST `/api/v1/tasks/{task_id}/complete` | —                                  |
+| `spectrace context <task_id>`      | `agent_context`            | —                                       | `/api/v1/tasks/{task_id}/context/` |
+| `spectrace risks`                  | `detect_integration_risks` | —                                       | `/api/v1/specs/integration-risks/` |
+| `spectrace invariants`             | `check_invariants`         | —                                       | `/api/v1/specs/invariants/`        |
+| `spectrace validate <links_file>`  | `validate_links`           | —                                       | `/api/v1/specs/validate-links/`    |
+| `spectrace agent register`         | `agent_register`           | —                                       | `/api/v1/tasks/agents/register/`   |
+| `spectrace agent start <task_id>`  | `agent_start`              | —                                       | `/api/v1/tasks/{task_id}/start/`   |
+| `spectrace agent review <task_id>` | `agent_review`             | —                                       | `/api/v1/tasks/{task_id}/review/`  |
+| `spectrace agent merge <task_id>`  | `agent_merge`              | —                                       | `/api/v1/tasks/{task_id}/merge/`   |
+| `spectrace agent expire-leases`    | `expire_leases`            | —                                       | `/api/v1/tasks/leases/expire/`     |
+| `spectrace demo`                   | `demo_impact`              | —                                       | (web UI only, no API planned)      |
 
-**Summary:** 17 CLI commands map to API endpoints. 1 has a direct API equivalent today (`spectrace conflicts` → POST `/api/conflicts/detect/`). 16 are CLI-only, with proposed endpoints for future phases.
+**Summary:** 17 CLI commands. Seven have an API equivalent today. Nine have a proposed endpoint for a future phase, and `spectrace demo` stays web-only.
+
+`spectrace agent submit` and `POST /api/v1/tasks/{task_id}/complete` both call `submit_for_review`; the endpoint takes the command's `--agent` and `--commit-sha` as `agent_id` and `commit_sha` in the JSON body.
+
+`GET /api/v1/specs/{external_id}/context` returns spec context keyed by requirement ID. It has no CLI counterpart, and it does not replace `spectrace context <task_id>`, which resolves a task first.

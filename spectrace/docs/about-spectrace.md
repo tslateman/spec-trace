@@ -248,11 +248,14 @@ spectrace/                # Django project
 
 ## API Endpoints
 
-| Endpoint                        | Method | Description                         |
-| ------------------------------- | ------ | ----------------------------------- |
-| `/api/requirement/<id>/status/` | GET    | Get requirement verification status |
-| `/api/slo/status/`              | POST   | Update SLO status                   |
-| `/api/validation/result/`       | POST   | Submit in-app validation result     |
-| `/api/validation-runs/`         | GET    | List validation runs                |
-| `/api/openapi.json`             | GET    | OpenAPI specification               |
-| `/api/docs/`                    | GET    | Swagger UI                          |
+| Endpoint                            | Method | Description                         |
+| ----------------------------------- | ------ | ----------------------------------- |
+| `/api/v1/specs/<id>/status/`        | GET    | Get requirement verification status |
+| `/api/v1/integrations/slo/status/`  | POST   | Update SLO status                   |
+| `/api/v1/results/enforcement/`      | POST   | Submit in-app validation result     |
+| `/api/v1/results/enforcement-runs/` | GET    | List enforcement runs               |
+| `/api/openapi.json`                 | GET    | OpenAPI specification               |
+| `/api/docs/`                        | GET    | Swagger UI                          |
+
+The unversioned `/api/` paths are retired and redirect to their `/api/v1/`
+successor until 2026-11-28. `docs/api-contract.md` has the full catalog.

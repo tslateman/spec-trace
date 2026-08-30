@@ -24,6 +24,7 @@ You run a validation, but it doesn't appear in `/admin/requirements/inappvalidat
 #### 1. SpecTrace URL Not Configured
 
 **Check:**
+
 ```python
 from spectrace_client import ValidationClient
 client = ValidationClient()
@@ -31,6 +32,7 @@ print(client.spectrace_url)
 ```
 
 **Fix:**
+
 ```python
 # In settings.py
 SPECTRACE_URL = "http://localhost:8000"
@@ -44,6 +46,7 @@ export SPECTRACE_URL=http://localhost:8000
 The SDK submits validations, but they're ignored if the requirement ID doesn't exist.
 
 **Check:**
+
 ```python
 from requirements.models import Requirement
 Requirement.objects.filter(external_id='REQ-PMS-001').exists()
@@ -52,6 +55,7 @@ Requirement.objects.filter(external_id='REQ-PMS-001').exists()
 
 **Fix:**
 Create the requirement first:
+
 ```python
 Requirement.add_root(
     external_id='REQ-PMS-001',
@@ -63,16 +67,19 @@ Requirement.add_root(
 #### 3. Network Issues
 
 **Check logs:**
+
 ```bash
 tail -f /var/log/django/app.log | grep "spectrace_client"
 ```
 
 Look for:
+
 ```
 WARNING: Failed to submit validation: Connection refused
 ```
 
 **Fix:**
+
 - Ensure SpecTrace dashboard is running
 - Check firewall rules
 - Verify URL is correct (http vs https)
@@ -82,6 +89,7 @@ WARNING: Failed to submit validation: Connection refused
 The SDK uses best-effort submission and logs errors without raising exceptions.
 
 **Enable debug logging:**
+
 ```python
 # In settings.py
 LOGGING = {
@@ -116,6 +124,7 @@ Validations take a long time or hang when submitting.
 The SDK uses a 5-second timeout by default.
 
 **Fix: Adjust timeout**
+
 ```python
 from spectrace_client.client import ValidationClient
 
@@ -134,6 +143,7 @@ with ValidationRun(...) as run:
 If the dashboard is slow to respond, validations will queue up.
 
 **Fix: Use async submission (recommended for production)**
+
 ```python
 from celery import shared_task
 from myapp.validations import validate_opera_pms
@@ -151,6 +161,7 @@ validate_opera_pms_async.delay(hotel_id=123)
 If you're sending many steps or large context dicts, the payload may be slow to serialize/send.
 
 **Fix: Reduce context size**
+
 ```python
 # Bad: Sending entire config object
 context = {'config': hotel.pms_config}  # May be huge
@@ -176,6 +187,7 @@ Feature flags aren't showing up in dashboard or extraction returns empty dict.
 #### 1. Wrong Prefix
 
 **Check:**
+
 ```python
 from spectrace_client import get_django_feature_flags
 
@@ -184,6 +196,7 @@ print(flags)  # Should show your flags
 ```
 
 **Fix: Match your settings prefix**
+
 ```python
 # If your settings use FF_ prefix:
 FEATURE_NEW_AUTH = True  # Won't work
@@ -196,6 +209,7 @@ FF_NEW_AUTH = True  # Will work with prefix='FF_'
 The SDK only extracts boolean flags. Strings, ints, etc. are ignored.
 
 **Check:**
+
 ```python
 # In settings.py
 FEATURE_NEW_AUTH = "enabled"  # Won't work (string)
@@ -206,18 +220,21 @@ FEATURE_NEW_AUTH = True  # Will work (bool)
 #### 3. Model Field Doesn't Exist
 
 **Check:**
+
 ```python
 hotel = Hotel.objects.get(id=123)
 hasattr(hotel, 'feature_flags')  # Should be True
 ```
 
 **Fix: Add field to model**
+
 ```python
 class Hotel(models.Model):
     feature_flags = models.JSONField(default=dict, blank=True)
 ```
 
 Don't forget to run migrations:
+
 ```bash
 python manage.py makemigrations
 python manage.py migrate
@@ -226,12 +243,14 @@ python manage.py migrate
 #### 4. Environment Variables Not Parsed
 
 **Check:**
+
 ```python
 import os
 print(os.environ.get('FF_NEW_AUTH'))  # Should show 'true' or '1'
 ```
 
 **Fix: Set correctly**
+
 ```bash
 # These work
 export FF_NEW_AUTH=true
@@ -274,11 +293,13 @@ else:
 #### 1. Forgetting to Set `passed=True/False`
 
 **Bad:**
+
 ```python
 step = ValidationStep(name='auth')  # Missing passed!
 ```
 
 **Good:**
+
 ```python
 step = ValidationStep(name='auth', passed=True)
 ```
@@ -288,6 +309,7 @@ step = ValidationStep(name='auth', passed=True)
 The `ValidationRun` will compute status from steps. Don't override it unless you have no steps.
 
 **Bad:**
+
 ```python
 with ValidationRun(...) as run:
     run.add_step(ValidationStep(name='auth', passed=False))
@@ -295,6 +317,7 @@ with ValidationRun(...) as run:
 ```
 
 **Good:**
+
 ```python
 with ValidationRun(...) as run:
     run.add_step(ValidationStep(name='auth', passed=False))
@@ -314,6 +337,7 @@ Admin action doesn't appear or throws errors.
 #### 1. Action Not Added to `actions` List
 
 **Check:**
+
 ```python
 @admin.register(Hotel)
 class HotelAdmin(admin.ModelAdmin):
@@ -321,6 +345,7 @@ class HotelAdmin(admin.ModelAdmin):
 ```
 
 **Fix:**
+
 ```python
 from spectrace_client.examples.admin_integration import create_pms_test_action
 from myapp.validations import validate_opera_pms
@@ -335,12 +360,14 @@ class HotelAdmin(admin.ModelAdmin):
 Your validation function must accept `(hotel_id, feature_flags=None)`.
 
 **Bad:**
+
 ```python
 def validate_opera_pms(hotel):  # Wrong signature
     ...
 ```
 
 **Good:**
+
 ```python
 def validate_opera_pms(hotel_id: int, feature_flags: dict | None = None):
     ...
@@ -351,6 +378,7 @@ def validate_opera_pms(hotel_id: int, feature_flags: dict | None = None):
 The admin action calls `hotel.id` to get the ID.
 
 **Check:**
+
 ```python
 hotel = Hotel.objects.first()
 print(hotel.id)  # Should work
@@ -381,11 +409,13 @@ API returns 500 errors or validations don't run.
 #### 1. CSRF Token Missing
 
 **Check error:**
+
 ```
 403 Forbidden: CSRF verification failed
 ```
 
 **Fix: Exempt endpoint**
+
 ```python
 from django.views.decorators.csrf import csrf_exempt
 
@@ -396,6 +426,7 @@ def test_connection_api(request, hotel_id):
 ```
 
 Or send CSRF token from frontend:
+
 ```javascript
 fetch('/api/test/', {
     method: 'POST',
@@ -410,11 +441,13 @@ fetch('/api/test/', {
 #### 2. JSON Parsing Error
 
 **Check error:**
+
 ```
 JSONDecodeError: Expecting value
 ```
 
 **Fix: Ensure body is valid JSON**
+
 ```python
 import json
 
@@ -424,11 +457,13 @@ body = json.loads(request.body) if request.body else {}
 #### 3. Hotel Not Found
 
 **Check:**
+
 ```python
 Hotel.objects.filter(id=hotel_id).exists()
 ```
 
 **Fix: Return 404**
+
 ```python
 from django.shortcuts import get_object_or_404
 
@@ -440,11 +475,13 @@ def test_connection_api(request, hotel_id):
 #### 4. Validation Function Raises Exception
 
 **Check logs:**
+
 ```bash
 tail -f /var/log/django/app.log | grep "ERROR"
 ```
 
 **Fix: Add try/catch in view**
+
 ```python
 try:
     result = validate_opera_pms(hotel_id)
@@ -552,7 +589,7 @@ python manage.py shell -c "from requirements.models import InAppValidation; prin
 
 - Validation list: `/admin/requirements/inappvalidation/`
 - Vendor coverage: `/admin/vendor-coverage/`
-- API submit endpoint: `/api/validation/result/`
+- API submit endpoint: `/api/v1/results/enforcement/`
 
 ### Log Locations
 

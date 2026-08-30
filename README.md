@@ -8,8 +8,8 @@ SpecTrace reads git, specs, and test results. It consumes what your other tools 
 and never instruments, polls, or scrapes a running system:
 
 - Observability platforms push SLO status in through `update_slo_status --from-json` or
-  `POST /api/slo/status/`. Datadog, groundcover, New Relic — SpecTrace needs the mapping
-  from their output to a requirement ID, nothing more.
+  `POST /api/v1/integrations/slo/status/`. Datadog, groundcover, New Relic — SpecTrace
+  needs the mapping from their output to a requirement ID, nothing more.
 - Test runners hand over JUnit XML through `import_results`.
 - Runtime checks arrive as JSON through `import_inapp_validations`.
 
@@ -265,18 +265,24 @@ Import with: `python spectrace/manage.py import_slos slos/`
 
 ## REST API
 
-External systems can push status updates:
+Every endpoint lives under `/api/v1/`. External systems can push status updates:
 
-| Endpoint                        | Method | Description                                    |
-| ------------------------------- | ------ | ---------------------------------------------- |
-| `/api/slo/status/`              | POST   | Update SLO status from observability platforms |
-| `/api/validation/result/`       | POST   | Submit in-app validation results               |
-| `/api/requirement/<id>/status/` | GET    | Get requirement verification status            |
+| Endpoint                           | Method | Description                                    |
+| ---------------------------------- | ------ | ---------------------------------------------- |
+| `/api/v1/integrations/slo/status/` | POST   | Update SLO status from observability platforms |
+| `/api/v1/results/enforcement/`     | POST   | Submit in-app validation results               |
+| `/api/v1/specs/<id>/status/`       | GET    | Get requirement verification status            |
+
+Browse the full surface at `/api/docs/`, or read the spec at `/api/openapi.json`.
+[docs/api-contract.md](docs/api-contract.md) catalogs every endpoint.
+
+The unversioned `/api/` paths are retired. They redirect to their `/api/v1/`
+successor until 2026-11-28 — see [docs/api-contract.md](docs/api-contract.md) §3.
 
 ### Example: Update SLO Status
 
 ```bash
-curl -X POST http://localhost:8000/api/slo/status/ \
+curl -X POST http://localhost:8000/api/v1/integrations/slo/status/ \
   -H "Content-Type: application/json" \
   -d '{
     "slos": [
@@ -288,7 +294,7 @@ curl -X POST http://localhost:8000/api/slo/status/ \
 ### Example: Submit Validation Result
 
 ```bash
-curl -X POST http://localhost:8000/api/validation/result/ \
+curl -X POST http://localhost:8000/api/v1/results/enforcement/ \
   -H "Content-Type: application/json" \
   -d '{
     "source": "production-app",
@@ -297,6 +303,10 @@ curl -X POST http://localhost:8000/api/validation/result/ \
     ]
   }'
 ```
+
+Both POSTs require an API key once `SPECTRACE_API_KEY` is set — add
+`-H "X-API-Key: $SPECTRACE_API_KEY"`. A local dev server with the variable unset
+accepts the requests above as written.
 
 ## CI Integration
 
