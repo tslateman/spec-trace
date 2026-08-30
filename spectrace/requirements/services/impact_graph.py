@@ -38,6 +38,7 @@ class BlastResult:
     affected_modules: list[str] = field(default_factory=list)
     affected_projects: set[str] = field(default_factory=set)
     cross_project_edges: list[GraphEdge] = field(default_factory=list)
+    traversed_edges: list[GraphEdge] = field(default_factory=list)
     risk_score: float = 0.0
     risk_level: str = "low"
 
@@ -106,9 +107,11 @@ class ImpactGraph:
                     projects.add(edge.project)
 
         # Detect cross-project edges among visited nodes
+        traversed: list[GraphEdge] = []
         cross_project: list[GraphEdge] = []
         for edge in self._edges:
             if edge.source_id in visited and edge.target_id in visited:
+                traversed.append(edge)
                 src_projects = {
                     e.project
                     for e in self._adjacency.get(edge.source_id, [])
@@ -128,6 +131,7 @@ class ImpactGraph:
         result.affected_modules = sorted(modules)
         result.affected_projects = projects
         result.cross_project_edges = cross_project
+        result.traversed_edges = traversed
         result.risk_score, result.risk_level = self._compute_risk(result)
 
         return result

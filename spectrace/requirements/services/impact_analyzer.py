@@ -11,10 +11,43 @@ from requirements.models import Requirement, TestRequirementLink
 
 from .contract_snapshot import ContractSnapshot
 from .git_cochange import GitCoChangeAnalyzer
-from .impact_graph import ImpactGraphBuilder
+from .impact_graph import BlastResult, EdgeSource, GraphEdge, ImpactGraphBuilder
 from .map_reader import MapReader
 
 logger = logging.getLogger(__name__)
+
+# How far each kind of evidence is trusted when it carries a change to its blast radius.
+EDGE_SOURCE_WEIGHTS = {
+    EdgeSource.ANNOTATED: 1.0,
+    EdgeSource.CONTRACT: 0.8,
+    EdgeSource.GIT_INFERRED: 0.6,
+}
+CROSS_PROJECT_EDGE_WEIGHT = 1.5
+EDGE_FACTOR_SATURATION = 50.0
+
+
+def count_traversed_edges(blast: BlastResult) -> dict[str, int]:
+    """Count the edges the blast radius crossed, by the source that supplied them."""
+    counts = {source.value: 0 for source in EdgeSource}
+    for edge in blast.traversed_edges:
+        counts[edge.source.value] += 1
+    return {
+        "annotated": counts[EdgeSource.ANNOTATED.value],
+        "inferred": counts[EdgeSource.GIT_INFERRED.value],
+        "contract": counts[EdgeSource.CONTRACT.value],
+    }
+
+
+def traversed_edge_factor(blast: BlastResult) -> float:
+    """Score the evidence connecting a change to its blast radius, from 0.0 to 1.0.
+
+    Weighs only the edges the traversal actually crossed, so a diff that touches
+    no mapped module scores zero however large the graph around it grows.
+    """
+    total = sum(EDGE_SOURCE_WEIGHTS[edge.source] for edge in blast.traversed_edges)
+    total += len(blast.cross_project_edges) * CROSS_PROJECT_EDGE_WEIGHT
+    return min(1.0, total / EDGE_FACTOR_SATURATION)
+
 
 # Valid git ref pattern: alphanumeric, dots, slashes, hyphens, underscores, colons
 # Also allows HEAD, HEAD~N, HEAD^N, @{upstream}, etc.
@@ -66,6 +99,9 @@ class CodeImpactResult:
     risk_score: float = 0.0
     risk_level: str = "low"
     edge_summary: dict[str, int] = field(
+        default_factory=lambda: {"annotated": 0, "inferred": 0, "contract": 0}
+    )
+    traversed_edges: dict[str, int] = field(
         default_factory=lambda: {"annotated": 0, "inferred": 0, "contract": 0}
     )
 
@@ -290,6 +326,35 @@ class ImpactAnalyzer:
         except subprocess.TimeoutExpired:
             raise ValueError("Git diff timed out")
 
+    def _diff_project(self, project: str, root: Path, base_ref: str, head_ref: str) -> list[str]:
+        """List files changed between two refs inside one project root.
+
+        Raises:
+            ValueError: If git cannot resolve the refs or the root is unusable,
+                so a mistyped ref never reads as an empty diff.
+        """
+        try:
+            result = subprocess.run(
+                ["git", "diff", "--name-only", base_ref, head_ref],
+                cwd=root,
+                capture_output=True,
+                text=True,
+                check=True,
+                timeout=30,
+            )
+        except subprocess.CalledProcessError as e:
+            logger.error("Git diff failed for %s at %s: %s", project, root, e.stderr)
+            raise ValueError(
+                f"Git diff failed for project {project!r} at {root}: "
+                f"{(e.stderr or '').strip() or 'git exited nonzero'}"
+            ) from e
+        except subprocess.TimeoutExpired as e:
+            raise ValueError(f"Git diff timed out for project {project!r} at {root}") from e
+        except OSError as e:
+            raise ValueError(f"Cannot run git for project {project!r} at {root}: {e}") from e
+
+        return [f for f in result.stdout.strip().split("\n") if f]
+
     def code_analyze(
         self,
         base_ref: str,
@@ -318,20 +383,9 @@ class ImpactAnalyzer:
         # 1. Get all changed files per project
         changed_files: dict[str, list[str]] = {}
         for project, root in roots.items():
-            try:
-                result = subprocess.run(
-                    ["git", "diff", "--name-only", base_ref, head_ref],
-                    cwd=root,
-                    capture_output=True,
-                    text=True,
-                    check=True,
-                    timeout=30,
-                )
-                files = [f for f in result.stdout.strip().split("\n") if f]
-                if files:
-                    changed_files[project] = files
-            except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError):
-                continue
+            files = self._diff_project(project, root, base_ref, head_ref)
+            if files:
+                changed_files[project] = files
 
         # 2. Collect edges from all sources
         map_reader = MapReader(roots)
@@ -339,33 +393,25 @@ class ImpactAnalyzer:
 
         inferred_edges = []
         for project, root in roots.items():
-            try:
-                analyzer = GitCoChangeAnalyzer(root)
-                inferred_edges.extend(analyzer.to_edges(project))
-            except (ValueError, OSError):
-                continue
+            analyzer = GitCoChangeAnalyzer(root)
+            inferred_edges.extend(analyzer.to_edges(project))
 
         contract_edges = []
         for project, root in roots.items():
             snap_path = root / "contract.snapshot.json"
             if snap_path.exists():
-                try:
-                    snap = ContractSnapshot.load(snap_path)
-                    # Contract edges connect surfaces to project
-                    from .impact_graph import EdgeSource, GraphEdge
-
-                    for surface_name in snap.surfaces:
-                        contract_edges.append(
-                            GraphEdge(
-                                source_id=f"{project}:{surface_name}",
-                                target_id=surface_name,
-                                source=EdgeSource.CONTRACT,
-                                weight=0.8,
-                                project=project,
-                            )
+                snap = ContractSnapshot.load(snap_path)
+                # Contract edges connect surfaces to project
+                for surface_name in snap.surfaces:
+                    contract_edges.append(
+                        GraphEdge(
+                            source_id=f"{project}:{surface_name}",
+                            target_id=surface_name,
+                            source=EdgeSource.CONTRACT,
+                            weight=0.8,
+                            project=project,
                         )
-                except (ValueError, OSError):
-                    continue
+                    )
 
         # 3. Build graph and compute blast radius
         builder = ImpactGraphBuilder(roots)
@@ -381,20 +427,10 @@ class ImpactAnalyzer:
         affected_reqs = blast.affected_requirements
         affected_tests = []
         if affected_reqs:
-            try:
-                tests, _, _ = self.get_affected_tests(affected_reqs)
-                affected_tests = tests
-            except Exception:
-                pass
+            affected_tests, _, _ = self.get_affected_tests(affected_reqs)
 
-        # 5. Risk scoring with edge-source weighting
-        annotated_weight = len(annotated_edges) * 1.0
-        contract_weight = len(contract_edges) * 0.8
-        inferred_weight = len(inferred_edges) * 0.6
-        cross_project_weight = len(blast.cross_project_edges) * 1.5
-
-        total_weight = annotated_weight + contract_weight + inferred_weight + cross_project_weight
-        edge_factor = min(1.0, total_weight / 50) if total_weight > 0 else 0
+        # 5. Risk scoring weighted by the evidence the blast radius traversed
+        edge_factor = traversed_edge_factor(blast)
 
         risk_score = round(
             0.4 * blast.risk_score + 0.3 * min(1.0, len(affected_tests) / 20) + 0.3 * edge_factor,
@@ -429,6 +465,7 @@ class ImpactAnalyzer:
                 "inferred": len(inferred_edges),
                 "contract": len(contract_edges),
             },
+            traversed_edges=count_traversed_edges(blast),
         )
 
     def analyze(

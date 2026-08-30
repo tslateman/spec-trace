@@ -1,5 +1,6 @@
 """Tests for code-level impact analysis."""
 
+import subprocess
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -44,8 +45,13 @@ class TestCodeAnalyze:
         assert result.risk_score <= 0.25  # Low risk
         assert isinstance(result, CodeImpactResult)
 
+    @pytest.mark.django_db
     def test_single_file_maps_to_requirements(self, project_roots):
-        """A changed file in lore maps to its requirement via spectrace-map."""
+        """A changed file in lore maps to its requirement via spectrace-map.
+
+        Needs the database: affected tests come from TestRequirementLink, and a
+        query failure now surfaces instead of yielding an empty test list.
+        """
         analyzer = ImpactAnalyzer()
 
         # First call: git diff for lore returns a file
@@ -164,3 +170,46 @@ class TestCliCodeFlag:
                 runner.invoke(cli, ["specs", "impact", "HEAD~1", "HEAD"])
                 if mock_run.called:
                     assert mock_run.call_args[0][0] == "impact_analysis"
+
+
+class TestCodeAnalyzeFailsLoud:
+    """A broken analysis must never read as an empty blast radius."""
+
+    def test_code_analyze__raises_when_git_diff_fails(self, project_roots):
+        analyzer = ImpactAnalyzer()
+        failure = subprocess.CalledProcessError(128, "git", stderr="fatal: bad object deadbeef")
+
+        with patch("subprocess.run", side_effect=failure):
+            with pytest.raises(ValueError, match="Git diff failed for project 'lore'"):
+                analyzer.code_analyze("deadbeef", "HEAD", project_roots=project_roots)
+
+    def test_code_analyze__raises_when_a_project_root_is_unusable(self, project_roots):
+        with patch("subprocess.run", side_effect=FileNotFoundError("no such directory")):
+            with pytest.raises(ValueError, match="Cannot run git for project"):
+                ImpactAnalyzer().code_analyze("HEAD~1", "HEAD", project_roots=project_roots)
+
+    def test_code_analyze__raises_when_git_diff_times_out(self, project_roots):
+        timeout = subprocess.TimeoutExpired("git", 30)
+
+        with patch("subprocess.run", side_effect=timeout):
+            with pytest.raises(ValueError, match="Git diff timed out"):
+                ImpactAnalyzer().code_analyze("HEAD~1", "HEAD", project_roots=project_roots)
+
+    def test_code_analyze__raises_when_a_contract_snapshot_is_malformed(self, project_roots):
+        (project_roots["lore"] / "contract.snapshot.json").write_text("{not json")
+        mock_result = MagicMock(stdout="")
+
+        with patch("subprocess.run", return_value=mock_result):
+            with pytest.raises(ValueError):
+                ImpactAnalyzer().code_analyze("HEAD~1", "HEAD", project_roots=project_roots)
+
+    def test_code_analyze__scores_an_empty_diff_as_no_risk(self, project_roots):
+        (project_roots["lore"] / "contract.snapshot.json").unlink(missing_ok=True)
+        mock_result = MagicMock(stdout="")
+
+        with patch("subprocess.run", return_value=mock_result):
+            result = ImpactAnalyzer().code_analyze("HEAD", "HEAD", project_roots=project_roots)
+
+        assert result.changed_files == {}
+        assert result.risk_score == 0.0
+        assert result.risk_level == "low"
