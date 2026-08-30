@@ -8,6 +8,7 @@ from django.urls import path
 from django.views.generic import TemplateView
 
 from requirements import api, api_v1
+from requirements.api_redirects import legacy_alias, redirect_to_v1
 from requirements.openapi.views import openapi_spec, swagger_ui
 from requirements.views import (
     about_view,
@@ -133,7 +134,16 @@ def _get_webhook_urlpatterns():
     from requirements import webhooks
 
     return [
-        path("api/webhooks/github/", webhooks.github_webhook, name="api-github-webhook"),
+        path(
+            "api/v1/integrations/webhooks/github/",
+            webhooks.github_webhook,
+            name="api-v1-integrations-webhooks-github",
+        ),
+        path(
+            "api/webhooks/github/",
+            legacy_alias(webhooks.github_webhook),
+            name="api-github-webhook",
+        ),
     ]
 
 
@@ -142,22 +152,69 @@ webhook_urlpatterns = _get_webhook_urlpatterns()
 
 # REST API endpoints
 api_urlpatterns = [
-    # API v1 (New Structure)
+    # API v1 — tasks
     path("api/v1/tasks/", api_v1.list_tasks, name="api-v1-tasks-list"),
+    path(
+        "api/v1/tasks/flow-runs/running/",
+        api.get_running_flow_runs,
+        name="api-v1-tasks-flow-runs-running",
+    ),
     path("api/v1/tasks/<str:task_id>/claim", api_v1.claim_task_view, name="api-v1-tasks-claim"),
     path(
         "api/v1/tasks/<str:task_id>/complete",
         api_v1.complete_task_view,
         name="api-v1-tasks-complete",
     ),
+    # API v1 — specs
     path("api/v1/specs/coverage/", api_v1.specs_coverage_view, name="api-v1-specs-coverage"),
     path("api/v1/specs/drift/", api_v1.specs_drift_view, name="api-v1-specs-drift"),
+    path("api/v1/specs/impact/", api_v1.specs_impact_view, name="api-v1-specs-impact"),
     path(
         "api/v1/specs/<str:external_id>/context",
         api_v1.spec_context_view,
         name="api-v1-specs-context",
     ),
-    path("api/v1/specs/impact/", api_v1.specs_impact_view, name="api-v1-specs-impact"),
+    path(
+        "api/v1/specs/<str:external_id>/status/",
+        api_v1.spec_status_view,
+        name="api-v1-specs-status",
+    ),
+    # API v1 — results
+    path(
+        "api/v1/results/enforcement/",
+        api.submit_validation_result,
+        name="api-v1-results-enforcement",
+    ),
+    path(
+        "api/v1/results/enforcement-runs/",
+        api.list_validation_runs,
+        name="api-v1-results-enforcement-runs",
+    ),
+    path(
+        "api/v1/results/enforcement-runs/latest/",
+        api_v1.latest_enforcement_run_view,
+        name="api-v1-enforcement-runs-latest",
+    ),
+    path(
+        "api/v1/results/enforcement-runs/<int:run_id>/",
+        api.get_validation_run,
+        name="api-v1-results-enforcement-run-detail",
+    ),
+    path(
+        "api/v1/results/enforcement-runs/<int:run_id>/diff/",
+        api_v1.enforcement_run_diff_view,
+        name="api-v1-enforcement-run-diff",
+    ),
+    path(
+        "api/v1/results/enforcement-runs/<int:run_id>/steps/",
+        api.get_validation_run_steps,
+        name="api-v1-results-enforcement-run-steps",
+    ),
+    path(
+        "api/v1/results/test-runs/latest/",
+        api.get_latest_test_run,
+        name="api-v1-results-test-runs-latest",
+    ),
     path("api/v1/results/conflicts/", api_v1.list_conflicts_view, name="api-v1-results-conflicts"),
     path(
         "api/v1/results/conflicts/detect",
@@ -174,73 +231,91 @@ api_urlpatterns = [
         api_v1.resolve_conflict_view,
         name="api-v1-results-conflict-resolve",
     ),
-    # Enforcement runs
+    # API v1 — integrations
     path(
-        "api/v1/results/enforcement-runs/latest/",
-        api_v1.latest_enforcement_run_view,
-        name="api-v1-enforcement-runs-latest",
+        "api/v1/integrations/slo/status/",
+        api.update_slo_status,
+        name="api-v1-integrations-slo-status",
     ),
     path(
-        "api/v1/results/enforcement-runs/<int:run_id>/diff/",
-        api_v1.enforcement_run_diff_view,
-        name="api-v1-enforcement-run-diff",
+        "api/v1/integrations/linear/test-connection/",
+        api.test_linear_connection,
+        name="api-v1-integrations-linear-test-connection",
     ),
-    # Spec verification status
     path(
-        "api/v1/specs/<str:external_id>/status/",
-        api_v1.spec_status_view,
-        name="api-v1-specs-status",
+        "api/v1/integrations/linear/health/",
+        api.get_linear_health,
+        name="api-v1-integrations-linear-health",
     ),
-    # External system integration
-    path("api/slo/status/", api.update_slo_status, name="api-slo-status"),
+    # Retired unversioned paths
+    path(
+        "api/slo/status/",
+        redirect_to_v1("api-v1-integrations-slo-status"),
+        name="api-slo-status",
+    ),
     path(
         "api/validation/result/",
-        api.submit_validation_result,
+        redirect_to_v1("api-v1-results-enforcement"),
         name="api-validation-result",
     ),
     path(
         "api/requirement/<str:external_id>/status/",
-        api.get_requirement_status,
+        redirect_to_v1("api-v1-specs-status"),
         name="api-requirement-status",
     ),
-    # Health checks
     path(
         "api/integrations/linear/test-connection/",
-        api.test_linear_connection,
+        redirect_to_v1("api-v1-integrations-linear-test-connection"),
         name="api-linear-test-connection",
     ),
     path(
         "api/integrations/linear/health/",
-        api.get_linear_health,
+        redirect_to_v1("api-v1-integrations-linear-health"),
         name="api-linear-health",
     ),
-    # Validation runs
-    path("api/validation-runs/", api.list_validation_runs, name="api-validation-runs"),
+    path(
+        "api/validation-runs/",
+        redirect_to_v1("api-v1-results-enforcement-runs"),
+        name="api-validation-runs",
+    ),
     path(
         "api/validation-runs/<int:run_id>/",
-        api.get_validation_run,
+        redirect_to_v1("api-v1-results-enforcement-run-detail"),
         name="api-validation-run-detail",
     ),
     path(
         "api/validation-runs/<int:run_id>/steps/",
-        api.get_validation_run_steps,
+        redirect_to_v1("api-v1-results-enforcement-run-steps"),
         name="api-validation-run-steps",
     ),
-    # Flow runs
     path(
         "api/flow-runs/running/",
-        api.get_running_flow_runs,
+        redirect_to_v1("api-v1-tasks-flow-runs-running"),
         name="api-flow-runs-running",
     ),
-    # Test runs (CI/CD integration)
-    path("api/test-runs/latest/", api.get_latest_test_run, name="api-test-runs-latest"),
-    # Conflicts
-    path("api/conflicts/", api.list_conflicts, name="api-conflicts"),
-    path("api/conflicts/detect/", api.detect_conflicts, name="api-conflicts-detect"),
-    path("api/conflicts/<int:conflict_id>/", api.get_conflict, name="api-conflict-detail"),
+    path(
+        "api/test-runs/latest/",
+        redirect_to_v1("api-v1-results-test-runs-latest"),
+        name="api-test-runs-latest",
+    ),
+    path(
+        "api/conflicts/",
+        redirect_to_v1("api-v1-results-conflicts"),
+        name="api-conflicts",
+    ),
+    path(
+        "api/conflicts/detect/",
+        redirect_to_v1("api-v1-results-conflicts-detect"),
+        name="api-conflicts-detect",
+    ),
+    path(
+        "api/conflicts/<int:conflict_id>/",
+        redirect_to_v1("api-v1-results-conflict-detail"),
+        name="api-conflict-detail",
+    ),
     path(
         "api/conflicts/<int:conflict_id>/resolve/",
-        api.resolve_conflict,
+        redirect_to_v1("api-v1-results-conflict-resolve"),
         name="api-conflict-resolve",
     ),
     # OpenAPI

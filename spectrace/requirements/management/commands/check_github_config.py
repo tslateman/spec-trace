@@ -149,12 +149,12 @@ class Command(BaseCommand):
                             return found
                 return None
 
-            webhook_pattern = find_pattern(patterns, "api-github-webhook")
+            webhook_pattern = find_pattern(patterns, "api-v1-integrations-webhooks-github")
 
             if webhook_pattern:
                 return {
                     "ok": True,
-                    "message": "/api/webhooks/github/",
+                    "message": "/api/v1/integrations/webhooks/github/",
                 }
             else:
                 return {

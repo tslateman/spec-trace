@@ -94,7 +94,7 @@ class ValidationClient:
             return True
 
         try:
-            url = f"{self.api_url}/api/validation/result/"
+            url = f"{self.api_url}/api/v1/results/enforcement/"
             payload = {
                 "source": "spectrace-client",
                 "validations": [result.to_dict()],

@@ -10,7 +10,6 @@ from django.test import Client
 from requirements.health import TestConnectionResult, VerificationCheck
 from requirements.models import (
     SLO,
-    ConflictLog,
     InAppValidation,
     InAppValidationRun,
     Requirement,
@@ -46,13 +45,13 @@ def sample_slo(db):
 
 
 class TestUpdateSLOStatusAPI:
-    """Tests for POST /api/slo/status/"""
+    """Tests for POST /api/v1/integrations/slo/status/"""
 
     @pytest.mark.django_db
     def test_update_slo_status_met(self, client, sample_slo):
         """Update SLO status to 'met'."""
         response = client.post(
-            "/api/slo/status/",
+            "/api/v1/integrations/slo/status/",
             data=json.dumps(
                 {
                     "slos": [
@@ -81,7 +80,7 @@ class TestUpdateSLOStatusAPI:
     def test_update_slo_status_unknown_slo(self, client, db):
         """Unknown SLO name returns not_found count."""
         response = client.post(
-            "/api/slo/status/",
+            "/api/v1/integrations/slo/status/",
             data=json.dumps({"slos": [{"name": "unknown-slo", "status": "met"}]}),
             content_type="application/json",
         )
@@ -96,7 +95,7 @@ class TestUpdateSLOStatusAPI:
     def test_update_slo_status_invalid_json(self, client):
         """Invalid JSON returns 400."""
         response = client.post(
-            "/api/slo/status/",
+            "/api/v1/integrations/slo/status/",
             data="not valid json",
             content_type="application/json",
         )
@@ -108,7 +107,7 @@ class TestUpdateSLOStatusAPI:
     def test_update_slo_status_empty_slos(self, client, db):
         """Empty SLOs array returns 400."""
         response = client.post(
-            "/api/slo/status/",
+            "/api/v1/integrations/slo/status/",
             data=json.dumps({"slos": []}),
             content_type="application/json",
         )
@@ -118,13 +117,13 @@ class TestUpdateSLOStatusAPI:
 
 
 class TestSubmitValidationResultAPI:
-    """Tests for POST /api/validation/result/"""
+    """Tests for POST /api/v1/results/enforcement/"""
 
     @pytest.mark.django_db
     def test_submit_validation_success(self, client, sample_requirement):
         """Submit a successful validation."""
         response = client.post(
-            "/api/validation/result/",
+            "/api/v1/results/enforcement/",
             data=json.dumps(
                 {
                     "source": "test-app",
@@ -157,7 +156,7 @@ class TestSubmitValidationResultAPI:
     def test_submit_validation_unknown_requirement(self, client, db):
         """Unknown requirement is skipped."""
         response = client.post(
-            "/api/validation/result/",
+            "/api/v1/results/enforcement/",
             data=json.dumps(
                 {
                     "source": "test-app",
@@ -182,7 +181,7 @@ class TestSubmitValidationResultAPI:
     def test_submit_validation_empty_list(self, client, db):
         """Empty validations array returns 400."""
         response = client.post(
-            "/api/validation/result/",
+            "/api/v1/results/enforcement/",
             data=json.dumps({"source": "test", "validations": []}),
             content_type="application/json",
         )
@@ -191,43 +190,8 @@ class TestSubmitValidationResultAPI:
         assert response.json()["success"] is False
 
 
-class TestGetRequirementStatusAPI:
-    """Tests for GET /api/requirement/{external_id}/status/"""
-
-    @pytest.mark.django_db
-    def test_get_requirement_status(self, client, sample_requirement):
-        """Get status for existing requirement."""
-        response = client.get("/api/requirement/REQ-TEST-001/status/")
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["external_id"] == "REQ-TEST-001"
-        assert data["title"] == "Test Requirement"
-        assert "verification_status" in data
-        assert "slo_status" in data
-        assert "linked_tests" in data
-
-    @pytest.mark.django_db
-    def test_get_requirement_status_not_found(self, client, db):
-        """Unknown requirement returns 404."""
-        response = client.get("/api/requirement/REQ-UNKNOWN/status/")
-
-        assert response.status_code == 404
-        assert response.json()["success"] is False
-
-    @pytest.mark.django_db
-    def test_get_requirement_with_linked_items(self, client, sample_requirement, sample_slo):
-        """Requirement with linked SLO shows correct counts."""
-        sample_slo.requirements.add(sample_requirement)
-
-        response = client.get("/api/requirement/REQ-TEST-001/status/")
-
-        data = response.json()
-        assert data["linked_slos"] == 1
-
-
 class TestLinearTestConnectionAPI:
-    """Tests for POST /api/integrations/linear/test-connection/"""
+    """Tests for POST /api/v1/integrations/linear/test-connection/"""
 
     @pytest.fixture(autouse=True)
     def clear_cache(self):
@@ -250,7 +214,7 @@ class TestLinearTestConnectionAPI:
         )
 
         with patch("requirements.api.verify_linear_connection", return_value=mock_result):
-            response = client.post("/api/integrations/linear/test-connection/")
+            response = client.post("/api/v1/integrations/linear/test-connection/")
 
         assert response.status_code == 200
         data = response.json()
@@ -278,7 +242,7 @@ class TestLinearTestConnectionAPI:
         )
 
         with patch("requirements.api.verify_linear_connection", return_value=mock_result):
-            response = client.post("/api/integrations/linear/test-connection/")
+            response = client.post("/api/v1/integrations/linear/test-connection/")
 
         assert response.status_code == 200
         data = response.json()
@@ -304,7 +268,7 @@ class TestLinearTestConnectionAPI:
         )
 
         with patch("requirements.api.verify_linear_connection", return_value=mock_result):
-            response = client.post("/api/integrations/linear/test-connection/")
+            response = client.post("/api/v1/integrations/linear/test-connection/")
 
         assert response.status_code == 200
         data = response.json()
@@ -316,7 +280,7 @@ class TestLinearTestConnectionAPI:
     def test_test_connection_invalid_json(self, client):
         """Invalid JSON body returns 400."""
         response = client.post(
-            "/api/integrations/linear/test-connection/",
+            "/api/v1/integrations/linear/test-connection/",
             data="not valid json",
             content_type="application/json",
         )
@@ -334,7 +298,7 @@ class TestLinearTestConnectionAPI:
             "requirements.api.verify_linear_connection", return_value=mock_result
         ) as mock_verify:
             response = client.post(
-                "/api/integrations/linear/test-connection/",
+                "/api/v1/integrations/linear/test-connection/",
                 data=json.dumps(
                     {
                         "api_key": "lin_api_custom",
@@ -355,7 +319,7 @@ class TestLinearTestConnectionAPI:
         mock_result = TestConnectionResult(success=True, message="All checks passed", checks=[])
 
         with patch("requirements.api.verify_linear_connection", return_value=mock_result):
-            client.post("/api/integrations/linear/test-connection/")
+            client.post("/api/v1/integrations/linear/test-connection/")
 
         # Check cache was populated
         from requirements.api import LINEAR_HEALTH_CACHE_KEY
@@ -367,7 +331,7 @@ class TestLinearTestConnectionAPI:
 
 
 class TestLinearHealthAPI:
-    """Tests for GET /api/integrations/linear/health/"""
+    """Tests for GET /api/v1/integrations/linear/health/"""
 
     @pytest.fixture(autouse=True)
     def clear_cache(self):
@@ -379,7 +343,7 @@ class TestLinearHealthAPI:
     @pytest.mark.django_db
     def test_health_no_cached_result(self, client):
         """No cached result returns unknown status."""
-        response = client.get("/api/integrations/linear/health/")
+        response = client.get("/api/v1/integrations/linear/health/")
 
         assert response.status_code == 200
         data = response.json()
@@ -403,7 +367,7 @@ class TestLinearHealthAPI:
         }
         cache.set(LINEAR_HEALTH_CACHE_KEY, cached_data, 60)
 
-        response = client.get("/api/integrations/linear/health/")
+        response = client.get("/api/v1/integrations/linear/health/")
 
         assert response.status_code == 200
         data = response.json()
@@ -424,274 +388,13 @@ class TestLinearHealthAPI:
         )
 
         with patch("requirements.api.verify_linear_connection", return_value=mock_result):
-            client.post("/api/integrations/linear/test-connection/")
+            client.post("/api/v1/integrations/linear/test-connection/")
 
         # Now health should return cached result
-        response = client.get("/api/integrations/linear/health/")
+        response = client.get("/api/v1/integrations/linear/health/")
 
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
         assert data["status"] == "healthy"
         assert data["cached"] is True
-
-
-# === Conflict API Tests ===
-
-
-@pytest.fixture
-def two_requirements(db):
-    """Create two requirements for conflict testing."""
-    req_a = Requirement.add_root(
-        external_id="REQ-A-001", title="Req A", status="active", source_file="a.md"
-    )
-    req_b = Requirement.add_root(
-        external_id="REQ-B-001", title="Req B", status="active", source_file="b.md"
-    )
-    return req_a, req_b
-
-
-@pytest.fixture
-def sample_conflict(db, two_requirements):
-    """Create a sample unresolved conflict."""
-    req_a, req_b = two_requirements
-    return ConflictLog.objects.create(
-        requirement_a=req_a,
-        requirement_b=req_b,
-        pattern="mutual_exclusion",
-        confidence="high",
-        details={"both_passed": 0, "inverse_ratio": 0.9},
-    )
-
-
-class TestListConflictsAPI:
-    """Tests for GET /api/conflicts/"""
-
-    @pytest.mark.django_db
-    def test_list_conflicts_empty(self, client, db):
-        """No conflicts returns empty list with pagination."""
-        response = client.get("/api/conflicts/")
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["conflicts"] == []
-        assert data["pagination"]["total"] == 0
-        assert data["pagination"]["page"] == 1
-        assert data["pagination"]["total_pages"] == 1
-
-    @pytest.mark.django_db
-    def test_list_conflicts_with_data(self, client, sample_conflict):
-        """Returns conflict summaries."""
-        response = client.get("/api/conflicts/")
-
-        assert response.status_code == 200
-        data = response.json()
-        assert len(data["conflicts"]) == 1
-        conflict = data["conflicts"][0]
-        assert conflict["requirement_a"] == "REQ-A-001"
-        assert conflict["requirement_b"] == "REQ-B-001"
-        assert conflict["pattern"] == "mutual_exclusion"
-        assert conflict["confidence"] == "high"
-        assert conflict["resolved"] is False
-
-    @pytest.mark.django_db
-    def test_filter_by_confidence(self, client, sample_conflict, two_requirements):
-        """?confidence=high filters correctly."""
-        req_a, req_b = two_requirements
-        ConflictLog.objects.create(
-            requirement_a=req_a,
-            requirement_b=req_b,
-            pattern="code_overlap",
-            confidence="low",
-        )
-
-        response = client.get("/api/conflicts/?confidence=high")
-
-        assert response.status_code == 200
-        data = response.json()
-        assert len(data["conflicts"]) == 1
-        assert data["conflicts"][0]["confidence"] == "high"
-
-    @pytest.mark.django_db
-    def test_filter_by_pattern(self, client, sample_conflict, two_requirements):
-        """?pattern=mutual_exclusion filters correctly."""
-        req_a, req_b = two_requirements
-        ConflictLog.objects.create(
-            requirement_a=req_a,
-            requirement_b=req_b,
-            pattern="code_overlap",
-            confidence="medium",
-        )
-
-        response = client.get("/api/conflicts/?pattern=mutual_exclusion")
-
-        assert response.status_code == 200
-        data = response.json()
-        assert len(data["conflicts"]) == 1
-        assert data["conflicts"][0]["pattern"] == "mutual_exclusion"
-
-    @pytest.mark.django_db
-    def test_filter_by_resolved(self, client, sample_conflict, two_requirements):
-        """?resolved=false excludes resolved conflicts."""
-        req_a, req_b = two_requirements
-        ConflictLog.objects.create(
-            requirement_a=req_a,
-            requirement_b=req_b,
-            pattern="code_overlap",
-            confidence="medium",
-            resolved=True,
-        )
-
-        response = client.get("/api/conflicts/?resolved=false")
-
-        assert response.status_code == 200
-        data = response.json()
-        assert len(data["conflicts"]) == 1
-        assert data["conflicts"][0]["resolved"] is False
-
-    @pytest.mark.django_db
-    def test_filter_by_requirement(self, client, sample_conflict):
-        """?requirement_id=REQ-A-001 returns conflicts involving that requirement."""
-        response = client.get("/api/conflicts/?requirement_id=REQ-A-001")
-
-        assert response.status_code == 200
-        data = response.json()
-        assert len(data["conflicts"]) == 1
-
-        # Nonexistent requirement returns empty
-        response = client.get("/api/conflicts/?requirement_id=REQ-NONE")
-        data = response.json()
-        assert len(data["conflicts"]) == 0
-
-    @pytest.mark.django_db
-    def test_pagination(self, client, two_requirements):
-        """page/per_page work correctly."""
-        req_a, req_b = two_requirements
-        for _ in range(5):
-            ConflictLog.objects.create(
-                requirement_a=req_a,
-                requirement_b=req_b,
-                pattern="mutual_exclusion",
-                confidence="high",
-            )
-
-        response = client.get("/api/conflicts/?page=1&per_page=2")
-
-        assert response.status_code == 200
-        data = response.json()
-        assert len(data["conflicts"]) == 2
-        assert data["pagination"]["total"] == 5
-        assert data["pagination"]["total_pages"] == 3
-        assert data["pagination"]["has_next"] is True
-        assert data["pagination"]["has_prev"] is False
-
-        # Page 3
-        response = client.get("/api/conflicts/?page=3&per_page=2")
-        data = response.json()
-        assert len(data["conflicts"]) == 1
-        assert data["pagination"]["has_next"] is False
-        assert data["pagination"]["has_prev"] is True
-
-
-class TestGetConflictAPI:
-    """Tests for GET /api/conflicts/{id}/"""
-
-    @pytest.mark.django_db
-    def test_get_conflict_detail(self, client, sample_conflict):
-        """Returns full detail including titles and details dict."""
-        response = client.get(f"/api/conflicts/{sample_conflict.id}/")
-
-        assert response.status_code == 200
-        data = response.json()
-        conflict = data["conflict"]
-        assert conflict["id"] == sample_conflict.id
-        assert conflict["requirement_a"] == "REQ-A-001"
-        assert conflict["requirement_b"] == "REQ-B-001"
-        assert conflict["requirement_a_title"] == "Req A"
-        assert conflict["requirement_b_title"] == "Req B"
-        assert conflict["pattern"] == "mutual_exclusion"
-        assert conflict["confidence"] == "high"
-        assert conflict["details"] == {"both_passed": 0, "inverse_ratio": 0.9}
-        assert conflict["resolved"] is False
-        assert conflict["resolved_at"] is None
-        assert conflict["resolution_notes"] == ""
-
-    @pytest.mark.django_db
-    def test_get_conflict_not_found(self, client, db):
-        """Returns 404 for nonexistent conflict."""
-        response = client.get("/api/conflicts/99999/")
-
-        assert response.status_code == 404
-        assert response.json()["error"] == "Conflict not found"
-
-
-class TestDetectConflictsAPI:
-    """Tests for POST /api/conflicts/detect/"""
-
-    @pytest.mark.django_db
-    def test_detect_conflicts_no_data(self, client, db):
-        """Returns success with zero counts when no test runs exist."""
-        response = client.post(
-            "/api/conflicts/detect/",
-            data=json.dumps({}),
-            content_type="application/json",
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["success"] is True
-        assert data["conflicts_found"] == 0
-        assert data["logged"] == 0
-        assert data["skipped_existing"] == 0
-
-
-class TestResolveConflictAPI:
-    """Tests for POST /api/conflicts/{id}/resolve/"""
-
-    @pytest.mark.django_db
-    def test_resolve_conflict(self, client, sample_conflict):
-        """Marks conflict resolved with notes, returns resolved_at."""
-        response = client.post(
-            f"/api/conflicts/{sample_conflict.id}/resolve/",
-            data=json.dumps({"resolution_notes": "Not a real conflict"}),
-            content_type="application/json",
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["success"] is True
-        assert data["conflict_id"] == sample_conflict.id
-        assert data["resolved_at"] is not None
-
-        sample_conflict.refresh_from_db()
-        assert sample_conflict.resolved is True
-        assert sample_conflict.resolution_notes == "Not a real conflict"
-
-    @pytest.mark.django_db
-    def test_resolve_conflict_not_found(self, client, db):
-        """Returns 404 for nonexistent conflict."""
-        response = client.post(
-            "/api/conflicts/99999/resolve/",
-            data=json.dumps({"resolution_notes": "N/A"}),
-            content_type="application/json",
-        )
-
-        assert response.status_code == 404
-        assert response.json()["error"] == "Conflict not found"
-
-    @pytest.mark.django_db
-    def test_resolve_already_resolved(self, client, sample_conflict):
-        """Resolving an already-resolved conflict returns 400."""
-        sample_conflict.resolved = True
-        sample_conflict.save()
-
-        response = client.post(
-            f"/api/conflicts/{sample_conflict.id}/resolve/",
-            data=json.dumps({"resolution_notes": "Second resolution"}),
-            content_type="application/json",
-        )
-
-        assert response.status_code == 400
-        data = response.json()
-        assert data["success"] is False
-        assert "already resolved" in data["error"].lower()

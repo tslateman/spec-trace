@@ -56,7 +56,7 @@ class TestSDKPhase2Integration:
         # Submit via API
         client = Client()
         response = client.post(
-            "/api/validation/result/",
+            "/api/v1/results/enforcement/",
             data={"source": "spectrace-client", "validations": [result.to_dict()]},
             content_type="application/json",
         )
@@ -148,7 +148,7 @@ class TestSDKPhase2Integration:
         # Old-style validation (no vendor, steps, context)
         client = Client()
         response = client.post(
-            "/api/validation/result/",
+            "/api/v1/results/enforcement/",
             data={
                 "source": "legacy-client",
                 "validations": [

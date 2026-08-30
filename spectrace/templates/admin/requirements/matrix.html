@@ -286,7 +286,7 @@ python manage.py import_test_links</div>
 (function() {
     // Configuration
     const POLL_INTERVAL = 30000; // 30 seconds
-    const API_ENDPOINT = '{% url "api-test-runs-latest" %}';
+    const API_ENDPOINT = '{% url "api-v1-results-test-runs-latest" %}';
 
     // State
     let lastKnownRunId = null;

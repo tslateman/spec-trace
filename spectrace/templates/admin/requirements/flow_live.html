@@ -280,7 +280,7 @@ function liveFlowMonitor() {
 
         async fetchRunningFlows() {
             try {
-                const response = await fetch('/api/flow-runs/running/');
+                const response = await fetch('/api/v1/tasks/flow-runs/running/');
                 const data = await response.json();
                 this.runningFlows = data.runs || [];
                 this.lastUpdate = new Date().toISOString();

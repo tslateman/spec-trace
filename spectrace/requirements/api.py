@@ -86,8 +86,6 @@ def require_api_key(view_func):
 
 from .models import (
     SLO,
-    ConflictConfidence,
-    ConflictLog,
     InAppValidation,
     InAppValidationResult,
     InAppValidationRun,
@@ -98,17 +96,10 @@ from .models import (
 )
 from .openapi.decorators import validate_request
 from .openapi.schemas import (
-    ConflictDetailResponse,
-    ConflictDetectRequest,
-    ConflictDetectResponse,
-    ConflictListResponse,
-    ConflictResolveRequest,
-    ConflictResolveResponse,
     LatestTestRunResponse,
     LinearHealthResponse,
     LinearTestRequest,
     LinearTestResponse,
-    RequirementStatusResponse,
     RunningFlowRunsResponse,
     SLOStatusRequest,
     SLOStatusResponse,
@@ -118,10 +109,7 @@ from .openapi.schemas import (
     ValidationRunsResponse,
     ValidationRunStepsResponse,
 )
-from .services.conflict_detector import ConflictDetector
 from .status import (
-    compute_inapp_validation_status,
-    compute_verification_status,
     update_all_slo_statuses,
     update_all_unified_statuses,
 )
@@ -328,46 +316,6 @@ def submit_validation_result(request, data: ValidationResultRequest | None = Non
             "created_validations": created_validations,
             "successful": successful,
             "failed": failed,
-        }
-    )
-
-
-@require_http_methods(["GET"])
-@ratelimit(key="ip", rate=RATE_LIMIT_READ, block=True)
-@validate_request(
-    response_schema=RequirementStatusResponse,
-    tags=["Requirements"],
-    summary="Get requirement status",
-    methods=["GET"],
-)
-def get_requirement_status(request, external_id, data=None):
-    """Get verification status for a requirement."""
-    try:
-        requirement = Requirement.objects.get(external_id=external_id)
-    except Requirement.DoesNotExist:
-        return JsonResponse({"success": False, "error": "Requirement not found"}, status=404)
-
-    # Count linked items
-    test_count = requirement.test_results.count()
-    slo_count = requirement.slos.count()
-    validation_count = requirement.inapp_validations.count()
-
-    # Compute individual statuses
-    test_status = compute_verification_status(requirement)
-    inapp_status = compute_inapp_validation_status(requirement)
-
-    return JsonResponse(
-        {
-            "external_id": requirement.external_id,
-            "title": requirement.title,
-            "verification_method": requirement.verification_method,
-            "verification_status": requirement.verification_status,
-            "slo_status": requirement.slo_status,
-            "test_status": test_status,
-            "inapp_status": inapp_status,
-            "linked_tests": test_count,
-            "linked_slos": slo_count,
-            "linked_validations": validation_count,
         }
     )
 
@@ -814,223 +762,5 @@ def get_latest_test_run(request, data=None):
                 "errors": latest.errors,
                 "skipped": latest.skipped,
             }
-        }
-    )
-
-
-# === Conflicts ===
-
-
-@require_http_methods(["GET"])
-@ratelimit(key="ip", rate=RATE_LIMIT_READ, block=True)
-@validate_request(
-    response_schema=ConflictListResponse,
-    tags=["Conflicts"],
-    summary="List conflicts",
-    methods=["GET"],
-    query_parameters=[
-        {"name": "page", "in": "query", "schema": {"type": "integer", "default": 1}},
-        {
-            "name": "per_page",
-            "in": "query",
-            "schema": {"type": "integer", "default": 25, "maximum": 100},
-        },
-        {
-            "name": "confidence",
-            "in": "query",
-            "schema": {"type": "string", "enum": ["high", "medium", "low"]},
-        },
-        {"name": "pattern", "in": "query", "schema": {"type": "string"}},
-        {"name": "resolved", "in": "query", "schema": {"type": "boolean"}},
-        {"name": "requirement_id", "in": "query", "schema": {"type": "string"}},
-    ],
-)
-def list_conflicts(request, data=None):
-    """List conflicts with filtering and pagination."""
-    page = int(request.GET.get("page", 1))
-    per_page = min(int(request.GET.get("per_page", 25)), 100)
-
-    queryset = ConflictLog.objects.select_related("requirement_a", "requirement_b")
-
-    # Filter by confidence
-    confidence = request.GET.get("confidence")
-    if confidence and confidence in ConflictConfidence.values:
-        queryset = queryset.filter(confidence=confidence)
-
-    # Filter by pattern
-    pattern = request.GET.get("pattern")
-    if pattern:
-        queryset = queryset.filter(pattern=pattern)
-
-    # Filter by resolved status
-    resolved = request.GET.get("resolved")
-    if resolved is not None and resolved != "":
-        queryset = queryset.filter(resolved=resolved.lower() == "true")
-
-    # Filter by requirement
-    requirement_id = request.GET.get("requirement_id")
-    if requirement_id:
-        from django.db.models import Q
-
-        queryset = queryset.filter(
-            Q(requirement_a__external_id=requirement_id)
-            | Q(requirement_b__external_id=requirement_id)
-        )
-
-    queryset = queryset.order_by("-created_at")
-
-    # Paginate
-    total = queryset.count()
-    total_pages = (total + per_page - 1) // per_page if total > 0 else 1
-    offset = (page - 1) * per_page
-    conflicts = queryset[offset : offset + per_page]
-
-    conflicts_data = []
-    for c in conflicts:
-        conflicts_data.append(
-            {
-                "id": c.id,
-                "requirement_a": c.requirement_a.external_id,
-                "requirement_b": c.requirement_b.external_id,
-                "pattern": c.pattern,
-                "confidence": c.confidence,
-                "resolved": c.resolved,
-                "created_at": c.created_at.isoformat(),
-            }
-        )
-
-    return JsonResponse(
-        {
-            "conflicts": conflicts_data,
-            "pagination": {
-                "page": page,
-                "per_page": per_page,
-                "total": total,
-                "total_pages": total_pages,
-                "has_next": page < total_pages,
-                "has_prev": page > 1,
-            },
-        }
-    )
-
-
-@require_http_methods(["GET"])
-@ratelimit(key="ip", rate=RATE_LIMIT_READ, block=True)
-@validate_request(
-    response_schema=ConflictDetailResponse,
-    tags=["Conflicts"],
-    summary="Get conflict detail",
-    methods=["GET"],
-)
-def get_conflict(request, conflict_id, data=None):
-    """Get full detail for a single conflict."""
-    try:
-        conflict = ConflictLog.objects.select_related("requirement_a", "requirement_b").get(
-            id=conflict_id
-        )
-    except ConflictLog.DoesNotExist:
-        return JsonResponse({"error": "Conflict not found"}, status=404)
-
-    return JsonResponse(
-        {
-            "conflict": {
-                "id": conflict.id,
-                "requirement_a": conflict.requirement_a.external_id,
-                "requirement_b": conflict.requirement_b.external_id,
-                "requirement_a_title": conflict.requirement_a.title,
-                "requirement_b_title": conflict.requirement_b.title,
-                "pattern": conflict.pattern,
-                "confidence": conflict.confidence,
-                "details": conflict.details,
-                "resolved": conflict.resolved,
-                "resolved_at": conflict.resolved_at.isoformat() if conflict.resolved_at else None,
-                "resolution_notes": conflict.resolution_notes,
-                "created_at": conflict.created_at.isoformat(),
-            },
-        }
-    )
-
-
-@csrf_exempt
-@require_api_key
-@require_http_methods(["POST"])
-@ratelimit(key="ip", rate=RATE_LIMIT_HEAVY_WRITE, block=True)
-@validate_request(
-    request_schema=ConflictDetectRequest,
-    response_schema=ConflictDetectResponse,
-    tags=["Conflicts"],
-    summary="Detect conflicts",
-    methods=["POST"],
-    requires_auth=True,
-)
-def detect_conflicts(request, data: ConflictDetectRequest | None = None):
-    """Run conflict detection and log results."""
-    min_runs = 10
-    min_overlap = 5
-    include_structured = True
-
-    if data is not None:
-        min_runs = data.min_runs
-        min_overlap = data.min_overlap
-        include_structured = data.include_structured
-
-    detector = ConflictDetector(min_runs=min_runs, min_overlap=min_overlap)
-
-    # Run mutual exclusion detection
-    conflicts = detector.detect_mutual_exclusion()
-
-    # Run structured field-based detection
-    if include_structured:
-        conflicts.extend(detector.detect_all_structured_conflicts())
-
-    # Log to database
-    result = detector.log_conflicts(conflicts)
-
-    return JsonResponse(
-        {
-            "success": True,
-            "conflicts_found": len(conflicts),
-            "logged": result["created_count"],
-            "skipped_existing": result["skipped_count"],
-        }
-    )
-
-
-@csrf_exempt
-@require_api_key
-@require_http_methods(["POST"])
-@ratelimit(key="ip", rate=RATE_LIMIT_WRITE, block=True)
-@validate_request(
-    request_schema=ConflictResolveRequest,
-    response_schema=ConflictResolveResponse,
-    tags=["Conflicts"],
-    summary="Resolve conflict",
-    methods=["POST"],
-    requires_auth=True,
-)
-def resolve_conflict(request, conflict_id, data: ConflictResolveRequest | None = None):
-    """Mark a conflict as resolved."""
-    if data is None:
-        return JsonResponse({"success": False, "error": "No data provided"}, status=400)
-
-    try:
-        conflict = ConflictLog.objects.get(id=conflict_id)
-    except ConflictLog.DoesNotExist:
-        return JsonResponse({"error": "Conflict not found"}, status=404)
-
-    if conflict.resolved:
-        return JsonResponse({"success": False, "error": "Conflict already resolved"}, status=400)
-
-    now = timezone.now()
-    conflict.resolved = True
-    conflict.resolved_at = now
-    conflict.resolution_notes = data.resolution_notes
-    conflict.save()
-
-    return JsonResponse(
-        {
-            "success": True,
-            "conflict_id": conflict.id,
-            "resolved_at": now.isoformat(),
         }
     )

@@ -63,7 +63,7 @@ class TestListValidationRuns:
 
     def test_list_validation_runs__returns_runs(self, api_client, sample_validation_data):
         """Returns list of validation runs."""
-        response = api_client.get(reverse("api-validation-runs"))
+        response = api_client.get(reverse("api-v1-results-enforcement-runs"))
 
         assert response.status_code == 200
         data = response.json()
@@ -75,7 +75,7 @@ class TestListValidationRuns:
     def test_list_validation_runs__filter_by_requirement(self, api_client, sample_validation_data):
         """Filters by requirement_id."""
         response = api_client.get(
-            reverse("api-validation-runs"), {"requirement_id": "REQ-TEST-001"}
+            reverse("api-v1-results-enforcement-runs"), {"requirement_id": "REQ-TEST-001"}
         )
 
         assert response.status_code == 200
@@ -83,13 +83,17 @@ class TestListValidationRuns:
         assert len(data["runs"]) == 1
 
         # Non-existent requirement
-        response = api_client.get(reverse("api-validation-runs"), {"requirement_id": "NONEXISTENT"})
+        response = api_client.get(
+            reverse("api-v1-results-enforcement-runs"), {"requirement_id": "NONEXISTENT"}
+        )
         data = response.json()
         assert len(data["runs"]) == 0
 
     def test_list_validation_runs__filter_by_vendor(self, api_client, sample_validation_data):
         """Filters by vendor."""
-        response = api_client.get(reverse("api-validation-runs"), {"vendor": "test-vendor"})
+        response = api_client.get(
+            reverse("api-v1-results-enforcement-runs"), {"vendor": "test-vendor"}
+        )
 
         assert response.status_code == 200
         data = response.json()
@@ -97,13 +101,13 @@ class TestListValidationRuns:
 
     def test_list_validation_runs__filter_by_status(self, api_client, sample_validation_data):
         """Filters by status."""
-        response = api_client.get(reverse("api-validation-runs"), {"status": "success"})
+        response = api_client.get(reverse("api-v1-results-enforcement-runs"), {"status": "success"})
 
         assert response.status_code == 200
         data = response.json()
         assert len(data["runs"]) == 1
 
-        response = api_client.get(reverse("api-validation-runs"), {"status": "failure"})
+        response = api_client.get(reverse("api-v1-results-enforcement-runs"), {"status": "failure"})
         data = response.json()
         assert len(data["runs"]) == 0
 
@@ -113,7 +117,9 @@ class TestListValidationRuns:
         for i in range(5):
             InAppValidationRun.objects.create(source=f"source-{i}")
 
-        response = api_client.get(reverse("api-validation-runs"), {"page": 1, "per_page": 2})
+        response = api_client.get(
+            reverse("api-v1-results-enforcement-runs"), {"page": 1, "per_page": 2}
+        )
 
         data = response.json()
         assert len(data["runs"]) == 2
@@ -123,7 +129,7 @@ class TestListValidationRuns:
 
     def test_list_validation_runs__empty_list(self, api_client, db):
         """Returns empty list when no runs exist."""
-        response = api_client.get(reverse("api-validation-runs"))
+        response = api_client.get(reverse("api-v1-results-enforcement-runs"))
 
         assert response.status_code == 200
         data = response.json()
@@ -137,7 +143,9 @@ class TestGetValidationRun:
     def test_get_validation_run__returns_detail(self, api_client, sample_validation_data):
         """Returns run detail with results."""
         run_id = sample_validation_data["run"].id
-        response = api_client.get(reverse("api-validation-run-detail", kwargs={"run_id": run_id}))
+        response = api_client.get(
+            reverse("api-v1-results-enforcement-run-detail", kwargs={"run_id": run_id})
+        )
 
         assert response.status_code == 200
         data = response.json()
@@ -150,7 +158,9 @@ class TestGetValidationRun:
 
     def test_get_validation_run__not_found(self, api_client, db):
         """Returns 404 for non-existent run."""
-        response = api_client.get(reverse("api-validation-run-detail", kwargs={"run_id": 99999}))
+        response = api_client.get(
+            reverse("api-v1-results-enforcement-run-detail", kwargs={"run_id": 99999})
+        )
 
         assert response.status_code == 404
 
@@ -161,7 +171,9 @@ class TestGetValidationRunSteps:
     def test_get_validation_run_steps__returns_steps(self, api_client, sample_validation_data):
         """Returns step-level detail."""
         run_id = sample_validation_data["run"].id
-        response = api_client.get(reverse("api-validation-run-steps", kwargs={"run_id": run_id}))
+        response = api_client.get(
+            reverse("api-v1-results-enforcement-run-steps", kwargs={"run_id": run_id})
+        )
 
         assert response.status_code == 200
         data = response.json()
@@ -175,7 +187,7 @@ class TestGetValidationRunSteps:
         run_id = sample_validation_data["run"].id
         result_id = sample_validation_data["result"].id
         response = api_client.get(
-            reverse("api-validation-run-steps", kwargs={"run_id": run_id}),
+            reverse("api-v1-results-enforcement-run-steps", kwargs={"run_id": run_id}),
             {"result_id": result_id},
         )
 
@@ -185,6 +197,8 @@ class TestGetValidationRunSteps:
 
     def test_get_validation_run_steps__not_found(self, api_client, db):
         """Returns 404 for non-existent run."""
-        response = api_client.get(reverse("api-validation-run-steps", kwargs={"run_id": 99999}))
+        response = api_client.get(
+            reverse("api-v1-results-enforcement-run-steps", kwargs={"run_id": 99999})
+        )
 
         assert response.status_code == 404

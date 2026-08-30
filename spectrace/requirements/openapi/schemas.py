@@ -29,14 +29,14 @@ class SLOStatusItem(Struct):
 
 
 class SLOStatusRequest(Struct):
-    """Request body for POST /api/slo/status/."""
+    """Request body for POST /api/v1/integrations/slo/status/."""
 
     slos: Annotated[list[SLOStatusItem], Meta(max_length=MAX_SLOS_PER_REQUEST)]
     update_verification_status: bool = False
 
 
 class SLOStatusResponse(Struct):
-    """Response for POST /api/slo/status/."""
+    """Response for POST /api/v1/integrations/slo/status/."""
 
     success: bool
     updated: int
@@ -71,7 +71,7 @@ class ValidationItem(Struct, kw_only=True):
 
 
 class ValidationResultRequest(Struct):
-    """Request body for POST /api/validation/result/."""
+    """Request body for POST /api/v1/results/enforcement/."""
 
     source: Annotated[str, Meta(max_length=MAX_SOURCE_LENGTH)]
     validations: Annotated[list[ValidationItem], Meta(max_length=MAX_VALIDATIONS_PER_REQUEST)]
@@ -79,7 +79,7 @@ class ValidationResultRequest(Struct):
 
 
 class ValidationResultResponse(Struct):
-    """Response for POST /api/validation/result/."""
+    """Response for POST /api/v1/results/enforcement/."""
 
     success: bool
     imported: int
@@ -93,7 +93,7 @@ class ValidationResultResponse(Struct):
 
 
 class RequirementStatusResponse(Struct):
-    """Response for GET /api/requirement/{external_id}/status/."""
+    """Response for GET /api/v1/specs/{external_id}/status/."""
 
     external_id: str
     title: str
@@ -111,7 +111,7 @@ class RequirementStatusResponse(Struct):
 
 
 class LinearTestRequest(Struct, kw_only=True):
-    """Request body for POST /api/integrations/linear/test-connection/."""
+    """Request body for POST /api/v1/integrations/linear/test-connection/."""
 
     api_key: str | None = None
     workspace: str | None = None
@@ -129,7 +129,7 @@ class HealthCheck(Struct):
 
 
 class LinearTestResponse(Struct, kw_only=True):
-    """Response for POST /api/integrations/linear/test-connection/."""
+    """Response for POST /api/v1/integrations/linear/test-connection/."""
 
     success: bool
     message: str
@@ -140,7 +140,7 @@ class LinearTestResponse(Struct, kw_only=True):
 
 
 class LinearHealthResponse(Struct, kw_only=True):
-    """Response for GET /api/integrations/linear/health/."""
+    """Response for GET /api/v1/integrations/linear/health/."""
 
     success: bool
     message: str
@@ -177,7 +177,7 @@ class ValidationRunSummary(Struct):
 
 
 class ValidationRunsResponse(Struct):
-    """Response for GET /api/validation-runs/."""
+    """Response for GET /api/v1/results/enforcement-runs/."""
 
     runs: list[ValidationRunSummary]
     pagination: PaginationInfo
@@ -199,7 +199,7 @@ class ValidationRunResult(Struct):
 
 
 class ValidationRunDetailResponse(Struct):
-    """Response for GET /api/validation-runs/{id}/."""
+    """Response for GET /api/v1/results/enforcement-runs/{id}/."""
 
     id: int
     source: str
@@ -222,7 +222,7 @@ class StepResult(Struct):
 
 
 class ValidationRunStepsResponse(Struct):
-    """Response for GET /api/validation-runs/{id}/steps/."""
+    """Response for GET /api/v1/results/enforcement-runs/{id}/steps/."""
 
     run_id: int
     results: list[StepResult]
@@ -261,20 +261,20 @@ class ConflictDetail(Struct, kw_only=True):
 
 
 class ConflictListResponse(Struct):
-    """Response for GET /api/conflicts/."""
+    """Response for GET /api/v1/results/conflicts/."""
 
     conflicts: list[ConflictSummary]
     pagination: PaginationInfo
 
 
 class ConflictDetailResponse(Struct):
-    """Response for GET /api/conflicts/{id}/."""
+    """Response for GET /api/v1/results/conflicts/{id}."""
 
     conflict: ConflictDetail
 
 
 class ConflictDetectRequest(Struct, kw_only=True):
-    """Request body for POST /api/conflicts/detect/."""
+    """Request body for POST /api/v1/results/conflicts/detect."""
 
     min_runs: int = 10
     min_overlap: int = 5
@@ -282,7 +282,7 @@ class ConflictDetectRequest(Struct, kw_only=True):
 
 
 class ConflictDetectResponse(Struct):
-    """Response for POST /api/conflicts/detect/."""
+    """Response for POST /api/v1/results/conflicts/detect."""
 
     success: bool
     conflicts_found: int
@@ -291,13 +291,13 @@ class ConflictDetectResponse(Struct):
 
 
 class ConflictResolveRequest(Struct):
-    """Request body for POST /api/conflicts/{id}/resolve/."""
+    """Request body for POST /api/v1/results/conflicts/{id}/resolve."""
 
     resolution_notes: Annotated[str, Meta(max_length=MAX_MESSAGE_LENGTH)]
 
 
 class ConflictResolveResponse(Struct):
-    """Response for POST /api/conflicts/{id}/resolve/."""
+    """Response for POST /api/v1/results/conflicts/{id}/resolve."""
 
     success: bool
     conflict_id: int

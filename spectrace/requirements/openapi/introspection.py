@@ -31,8 +31,8 @@ class EndpointInfo:
 def _convert_django_path_to_openapi(path: str) -> tuple[str, list[dict[str, Any]]]:
     """Convert Django URL path to OpenAPI path format and extract parameters.
 
-    Django: /api/requirement/<str:external_id>/status/
-    OpenAPI: /api/requirement/{external_id}/status/
+    Django: /api/v1/specs/<str:external_id>/status/
+    OpenAPI: /api/v1/specs/{external_id}/status/
 
     Returns:
         Tuple of (openapi_path, path_parameters)
@@ -133,6 +133,9 @@ def extract_api_endpoints(prefix: str = "api/") -> list[EndpointInfo]:
         # Get the view function
         view_func = pattern.callback
         if view_func is None:
+            continue
+
+        if getattr(view_func, "is_legacy_route", False):
             continue
 
         # Unwrap decorators to find the actual view
