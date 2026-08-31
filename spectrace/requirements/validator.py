@@ -1,7 +1,7 @@
 """
 Validation logic for test-requirement links.
 
-Detects drift between requirements, tests, and their linkages.
+Detects drift among requirements, tests, and the links between them.
 """
 
 import os
