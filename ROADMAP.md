@@ -6,7 +6,7 @@ open work. `.planning/STATE.md` tracks the current position,
 [CHANGELOG.md](CHANGELOG.md) records what landed. When those disagree with this
 file about what comes next, this file wins.
 
-Last reviewed: 2026-08-30.
+Last reviewed: 2026-08-31.
 
 ## Now
 
@@ -39,20 +39,9 @@ not.
 **Done when:** a multi-project analysis takes a ref per project, and a ref
 missing from one project fails loudly instead of reporting that project clean.
 
-### 3. Give requirements a project column
-
-`Requirement` has no project field, so every seeded project's requirements land
-in one namespace. Eight Praxis requirements imported alongside SpecTrace's 32
-fed `spec_coverage`, the dashboard, and `/api/v1/specs/coverage` as if SpecTrace
-owned them. `MapReader` keys edges by bare path, so two projects' `conftest.py`
-are already the same graph node.
-
-**Done when:** requirements, module paths, and test node ids carry their
-project, and coverage reports one project at a time.
-
 ## Next
 
-### 4. Wire the intent validator into the submit path
+### 3. Wire the intent validator into the submit path
 
 One agent writes the code and the tests from the same reading of the spec. A
 misread spec produces tests that encode the misreading and pass. `validate_intent`
@@ -62,7 +51,7 @@ checks execution against stated intent, and it runs only when someone asks it to
 **Done when:** `agent_submit` runs `validate_intent` and records the verdict on the
 task, and a task whose tests pass against the wrong intent fails to submit.
 
-### 5. Coverage trend snapshots
+### 4. Coverage trend snapshots
 
 `spec_coverage` reports today's numbers and forgets them. `CorpusSnapshot`
 stores corpus versions; nothing stores coverage over time. Deferred out of v10
@@ -72,7 +61,7 @@ Phase 2 and still the blocker under the trends chart.
 reports change against the previous snapshot, and the dashboard charts the
 series.
 
-### 6. Grow the corpus beyond four domains
+### 5. Grow the corpus beyond four domains
 
 `corpus/` holds billing, identity, platform, and security. Coverage claims are
 worth what the corpus covers. Decide which standards, decisions, and
@@ -86,7 +75,7 @@ SpecTrace's own domain lands in `meta/corpus/`.
 **Done when:** the corpus covers the domains the specs actually touch, and CI
 fails on a stale review.
 
-### 7. Refresh the planning record
+### 6. Refresh the planning record
 
 `docs/current-state.md` was last updated 2026-02-27 and describes the project as
 of v10. `.planning/MILESTONES.md` stops at v9. `.planning/STATE.md` stops at
