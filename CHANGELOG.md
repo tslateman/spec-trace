@@ -15,6 +15,7 @@ lives in [ROADMAP.md](ROADMAP.md).
 
 - Serve every endpoint under /api/v1/ and retire the old paths (`185a77e`)
 - Seed the impact graph and report blast radius on every PR (`c097cc4`)
+- Give requirements a project column (`51a5f53`)
 
 ### Fixed
 
@@ -26,6 +27,7 @@ lives in [ROADMAP.md](ROADMAP.md).
 
 - Describe the API as one versioned surface (`b533494`)
 - Name what the impact graph still cannot do (`30f8ac2`)
+- Clear the shipped project column from the roadmap (`2a64927`)
 
 <!-- changelog:/auto -->
 
