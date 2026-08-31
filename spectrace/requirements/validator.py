@@ -26,7 +26,7 @@ class ValidationIssue:
 
 @dataclass
 class ValidationResult:
-    """Result of link validation."""
+    """Outcome of link validation."""
 
     errors: list[ValidationIssue] = field(default_factory=list)
     warnings: list[ValidationIssue] = field(default_factory=list)
