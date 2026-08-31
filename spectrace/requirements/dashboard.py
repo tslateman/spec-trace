@@ -3,6 +3,7 @@
 from django.db.models import Avg, Count, Q
 
 from .models import SLO, InAppValidation, Requirement, VerificationMethod
+from .projects import AmbiguousProjectError, resolve_project
 
 
 def dashboard_callback(request, context):
@@ -15,19 +16,31 @@ def dashboard_callback(request, context):
     - slo_* metrics
     - inapp_* metrics
     - requirements_tree (annotated list for hierarchical display)
+
+    Requirement metrics cover one project: the one named in `?project=`, else
+    the project this installation owns, else the only project stored.
     """
-    total = Requirement.objects.count()
+    stored_projects = Requirement.project_names()
+    try:
+        project = resolve_project(request.GET.get("project"), stored_projects)
+    except AmbiguousProjectError:
+        project = stored_projects[0]
+    owned = Requirement.objects.filter(project=project)
+    context["current_project"] = project
+    context["available_projects"] = stored_projects
+
+    total = owned.count()
 
     if total > 0:
         # Verification status metrics
-        status_metrics = Requirement.objects.aggregate(
+        status_metrics = owned.aggregate(
             passing=Count("id", filter=Q(verification_status="passing")),
             failing=Count("id", filter=Q(verification_status="failing")),
             untested=Count("id", filter=Q(verification_status="untested")),
         )
 
         # Verification method breakdown
-        method_metrics = Requirement.objects.aggregate(
+        method_metrics = owned.aggregate(
             method_test=Count("id", filter=Q(verification_method=VerificationMethod.TEST)),
             method_inapp=Count("id", filter=Q(verification_method=VerificationMethod.INAPP)),
             method_both=Count("id", filter=Q(verification_method=VerificationMethod.BOTH)),
@@ -37,7 +50,7 @@ def dashboard_callback(request, context):
         )
 
         # SLO status breakdown
-        slo_metrics = Requirement.objects.aggregate(
+        slo_metrics = owned.aggregate(
             slo_met=Count("id", filter=Q(slo_status="met")),
             slo_at_risk=Count("id", filter=Q(slo_status="at_risk")),
             slo_breached=Count("id", filter=Q(slo_status="breached")),
@@ -45,10 +58,10 @@ def dashboard_callback(request, context):
         )
 
         # Requirements with SLO links
-        reqs_with_slos = Requirement.objects.filter(slos__isnull=False).distinct().count()
+        reqs_with_slos = owned.filter(slos__isnull=False).distinct().count()
 
         # Spec coverage metrics
-        coverage_metrics = Requirement.objects.aggregate(
+        coverage_metrics = owned.aggregate(
             non_draft=Count("id", filter=~Q(status="draft")),
             avg_structure=Avg("structure_completeness"),
         )

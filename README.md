@@ -149,7 +149,8 @@ SpecTrace provides Django management commands for various operations:
 
 | Command                                | Description                                                 |
 | -------------------------------------- | ----------------------------------------------------------- |
-| `parse_specs <dir>`                    | Import requirements from markdown specs                     |
+| `parse_specs <dir>`                    | Import requirements from markdown specs into their project  |
+| `spec_coverage`                        | Report coverage for one project (`--project`)               |
 | `extract_links`                        | Extract test-requirement links from test files              |
 | `import_results <xml>`                 | Import pytest JUnit XML and compute status                  |
 | `validate_links <json>`                | Validate links for drift detection (CI)                     |

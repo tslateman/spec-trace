@@ -59,6 +59,10 @@ entire ecosystem, at module level.
        requirements: [REQ-LORE-READ-001]
    ```
 
+   Graph nodes carry the project their map declares, so `praxis:tests/conftest.py`
+   and `spectrace:tests/conftest.py` are two nodes, and a change to one project's
+   module never reaches the other project's requirements.
+
 2. **Git inference** — correlate files that change alongside spec changes over
    commit history. Three co-occurrences within 30 days to trust an edge (Rule
    of Three). Inferred edges carry `source: "git-inferred"` and decay after 90

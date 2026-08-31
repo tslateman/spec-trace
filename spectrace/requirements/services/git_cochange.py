@@ -170,7 +170,8 @@ class GitCoChangeAnalyzer:
         return results
 
     def to_edges(self, project: str) -> list:
-        """Convert co-changes to GraphEdges."""
+        """Convert co-changes to GraphEdges keyed by project."""
+        from ..projects import qualify
         from .impact_graph import EdgeSource, GraphEdge
 
         co_changes = self.compute_co_changes()
@@ -178,8 +179,8 @@ class GitCoChangeAnalyzer:
         for cc in co_changes:
             edges.append(
                 GraphEdge(
-                    source_id=cc.file_a,
-                    target_id=cc.file_b,
+                    source_id=qualify(project, cc.file_a),
+                    target_id=qualify(project, cc.file_b),
                     source=EdgeSource.GIT_INFERRED,
                     weight=cc.weight,
                     project=project,

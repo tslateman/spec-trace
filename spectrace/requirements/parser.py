@@ -7,6 +7,8 @@ from typing import Any, TypedDict
 import frontmatter
 
 from requirements.models import Requirement, RiskLevel, VerificationMethod
+from requirements.projects import default_project
+from requirements.services.map_reader import project_for_path
 
 
 class InvalidRiskLevelError(ValueError):
@@ -110,6 +112,7 @@ def import_requirements_to_database(
     requirements: list[dict[str, Any]],
     clear_existing: bool = False,
     source_prefix: str | None = None,
+    project: str | None = None,
 ) -> int:
     """Import requirement dicts to database.
 
@@ -121,22 +124,28 @@ def import_requirements_to_database(
             - external_id (required)
             - title, description, tags, priority, status, source_file
             - parent_id (optional, references external_id of parent)
-        clear_existing: If True, delete requirements before import.
+        clear_existing: If True, delete this project's requirements before import.
             If source_prefix is set, only deletes requirements with matching source_file.
         source_prefix: If set, only clear requirements whose source_file starts with this.
             Useful for clearing only Linear-sourced requirements.
+        project: Project that owns these requirements. Defaults to the project
+            this installation owns, so another project's specs never land here
+            unnamed.
 
     Returns:
         Number of requirements created (not updated)
     """
+    project = project or default_project()
+
+    owned = Requirement.objects.filter(project=project)
     if clear_existing:
         if source_prefix:
-            Requirement.objects.filter(source_file__startswith=source_prefix).delete()
+            owned.filter(source_file__startswith=source_prefix).delete()
         else:
-            Requirement.objects.all().delete()
+            owned.delete()
 
     # Build lookup of existing requirements by external_id
-    existing = {req.external_id: req for req in Requirement.objects.all()}
+    existing = {req.external_id: req for req in owned}
 
     # Separate root requirements (no parent) and children
     roots = [r for r in requirements if r.get("parent_id") is None]
@@ -148,6 +157,7 @@ def import_requirements_to_database(
     for req_data in roots:
         external_id = req_data["external_id"]
         fields = _extract_requirement_fields(req_data)
+        fields["project"] = project
 
         if external_id in existing:
             # Update existing
@@ -166,6 +176,7 @@ def import_requirements_to_database(
         external_id = req_data["external_id"]
         parent_id = req_data["parent_id"]
         fields = _extract_requirement_fields(req_data)
+        fields["project"] = project
 
         if external_id in existing:
             # Update existing
@@ -406,17 +417,26 @@ class SpecParser:
                 print(f"Warning: Failed to parse {md_file}: {e}")
         return requirements
 
-    def import_to_database(self, specs_dir: Path, clear_existing: bool = False) -> int:
+    def import_to_database(
+        self, specs_dir: Path, clear_existing: bool = False, project: str | None = None
+    ) -> int:
         """Parse specs and create/update Requirement objects in database.
 
         Uses treebeard's add_root and add_child methods for proper hierarchy.
 
         Args:
             specs_dir: Path to specs directory
-            clear_existing: If True, delete all existing requirements first
+            clear_existing: If True, delete this project's requirements first
+            project: Project that owns these specs. Defaults to the project the
+                nearest spectrace-map.yaml above the specs directory declares,
+                and to this installation's own project when no map declares one.
 
         Returns:
             Number of requirements created
         """
         requirements = self.parse_directory(specs_dir)
-        return import_requirements_to_database(requirements, clear_existing=clear_existing)
+        return import_requirements_to_database(
+            requirements,
+            clear_existing=clear_existing,
+            project=project or project_for_path(specs_dir),
+        )

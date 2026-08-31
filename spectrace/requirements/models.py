@@ -6,6 +6,8 @@ from functools import cached_property
 from django.db import models
 from treebeard.mp_tree import MP_Node
 
+from .projects import default_project
+
 
 class VerificationStatus(models.TextChoices):
     """Verification status for requirements based on linked test results."""
@@ -99,6 +101,12 @@ class Requirement(MP_Node):
     """
 
     # Identity
+    project = models.CharField(
+        max_length=100,
+        default=default_project,
+        db_index=True,
+        help_text="Project that owns this requirement (e.g., spectrace)",
+    )
     external_id = models.CharField(
         max_length=50,
         unique=True,
@@ -212,9 +220,19 @@ class Requirement(MP_Node):
     class Meta:
         verbose_name = "Requirement"
         verbose_name_plural = "Requirements"
+        constraints = [
+            models.CheckConstraint(
+                condition=~models.Q(project=""), name="requirement_project_is_named"
+            )
+        ]
 
     def __str__(self):
         return f"{self.external_id}: {self.title}"
+
+    @classmethod
+    def project_names(cls) -> list[str]:
+        """List the distinct projects the stored requirements belong to."""
+        return sorted(cls.objects.order_by("project").values_list("project", flat=True).distinct())
 
     def calculate_structure_completeness(self) -> float:
         """Calculate the percentage of structured fields that are populated.

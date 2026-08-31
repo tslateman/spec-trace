@@ -3,11 +3,13 @@
 import logging
 import re
 import subprocess
+from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
 from requirements.models import Requirement, TestRequirementLink
+from requirements.projects import node_name, qualify
 
 from .contract_snapshot import ContractSnapshot
 from .git_cochange import GitCoChangeAnalyzer
@@ -96,6 +98,7 @@ class CodeImpactResult:
     changed_files: dict[str, list[str]]  # project -> files
     blast: dict  # BlastResult as dict
     affected_tests: list[str]
+    affected_tests_by_project: dict[str, list[str]] = field(default_factory=dict)
     risk_score: float = 0.0
     risk_level: str = "low"
     edge_summary: dict[str, int] = field(
@@ -253,6 +256,20 @@ class ImpactAnalyzer:
         tests = list(set(link.test_nodeid for link in links))
         return tests, hierarchy_expansion, dependency_expansion
 
+    def group_tests_by_project(self, test_nodeids: list[str]) -> dict[str, list[str]]:
+        """Group test nodeids by the project owning the requirements they verify.
+
+        A nodeid two projects share appears under both, which is what makes the
+        collision visible instead of silent.
+        """
+        pairs = TestRequirementLink.objects.filter(test_nodeid__in=test_nodeids).values_list(
+            "requirement__project", "test_nodeid"
+        )
+        grouped: dict[str, set[str]] = defaultdict(set)
+        for project, nodeid in pairs:
+            grouped[project].add(nodeid)
+        return {project: sorted(nodeids) for project, nodeids in sorted(grouped.items())}
+
     def compute_risk(self, result: ImpactResult) -> tuple[float, str]:
         """Compute risk score and level from impact signals.
 
@@ -380,24 +397,26 @@ class ImpactAnalyzer:
             # Default: use repo_path as the single project
             roots = {"local": self.repo_path}
 
+        map_reader = MapReader(roots)
+        project_names = {key: map_reader.project_name(key) for key in roots}
+
         # 1. Get all changed files per project
         changed_files: dict[str, list[str]] = {}
-        for project, root in roots.items():
-            files = self._diff_project(project, root, base_ref, head_ref)
+        for key, root in roots.items():
+            files = self._diff_project(project_names[key], root, base_ref, head_ref)
             if files:
-                changed_files[project] = files
+                changed_files.setdefault(project_names[key], []).extend(files)
 
         # 2. Collect edges from all sources
-        map_reader = MapReader(roots)
         annotated_edges = map_reader.read_all()
 
         inferred_edges = []
-        for project, root in roots.items():
+        for key, root in roots.items():
             analyzer = GitCoChangeAnalyzer(root)
-            inferred_edges.extend(analyzer.to_edges(project))
+            inferred_edges.extend(analyzer.to_edges(project_names[key]))
 
         contract_edges = []
-        for project, root in roots.items():
+        for key, root in roots.items():
             snap_path = root / "contract.snapshot.json"
             if snap_path.exists():
                 snap = ContractSnapshot.load(snap_path)
@@ -405,11 +424,11 @@ class ImpactAnalyzer:
                 for surface_name in snap.surfaces:
                     contract_edges.append(
                         GraphEdge(
-                            source_id=f"{project}:{surface_name}",
+                            source_id=qualify(project_names[key], surface_name),
                             target_id=surface_name,
                             source=EdgeSource.CONTRACT,
                             weight=0.8,
-                            project=project,
+                            project=project_names[key],
                         )
                     )
 
@@ -418,16 +437,18 @@ class ImpactAnalyzer:
         graph = builder.build(annotated_edges, inferred_edges, contract_edges)
 
         all_changed = []
-        for files in changed_files.values():
-            all_changed.extend(files)
+        for project, files in changed_files.items():
+            all_changed.extend(qualify(project, path) for path in files)
 
         blast = graph.blast_radius(all_changed) if all_changed else graph.blast_radius([])
 
         # 4. Query for affected tests
-        affected_reqs = blast.affected_requirements
+        affected_reqs = [node_name(node_id) for node_id in blast.affected_requirements]
         affected_tests = []
+        tests_by_project: dict[str, list[str]] = {}
         if affected_reqs:
             affected_tests, _, _ = self.get_affected_tests(affected_reqs)
+            tests_by_project = self.group_tests_by_project(affected_tests)
 
         # 5. Risk scoring weighted by the evidence the blast radius traversed
         edge_factor = traversed_edge_factor(blast)
@@ -448,6 +469,7 @@ class ImpactAnalyzer:
 
         return CodeImpactResult(
             changed_files=changed_files,
+            affected_tests_by_project=tests_by_project,
             blast={
                 "directly_changed": blast.directly_changed,
                 "affected_requirements": blast.affected_requirements,

@@ -15,6 +15,7 @@ from requirements.models import (
     Requirement,
     TestRequirementLink,
 )
+from requirements.projects import AmbiguousProjectError, resolve_project
 from requirements.services.agent_tasks import TransitionError, claim_task, submit_for_review
 from requirements.validation_runs import (
     build_run_comparison,
@@ -192,8 +193,15 @@ def spec_context_view(request, external_id):
 
 @require_http_methods(["GET"])
 def specs_coverage_view(request):
-    """Returns coverage metrics and lists of stale requirements."""
-    metrics = Requirement.objects.aggregate(
+    """Returns coverage metrics and stale requirements for one project."""
+    try:
+        project = resolve_project(request.GET.get("project"), Requirement.project_names())
+    except AmbiguousProjectError as e:
+        return _error_response(
+            f"{e} Pass ?project=", code="ambiguous_project", details={"projects": e.projects}
+        )
+
+    metrics = Requirement.objects.filter(project=project).aggregate(
         total=Count("id"),
         non_draft=Count("id", filter=~Q(status="draft")),
         passing=Count("id", filter=Q(verification_status="passing")),
@@ -218,7 +226,14 @@ def specs_coverage_view(request):
                 affected = warning.details.get("affected_requirements", [])
                 stale_req_ids.update(affected)
 
+    stale_req_ids &= set(
+        Requirement.objects.filter(project=project, external_id__in=stale_req_ids).values_list(
+            "external_id", flat=True
+        )
+    )
+
     data = {
+        "project": project,
         "metrics": {
             "total": metrics["total"],
             "non_draft": metrics["non_draft"],

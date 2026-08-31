@@ -6,6 +6,7 @@ from django.core.management.base import CommandError
 
 from requirements.linear import LinearClient
 from requirements.parser import import_requirements_to_database
+from requirements.projects import default_project
 
 from .base import BaseImportCommand
 
@@ -33,6 +34,12 @@ class Command(BaseImportCommand):
             "--dry-run",
             action="store_true",
             help="Show what would be imported without saving",
+        )
+        parser.add_argument(
+            "--project",
+            type=str,
+            default=None,
+            help="Project that owns these issues (default: this installation's project)",
         )
 
     def handle(self, *args, **options):
@@ -68,10 +75,14 @@ class Command(BaseImportCommand):
             return
 
         # Import to database
+        project = options["project"] or default_project()
         count = import_requirements_to_database(
             requirements,
             clear_existing=options["clear"],
             source_prefix="linear://" if options["clear"] else None,
+            project=project,
         )
 
-        self.stdout.write(self.style.SUCCESS(f"Successfully imported {count} new requirements"))
+        self.stdout.write(
+            self.style.SUCCESS(f"Successfully imported {count} new requirements into {project}")
+        )

@@ -39,6 +39,10 @@ ALLOWED_HOSTS = [
 # Required for /api/update-slo-status, /api/submit-validation-result, etc.
 SPECTRACE_API_KEY = os.environ.get("SPECTRACE_API_KEY", "")
 
+# Project this installation owns. Requirements parsed without a project of their
+# own land here, and coverage reports it when the caller names no other.
+SPECTRACE_PROJECT = os.environ.get("SPECTRACE_PROJECT", "spectrace")
+
 # GitHub App configuration for CI/CD integration
 # Create a GitHub App at https://github.com/settings/apps
 GITHUB_APP_ID = os.environ.get("GITHUB_APP_ID", "")

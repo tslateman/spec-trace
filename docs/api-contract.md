@@ -52,13 +52,13 @@ The shipped surface, by group. Paths without a trailing slash are marked; copy t
 
 Read-only endpoints that answer "what does the spec say?" Agents and dashboards read these for requirements, coverage, drift, and impact.
 
-| Method | URL                                   | Description                                        | Auth | Response Schema |
-| ------ | ------------------------------------- | -------------------------------------------------- | ---- | --------------- |
-| GET    | `/api/v1/specs/coverage/`             | Coverage metrics and stale requirements            | None | `data` / `meta` |
-| GET    | `/api/v1/specs/drift/`                | Drift detections                                   | None | `data` / `meta` |
-| GET    | `/api/v1/specs/impact/`               | Dependency graph of affected specs                 | None | `data` / `meta` |
-| GET    | `/api/v1/specs/{external_id}/context` | Surrounding context for one requirement (no slash) | None | `data` / `meta` |
-| GET    | `/api/v1/specs/{external_id}/status/` | Verification status for one requirement            | None | `data` / `meta` |
+| Method | URL                                   | Description                                                           | Auth | Response Schema |
+| ------ | ------------------------------------- | --------------------------------------------------------------------- | ---- | --------------- |
+| GET    | `/api/v1/specs/coverage/`             | Coverage metrics and stale requirements for one project (`?project=`) | None | `data` / `meta` |
+| GET    | `/api/v1/specs/drift/`                | Drift detections                                                      | None | `data` / `meta` |
+| GET    | `/api/v1/specs/impact/`               | Dependency graph of affected specs                                    | None | `data` / `meta` |
+| GET    | `/api/v1/specs/{external_id}/context` | Surrounding context for one requirement (no slash)                    | None | `data` / `meta` |
+| GET    | `/api/v1/specs/{external_id}/status/` | Verification status for one requirement                               | None | `data` / `meta` |
 
 ### `/api/v1/tasks/` — Agent Surface
 

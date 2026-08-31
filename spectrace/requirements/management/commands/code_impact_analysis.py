@@ -6,6 +6,7 @@ from pathlib import Path
 
 from django.core.management.base import BaseCommand, CommandError
 
+from ...projects import display_node
 from ...services.impact_analyzer import ImpactAnalyzer
 from ...services.impact_markdown import render_markdown
 
@@ -104,12 +105,22 @@ class Command(BaseCommand):
         if result.risk_level in BLOCKING_LEVELS:
             sys.exit(1)
 
+    def _test_lines(self, result) -> list[str]:
+        """List affected tests under the project whose requirements they verify."""
+        grouped = result.affected_tests_by_project
+        if not grouped:
+            return [f"  {test}" for test in sorted(result.affected_tests)]
+        return [
+            f"  [{project}] {test}" for project, tests in sorted(grouped.items()) for test in tests
+        ]
+
     def _render_json(self, result) -> str:
         """Render structured JSON."""
         output = {
             "changed_files": result.changed_files,
             "blast": result.blast,
             "affected_tests": result.affected_tests,
+            "affected_tests_by_project": result.affected_tests_by_project,
             "risk_score": result.risk_score,
             "risk_level": result.risk_level,
             "edge_summary": result.edge_summary,
@@ -147,8 +158,8 @@ class Command(BaseCommand):
         projs = blast.get("affected_projects", [])
 
         for heading, items in (
-            ("Affected Requirements", reqs),
-            ("Affected Modules", mods),
+            ("Affected Requirements", [display_node(r) for r in reqs]),
+            ("Affected Modules", [display_node(m) for m in mods]),
             ("Affected Projects", projs),
         ):
             if items:
@@ -177,6 +188,6 @@ class Command(BaseCommand):
         if result.affected_tests:
             lines.append("")
             lines.append(self.style.WARNING(f"Affected Tests ({len(result.affected_tests)}):"))
-            lines.extend(f"  {test}" for test in sorted(result.affected_tests))
+            lines.extend(self._test_lines(result))
 
         return "\n".join(lines) + "\n"

@@ -1,5 +1,6 @@
 """Render a CodeImpactResult as Markdown fit for a pull request comment."""
 
+from ..projects import display_node
 from .impact_analyzer import CodeImpactResult
 
 MARKER_PREFIX = "<!-- spectrace-impact-gate"
@@ -78,11 +79,17 @@ def render_markdown(
     _section(
         lines,
         "Affected Requirements",
-        list(blast.get("affected_requirements", [])),
+        [display_node(node) for node in blast.get("affected_requirements", [])],
         list_limit,
         "- ",
     )
-    _section(lines, "Affected Modules", list(blast.get("affected_modules", [])), list_limit, "- ")
+    _section(
+        lines,
+        "Affected Modules",
+        [display_node(node) for node in blast.get("affected_modules", [])],
+        list_limit,
+        "- ",
+    )
     _section(lines, "Affected Projects", list(blast.get("affected_projects", [])), list_limit, "- ")
 
     edges = result.traversed_edges

@@ -7,6 +7,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Optional
 
+from ..projects import node_name
+
 logger = logging.getLogger(__name__)
 
 
@@ -98,9 +100,10 @@ class ImpactGraph:
         requirements: list[str] = []
 
         for node_id in all_affected:
-            if node_id.startswith("REQ-") or node_id.startswith("req-"):
+            name = node_name(node_id)
+            if name.startswith("REQ-") or name.startswith("req-"):
                 requirements.append(node_id)
-            elif "/" in node_id:
+            elif "/" in name:
                 modules.append(node_id)
             for edge in self._adjacency.get(node_id, []) + self._reverse.get(node_id, []):
                 if edge.project:
