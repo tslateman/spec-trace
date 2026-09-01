@@ -9,6 +9,14 @@ from treebeard.mp_tree import MP_Node
 from .projects import default_project
 
 
+class RequirementStatus(models.TextChoices):
+    """Lifecycle states for a requirement."""
+
+    DRAFT = "draft", "Draft"
+    ACTIVE = "active", "Active"
+    DEPRECATED = "deprecated", "Deprecated"
+
+
 class VerificationStatus(models.TextChoices):
     """Verification status for requirements based on linked test results."""
 
@@ -125,7 +133,8 @@ class Requirement(MP_Node):
     )
     status = models.CharField(
         max_length=20,
-        default="draft",
+        choices=RequirementStatus.choices,
+        default=RequirementStatus.DRAFT,
         help_text="Requirement status (draft, active, deprecated)",
     )
     risk_level = models.CharField(
@@ -753,6 +762,16 @@ class VerificationFlowStep(models.Model):
         return None
 
 
+class LinkStatus(models.TextChoices):
+    """Result of the last test run recorded against a test-requirement link."""
+
+    PASSED = "passed", "Passed"
+    FAILED = "failed", "Failed"
+    ERROR = "error", "Error"
+    SKIPPED = "skipped", "Skipped"
+    UNKNOWN = "unknown", "Unknown"
+
+
 class TestRequirementLink(models.Model):
     """Links a test nodeid to a Requirement for traceability.
 
@@ -776,7 +795,8 @@ class TestRequirementLink(models.Model):
     )
     last_status = models.CharField(
         max_length=20,
-        default="unknown",
+        choices=LinkStatus.choices,
+        default=LinkStatus.UNKNOWN,
         help_text="Status from last test run (passed, failed, error, skipped, unknown)",
     )
     last_run_at = models.DateTimeField(

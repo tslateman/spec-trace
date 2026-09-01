@@ -575,6 +575,15 @@
       "format": "db-enum",
       "origin": "spectrace/requirements/models.py"
     },
+    "enum/requirements_requirement.status": {
+      "fields": [
+        "active",
+        "deprecated",
+        "draft"
+      ],
+      "format": "db-enum",
+      "origin": "spectrace/requirements/models.py"
+    },
     "enum/requirements_requirement.verification_method": {
       "fields": [
         "both",
@@ -635,6 +644,17 @@
       "fields": [
         "clean",
         "findings"
+      ],
+      "format": "db-enum",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "enum/requirements_testrequirementlink.last_status": {
+      "fields": [
+        "error",
+        "failed",
+        "passed",
+        "skipped",
+        "unknown"
       ],
       "format": "db-enum",
       "origin": "spectrace/requirements/models.py"
