@@ -229,7 +229,7 @@ them.
 - [x] `DATABASE_URL` set to Postgres: `pytest` green.
 - [x] `docker build` succeeds and the image serves `/admin/login/` with
       django-unfold styling.
-- [ ] `fly deploy` runs migrations as the release command and serves the
+- [x] `fly deploy` runs migrations as the release command and serves the
       admin at the public URL with `DEBUG=false`.
 - [x] `manage.py check --deploy` reports zero errors against production env.
 - [ ] CI `Verification` on `main` writes to Supabase; on PRs it uses SQLite.
@@ -237,4 +237,4 @@ them.
       with `DATABASE_URL` set; `REQ-PRX-*` and the claim appear in the hosted
       admin.
 - [x] `docs/integration.md` describes the shared-instance model.
-- [ ] CHANGELOG.md covers every commit.
+- [x] CHANGELOG.md covers every commit.
