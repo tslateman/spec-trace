@@ -35,6 +35,7 @@ lives in [ROADMAP.md](ROADMAP.md).
 - Clear the shipped project column from the roadmap (`2a64927`)
 - Plan the Supabase deploy (`6621355`)
 - Describe the shared-instance integration model (`bac38cc`)
+- Tick the deployed criteria in the Supabase plan (`a9c6bee`)
 
 ### Chores
 
