@@ -170,6 +170,34 @@ def test_results_verify__delegates(mock_run, runner):
 
 
 @patch("cli._run")
+def test_specs_parse__delegates(mock_run, runner):
+    result = runner.invoke(cli, ["specs", "parse", "specs/", "--project", "praxis"])
+    assert result.exit_code == 0
+    mock_run.assert_called_once_with("parse_specs", "specs/", project="praxis")
+
+
+@patch("cli._run")
+def test_specs_parse__defaults_project_to_map(mock_run, runner):
+    result = runner.invoke(cli, ["specs", "parse", "specs/"])
+    assert result.exit_code == 0
+    mock_run.assert_called_once_with("parse_specs", "specs/", project=None)
+
+
+@patch("cli._run")
+def test_results_extract__delegates(mock_run, runner):
+    result = runner.invoke(cli, ["results", "extract", "--path", "src", "-o", "links.json"])
+    assert result.exit_code == 0
+    mock_run.assert_called_once_with("extract_links", path="src", output="links.json")
+
+
+@patch("cli._run")
+def test_results_link__delegates(mock_run, runner):
+    result = runner.invoke(cli, ["results", "link", "links.json", "--dry-run"])
+    assert result.exit_code == 0
+    mock_run.assert_called_once_with("import_test_links", "links.json", dry_run=True)
+
+
+@patch("cli._run")
 def test_tasks_register__delegates(mock_run, runner):
     result = runner.invoke(cli, ["tasks", "register", "bot-1", "--role", "coder"])
     assert result.exit_code == 0

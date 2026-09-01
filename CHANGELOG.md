@@ -19,6 +19,8 @@ lives in [ROADMAP.md](ROADMAP.md).
 - Express cross-project dependencies in the impact graph (`30e2a0b`)
 - Publish the status values the database stores (`7c28979`)
 - Diff each project at refs of its own (`9e73ad4`)
+- Serve the admin from a container against a Postgres database (`90ffffd`)
+- Add spec parsing and link import to the CLI (`316994a`)
 - Publish the priority values the database stores (`2c02d9a`)
 
 ### Fixed
@@ -29,14 +31,26 @@ lives in [ROADMAP.md](ROADMAP.md).
 - State the commit step when the changelog gate fails (`5e7f4d2`)
 - Test a path for hidden directories relative to its project root (`eefabe1`)
 - Fail rather than publish a checkout as having no database (`3b2eb2f`)
+- Deploy to San Jose because Fly retired the Seattle region (`795fb92`)
+- Send the app hostname in Fly health checks (`1423c8b`)
+- Migrate the shared database from CI before writing to it (`5601ad1`)
+- Fall back to SQLite when DATABASE_URL is empty (`fb12c06`)
 
 ### Documentation
 
 - Describe the API as one versioned surface (`b533494`)
 - Name what the impact graph still cannot do (`30f8ac2`)
 - Clear the shipped project column from the roadmap (`2a64927`)
+- Plan the Supabase deploy (`6621355`)
 - Clear the shipped ref-pair and status-choices items from the roadmap (`640a1e1`)
+- Describe the shared-instance integration model (`bac38cc`)
 - Clear the shipped priority and db-surface items from the roadmap (`251830d`)
+- Tick the deployed criteria in the Supabase plan (`a9c6bee`)
+
+### Chores
+
+- Write the shared database from CI on main (`6570cf9`)
+- Put the Fly app in Seattle beside the Oregon database (`778b7b2`)
 
 <!-- changelog:/auto -->
 

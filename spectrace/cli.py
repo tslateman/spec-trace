@@ -78,6 +78,18 @@ def coverage(format):
 
 
 @specs.command()
+@click.argument("specs_dir")
+@click.option(
+    "--project",
+    default=None,
+    help="Project that owns these specs (defaults to the nearest spectrace-map.yaml)",
+)
+def parse(specs_dir, project):
+    """Parse markdown specs into the database."""
+    _run("parse_specs", specs_dir, project=project)
+
+
+@specs.command()
 @click.argument("base_ref")
 @click.argument("head_ref")
 @click.option("--format", type=click.Choice(["text", "json", "md", "markdown"]), default="text")
@@ -481,6 +493,22 @@ def verify(links_file, strict, format, require_coverage, check_high_risk):
         require_coverage=list(require_coverage) if require_coverage else ["active"],
         check_high_risk=check_high_risk,
     )
+
+
+@results.command()
+@click.option("--path", default=".", help="Directory to scan for requirement markers")
+@click.option("--output", "-o", default=None, help="Links file to write (defaults to stdout)")
+def extract(path, output):
+    """Extract test-requirement links from source."""
+    _run("extract_links", path=path, output=output)
+
+
+@results.command()
+@click.argument("links_file")
+@click.option("--dry-run", is_flag=True, default=False, help="Report without writing")
+def link(links_file, dry_run):
+    """Import test-requirement links into the database."""
+    _run("import_test_links", links_file, dry_run=dry_run)
 
 
 @results.command()

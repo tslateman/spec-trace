@@ -1,18 +1,17 @@
 # Integrating SpecTrace
 
-Add SpecTrace to your Django project as a dependency.
+One SpecTrace database serves every project. Each repo installs the CLI,
+points `DATABASE_URL` at the shared Postgres, and runs the management commands
+from its own checkout. The hosted admin reads the same database.
 
 ## Installation
 
 ```bash
-# pip
-pip install git+https://github.com/tslateman/spec-trace.git
-
 # uv
 uv pip install git+https://github.com/tslateman/spec-trace.git
 
-# requirements.txt
-spectrace @ git+https://github.com/tslateman/spec-trace.git
+# pip
+pip install git+https://github.com/tslateman/spec-trace.git
 
 # pyproject.toml
 dependencies = [
@@ -26,62 +25,58 @@ Pin to a specific commit for stability:
 spectrace @ git+https://github.com/tslateman/spec-trace.git@25c836e
 ```
 
-## Django Configuration
+## Connecting
 
-### settings.py
+Set `DATABASE_URL` to the Supabase session pooler. Every `spectrace` command
+and `manage.py` command then reads and writes the shared database.
 
-```python
-INSTALLED_APPS = [
-    # django-unfold must be before django.contrib.admin
-    "unfold",
-    "unfold.contrib.filters",
-    "django.contrib.admin",
-    # ... other Django apps ...
-
-    # SpecTrace apps
-    "treebeard",
-    "requirements",
-    "spectrace_client",  # Optional: in-app validation SDK
-]
+```bash
+export DATABASE_URL='postgres://postgres.<project-ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres?sslmode=require'
 ```
 
-### urls.py
+Use the session pooler on port 5432. The direct connection is IPv6-only, and
+the transaction pooler on port 6543 drops the prepared statements Django
+relies on. Percent-encode reserved characters in the password.
 
-```python
-from django.urls import include, path
+Without `DATABASE_URL`, SpecTrace falls back to a local SQLite file. That is
+the right mode for running SpecTrace's own test suite, not for project work.
 
-urlpatterns = [
-    # Your app URLs...
+Store the URL as a repository secret in CI and as a `.env` entry locally. Every
+holder of the URL reads and writes every project.
 
-    # SpecTrace admin views (before admin.site.urls)
-    path("", include("requirements.urls")),
+## Registering a Project
 
-    path("admin/", admin.site.urls),
-]
+Give your specs a `project:` and parse them from your checkout:
+
+```bash
+spectrace specs parse specs/ --project myproject
+spectrace results extract --path src --output links.json
+spectrace results link links.json
 ```
 
-Or selectively include only what you need:
+Run the same commands in CI on pushes to your main branch so the shared
+database tracks what shipped. Pull requests should skip the write, or point at
+a throwaway SQLite database, so an unmerged change never lands in it.
 
-```python
-from requirements import api
-from requirements.views import matrix_view, validation_run_list_view
+## Claiming Tasks
 
-urlpatterns = [
-    # Just the matrix view
-    path("admin/matrix/", matrix_view, name="admin-matrix"),
+Agents claim and complete tasks with the CLI from any checkout that holds
+`DATABASE_URL`:
 
-    # Just the API
-    path(
-        "api/v1/results/enforcement/",
-        api.submit_validation_result,
-        name="api-v1-results-enforcement",
-    ),
-]
+```bash
+spectrace tasks register my-agent --role coder
+spectrace tasks list --status unclaimed
+spectrace tasks claim <task_id> --agent my-agent
+spectrace tasks complete <task_id> --agent my-agent
 ```
 
-Keep the `name=` when you wire routes by hand. The redirects that serve the
-retired `/api/` paths resolve their targets by URL name, so a route registered
-without its name breaks them.
+The HTTP API at `/api/v1/tasks/` covers list, claim, and complete for callers
+that hold `SPECTRACE_API_KEY` but not the database URL.
+
+## Reading Status
+
+The hosted admin serves the matrix, coverage, drift, and impact views under
+`/admin/`. Ask for a staff account to read them.
 
 ## Public API Surface
 
@@ -136,7 +131,7 @@ python manage.py import_inapp_validations results.json
 python manage.py check_invariants
 
 # Agent coordination
-python manage.py agent_register --name my-agent --role coder
+python manage.py agent_register my-agent --role coder
 python manage.py agent_tasks --status unclaimed
 python manage.py agent_claim <task_id> --agent my-agent
 ```
