@@ -122,8 +122,7 @@ jobs:
           pip install uv
           uv pip install --system -e ./spectrace-flows -e ".[dev]"
 
-      - name: Migrate the throwaway database
-        if: env.DATABASE_URL == ''
+      - name: Migrate the database
         run: python spectrace/manage.py migrate --no-input
 
       - name: Build the requirement database

@@ -167,8 +167,10 @@ once.
 File: `.github/workflows/ci.yml`
 
 The `Verification` job on `main` pushes gets `DATABASE_URL` from the
-`SUPABASE_DATABASE_URL` repository secret and drops `migrate` (the release
-command owns migrations). Pull requests keep the throwaway SQLite build so a
+`SUPABASE_DATABASE_URL` repository secret. It keeps `migrate`: a migration can
+merge before anyone runs `fly deploy`, and `parse_specs` against a stale
+schema fails. `migrate` is idempotent, so the Fly release command and CI both
+running it is harmless. Pull requests keep the throwaway SQLite build so a
 broken PR never writes to the shared database.
 
 The `Impact` job stays as is: it runs `impact_analysis` against the PR's git
