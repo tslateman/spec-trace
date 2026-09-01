@@ -10,28 +10,19 @@ Last reviewed: 2026-08-31.
 
 ## Now
 
-### 1. Publish the priority values the database stores
+### 1. Declare the SLO budgeting method vocabulary
 
-`Requirement.priority` carries `help_text="Priority level (high, medium, low)"`
-and no `choices`, so no `enum/` surface names it. It is the third field found
-this way, after `status` and `last_status`, and the pattern says to look for
-the fourth: a stored vocabulary documented in prose publishes nothing and
-enforces nothing.
+`SLO.budgeting_method` carries `help_text="Budgeting method (occurrences,
+timeslices)"` and no `choices`, so the snapshot publishes no `enum/` surface for
+it. The OpenSLO vocabulary it names is closed, and this is the fourth field
+found storing a vocabulary that only prose declares.
 
-**Done when:** `priority` carries `choices`, the snapshot publishes its `enum/`
-surface, and a check names every `CharField` whose values live only in a
-`help_text`.
+`test_help_text_vocabularies` already catches it and holds it in an `EXEMPT` map
+with its reason, so the suite stays green until someone schedules the work.
+Fixing it means removing the exemption, not writing a new check.
 
-### 2. Read database surfaces from the root being scanned
-
-`_extract_db_surfaces` introspects the Django models the process imported, so a
-snapshot generated for any root other than the one on `sys.path` carries no
-`db/` surfaces. That is correct for Praxis, which has no Django models, and
-silently wrong for a second SpecTrace checkout, which has the same models and
-publishes none of them.
-
-**Done when:** generating a snapshot for a root reads that root's models, or
-fails rather than reporting a project with no database surfaces.
+**Done when:** `budgeting_method` carries `choices`, the snapshot publishes its
+`enum/` surface, and the `EXEMPT` map holds only false positives.
 
 ## Next
 
