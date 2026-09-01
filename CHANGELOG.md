@@ -37,6 +37,7 @@ lives in [ROADMAP.md](ROADMAP.md).
 ### Chores
 
 - Write the shared database from CI on main (`6570cf9`)
+- Put the Fly app in Seattle beside the Oregon database (`778b7b2`)
 
 <!-- changelog:/auto -->
 
