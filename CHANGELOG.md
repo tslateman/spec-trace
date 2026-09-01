@@ -19,6 +19,7 @@ lives in [ROADMAP.md](ROADMAP.md).
 - Express cross-project dependencies in the impact graph (`30e2a0b`)
 - Publish the status values the database stores (`7c28979`)
 - Diff each project at refs of its own (`9e73ad4`)
+- Publish the priority values the database stores (`2c02d9a`)
 
 ### Fixed
 
@@ -27,6 +28,7 @@ lives in [ROADMAP.md](ROADMAP.md).
 - Score impact risk by the edges a diff traverses (`8ecc589`)
 - State the commit step when the changelog gate fails (`5e7f4d2`)
 - Test a path for hidden directories relative to its project root (`eefabe1`)
+- Fail rather than publish a checkout as having no database (`3b2eb2f`)
 
 ### Documentation
 
@@ -34,6 +36,7 @@ lives in [ROADMAP.md](ROADMAP.md).
 - Name what the impact graph still cannot do (`30f8ac2`)
 - Clear the shipped project column from the roadmap (`2a64927`)
 - Clear the shipped ref-pair and status-choices items from the roadmap (`640a1e1`)
+- Clear the shipped priority and db-surface items from the roadmap (`251830d`)
 
 <!-- changelog:/auto -->
 
