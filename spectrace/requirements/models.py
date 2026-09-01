@@ -17,6 +17,16 @@ class RequirementStatus(models.TextChoices):
     DEPRECATED = "deprecated", "Deprecated"
 
 
+class RequirementPriority(models.TextChoices):
+    """Priority levels a requirement carries, from the spec frontmatter or Linear."""
+
+    URGENT = "urgent", "Urgent"
+    CRITICAL = "critical", "Critical"
+    HIGH = "high", "High"
+    MEDIUM = "medium", "Medium"
+    LOW = "low", "Low"
+
+
 class VerificationStatus(models.TextChoices):
     """Verification status for requirements based on linked test results."""
 
@@ -129,7 +139,10 @@ class Requirement(MP_Node):
     # Metadata from frontmatter
     tags = models.JSONField(default=list, blank=True, help_text="Category tags for filtering")
     priority = models.CharField(
-        max_length=20, blank=True, help_text="Priority level (high, medium, low)"
+        max_length=20,
+        blank=True,
+        choices=RequirementPriority.choices,
+        help_text="Priority level (urgent, critical, high, medium, low)",
     )
     status = models.CharField(
         max_length=20,

@@ -554,6 +554,17 @@
       "format": "db-enum",
       "origin": "spectrace/requirements/models.py"
     },
+    "enum/requirements_requirement.priority": {
+      "fields": [
+        "critical",
+        "high",
+        "low",
+        "medium",
+        "urgent"
+      ],
+      "format": "db-enum",
+      "origin": "spectrace/requirements/models.py"
+    },
     "enum/requirements_requirement.risk_level": {
       "fields": [
         "critical",
