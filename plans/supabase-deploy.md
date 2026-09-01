@@ -1,4 +1,4 @@
-Status: Draft
+Status: In progress
 
 # Supabase Deploy
 
@@ -16,7 +16,7 @@ hosted Django admin all read and write.
 
 ## Success Criteria
 
-- A Claude Code session in praxis runs `spectrace agent_claim <task-id>` with
+- A Claude Code session in praxis runs `spectrace tasks claim <task-id>` with
   `DATABASE_URL` set and the claim shows in the hosted admin at `/admin/`
   within the same minute.
 - spec-trace's own CI `Verification` job runs `migrate`, `parse_specs`, and
@@ -176,6 +176,12 @@ history and posts a comment; it does not need the shared database.
 
 ### 6. Other repos
 
+The Click CLI had no ingestion commands and `manage.py` is unreachable from an
+installed package, so this step adds three thin wrappers: `spectrace specs
+parse SPECS_DIR [--project]`, `spectrace results extract --path --output`, and
+`spectrace results link LINKS_FILE`. Verified from the praxis checkout: `specs
+parse specs --project praxis` wrote 8 requirements to Postgres.
+
 Each consuming repo adds a `.env` or CI secret with the session-pooler
 `DATABASE_URL` and installs spec-trace from git as `docs/integration.md`
 already shows. Rewrite `docs/integration.md` around the shared instance:
@@ -219,15 +225,16 @@ them.
 
 ## Acceptance Criteria
 
-- [ ] `DATABASE_URL` unset: `pytest` green on SQLite.
-- [ ] `DATABASE_URL` set to Postgres: `pytest` green.
-- [ ] `docker build` succeeds and the image serves `/admin/login/` with
+- [x] `DATABASE_URL` unset: `pytest` green on SQLite.
+- [x] `DATABASE_URL` set to Postgres: `pytest` green.
+- [x] `docker build` succeeds and the image serves `/admin/login/` with
       django-unfold styling.
 - [ ] `fly deploy` runs migrations as the release command and serves the
       admin at the public URL with `DEBUG=false`.
-- [ ] `manage.py check --deploy` reports zero errors against production env.
+- [x] `manage.py check --deploy` reports zero errors against production env.
 - [ ] CI `Verification` on `main` writes to Supabase; on PRs it uses SQLite.
-- [ ] praxis runs `parse_specs specs/` and `spectrace agent_claim` with
-      `DATABASE_URL` set; `REQ-PRX-*` and the claim appear in the hosted admin.
-- [ ] `docs/integration.md` describes the shared-instance model.
+- [ ] praxis runs `spectrace specs parse specs/` and `spectrace tasks claim`
+      with `DATABASE_URL` set; `REQ-PRX-*` and the claim appear in the hosted
+      admin.
+- [x] `docs/integration.md` describes the shared-instance model.
 - [ ] CHANGELOG.md covers every commit.
