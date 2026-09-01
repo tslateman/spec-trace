@@ -10,27 +10,28 @@ Last reviewed: 2026-08-31.
 
 ## Now
 
-### 1. Address one repo per ref pair
+### 1. Publish the priority values the database stores
 
-`code_analyze` runs `git diff base head` in every project root with the same
-refs. A ref that exists in one repo and not another yields nothing for the
-second. The `<base>..<head>` signature assumes a monorepo this ecosystem is
-not, and it blocks a two-project run today: SpecTrace's refs do not resolve in
-Praxis, so the cross-project graph can be verified only outside the command.
+`Requirement.priority` carries `help_text="Priority level (high, medium, low)"`
+and no `choices`, so no `enum/` surface names it. It is the third field found
+this way, after `status` and `last_status`, and the pattern says to look for
+the fourth: a stored vocabulary documented in prose publishes nothing and
+enforces nothing.
 
-**Done when:** a multi-project analysis takes a ref per project, and a ref
-missing from one project fails loudly instead of reporting that project clean.
+**Done when:** `priority` carries `choices`, the snapshot publishes its `enum/`
+surface, and a check names every `CharField` whose values live only in a
+`help_text`.
 
-### 2. Declare the status values the database stores
+### 2. Read database surfaces from the root being scanned
 
-`Requirement.status` and `TestRequirementLink.last_status` are `CharField`s
-whose legal values live in a `help_text` string. Nothing enforces them and
-nothing publishes them, so `enum/` surfaces exist for the four fields that
-carry `choices` and not for these two. Praxis queries `WHERE r.status !=
-'draft'` against a value SpecTrace never declares.
+`_extract_db_surfaces` introspects the Django models the process imported, so a
+snapshot generated for any root other than the one on `sys.path` carries no
+`db/` surfaces. That is correct for Praxis, which has no Django models, and
+silently wrong for a second SpecTrace checkout, which has the same models and
+publishes none of them.
 
-**Done when:** both fields carry `choices`, the snapshot publishes their
-`enum/` surfaces, and Praxis names them in `depends_on`.
+**Done when:** generating a snapshot for a root reads that root's models, or
+fails rather than reporting a project with no database surfaces.
 
 ## Next
 
