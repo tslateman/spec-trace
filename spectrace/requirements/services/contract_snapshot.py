@@ -1,5 +1,6 @@
 """Contract snapshots — introspect project data surfaces for change detection."""
 
+import ast
 import inspect
 import json
 import logging
@@ -16,6 +17,10 @@ SNAPSHOT_FILENAME = "contract.snapshot.json"
 CLI_SURFACE_PREFIX = "cli/"
 DB_SURFACE_PREFIX = "db/"
 ENUM_SURFACE_PREFIX = "enum/"
+
+
+class ModelsNotImportedError(Exception):
+    """A root declares Django models the running process never imported."""
 
 
 def _is_hidden(relative_path: str) -> bool:
@@ -189,6 +194,11 @@ def _extract_db_surfaces(project_root: Path) -> dict[str, dict]:
 
     A consumer reading the database couples to column names and to the stored
     strings behind a field's choices, so each becomes a surface a map can name.
+
+    Reads the models the running process imported, so it sees only the checkout on
+    ``sys.path``. Raises ``ModelsNotImportedError`` when the root declares models
+    this process never imported, which keeps "this project has no database" apart
+    from "I could not see this project's database".
     """
     root = project_root.resolve()
     surfaces: dict[str, dict] = {}
@@ -217,7 +227,44 @@ def _extract_db_surfaces(project_root: Path) -> dict[str, dict]:
                 "origin": origin,
             }
 
+    if not surfaces and _declares_django_models(root):
+        raise ModelsNotImportedError(
+            f"{root} declares Django models this process never imported, so a snapshot "
+            f"generated here would claim the project has no database. Run "
+            f"generate_contract from {root}, with that checkout on sys.path."
+        )
+
     return surfaces
+
+
+def _declares_django_models(root: Path) -> bool:
+    """Say whether this root's source declares Django models, whatever the process imported."""
+    for source in root.rglob("*.py"):
+        if source.name != "models.py" and source.parent.name != "models":
+            continue
+        if _is_hidden(str(source.relative_to(root))):
+            continue
+        if _defines_django_model(source):
+            return True
+    return False
+
+
+def _defines_django_model(source: Path) -> bool:
+    nodes = list(ast.walk(ast.parse(source.read_text(), filename=str(source))))
+    imports_django = any(
+        isinstance(node, ast.ImportFrom) and (node.module or "").split(".")[0] == "django"
+        for node in nodes
+    )
+    return imports_django and any(
+        isinstance(node, ast.ClassDef) and any(_names_model(base) for base in node.bases)
+        for node in nodes
+    )
+
+
+def _names_model(base: ast.expr) -> bool:
+    if isinstance(base, ast.Attribute):
+        return base.attr == "Model"
+    return isinstance(base, ast.Name) and base.id == "Model"
 
 
 class ContractDiffer:
