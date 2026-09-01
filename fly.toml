@@ -23,6 +23,7 @@ primary_region = "sjc"
     grace_period = "10s"
     method = "GET"
     path = "/admin/login/"
+    headers = { Host = "spectrace.fly.dev" }
 
 [[vm]]
   size = "shared-cpu-1x"
