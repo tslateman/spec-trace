@@ -25,6 +25,7 @@ lives in [ROADMAP.md](ROADMAP.md).
 - Sort YAML keys that parse as booleans (`c09c492`)
 - Score impact risk by the edges a diff traverses (`8ecc589`)
 - State the commit step when the changelog gate fails (`5e7f4d2`)
+- Deploy to San Jose because Fly retired the Seattle region (`795fb92`)
 
 ### Documentation
 
