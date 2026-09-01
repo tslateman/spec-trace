@@ -1,15 +1,40 @@
 """Tests for contract snapshots."""
 
 import json
+from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 import yaml
 
+from requirements import models
 from requirements.services.contract_snapshot import (
     ContractChange,
     ContractDiffer,
     ContractSnapshot,
+    ModelsNotImportedError,
+    _declares_django_models,
+    _extract_db_surfaces,
 )
+
+REPO_ROOT = Path(models.__file__).resolve().parents[2]
+
+DJANGO_MODELS_SOURCE = """
+from django.db import models
+
+
+class Thing(models.Model):
+    name = models.CharField(max_length=10)
+"""
+
+
+@pytest.fixture
+def root_declaring_models(tmp_path):
+    """A checkout that declares Django models, with none of them imported here."""
+    app = tmp_path / "app"
+    app.mkdir()
+    (app / "models.py").write_text(DJANGO_MODELS_SOURCE)
+    return tmp_path
 
 
 @pytest.fixture
@@ -79,6 +104,95 @@ class TestContractSnapshotGenerate:
         (hidden / "internal.jsonl").write_text('{"secret": true}\n')
         snap = ContractSnapshot.generate(tmp_path, "test")
         assert not any(".git" in k for k in snap.surfaces)
+
+    def test_generate__reads_a_root_that_sits_under_a_hidden_directory(self, tmp_path):
+        root = tmp_path / ".worktrees" / "checkout"
+        root.mkdir(parents=True)
+        (root / "flows.yaml").write_text("name: flow\nsteps: [one]\n")
+
+        snap = ContractSnapshot.generate(root, "test")
+
+        assert "flows.yaml" in snap.surfaces
+
+    def test_generate__still_skips_a_hidden_directory_inside_the_root(self, tmp_path):
+        root = tmp_path / ".worktrees" / "checkout"
+        (root / ".cache").mkdir(parents=True)
+        (root / ".cache" / "flows.yaml").write_text("name: flow\nsteps: [one]\n")
+
+        snap = ContractSnapshot.generate(root, "test")
+
+        assert snap.surfaces == {}
+
+
+class TestDatabaseSurfacesPerRoot:
+    @patch("requirements.services.contract_snapshot.apps.get_models", autospec=True)
+    def test_extract_db_surfaces__raises_for_a_root_whose_models_this_process_never_imported(
+        self, mock_get_models, root_declaring_models
+    ):
+        mock_get_models.return_value = []
+
+        with pytest.raises(ModelsNotImportedError) as raised:
+            _extract_db_surfaces(root_declaring_models)
+
+        assert str(root_declaring_models.resolve()) in str(raised.value)
+
+    @patch("requirements.services.contract_snapshot.apps.get_models", autospec=True)
+    def test_generate__raises_rather_than_publishing_a_root_as_having_no_database(
+        self, mock_get_models, root_declaring_models
+    ):
+        mock_get_models.return_value = []
+
+        with pytest.raises(ModelsNotImportedError):
+            ContractSnapshot.generate(root_declaring_models, "test")
+
+    @patch("requirements.services.contract_snapshot.apps.get_models", autospec=True)
+    def test_extract_db_surfaces__reports_no_surfaces_for_a_root_declaring_no_models(
+        self, mock_get_models, tmp_path
+    ):
+        mock_get_models.return_value = []
+        (tmp_path / "main.py").write_text("print('hello')\n")
+
+        assert _extract_db_surfaces(tmp_path) == {}
+
+    def test_extract_db_surfaces__names_the_tables_of_the_root_it_imported(self):
+        surfaces = _extract_db_surfaces(REPO_ROOT)
+
+        assert "db/requirements_requirement" in surfaces
+
+    def test_declares_django_models__reads_a_models_module_it_never_imports(
+        self, root_declaring_models
+    ):
+        assert _declares_django_models(root_declaring_models) is True
+
+    def test_declares_django_models__ignores_a_models_module_free_of_django(self, tmp_path):
+        (tmp_path / "models.py").write_text(
+            "from pydantic import BaseModel as Model\n\n\nclass Thing(Model):\n    name: str\n"
+        )
+
+        assert _declares_django_models(tmp_path) is False
+
+    def test_declares_django_models__ignores_a_hidden_directory_inside_the_root(self, tmp_path):
+        vendored = tmp_path / ".venv" / "app"
+        vendored.mkdir(parents=True)
+        (vendored / "models.py").write_text(DJANGO_MODELS_SOURCE)
+
+        assert _declares_django_models(tmp_path) is False
+
+    def test_declares_django_models__reads_a_root_that_sits_under_a_hidden_directory(
+        self, tmp_path
+    ):
+        root = tmp_path / ".worktrees" / "checkout" / "app"
+        root.mkdir(parents=True)
+        (root / "models.py").write_text(DJANGO_MODELS_SOURCE)
+
+        assert _declares_django_models(root.parent) is True
+
+    def test_declares_django_models__reads_a_models_package(self, tmp_path):
+        package = tmp_path / "app" / "models"
+        package.mkdir(parents=True)
+        (package / "thing.py").write_text(DJANGO_MODELS_SOURCE)
+
+        assert _declares_django_models(tmp_path) is True
 
 
 class TestContractSnapshotLoadSave:

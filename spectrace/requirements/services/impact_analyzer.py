@@ -11,9 +11,9 @@ from typing import Optional
 from requirements.models import Requirement, TestRequirementLink
 from requirements.projects import node_name, qualify
 
-from .contract_snapshot import ContractSnapshot
+from .contract_snapshot import contract_edges as build_contract_edges
 from .git_cochange import GitCoChangeAnalyzer
-from .impact_graph import BlastResult, EdgeSource, GraphEdge, ImpactGraphBuilder
+from .impact_graph import BlastResult, EdgeSource, ImpactGraphBuilder
 from .map_reader import MapReader
 
 logger = logging.getLogger(__name__)
@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 # How far each kind of evidence is trusted when it carries a change to its blast radius.
 EDGE_SOURCE_WEIGHTS = {
     EdgeSource.ANNOTATED: 1.0,
+    EdgeSource.DEPENDENCY: 1.0,
     EdgeSource.CONTRACT: 0.8,
     EdgeSource.GIT_INFERRED: 0.6,
 }
@@ -37,6 +38,7 @@ def count_traversed_edges(blast: BlastResult) -> dict[str, int]:
         "annotated": counts[EdgeSource.ANNOTATED.value],
         "inferred": counts[EdgeSource.GIT_INFERRED.value],
         "contract": counts[EdgeSource.CONTRACT.value],
+        "dependency": counts[EdgeSource.DEPENDENCY.value],
     }
 
 
@@ -79,6 +81,65 @@ def validate_git_ref(ref: str) -> None:
         raise ValueError("Git ref cannot start with a hyphen")
 
 
+@dataclass(frozen=True)
+class RefPair:
+    """The two refs one project's diff runs between."""
+
+    base: str
+    head: str
+
+
+def resolve_ref_pairs(
+    root_keys: list[str],
+    shared: Optional[RefPair],
+    per_project: Optional[dict[str, RefPair]],
+) -> dict[str, RefPair]:
+    """Give every project root the ref pair its own diff runs between.
+
+    A shared pair covers every root, which is what a single-root run and a
+    monorepo both want. A per-project mapping must name every root: a root left
+    out raises, because one repository's refs resolve in another only by luck.
+
+    Raises:
+        ValueError: If both forms arrive, if neither does, if a root goes
+            unnamed, or if a name matches no root.
+    """
+    if shared and per_project:
+        raise ValueError("Pass one shared base and head pair, or one pair per project, not both.")
+    if shared:
+        return {key: shared for key in root_keys}
+    if not per_project:
+        raise ValueError(
+            "Name the refs to diff: a shared base and head pair, or one pair per project."
+        )
+
+    unnamed = sorted(set(root_keys) - set(per_project))
+    if unnamed:
+        raise ValueError(
+            f"No refs given for {', '.join(unnamed)}. Name a base..head pair for every "
+            "project, or pass one shared pair covering them all."
+        )
+    unknown = sorted(set(per_project) - set(root_keys))
+    if unknown:
+        raise ValueError(
+            f"Refs name {', '.join(unknown)}, which no project root supplies. "
+            f"Known projects: {', '.join(sorted(root_keys))}."
+        )
+    return {key: per_project[key] for key in root_keys}
+
+
+def ref_labels(ref_pairs: dict[str, RefPair]) -> tuple[str, str]:
+    """Label a comparison for the report: bare refs when shared, tagged per project when not."""
+    bases = {pair.base for pair in ref_pairs.values()}
+    heads = {pair.head for pair in ref_pairs.values()}
+    if len(bases) == 1 and len(heads) == 1:
+        return bases.pop(), heads.pop()
+    return (
+        ", ".join(f"{project}={pair.base}" for project, pair in sorted(ref_pairs.items())),
+        ", ".join(f"{project}={pair.head}" for project, pair in sorted(ref_pairs.items())),
+    )
+
+
 @dataclass
 class ImpactResult:
     """Result of impact analysis."""
@@ -102,11 +163,12 @@ class CodeImpactResult:
     risk_score: float = 0.0
     risk_level: str = "low"
     edge_summary: dict[str, int] = field(
-        default_factory=lambda: {"annotated": 0, "inferred": 0, "contract": 0}
+        default_factory=lambda: {"annotated": 0, "inferred": 0, "contract": 0, "dependency": 0}
     )
     traversed_edges: dict[str, int] = field(
-        default_factory=lambda: {"annotated": 0, "inferred": 0, "contract": 0}
+        default_factory=lambda: {"annotated": 0, "inferred": 0, "contract": 0, "dependency": 0}
     )
+    unresolved_dependencies: list[dict[str, str]] = field(default_factory=list)
 
 
 class ImpactAnalyzer:
@@ -343,8 +405,11 @@ class ImpactAnalyzer:
         except subprocess.TimeoutExpired:
             raise ValueError("Git diff timed out")
 
-    def _diff_project(self, project: str, root: Path, base_ref: str, head_ref: str) -> list[str]:
-        """List files changed between two refs inside one project root.
+    def _diff_project(self, project: str, root: Path, refs: RefPair) -> list[str]:
+        """List files changed between one project's own refs inside its root.
+
+        The trailing ``--`` stops git from reading an unresolved ref as a path,
+        so a ref this repository lacks fails instead of matching no files.
 
         Raises:
             ValueError: If git cannot resolve the refs or the root is unusable,
@@ -352,7 +417,7 @@ class ImpactAnalyzer:
         """
         try:
             result = subprocess.run(
-                ["git", "diff", "--name-only", base_ref, head_ref],
+                ["git", "diff", "--name-only", refs.base, refs.head, "--"],
                 cwd=root,
                 capture_output=True,
                 text=True,
@@ -362,11 +427,15 @@ class ImpactAnalyzer:
         except subprocess.CalledProcessError as e:
             logger.error("Git diff failed for %s at %s: %s", project, root, e.stderr)
             raise ValueError(
-                f"Git diff failed for project {project!r} at {root}: "
+                f"Git diff failed for project {project!r} at {root} between "
+                f"{refs.base} and {refs.head}: "
                 f"{(e.stderr or '').strip() or 'git exited nonzero'}"
             ) from e
         except subprocess.TimeoutExpired as e:
-            raise ValueError(f"Git diff timed out for project {project!r} at {root}") from e
+            raise ValueError(
+                f"Git diff timed out for project {project!r} at {root} between "
+                f"{refs.base} and {refs.head}"
+            ) from e
         except OSError as e:
             raise ValueError(f"Cannot run git for project {project!r} at {root}: {e}") from e
 
@@ -374,28 +443,39 @@ class ImpactAnalyzer:
 
     def code_analyze(
         self,
-        base_ref: str,
-        head_ref: str,
+        base_ref: Optional[str] = None,
+        head_ref: Optional[str] = None,
         project_roots: Optional[dict[str, Path]] = None,
+        project_refs: Optional[dict[str, RefPair]] = None,
     ) -> CodeImpactResult:
         """Full code impact analysis across the ecosystem.
 
-        1. git diff --name-only base head (all files, not just specs/)
+        1. git diff --name-only base head per project (all files, not just specs/)
         2. Build ImpactGraph via ImpactGraphBuilder
         3. graph.blast_radius(changed_file_nodes)
         4. Query TestRequirementLink for affected tests
         5. Compute risk with edge-source weighting
 
+        Each project diffs at its own refs. Pass `base_ref` and `head_ref` to
+        run every root at the same pair; pass `project_refs`, keyed by the same
+        names as `project_roots`, to give each root a pair of its own. Naming
+        both raises. Leaving a root out of `project_refs` raises too: a project
+        this run gave no refs goes unanalysed, and an empty diff must never
+        stand for that.
+
         Risk weights: annotated 1.0x, contract 0.8x, git-inferred 0.6x.
         Cross-project edges get 1.5x multiplier.
         """
-        validate_git_ref(base_ref)
-        validate_git_ref(head_ref)
-
         roots = project_roots or {}
         if not roots:
             # Default: use repo_path as the single project
             roots = {"local": self.repo_path}
+
+        shared = RefPair(base_ref, head_ref) if base_ref or head_ref else None
+        ref_pairs = resolve_ref_pairs(list(roots), shared, project_refs)
+        for pair in ref_pairs.values():
+            validate_git_ref(pair.base)
+            validate_git_ref(pair.head)
 
         map_reader = MapReader(roots)
         project_names = {key: map_reader.project_name(key) for key in roots}
@@ -403,7 +483,7 @@ class ImpactAnalyzer:
         # 1. Get all changed files per project
         changed_files: dict[str, list[str]] = {}
         for key, root in roots.items():
-            files = self._diff_project(project_names[key], root, base_ref, head_ref)
+            files = self._diff_project(project_names[key], root, ref_pairs[key])
             if files:
                 changed_files.setdefault(project_names[key], []).extend(files)
 
@@ -417,24 +497,13 @@ class ImpactAnalyzer:
 
         contract_edges = []
         for key, root in roots.items():
-            snap_path = root / "contract.snapshot.json"
-            if snap_path.exists():
-                snap = ContractSnapshot.load(snap_path)
-                # Contract edges connect surfaces to project
-                for surface_name in snap.surfaces:
-                    contract_edges.append(
-                        GraphEdge(
-                            source_id=qualify(project_names[key], surface_name),
-                            target_id=surface_name,
-                            source=EdgeSource.CONTRACT,
-                            weight=0.8,
-                            project=project_names[key],
-                        )
-                    )
+            contract_edges.extend(build_contract_edges(project_names[key], root))
+
+        dependency_edges, unresolved = map_reader.read_all_dependencies()
 
         # 3. Build graph and compute blast radius
         builder = ImpactGraphBuilder(roots)
-        graph = builder.build(annotated_edges, inferred_edges, contract_edges)
+        graph = builder.build(annotated_edges, inferred_edges, contract_edges, dependency_edges)
 
         all_changed = []
         for project, files in changed_files.items():
@@ -486,8 +555,18 @@ class ImpactAnalyzer:
                 "annotated": len(annotated_edges),
                 "inferred": len(inferred_edges),
                 "contract": len(contract_edges),
+                "dependency": len(dependency_edges),
             },
             traversed_edges=count_traversed_edges(blast),
+            unresolved_dependencies=[
+                {
+                    "consumer": item.consumer,
+                    "module": item.module,
+                    "provider": item.provider,
+                    "surface": item.surface,
+                }
+                for item in unresolved
+            ],
         )
 
     def analyze(

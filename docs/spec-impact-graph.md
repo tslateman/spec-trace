@@ -43,7 +43,7 @@ entire ecosystem, at module level.
 
 ## Approach
 
-### Two mapping sources, one graph
+### Three mapping sources, one graph
 
 1. **Code annotations** — `spectrace-map.yaml` at each project root maps
    modules to requirement IDs. One file per project, language-agnostic.
@@ -98,6 +98,74 @@ entire ecosystem, at module level.
    }
    ```
 
+4. **Declared dependencies** — a module names the surfaces it reads from
+   another project. The declaration sits beside the code that creates the
+   coupling, in the map that project already owns.
+
+   ```yaml
+   # praxis/spectrace-map.yaml
+   project: praxis
+   modules:
+     src/praxis/spectrace.py:
+       requirements: [REQ-PRX-004]
+       depends_on:
+         - spectrace:db/requirements_requirement
+         - spectrace:enum/requirements_requirement.risk_level
+   ```
+
+   Each entry names a project and one surface that project publishes. A
+   declaration naming a loaded project that publishes no such surface raises
+   `UnknownSurfaceError`; one that names no project raises
+   `MalformedDependencyError`. A declaration whose provider was absent from the
+   run is reported under "Dependencies Not Analysed" rather than dropped.
+
+   Dependency edges run provider to consumer and are the only directed edges in
+   the graph: a change to a SpecTrace table reaches the Praxis module that reads
+   it, and a change to that Praxis module reports nothing in SpecTrace.
+
+### One ref pair per repository
+
+Each project keeps its own repository, so a single `<base>..<head>` pair
+resolves in all of them only by luck. Every project diffs at refs of its own:
+
+```bash
+python spectrace/manage.py code_impact_analysis \
+  --project-roots spectrace=~/dev/spec-trace,praxis=~/dev/praxis \
+  --project-refs spectrace=HEAD~1..HEAD,praxis=main..HEAD
+```
+
+`--project-refs` names every root the run loads. A root left out raises, and so
+does pairing `--project-refs` with the positional refs: a project this run
+never gave refs goes unanalysed, and an empty diff must never stand for that. A
+ref the repository lacks raises as well, naming the project, its root, and the
+refs it could not resolve.
+
+The positional pair covers every root at once, which is what the single-repository
+run in CI asks for:
+
+```bash
+python spectrace/manage.py code_impact_analysis "$BASE_SHA" "$HEAD_SHA"
+```
+
+### Surfaces name what a consumer can depend on
+
+`contract.snapshot.json` records four kinds of surface. A JSONL or YAML surface
+is named after the file that holds it, so its node and that file's node are the
+same node. The others name the file that defines them, and a contract edge
+joins the two.
+
+| Prefix  | Surface                                    | Defined by         |
+| ------- | ------------------------------------------ | ------------------ |
+| none    | `flows/linear-connection.yaml`             | the file itself    |
+| `cli/`  | `cli/spectrace`                            | `pyproject.toml`   |
+| `db/`   | `db/requirements_requirement`              | the model's module |
+| `enum/` | `enum/requirements_requirement.risk_level` | the model's module |
+
+Database surfaces come from the Django models whose source files live under the
+project root. A consumer reading the database couples to column names and to the
+stored strings behind a field's choices, so each becomes a surface a map can
+name — renaming a choice value breaks a reader without changing a column.
+
 ### Builds on existing SpecTrace infrastructure
 
 - Extends `ImpactAnalyzer` service with code-side expansion
@@ -109,6 +177,8 @@ entire ecosystem, at module level.
 ### CI integration
 
 - `spectrace impact --code <base>..<head>` — CLI command
+- `--project-refs name=base..head` — one ref pair per project for a run that
+  crosses repositories
 - Exit code 0 (low/medium) or 1 (high/critical) for gate behavior
 - `--format markdown` for PR comment output
 - The hard gate arrives by dropping `continue-on-error` from the CI step;

@@ -1,13 +1,49 @@
 """Contract snapshots — introspect project data surfaces for change detection."""
 
+import ast
+import inspect
 import json
 import logging
 from dataclasses import dataclass
 from pathlib import Path
 
 import yaml
+from django.apps import apps
 
 logger = logging.getLogger(__name__)
+
+
+SNAPSHOT_FILENAME = "contract.snapshot.json"
+CLI_SURFACE_PREFIX = "cli/"
+DB_SURFACE_PREFIX = "db/"
+ENUM_SURFACE_PREFIX = "enum/"
+
+
+class ModelsNotImportedError(Exception):
+    """A root declares Django models the running process never imported."""
+
+
+def _is_hidden(relative_path: str) -> bool:
+    """Say whether a path inside a project root sits under a dot-prefixed directory.
+
+    The test runs on the path relative to the root: an absolute path picks up the
+    dots above the root, which hides every file in a project checked out under one.
+    """
+    return any(part.startswith(".") for part in Path(relative_path).parts)
+
+
+def surface_origin(surface_name: str, spec: dict) -> str | None:
+    """Name the repo-relative file defining a surface, or None when the surface is that file.
+
+    A JSONL or YAML surface is named after the file that holds it, so its graph
+    node and the file's node are the same node and no edge joins them.
+    """
+    origin = spec.get("origin")
+    if origin:
+        return origin
+    if surface_name.startswith(CLI_SURFACE_PREFIX):
+        return "pyproject.toml"
+    return None
 
 
 @dataclass
@@ -54,16 +90,17 @@ class ContractSnapshot:
         - JSONL files: extracts field names from first 10 records
         - YAML files: extracts top-level and nested keys
         - CLI entry points: extracts from pyproject.toml [project.scripts]
+        - Database tables and field choices: extracts from the Django models
+          whose source files live under this root
         """
         surfaces: dict[str, dict] = {}
 
         # Scan for JSONL data files
         for jsonl_file in project_root.rglob("*.jsonl"):
-            # Skip hidden dirs and node_modules
-            if any(part.startswith(".") for part in jsonl_file.parts):
+            rel_path = str(jsonl_file.relative_to(project_root))
+            if _is_hidden(rel_path):
                 continue
 
-            rel_path = str(jsonl_file.relative_to(project_root))
             fields = _extract_jsonl_fields(jsonl_file)
             if fields:
                 surfaces[rel_path] = {
@@ -74,10 +111,10 @@ class ContractSnapshot:
         # Scan for YAML data files
         for yaml_ext in ("*.yaml", "*.yml"):
             for yaml_file in project_root.rglob(yaml_ext):
-                if any(part.startswith(".") for part in yaml_file.parts):
+                rel_path = str(yaml_file.relative_to(project_root))
+                if _is_hidden(rel_path):
                     continue
 
-                rel_path = str(yaml_file.relative_to(project_root))
                 keys = _extract_yaml_keys(yaml_file)
                 if keys:
                     surfaces[rel_path] = {
@@ -90,6 +127,8 @@ class ContractSnapshot:
         if pyproject.exists():
             cli_surfaces = _extract_cli_surfaces(pyproject)
             surfaces.update(cli_surfaces)
+
+        surfaces.update(_extract_db_surfaces(project_root))
 
         return cls(
             project=project_name,
@@ -118,6 +157,114 @@ class ContractSnapshot:
             version=data.get("version", "1.0"),
             surfaces=data.get("surfaces", {}),
         )
+
+
+def contract_edges(project_name: str, root: Path) -> list:
+    """Join each surface to the file defining it, for one project root.
+
+    A surface named after its own file needs no edge: the surface node and the
+    file node are the same node.
+    """
+    from ..projects import qualify
+    from .impact_graph import EdgeSource, GraphEdge
+
+    snapshot_path = root / SNAPSHOT_FILENAME
+    if not snapshot_path.exists():
+        return []
+
+    edges = []
+    for surface, spec in ContractSnapshot.load(snapshot_path).surfaces.items():
+        origin = surface_origin(surface, spec)
+        if origin is None or origin == surface:
+            continue
+        edges.append(
+            GraphEdge(
+                source_id=qualify(project_name, origin),
+                target_id=qualify(project_name, surface),
+                source=EdgeSource.CONTRACT,
+                weight=0.8,
+                project=project_name,
+            )
+        )
+    return edges
+
+
+def _extract_db_surfaces(project_root: Path) -> dict[str, dict]:
+    """Name each database table and each set of field choices this root's models define.
+
+    A consumer reading the database couples to column names and to the stored
+    strings behind a field's choices, so each becomes a surface a map can name.
+
+    Reads the models the running process imported, so it sees only the checkout on
+    ``sys.path``. Raises ``ModelsNotImportedError`` when the root declares models
+    this process never imported, which keeps "this project has no database" apart
+    from "I could not see this project's database".
+    """
+    root = project_root.resolve()
+    surfaces: dict[str, dict] = {}
+
+    for model in apps.get_models(include_auto_created=True):
+        source = Path(inspect.getfile(model)).resolve()
+        if not source.is_relative_to(root):
+            continue
+
+        origin = str(source.relative_to(root))
+        if _is_hidden(origin):
+            continue
+        meta = model._meta
+        surfaces[f"{DB_SURFACE_PREFIX}{meta.db_table}"] = {
+            "format": "db-table",
+            "fields": sorted(field.column for field in meta.concrete_fields),
+            "origin": origin,
+        }
+
+        for field in meta.concrete_fields:
+            if not field.choices:
+                continue
+            surfaces[f"{ENUM_SURFACE_PREFIX}{meta.db_table}.{field.column}"] = {
+                "format": "db-enum",
+                "fields": sorted(str(value) for value, _ in field.choices),
+                "origin": origin,
+            }
+
+    if not surfaces and _declares_django_models(root):
+        raise ModelsNotImportedError(
+            f"{root} declares Django models this process never imported, so a snapshot "
+            f"generated here would claim the project has no database. Run "
+            f"generate_contract from {root}, with that checkout on sys.path."
+        )
+
+    return surfaces
+
+
+def _declares_django_models(root: Path) -> bool:
+    """Say whether this root's source declares Django models, whatever the process imported."""
+    for source in root.rglob("*.py"):
+        if source.name != "models.py" and source.parent.name != "models":
+            continue
+        if _is_hidden(str(source.relative_to(root))):
+            continue
+        if _defines_django_model(source):
+            return True
+    return False
+
+
+def _defines_django_model(source: Path) -> bool:
+    nodes = list(ast.walk(ast.parse(source.read_text(), filename=str(source))))
+    imports_django = any(
+        isinstance(node, ast.ImportFrom) and (node.module or "").split(".")[0] == "django"
+        for node in nodes
+    )
+    return imports_django and any(
+        isinstance(node, ast.ClassDef) and any(_names_model(base) for base in node.bases)
+        for node in nodes
+    )
+
+
+def _names_model(base: ast.expr) -> bool:
+    if isinstance(base, ast.Attribute):
+        return base.attr == "Model"
+    return isinstance(base, ast.Name) and base.id == "Model"
 
 
 class ContractDiffer:

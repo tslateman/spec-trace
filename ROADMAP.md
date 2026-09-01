@@ -10,34 +10,19 @@ Last reviewed: 2026-08-31.
 
 ## Now
 
-### 1. Express cross-project dependencies in the graph
+### 1. Declare the SLO budgeting method vocabulary
 
-`spectrace impact --code` walks code to requirements inside one project. It
-cannot answer the question the impact graph exists to answer: what does a
-change here break over there.
+`SLO.budgeting_method` carries `help_text="Budgeting method (occurrences,
+timeslices)"` and no `choices`, so the snapshot publishes no `enum/` surface for
+it. The OpenSLO vocabulary it names is closed, and this is the fourth field
+found storing a vocabulary that only prose declares.
 
-The obstacle is the model, not the data. With maps loaded for two projects the
-graph shares zero nodes between them, so `cross_project_edges` is always 0.
-Contract edges run `{project}:{surface}` to `{surface}` and never reach a
-module node, and no edge type says "project A depends on project B's surface".
-Praxis really does depend on SpecTrace -- `src/praxis/spectrace.py` reads its
-SQLite tables -- and the graph cannot represent it.
+`test_help_text_vocabularies` already catches it and holds it in an `EXEMPT` map
+with its reason, so the suite stays green until someone schedules the work.
+Fixing it means removing the exemption, not writing a new check.
 
-Seeding more projects will not fix this. The edge model needs the dependency
-relation first.
-
-**Done when:** a change to a SpecTrace surface reports Praxis as an affected
-dependent, and `cross_project_edges` is non-zero for a real diff.
-
-### 2. Address one repo per ref pair
-
-`code_analyze` runs `git diff base head` in every project root with the same
-refs. A ref that exists in one repo and not another yields nothing for the
-second. The `<base>..<head>` signature assumes a monorepo this ecosystem is
-not.
-
-**Done when:** a multi-project analysis takes a ref per project, and a ref
-missing from one project fails loudly instead of reporting that project clean.
+**Done when:** `budgeting_method` carries `choices`, the snapshot publishes its
+`enum/` surface, and the `EXEMPT` map holds only false positives.
 
 ## Next
 

@@ -7,10 +7,11 @@ from pathlib import Path
 from django.core.management.base import BaseCommand, CommandError
 
 from ...projects import display_node
-from ...services.impact_analyzer import ImpactAnalyzer
+from ...services.impact_analyzer import ImpactAnalyzer, RefPair, ref_labels
 from ...services.impact_markdown import render_markdown
 
 BLOCKING_LEVELS = ("high", "critical")
+REF_RANGE_SEPARATOR = ".."
 
 
 def parse_project_roots(raw: str) -> dict[str, Path]:
@@ -40,6 +41,41 @@ def parse_project_roots(raw: str) -> dict[str, Path]:
     return roots
 
 
+def parse_project_refs(raw: str) -> dict[str, RefPair]:
+    """Parse comma-separated ``name=base..head`` entries into one ref pair per project.
+
+    Raises:
+        CommandError: If an entry omits ``=`` or ``..``, leaves a ref empty, or
+            if the whole value names no project.
+    """
+    pairs: dict[str, RefPair] = {}
+    for entry in raw.split(","):
+        entry = entry.strip()
+        if not entry:
+            continue
+        if "=" not in entry:
+            raise CommandError(
+                f"Invalid --project-refs entry {entry!r}. "
+                "Expected name=base..head entries, e.g. praxis=main..HEAD"
+            )
+        name, refs = entry.split("=", 1)
+        if refs.count(REF_RANGE_SEPARATOR) != 1:
+            raise CommandError(
+                f"Invalid --project-refs entry {entry!r}. "
+                f"Separate the two refs with one {REF_RANGE_SEPARATOR}, e.g. praxis=main..HEAD"
+            )
+        base, head = (part.strip() for part in refs.split(REF_RANGE_SEPARATOR))
+        if not base or not head:
+            raise CommandError(
+                f"Invalid --project-refs entry {entry!r}. Name a base and a head ref."
+            )
+        pairs[name.strip()] = RefPair(base, head)
+
+    if not pairs:
+        raise CommandError("--project-refs was given but named no projects")
+    return pairs
+
+
 class Command(BaseCommand):
     help = "Analyze code impact across the ecosystem between two git refs"
 
@@ -47,12 +83,16 @@ class Command(BaseCommand):
         parser.add_argument(
             "base_ref",
             type=str,
-            help="Base git ref (commit, branch, tag)",
+            nargs="?",
+            default=None,
+            help="Base git ref (commit, branch, tag), shared by every project root",
         )
         parser.add_argument(
             "head_ref",
             type=str,
-            help="Head git ref to compare against base",
+            nargs="?",
+            default=None,
+            help="Head git ref to compare against base, shared by every project root",
         )
         parser.add_argument(
             "--format",
@@ -67,6 +107,16 @@ class Command(BaseCommand):
             help="Comma-separated project=path pairs (e.g., lore=/path/to/lore,praxis=/path)",
         )
         parser.add_argument(
+            "--project-refs",
+            type=str,
+            default=None,
+            help=(
+                "Comma-separated project=base..head entries, one per project root "
+                "(e.g., spectrace=HEAD~1..HEAD,praxis=main..HEAD). Name every root, "
+                "and leave the positional refs off."
+            ),
+        )
+        parser.add_argument(
             "--output",
             type=str,
             default=None,
@@ -74,27 +124,38 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        base_ref = options["base_ref"]
-        head_ref = options["head_ref"]
         output_format = options["format"]
 
         project_roots = None
         if options["project_roots"]:
             project_roots = parse_project_roots(options["project_roots"])
 
+        project_refs = None
+        if options["project_refs"]:
+            project_refs = parse_project_refs(options["project_refs"])
+
+        base_label, head_label = (
+            ref_labels(project_refs) if project_refs else (options["base_ref"], options["head_ref"])
+        )
+
         analyzer = ImpactAnalyzer()
 
         try:
-            result = analyzer.code_analyze(base_ref, head_ref, project_roots=project_roots)
+            result = analyzer.code_analyze(
+                options["base_ref"],
+                options["head_ref"],
+                project_roots=project_roots,
+                project_refs=project_refs,
+            )
         except ValueError as e:
             raise CommandError(str(e))
 
         if output_format == "json":
             report = self._render_json(result)
         elif output_format in ("md", "markdown"):
-            report = render_markdown(result, base_ref, head_ref)
+            report = render_markdown(result, base_label, head_label)
         else:
-            report = self._render_text(result, base_ref, head_ref)
+            report = self._render_text(result, base_label, head_label)
 
         destination = options.get("output")
         if destination:
@@ -125,6 +186,7 @@ class Command(BaseCommand):
             "risk_level": result.risk_level,
             "edge_summary": result.edge_summary,
             "traversed_edges": result.traversed_edges,
+            "unresolved_dependencies": result.unresolved_dependencies,
             "summary": {
                 "files_changed": sum(len(v) for v in result.changed_files.values()),
                 "tests_affected": len(result.affected_tests),
@@ -182,8 +244,22 @@ class Command(BaseCommand):
         lines.append(
             f"Edges carrying this change: {edges['annotated']} annotated, "
             f"{edges['contract']} contract, "
-            f"{edges['inferred']} inferred"
+            f"{edges['inferred']} inferred, "
+            f"{edges['dependency']} dependency"
         )
+
+        if result.unresolved_dependencies:
+            lines.append("")
+            lines.append(
+                self.style.WARNING(
+                    f"Dependencies not analysed ({len(result.unresolved_dependencies)}): "
+                    "a declared provider was absent from this run"
+                )
+            )
+            for item in result.unresolved_dependencies:
+                lines.append(
+                    f"  {item['consumer']}:{item['module']} -> {item['provider']}:{item['surface']}"
+                )
 
         if result.affected_tests:
             lines.append("")

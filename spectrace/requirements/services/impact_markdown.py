@@ -98,9 +98,23 @@ def render_markdown(
         "Edges carrying this change — "
         f"annotated: {edges['annotated']} | "
         f"contract: {edges['contract']} | "
-        f"inferred: {edges['inferred']}"
+        f"inferred: {edges['inferred']} | "
+        f"dependency: {edges['dependency']}"
     )
     lines.append("")
+
+    if result.unresolved_dependencies:
+        lines.append("### Dependencies Not Analysed")
+        lines.append(
+            f"{len(result.unresolved_dependencies)} declared "
+            "dependencies name a project absent from this run:"
+        )
+        for item in result.unresolved_dependencies:
+            lines.append(
+                f"- `{item['consumer']}:{item['module']}` depends on "
+                f"`{item['provider']}:{item['surface']}`"
+            )
+        lines.append("")
 
     tests = sorted(result.affected_tests)
     if tests:

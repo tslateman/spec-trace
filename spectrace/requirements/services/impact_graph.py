@@ -7,7 +7,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Optional
 
-from ..projects import node_name
+from ..projects import node_name, node_project
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +18,7 @@ class EdgeSource(Enum):
     ANNOTATED = "annotated"
     GIT_INFERRED = "git-inferred"
     CONTRACT = "contract"
+    DEPENDENCY = "dependency"
 
 
 @dataclass
@@ -29,6 +30,7 @@ class GraphEdge:
     source: EdgeSource
     weight: float = 1.0
     project: str = ""
+    directed: bool = False
 
 
 @dataclass
@@ -89,6 +91,8 @@ class ImpactGraph:
                     queue.append((edge.target_id, depth + 1))
 
             for edge in self._reverse.get(current, []):
+                if edge.directed:
+                    continue
                 if edge.source_id not in visited:
                     visited.add(edge.source_id)
                     queue.append((edge.source_id, depth + 1))
@@ -105,9 +109,9 @@ class ImpactGraph:
                 requirements.append(node_id)
             elif "/" in name:
                 modules.append(node_id)
-            for edge in self._adjacency.get(node_id, []) + self._reverse.get(node_id, []):
-                if edge.project:
-                    projects.add(edge.project)
+            project = node_project(node_id)
+            if project:
+                projects.add(project)
 
         # Detect cross-project edges among visited nodes
         traversed: list[GraphEdge] = []
@@ -115,19 +119,9 @@ class ImpactGraph:
         for edge in self._edges:
             if edge.source_id in visited and edge.target_id in visited:
                 traversed.append(edge)
-                src_projects = {
-                    e.project
-                    for e in self._adjacency.get(edge.source_id, [])
-                    + self._reverse.get(edge.source_id, [])
-                    if e.project
-                }
-                tgt_projects = {
-                    e.project
-                    for e in self._adjacency.get(edge.target_id, [])
-                    + self._reverse.get(edge.target_id, [])
-                    if e.project
-                }
-                if src_projects and tgt_projects and src_projects != tgt_projects:
+                source_project = node_project(edge.source_id)
+                target_project = node_project(edge.target_id)
+                if source_project and target_project and source_project != target_project:
                     cross_project.append(edge)
 
         result.affected_requirements = sorted(requirements)
@@ -193,6 +187,7 @@ class ImpactGraphBuilder:
         annotated_edges: Optional[list[GraphEdge]] = None,
         inferred_edges: Optional[list[GraphEdge]] = None,
         contract_edges: Optional[list[GraphEdge]] = None,
+        dependency_edges: Optional[list[GraphEdge]] = None,
     ) -> ImpactGraph:
         """Build graph from provided edge lists."""
         graph = ImpactGraph()
@@ -201,5 +196,7 @@ class ImpactGraphBuilder:
         for edge in inferred_edges or []:
             graph.add_edge(edge)
         for edge in contract_edges or []:
+            graph.add_edge(edge)
+        for edge in dependency_edges or []:
             graph.add_edge(edge)
         return graph
