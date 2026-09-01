@@ -18,6 +18,15 @@ DB_SURFACE_PREFIX = "db/"
 ENUM_SURFACE_PREFIX = "enum/"
 
 
+def _is_hidden(relative_path: str) -> bool:
+    """Say whether a path inside a project root sits under a dot-prefixed directory.
+
+    The test runs on the path relative to the root: an absolute path picks up the
+    dots above the root, which hides every file in a project checked out under one.
+    """
+    return any(part.startswith(".") for part in Path(relative_path).parts)
+
+
 def surface_origin(surface_name: str, spec: dict) -> str | None:
     """Name the repo-relative file defining a surface, or None when the surface is that file.
 
@@ -83,11 +92,10 @@ class ContractSnapshot:
 
         # Scan for JSONL data files
         for jsonl_file in project_root.rglob("*.jsonl"):
-            # Skip hidden dirs and node_modules
-            if any(part.startswith(".") for part in jsonl_file.parts):
+            rel_path = str(jsonl_file.relative_to(project_root))
+            if _is_hidden(rel_path):
                 continue
 
-            rel_path = str(jsonl_file.relative_to(project_root))
             fields = _extract_jsonl_fields(jsonl_file)
             if fields:
                 surfaces[rel_path] = {
@@ -98,10 +106,10 @@ class ContractSnapshot:
         # Scan for YAML data files
         for yaml_ext in ("*.yaml", "*.yml"):
             for yaml_file in project_root.rglob(yaml_ext):
-                if any(part.startswith(".") for part in yaml_file.parts):
+                rel_path = str(yaml_file.relative_to(project_root))
+                if _is_hidden(rel_path):
                     continue
 
-                rel_path = str(yaml_file.relative_to(project_root))
                 keys = _extract_yaml_keys(yaml_file)
                 if keys:
                     surfaces[rel_path] = {
@@ -191,7 +199,7 @@ def _extract_db_surfaces(project_root: Path) -> dict[str, dict]:
             continue
 
         origin = str(source.relative_to(root))
-        if any(part.startswith(".") for part in Path(origin).parts):
+        if _is_hidden(origin):
             continue
         meta = model._meta
         surfaces[f"{DB_SURFACE_PREFIX}{meta.db_table}"] = {

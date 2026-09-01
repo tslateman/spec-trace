@@ -80,6 +80,24 @@ class TestContractSnapshotGenerate:
         snap = ContractSnapshot.generate(tmp_path, "test")
         assert not any(".git" in k for k in snap.surfaces)
 
+    def test_generate__reads_a_root_that_sits_under_a_hidden_directory(self, tmp_path):
+        root = tmp_path / ".worktrees" / "checkout"
+        root.mkdir(parents=True)
+        (root / "flows.yaml").write_text("name: flow\nsteps: [one]\n")
+
+        snap = ContractSnapshot.generate(root, "test")
+
+        assert "flows.yaml" in snap.surfaces
+
+    def test_generate__still_skips_a_hidden_directory_inside_the_root(self, tmp_path):
+        root = tmp_path / ".worktrees" / "checkout"
+        (root / ".cache").mkdir(parents=True)
+        (root / ".cache" / "flows.yaml").write_text("name: flow\nsteps: [one]\n")
+
+        snap = ContractSnapshot.generate(root, "test")
+
+        assert snap.surfaces == {}
+
 
 class TestContractSnapshotLoadSave:
     def test_roundtrip(self, tmp_path):
