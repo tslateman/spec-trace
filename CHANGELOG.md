@@ -17,6 +17,8 @@ lives in [ROADMAP.md](ROADMAP.md).
 - Seed the impact graph and report blast radius on every PR (`c097cc4`)
 - Give requirements a project column (`51a5f53`)
 - Express cross-project dependencies in the impact graph (`30e2a0b`)
+- Publish the status values the database stores (`7c28979`)
+- Diff each project at refs of its own (`9e73ad4`)
 
 ### Fixed
 
@@ -31,6 +33,7 @@ lives in [ROADMAP.md](ROADMAP.md).
 - Describe the API as one versioned surface (`b533494`)
 - Name what the impact graph still cannot do (`30f8ac2`)
 - Clear the shipped project column from the roadmap (`2a64927`)
+- Clear the shipped ref-pair and status-choices items from the roadmap (`640a1e1`)
 
 <!-- changelog:/auto -->
 
