@@ -123,6 +123,30 @@ entire ecosystem, at module level.
    the graph: a change to a SpecTrace table reaches the Praxis module that reads
    it, and a change to that Praxis module reports nothing in SpecTrace.
 
+### One ref pair per repository
+
+Each project keeps its own repository, so a single `<base>..<head>` pair
+resolves in all of them only by luck. Every project diffs at refs of its own:
+
+```bash
+python spectrace/manage.py code_impact_analysis \
+  --project-roots spectrace=~/dev/spec-trace,praxis=~/dev/praxis \
+  --project-refs spectrace=HEAD~1..HEAD,praxis=main..HEAD
+```
+
+`--project-refs` names every root the run loads. A root left out raises, and so
+does pairing `--project-refs` with the positional refs: a project this run
+never gave refs goes unanalysed, and an empty diff must never stand for that. A
+ref the repository lacks raises as well, naming the project, its root, and the
+refs it could not resolve.
+
+The positional pair covers every root at once, which is what the single-repository
+run in CI asks for:
+
+```bash
+python spectrace/manage.py code_impact_analysis "$BASE_SHA" "$HEAD_SHA"
+```
+
 ### Surfaces name what a consumer can depend on
 
 `contract.snapshot.json` records four kinds of surface. A JSONL or YAML surface
@@ -153,6 +177,8 @@ name — renaming a choice value breaks a reader without changing a column.
 ### CI integration
 
 - `spectrace impact --code <base>..<head>` — CLI command
+- `--project-refs name=base..head` — one ref pair per project for a run that
+  crosses repositories
 - Exit code 0 (low/medium) or 1 (high/critical) for gate behavior
 - `--format markdown` for PR comment output
 - The hard gate arrives by dropping `continue-on-error` from the CI step;
