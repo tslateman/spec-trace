@@ -132,3 +132,7 @@ Thumbs.db
 
 # Ralph loop prompt
 .planning/PROMPT.md
+
+# Collected static files and Claude Code worktrees
+staticfiles/
+.claude/worktrees/
