@@ -34,6 +34,7 @@ lives in [ROADMAP.md](ROADMAP.md).
 - Deploy to San Jose because Fly retired the Seattle region (`795fb92`)
 - Send the app hostname in Fly health checks (`1423c8b`)
 - Migrate the shared database from CI before writing to it (`5601ad1`)
+- Fall back to SQLite when DATABASE_URL is empty (`fb12c06`)
 
 ### Documentation
 
