@@ -46,6 +46,7 @@ lives in [ROADMAP.md](ROADMAP.md).
 - Describe the shared-instance integration model (`bac38cc`)
 - Clear the shipped priority and db-surface items from the roadmap (`251830d`)
 - Tick the deployed criteria in the Supabase plan (`a9c6bee`)
+- Tick the CI criterion in the Supabase plan (`027651b`)
 
 ### Chores
 
