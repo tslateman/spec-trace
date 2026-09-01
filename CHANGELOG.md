@@ -33,6 +33,7 @@ lives in [ROADMAP.md](ROADMAP.md).
 - Fail rather than publish a checkout as having no database (`3b2eb2f`)
 - Deploy to San Jose because Fly retired the Seattle region (`795fb92`)
 - Send the app hostname in Fly health checks (`1423c8b`)
+- Migrate the shared database from CI before writing to it (`5601ad1`)
 
 ### Documentation
 
