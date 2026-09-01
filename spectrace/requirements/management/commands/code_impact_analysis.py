@@ -125,6 +125,7 @@ class Command(BaseCommand):
             "risk_level": result.risk_level,
             "edge_summary": result.edge_summary,
             "traversed_edges": result.traversed_edges,
+            "unresolved_dependencies": result.unresolved_dependencies,
             "summary": {
                 "files_changed": sum(len(v) for v in result.changed_files.values()),
                 "tests_affected": len(result.affected_tests),
@@ -182,8 +183,22 @@ class Command(BaseCommand):
         lines.append(
             f"Edges carrying this change: {edges['annotated']} annotated, "
             f"{edges['contract']} contract, "
-            f"{edges['inferred']} inferred"
+            f"{edges['inferred']} inferred, "
+            f"{edges['dependency']} dependency"
         )
+
+        if result.unresolved_dependencies:
+            lines.append("")
+            lines.append(
+                self.style.WARNING(
+                    f"Dependencies not analysed ({len(result.unresolved_dependencies)}): "
+                    "a declared provider was absent from this run"
+                )
+            )
+            for item in result.unresolved_dependencies:
+                lines.append(
+                    f"  {item['consumer']}:{item['module']} -> {item['provider']}:{item['surface']}"
+                )
 
         if result.affected_tests:
             lines.append("")

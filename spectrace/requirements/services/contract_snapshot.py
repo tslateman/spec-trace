@@ -1,13 +1,35 @@
 """Contract snapshots — introspect project data surfaces for change detection."""
 
+import inspect
 import json
 import logging
 from dataclasses import dataclass
 from pathlib import Path
 
 import yaml
+from django.apps import apps
 
 logger = logging.getLogger(__name__)
+
+
+SNAPSHOT_FILENAME = "contract.snapshot.json"
+CLI_SURFACE_PREFIX = "cli/"
+DB_SURFACE_PREFIX = "db/"
+ENUM_SURFACE_PREFIX = "enum/"
+
+
+def surface_origin(surface_name: str, spec: dict) -> str | None:
+    """Name the repo-relative file defining a surface, or None when the surface is that file.
+
+    A JSONL or YAML surface is named after the file that holds it, so its graph
+    node and the file's node are the same node and no edge joins them.
+    """
+    origin = spec.get("origin")
+    if origin:
+        return origin
+    if surface_name.startswith(CLI_SURFACE_PREFIX):
+        return "pyproject.toml"
+    return None
 
 
 @dataclass
@@ -54,6 +76,8 @@ class ContractSnapshot:
         - JSONL files: extracts field names from first 10 records
         - YAML files: extracts top-level and nested keys
         - CLI entry points: extracts from pyproject.toml [project.scripts]
+        - Database tables and field choices: extracts from the Django models
+          whose source files live under this root
         """
         surfaces: dict[str, dict] = {}
 
@@ -91,6 +115,8 @@ class ContractSnapshot:
             cli_surfaces = _extract_cli_surfaces(pyproject)
             surfaces.update(cli_surfaces)
 
+        surfaces.update(_extract_db_surfaces(project_root))
+
         return cls(
             project=project_name,
             version="1.0",
@@ -118,6 +144,72 @@ class ContractSnapshot:
             version=data.get("version", "1.0"),
             surfaces=data.get("surfaces", {}),
         )
+
+
+def contract_edges(project_name: str, root: Path) -> list:
+    """Join each surface to the file defining it, for one project root.
+
+    A surface named after its own file needs no edge: the surface node and the
+    file node are the same node.
+    """
+    from ..projects import qualify
+    from .impact_graph import EdgeSource, GraphEdge
+
+    snapshot_path = root / SNAPSHOT_FILENAME
+    if not snapshot_path.exists():
+        return []
+
+    edges = []
+    for surface, spec in ContractSnapshot.load(snapshot_path).surfaces.items():
+        origin = surface_origin(surface, spec)
+        if origin is None or origin == surface:
+            continue
+        edges.append(
+            GraphEdge(
+                source_id=qualify(project_name, origin),
+                target_id=qualify(project_name, surface),
+                source=EdgeSource.CONTRACT,
+                weight=0.8,
+                project=project_name,
+            )
+        )
+    return edges
+
+
+def _extract_db_surfaces(project_root: Path) -> dict[str, dict]:
+    """Name each database table and each set of field choices this root's models define.
+
+    A consumer reading the database couples to column names and to the stored
+    strings behind a field's choices, so each becomes a surface a map can name.
+    """
+    root = project_root.resolve()
+    surfaces: dict[str, dict] = {}
+
+    for model in apps.get_models(include_auto_created=True):
+        source = Path(inspect.getfile(model)).resolve()
+        if not source.is_relative_to(root):
+            continue
+
+        origin = str(source.relative_to(root))
+        if any(part.startswith(".") for part in Path(origin).parts):
+            continue
+        meta = model._meta
+        surfaces[f"{DB_SURFACE_PREFIX}{meta.db_table}"] = {
+            "format": "db-table",
+            "fields": sorted(field.column for field in meta.concrete_fields),
+            "origin": origin,
+        }
+
+        for field in meta.concrete_fields:
+            if not field.choices:
+                continue
+            surfaces[f"{ENUM_SURFACE_PREFIX}{meta.db_table}.{field.column}"] = {
+                "format": "db-enum",
+                "fields": sorted(str(value) for value, _ in field.choices),
+                "origin": origin,
+            }
+
+    return surfaces
 
 
 class ContractDiffer:

@@ -18,8 +18,8 @@ def result():
         affected_tests=["tests/test_one.py::test_a", "tests/test_two.py::test_b"],
         risk_score=0.86,
         risk_level="critical",
-        edge_summary={"annotated": 64, "inferred": 4, "contract": 9},
-        traversed_edges={"annotated": 12, "inferred": 1, "contract": 2},
+        edge_summary={"annotated": 64, "inferred": 4, "contract": 9, "dependency": 3},
+        traversed_edges={"annotated": 12, "inferred": 1, "contract": 2, "dependency": 1},
     )
 
 
@@ -121,3 +121,23 @@ def test_render_markdown__honors_explicit_limits(result):
 
     assert "…and 1 more." in body
     assert "- …and 1 more" in body
+
+
+def test_render_markdown__names_a_dependency_whose_provider_was_absent(result):
+    result.unresolved_dependencies = [
+        {
+            "consumer": "praxis",
+            "module": "src/praxis/spectrace.py",
+            "provider": "spectrace",
+            "surface": "db/requirements_requirement",
+        }
+    ]
+
+    body = render_markdown(result, "HEAD~1", "HEAD")
+
+    assert "### Dependencies Not Analysed" in body
+    assert "`spectrace:db/requirements_requirement`" in body
+
+
+def test_render_markdown__omits_the_unanalysed_section_when_every_provider_was_loaded(result):
+    assert "Dependencies Not Analysed" not in render_markdown(result, "HEAD~1", "HEAD")

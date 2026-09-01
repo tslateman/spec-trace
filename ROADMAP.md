@@ -10,34 +10,27 @@ Last reviewed: 2026-08-31.
 
 ## Now
 
-### 1. Express cross-project dependencies in the graph
-
-`spectrace impact --code` walks code to requirements inside one project. It
-cannot answer the question the impact graph exists to answer: what does a
-change here break over there.
-
-The obstacle is the model, not the data. With maps loaded for two projects the
-graph shares zero nodes between them, so `cross_project_edges` is always 0.
-Contract edges run `{project}:{surface}` to `{surface}` and never reach a
-module node, and no edge type says "project A depends on project B's surface".
-Praxis really does depend on SpecTrace -- `src/praxis/spectrace.py` reads its
-SQLite tables -- and the graph cannot represent it.
-
-Seeding more projects will not fix this. The edge model needs the dependency
-relation first.
-
-**Done when:** a change to a SpecTrace surface reports Praxis as an affected
-dependent, and `cross_project_edges` is non-zero for a real diff.
-
-### 2. Address one repo per ref pair
+### 1. Address one repo per ref pair
 
 `code_analyze` runs `git diff base head` in every project root with the same
 refs. A ref that exists in one repo and not another yields nothing for the
 second. The `<base>..<head>` signature assumes a monorepo this ecosystem is
-not.
+not, and it blocks a two-project run today: SpecTrace's refs do not resolve in
+Praxis, so the cross-project graph can be verified only outside the command.
 
 **Done when:** a multi-project analysis takes a ref per project, and a ref
 missing from one project fails loudly instead of reporting that project clean.
+
+### 2. Declare the status values the database stores
+
+`Requirement.status` and `TestRequirementLink.last_status` are `CharField`s
+whose legal values live in a `help_text` string. Nothing enforces them and
+nothing publishes them, so `enum/` surfaces exist for the four fields that
+carry `choices` and not for these two. Praxis queries `WHERE r.status !=
+'draft'` against a value SpecTrace never declares.
+
+**Done when:** both fields carry `choices`, the snapshot publishes their
+`enum/` surfaces, and Praxis names them in `depends_on`.
 
 ## Next
 

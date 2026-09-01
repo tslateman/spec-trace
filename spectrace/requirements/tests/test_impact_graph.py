@@ -71,24 +71,62 @@ class TestImpactGraph:
         graph = ImpactGraph()
         graph.add_edge(
             GraphEdge(
-                source_id="src/lore/reader.py",
-                target_id="src/praxis/lore.py",
-                source=EdgeSource.ANNOTATED,
+                source_id="lore:src/lore/reader.py",
+                target_id="praxis:src/praxis/lore.py",
+                source=EdgeSource.DEPENDENCY,
                 weight=1.0,
-                project="lore",
+                project="praxis",
+                directed=True,
             )
         )
         graph.add_edge(
             GraphEdge(
-                source_id="src/praxis/lore.py",
-                target_id="REQ-PRAXIS-001",
+                source_id="praxis:src/praxis/lore.py",
+                target_id="praxis:REQ-PRAXIS-001",
                 source=EdgeSource.ANNOTATED,
                 weight=1.0,
                 project="praxis",
             )
         )
-        result = graph.blast_radius(["src/lore/reader.py"])
-        assert len(result.cross_project_edges) > 0
+        result = graph.blast_radius(["lore:src/lore/reader.py"])
+
+        assert len(result.cross_project_edges) == 1
+        assert result.cross_project_edges[0].target_id == "praxis:src/praxis/lore.py"
+
+    def test_cross_project_edges__ignores_an_edge_inside_one_project(self):
+        graph = ImpactGraph()
+        graph.add_edge(
+            GraphEdge(
+                source_id="praxis:src/praxis/lore.py",
+                target_id="praxis:REQ-PRAXIS-001",
+                source=EdgeSource.ANNOTATED,
+                weight=1.0,
+                project="praxis",
+            )
+        )
+
+        result = graph.blast_radius(["praxis:src/praxis/lore.py"])
+
+        assert result.cross_project_edges == []
+
+    def test_blast_radius__does_not_walk_a_directed_edge_backwards(self):
+        graph = ImpactGraph()
+        graph.add_edge(
+            GraphEdge(
+                source_id="lore:src/lore/reader.py",
+                target_id="praxis:src/praxis/lore.py",
+                source=EdgeSource.DEPENDENCY,
+                weight=1.0,
+                project="praxis",
+                directed=True,
+            )
+        )
+
+        forward = graph.blast_radius(["lore:src/lore/reader.py"])
+        backward = graph.blast_radius(["praxis:src/praxis/lore.py"])
+
+        assert "praxis:src/praxis/lore.py" in forward.affected_modules
+        assert backward.affected_modules == []
 
     def test_cycle_does_not_infinite_loop(self):
         graph = ImpactGraph()

@@ -51,6 +51,11 @@ def node_name(node_id: str) -> str:
     return unqualify(node_id)[1]
 
 
+def node_project(node_id: str) -> str:
+    """Return the project a graph node id names, or an empty string when it carries none."""
+    return unqualify(node_id)[0]
+
+
 def display_node(node_id: str) -> str:
     """Render a node id for a human reader, naming its project when it has one."""
     project, name = unqualify(node_id)

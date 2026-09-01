@@ -174,6 +174,7 @@ class TestTraversedEdgeCounts:
             "annotated": 0,
             "inferred": 0,
             "contract": 0,
+            "dependency": 0,
         }
 
     def test_count_traversed_edges__splits_the_count_by_source(self):
@@ -183,15 +184,26 @@ class TestTraversedEdgeCounts:
                 edge("b", "REQ-2", EdgeSource.ANNOTATED),
                 edge("c", "REQ-3", EdgeSource.GIT_INFERRED),
                 edge("d", "REQ-4", EdgeSource.CONTRACT),
+                edge("e", "REQ-5", EdgeSource.DEPENDENCY),
             ]
         )
 
-        assert count_traversed_edges(blast) == {"annotated": 2, "inferred": 1, "contract": 1}
+        assert count_traversed_edges(blast) == {
+            "annotated": 2,
+            "inferred": 1,
+            "contract": 1,
+            "dependency": 1,
+        }
 
     def test_code_analyze__reports_no_carrying_edges_for_an_unmapped_diff(self, tmp_path):
         write_map(tmp_path / "p", "p", {f"src/mod{n}.py": [f"REQ-M-{n:03d}"] for n in range(40)})
 
         result = analyze_one_file({"p": tmp_path / "p"}, "CHANGELOG.md")
 
-        assert result.traversed_edges == {"annotated": 0, "inferred": 0, "contract": 0}
+        assert result.traversed_edges == {
+            "annotated": 0,
+            "inferred": 0,
+            "contract": 0,
+            "dependency": 0,
+        }
         assert result.edge_summary["annotated"] > 0

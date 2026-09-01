@@ -11,9 +11,9 @@ from typing import Optional
 from requirements.models import Requirement, TestRequirementLink
 from requirements.projects import node_name, qualify
 
-from .contract_snapshot import ContractSnapshot
+from .contract_snapshot import contract_edges as build_contract_edges
 from .git_cochange import GitCoChangeAnalyzer
-from .impact_graph import BlastResult, EdgeSource, GraphEdge, ImpactGraphBuilder
+from .impact_graph import BlastResult, EdgeSource, ImpactGraphBuilder
 from .map_reader import MapReader
 
 logger = logging.getLogger(__name__)
@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 # How far each kind of evidence is trusted when it carries a change to its blast radius.
 EDGE_SOURCE_WEIGHTS = {
     EdgeSource.ANNOTATED: 1.0,
+    EdgeSource.DEPENDENCY: 1.0,
     EdgeSource.CONTRACT: 0.8,
     EdgeSource.GIT_INFERRED: 0.6,
 }
@@ -37,6 +38,7 @@ def count_traversed_edges(blast: BlastResult) -> dict[str, int]:
         "annotated": counts[EdgeSource.ANNOTATED.value],
         "inferred": counts[EdgeSource.GIT_INFERRED.value],
         "contract": counts[EdgeSource.CONTRACT.value],
+        "dependency": counts[EdgeSource.DEPENDENCY.value],
     }
 
 
@@ -102,11 +104,12 @@ class CodeImpactResult:
     risk_score: float = 0.0
     risk_level: str = "low"
     edge_summary: dict[str, int] = field(
-        default_factory=lambda: {"annotated": 0, "inferred": 0, "contract": 0}
+        default_factory=lambda: {"annotated": 0, "inferred": 0, "contract": 0, "dependency": 0}
     )
     traversed_edges: dict[str, int] = field(
-        default_factory=lambda: {"annotated": 0, "inferred": 0, "contract": 0}
+        default_factory=lambda: {"annotated": 0, "inferred": 0, "contract": 0, "dependency": 0}
     )
+    unresolved_dependencies: list[dict[str, str]] = field(default_factory=list)
 
 
 class ImpactAnalyzer:
@@ -417,24 +420,13 @@ class ImpactAnalyzer:
 
         contract_edges = []
         for key, root in roots.items():
-            snap_path = root / "contract.snapshot.json"
-            if snap_path.exists():
-                snap = ContractSnapshot.load(snap_path)
-                # Contract edges connect surfaces to project
-                for surface_name in snap.surfaces:
-                    contract_edges.append(
-                        GraphEdge(
-                            source_id=qualify(project_names[key], surface_name),
-                            target_id=surface_name,
-                            source=EdgeSource.CONTRACT,
-                            weight=0.8,
-                            project=project_names[key],
-                        )
-                    )
+            contract_edges.extend(build_contract_edges(project_names[key], root))
+
+        dependency_edges, unresolved = map_reader.read_all_dependencies()
 
         # 3. Build graph and compute blast radius
         builder = ImpactGraphBuilder(roots)
-        graph = builder.build(annotated_edges, inferred_edges, contract_edges)
+        graph = builder.build(annotated_edges, inferred_edges, contract_edges, dependency_edges)
 
         all_changed = []
         for project, files in changed_files.items():
@@ -486,8 +478,18 @@ class ImpactAnalyzer:
                 "annotated": len(annotated_edges),
                 "inferred": len(inferred_edges),
                 "contract": len(contract_edges),
+                "dependency": len(dependency_edges),
             },
             traversed_edges=count_traversed_edges(blast),
+            unresolved_dependencies=[
+                {
+                    "consumer": item.consumer,
+                    "module": item.module,
+                    "provider": item.provider,
+                    "surface": item.surface,
+                }
+                for item in unresolved
+            ],
         )
 
     def analyze(

@@ -106,7 +106,12 @@ class TestCodeAnalyze:
         )
         assert result.risk_score == 0.0
         assert result.risk_level == "low"
-        assert result.edge_summary == {"annotated": 0, "inferred": 0, "contract": 0}
+        assert result.edge_summary == {
+            "annotated": 0,
+            "inferred": 0,
+            "contract": 0,
+            "dependency": 0,
+        }
 
 
 class TestGetAllChangedFiles:

@@ -5,11 +5,678 @@
       "entry_point": "spectrace.cli:main",
       "format": "cli"
     },
+    "db/requirements_agent": {
+      "fields": [
+        "agent_id",
+        "config",
+        "id",
+        "is_active",
+        "last_heartbeat",
+        "registered_at",
+        "role"
+      ],
+      "format": "db-table",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "db/requirements_agentsprint": {
+      "fields": [
+        "completed_at",
+        "created_at",
+        "description",
+        "goal_description",
+        "id",
+        "is_active",
+        "name"
+      ],
+      "format": "db-table",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "db/requirements_agenttask": {
+      "fields": [
+        "attempt_count",
+        "branch_name",
+        "claimed_at",
+        "claimed_by_id",
+        "commit_sha",
+        "created_at",
+        "description",
+        "done_when",
+        "external_id",
+        "id",
+        "lease_expires",
+        "max_attempts",
+        "scope_in",
+        "scope_out",
+        "spec_ref",
+        "sprint_id",
+        "status",
+        "title",
+        "updated_at",
+        "worktree_path"
+      ],
+      "format": "db-table",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "db/requirements_agenttask_depends_on": {
+      "fields": [
+        "from_agenttask_id",
+        "id",
+        "to_agenttask_id"
+      ],
+      "format": "db-table",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "db/requirements_agenttask_requirements": {
+      "fields": [
+        "agenttask_id",
+        "id",
+        "requirement_id"
+      ],
+      "format": "db-table",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "db/requirements_agenttaskhistory": {
+      "fields": [
+        "action",
+        "agent_id",
+        "details",
+        "from_status",
+        "id",
+        "task_id",
+        "timestamp",
+        "to_status"
+      ],
+      "format": "db-table",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "db/requirements_agenttaskreview": {
+      "fields": [
+        "blocking_issues",
+        "commit_sha",
+        "created_at",
+        "decision",
+        "done_when_results",
+        "feedback",
+        "id",
+        "reviewer_id",
+        "suggestions",
+        "task_id"
+      ],
+      "format": "db-table",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "db/requirements_conflictlog": {
+      "fields": [
+        "confidence",
+        "created_at",
+        "details",
+        "id",
+        "pattern",
+        "requirement_a_id",
+        "requirement_b_id",
+        "resolution_notes",
+        "resolved",
+        "resolved_at",
+        "updated_at"
+      ],
+      "format": "db-table",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "db/requirements_corpusentry": {
+      "fields": [
+        "created_at",
+        "external_id",
+        "id",
+        "kind",
+        "owner",
+        "source_file",
+        "status",
+        "title",
+        "updated_at"
+      ],
+      "format": "db-table",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "db/requirements_corpusentryversion": {
+      "fields": [
+        "applies_to",
+        "body",
+        "checks",
+        "content_hash",
+        "created_at",
+        "effective_date",
+        "enforcement",
+        "entry_id",
+        "id",
+        "source_file",
+        "supersedes_id",
+        "version"
+      ],
+      "format": "db-table",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "db/requirements_corpussnapshot": {
+      "fields": [
+        "created_at",
+        "entry_version_hashes",
+        "id",
+        "snapshot_hash"
+      ],
+      "format": "db-table",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "db/requirements_corpussnapshot_entry_versions": {
+      "fields": [
+        "corpusentryversion_id",
+        "corpussnapshot_id",
+        "id"
+      ],
+      "format": "db-table",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "db/requirements_inappvalidation": {
+      "fields": [
+        "endpoint",
+        "feature_flags",
+        "id",
+        "name",
+        "requirement_id",
+        "vendor"
+      ],
+      "format": "db-table",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "db/requirements_inappvalidationresult": {
+      "fields": [
+        "checked_at",
+        "context",
+        "id",
+        "message",
+        "status",
+        "steps",
+        "validation_id",
+        "validation_run_id"
+      ],
+      "format": "db-table",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "db/requirements_inappvalidationrun": {
+      "fields": [
+        "id",
+        "imported_at",
+        "source"
+      ],
+      "format": "db-table",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "db/requirements_intentvalidationresult": {
+      "fields": [
+        "commit_sha",
+        "created_at",
+        "drift_score",
+        "failure_reasons",
+        "id",
+        "opportunity_score",
+        "passed",
+        "strategic_score",
+        "task_id"
+      ],
+      "format": "db-table",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "db/requirements_requirement": {
+      "fields": [
+        "component",
+        "condition",
+        "created_at",
+        "depth",
+        "description",
+        "external_id",
+        "id",
+        "numchild",
+        "path",
+        "priority",
+        "project",
+        "response",
+        "risk_level",
+        "scope",
+        "slo_status",
+        "source_file",
+        "status",
+        "structure_completeness",
+        "tags",
+        "timing",
+        "title",
+        "updated_at",
+        "verification_method",
+        "verification_status"
+      ],
+      "format": "db-table",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "db/requirements_requirement_depends_on": {
+      "fields": [
+        "from_requirement_id",
+        "id",
+        "to_requirement_id"
+      ],
+      "format": "db-table",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "db/requirements_reviewcoverage": {
+      "fields": [
+        "cited",
+        "enforcement",
+        "entry_version_id",
+        "id",
+        "matched_by",
+        "review_id"
+      ],
+      "format": "db-table",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "db/requirements_reviewfinding": {
+      "fields": [
+        "check_id",
+        "created_at",
+        "detail",
+        "enforcement",
+        "entry_version_id",
+        "finding_type",
+        "id",
+        "review_id"
+      ],
+      "format": "db-table",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "db/requirements_slo": {
+      "fields": [
+        "budgeting_method",
+        "created_at",
+        "current_value",
+        "description",
+        "display_name",
+        "error_budget_remaining",
+        "id",
+        "last_updated",
+        "name",
+        "service",
+        "source_file",
+        "status",
+        "target",
+        "time_window",
+        "updated_at"
+      ],
+      "format": "db-table",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "db/requirements_slo_requirements": {
+      "fields": [
+        "id",
+        "requirement_id",
+        "slo_id"
+      ],
+      "format": "db-table",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "db/requirements_specreview": {
+      "fields": [
+        "created_at",
+        "id",
+        "outcome",
+        "requirement_id",
+        "reviewer",
+        "snapshot_id",
+        "spec_file"
+      ],
+      "format": "db-table",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "db/requirements_testrequirementlink": {
+      "fields": [
+        "created_at",
+        "id",
+        "last_run_at",
+        "last_status",
+        "needs_review",
+        "requirement_id",
+        "review_reason",
+        "test_nodeid",
+        "updated_at"
+      ],
+      "format": "db-table",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "db/requirements_testresult": {
+      "fields": [
+        "classname",
+        "id",
+        "message",
+        "name",
+        "status",
+        "test_nodeid",
+        "test_run_id",
+        "time"
+      ],
+      "format": "db-table",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "db/requirements_testresult_requirements": {
+      "fields": [
+        "id",
+        "requirement_id",
+        "testresult_id"
+      ],
+      "format": "db-table",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "db/requirements_testrun": {
+      "fields": [
+        "ci_job_url",
+        "finished_at",
+        "git_branch",
+        "git_sha",
+        "id",
+        "imported_at",
+        "repository",
+        "source_file",
+        "started_at",
+        "workflow_name",
+        "workflow_run_id"
+      ],
+      "format": "db-table",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "db/requirements_verificationflow": {
+      "fields": [
+        "description",
+        "display_name",
+        "id",
+        "name",
+        "steps",
+        "synced_at",
+        "version"
+      ],
+      "format": "db-table",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "db/requirements_verificationflow_requirements": {
+      "fields": [
+        "id",
+        "requirement_id",
+        "verificationflow_id"
+      ],
+      "format": "db-table",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "db/requirements_verificationflowrun": {
+      "fields": [
+        "completed_at",
+        "context",
+        "flow_id",
+        "id",
+        "source",
+        "started_at",
+        "status"
+      ],
+      "format": "db-table",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "db/requirements_verificationflowstep": {
+      "fields": [
+        "completed_at",
+        "details",
+        "error_message",
+        "flow_run_id",
+        "id",
+        "name",
+        "passed",
+        "response_body",
+        "response_status",
+        "started_at",
+        "step_order"
+      ],
+      "format": "db-table",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "db/requirements_webhookevent": {
+      "fields": [
+        "action",
+        "delivery_id",
+        "error_message",
+        "event_type",
+        "id",
+        "payload",
+        "processed_at",
+        "received_at",
+        "repository",
+        "sender",
+        "status",
+        "test_run_id"
+      ],
+      "format": "db-table",
+      "origin": "spectrace/requirements/models.py"
+    },
     "demos.yaml": {
       "fields": [
         "demos"
       ],
       "format": "yaml"
+    },
+    "enum/requirements_agent.role": {
+      "fields": [
+        "coder",
+        "planner",
+        "reviewer"
+      ],
+      "format": "db-enum",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "enum/requirements_agenttask.status": {
+      "fields": [
+        "abandoned",
+        "approved",
+        "blocked",
+        "changes_requested",
+        "claimed",
+        "draft",
+        "in_progress",
+        "merged",
+        "ready_for_review",
+        "unclaimed"
+      ],
+      "format": "db-enum",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "enum/requirements_agenttaskreview.decision": {
+      "fields": [
+        "approved",
+        "changes_requested",
+        "rejected"
+      ],
+      "format": "db-enum",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "enum/requirements_conflictlog.confidence": {
+      "fields": [
+        "high",
+        "low",
+        "medium"
+      ],
+      "format": "db-enum",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "enum/requirements_conflictlog.pattern": {
+      "fields": [
+        "code_overlap",
+        "condition_overlap",
+        "inverse_correlation",
+        "mutual_exclusion",
+        "response_contradiction",
+        "timing_conflict"
+      ],
+      "format": "db-enum",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "enum/requirements_corpusentry.kind": {
+      "fields": [
+        "commitment",
+        "decision",
+        "standard"
+      ],
+      "format": "db-enum",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "enum/requirements_corpusentry.status": {
+      "fields": [
+        "active",
+        "retired",
+        "superseded"
+      ],
+      "format": "db-enum",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "enum/requirements_corpusentryversion.enforcement": {
+      "fields": [
+        "advisory",
+        "blocking"
+      ],
+      "format": "db-enum",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "enum/requirements_inappvalidationresult.status": {
+      "fields": [
+        "failure",
+        "not_run",
+        "success",
+        "unknown"
+      ],
+      "format": "db-enum",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "enum/requirements_requirement.risk_level": {
+      "fields": [
+        "critical",
+        "high",
+        "low",
+        "medium",
+        "unclassified"
+      ],
+      "format": "db-enum",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "enum/requirements_requirement.slo_status": {
+      "fields": [
+        "at_risk",
+        "breached",
+        "met",
+        "not_linked"
+      ],
+      "format": "db-enum",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "enum/requirements_requirement.verification_method": {
+      "fields": [
+        "both",
+        "inapp",
+        "test",
+        "unspecified"
+      ],
+      "format": "db-enum",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "enum/requirements_requirement.verification_status": {
+      "fields": [
+        "failing",
+        "passing",
+        "untested"
+      ],
+      "format": "db-enum",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "enum/requirements_reviewcoverage.enforcement": {
+      "fields": [
+        "advisory",
+        "blocking"
+      ],
+      "format": "db-enum",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "enum/requirements_reviewfinding.enforcement": {
+      "fields": [
+        "advisory",
+        "blocking"
+      ],
+      "format": "db-enum",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "enum/requirements_reviewfinding.finding_type": {
+      "fields": [
+        "conflicting_obligations",
+        "orphan_citation",
+        "stale_citation",
+        "unaddressed_obligation",
+        "unmet_check"
+      ],
+      "format": "db-enum",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "enum/requirements_slo.status": {
+      "fields": [
+        "at_risk",
+        "breached",
+        "met",
+        "not_linked"
+      ],
+      "format": "db-enum",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "enum/requirements_specreview.outcome": {
+      "fields": [
+        "clean",
+        "findings"
+      ],
+      "format": "db-enum",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "enum/requirements_testresult.status": {
+      "fields": [
+        "error",
+        "failed",
+        "passed",
+        "skipped"
+      ],
+      "format": "db-enum",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "enum/requirements_verificationflowrun.source": {
+      "fields": [
+        "api",
+        "manual",
+        "scheduled"
+      ],
+      "format": "db-enum",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "enum/requirements_verificationflowrun.status": {
+      "fields": [
+        "failed",
+        "passed",
+        "running"
+      ],
+      "format": "db-enum",
+      "origin": "spectrace/requirements/models.py"
+    },
+    "enum/requirements_webhookevent.status": {
+      "fields": [
+        "failed",
+        "processing",
+        "received",
+        "skipped",
+        "success"
+      ],
+      "format": "db-enum",
+      "origin": "spectrace/requirements/models.py"
     },
     "examples/document-pipeline/ci/github-actions.yml": {
       "fields": [
