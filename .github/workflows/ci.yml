@@ -29,6 +29,42 @@ jobs:
       - name: Run tests
         run: python -m pytest -m "not demo" --tb=short -q
 
+  test-postgres:
+    name: Test (Postgres)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: spectrace
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/spectrace
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: |
+          pip install uv
+          uv pip install --system -e ./spectrace-flows -e ".[dev]"
+
+      - name: Run tests
+        run: python -m pytest -m "not demo" --tb=short -q
+
   lint:
     name: Lint
     runs-on: ubuntu-latest
@@ -69,6 +105,11 @@ jobs:
     name: Verification
     runs-on: ubuntu-latest
 
+    # Pushes to main write the shared database; pull requests build a
+    # throwaway SQLite file so a broken PR never touches it.
+    env:
+      DATABASE_URL: ${{ github.event_name == 'push' && secrets.SUPABASE_DATABASE_URL || '' }}
+
     steps:
       - uses: actions/checkout@v4
 
@@ -81,9 +122,12 @@ jobs:
           pip install uv
           uv pip install --system -e ./spectrace-flows -e ".[dev]"
 
+      - name: Migrate the throwaway database
+        if: env.DATABASE_URL == ''
+        run: python spectrace/manage.py migrate --no-input
+
       - name: Build the requirement database
         run: |
-          python spectrace/manage.py migrate --no-input
           python spectrace/manage.py parse_specs specs
           python spectrace/manage.py parse_specs meta/specs
 
