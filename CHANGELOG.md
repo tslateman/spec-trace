@@ -16,6 +16,7 @@ lives in [ROADMAP.md](ROADMAP.md).
 - Serve every endpoint under /api/v1/ and retire the old paths (`185a77e`)
 - Seed the impact graph and report blast radius on every PR (`c097cc4`)
 - Give requirements a project column (`51a5f53`)
+- Express cross-project dependencies in the impact graph (`30e2a0b`)
 
 ### Fixed
 
