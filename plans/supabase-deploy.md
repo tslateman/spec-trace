@@ -234,7 +234,9 @@ them.
 - [x] `fly deploy` runs migrations as the release command and serves the
       admin at the public URL with `DEBUG=false`.
 - [x] `manage.py check --deploy` reports zero errors against production env.
-- [ ] CI `Verification` on `main` writes to Supabase; on PRs it uses SQLite.
+- [x] CI `Verification` on `main` writes to Supabase; on PRs it uses SQLite.
+      Run 33516765697 (2026-09-01 14:00 UTC): "No migrations to apply",
+      "updated 117 existing links", Supabase `updated_at` matches.
 - [ ] praxis runs `spectrace specs parse specs/` and `spectrace tasks claim`
       with `DATABASE_URL` set; `REQ-PRX-*` and the claim appear in the hosted
       admin.
