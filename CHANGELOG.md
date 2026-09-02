@@ -22,6 +22,7 @@ lives in [ROADMAP.md](ROADMAP.md).
 - Serve the admin from a container against a Postgres database (`90ffffd`)
 - Add spec parsing and link import to the CLI (`316994a`)
 - Publish the priority values the database stores (`2c02d9a`)
+- Require the API key on every /api/v1/ endpoint (`c32ec92`)
 
 ### Fixed
 
