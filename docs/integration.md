@@ -150,8 +150,9 @@ Every endpoint lives under `/api/v1/`. The full catalog is in
 | `/api/v1/results/enforcement-runs/<id>/` | GET    | Get enforcement run details          |
 | `/api/v1/integrations/linear/health/`    | GET    | Linear integration health check      |
 
-`POST /api/v1/integrations/slo/status/` and `POST /api/v1/results/enforcement/`
-require an API key once `SPECTRACE_API_KEY` is set. Send it as `X-API-Key`:
+Every `/api/v1/` endpoint requires an API key once `SPECTRACE_API_KEY` is set;
+only `/api/docs/`, `/api/openapi.json`, and the landing page stay open. Send
+the key as `X-API-Key`:
 
 ```bash
 curl -X POST http://localhost:8000/api/v1/results/enforcement/ \

@@ -8,6 +8,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
+from requirements.api import require_api_key
 from requirements.models import (
     AgentTask,
     InAppValidation,
@@ -44,6 +45,7 @@ def _success_response(data, meta=None, status=200):
     return JsonResponse(response_data, status=status)
 
 
+@require_api_key
 @require_http_methods(["GET"])
 def list_tasks(request):
     try:
@@ -100,6 +102,7 @@ def list_tasks(request):
 
 
 @csrf_exempt
+@require_api_key
 @require_http_methods(["POST"])
 def claim_task_view(request, task_id):
     try:
@@ -124,6 +127,7 @@ def claim_task_view(request, task_id):
 
 
 @csrf_exempt
+@require_api_key
 @require_http_methods(["POST"])
 def complete_task_view(request, task_id):
     try:
@@ -147,6 +151,7 @@ def complete_task_view(request, task_id):
         return _error_response("Internal server error", "internal_error", status=500)
 
 
+@require_api_key
 @require_http_methods(["GET"])
 def spec_context_view(request, external_id):
     from requirements.models import Requirement
@@ -191,6 +196,7 @@ def spec_context_view(request, external_id):
     return _success_response(context)
 
 
+@require_api_key
 @require_http_methods(["GET"])
 def specs_coverage_view(request):
     """Returns coverage metrics and stale requirements for one project."""
@@ -248,6 +254,7 @@ def specs_coverage_view(request):
     return _success_response(data)
 
 
+@require_api_key
 @require_http_methods(["GET"])
 def specs_drift_view(request):
     """Returns actionable drift detections."""
@@ -275,6 +282,7 @@ def specs_drift_view(request):
     return _success_response(result.to_dict())
 
 
+@require_api_key
 @require_http_methods(["GET"])
 def specs_impact_view(request):
     """Return a dependency graph of affected specs."""
@@ -320,6 +328,7 @@ def specs_impact_view(request):
     )
 
 
+@require_api_key
 @require_http_methods(["GET"])
 def list_conflicts_view(request):
     """List conflicts with filtering and pagination."""
@@ -383,6 +392,7 @@ def list_conflicts_view(request):
 
 
 @csrf_exempt
+@require_api_key
 @require_http_methods(["POST"])
 def detect_conflicts_view(request):
     """Run conflict detection and log results."""
@@ -415,6 +425,7 @@ def detect_conflicts_view(request):
     )
 
 
+@require_api_key
 @require_http_methods(["GET"])
 def get_conflict_view(request, conflict_id):
     """Get full detail for a single conflict."""
@@ -446,6 +457,7 @@ def get_conflict_view(request, conflict_id):
 
 
 @csrf_exempt
+@require_api_key
 @require_http_methods(["POST"])
 def resolve_conflict_view(request, conflict_id):
     """Mark a conflict as resolved."""
@@ -480,6 +492,7 @@ def resolve_conflict_view(request, conflict_id):
     )
 
 
+@require_api_key
 @require_http_methods(["GET"])
 def latest_enforcement_run_view(request):
     """Return the most recent enforcement run."""
@@ -508,6 +521,7 @@ def latest_enforcement_run_view(request):
     )
 
 
+@require_api_key
 @require_http_methods(["GET"])
 def enforcement_run_diff_view(request, run_id):
     """Compare a run against its predecessor."""
@@ -547,6 +561,7 @@ def enforcement_run_diff_view(request, run_id):
     )
 
 
+@require_api_key
 @require_http_methods(["GET"])
 def spec_status_view(request, external_id):
     """Return verification status for a single requirement."""
