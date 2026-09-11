@@ -1,4 +1,4 @@
-.PHONY: help venv install install-dev test lint format check changelog migrate makemigrations shell run clean setup demo demos
+.PHONY: help venv install install-dev test lint format check changelog migrate makemigrations shell run clean setup demo demo-pipeline demos
 
 # Use venv Python if it exists, otherwise fall back to system python
 PYTHON := $(shell [ -f .venv/bin/python ] && echo .venv/bin/python || echo python)
@@ -15,6 +15,7 @@ help:
 	@echo "  clean           Remove caches and build artifacts"
 	@echo "  setup           Create admin user (admin/admin)"
 	@echo "  demo            Run the SpecTrace demo"
+	@echo "  demo-pipeline   Run the Document Pipeline example demo"
 	@echo "  lint            Run ruff linter"
 	@echo "  format          Check ruff formatting"
 	@echo "  check           Run lint + format + test (matches CI)"
@@ -67,6 +68,9 @@ setup:
 
 demo:
 	$(PYTHON) scripts/demo.py
+
+demo-pipeline:
+	$(PYTHON) scripts/demo_pipeline.py
 
 demos:
 	$(PYTHON) scripts/list_demos.py
