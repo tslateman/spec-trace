@@ -36,6 +36,10 @@ lives in [ROADMAP.md](ROADMAP.md).
 - Send the app hostname in Fly health checks (`1423c8b`)
 - Migrate the shared database from CI before writing to it (`5601ad1`)
 - Fall back to SQLite when DATABASE_URL is empty (`fb12c06`)
+- Refresh uv.lock to clear 48 known CVEs in pinned dependencies (`e66997a`)
+- Guard claim_task against concurrent lost updates (`9fcb344`)
+- Add make demo-pipeline target for Document Pipeline example (`b1a09fa`)
+- Close TOCTOU race in GitHub webhook idempotency check (`bd8104a`)
 
 ### Documentation
 
@@ -48,6 +52,8 @@ lives in [ROADMAP.md](ROADMAP.md).
 - Clear the shipped priority and db-surface items from the roadmap (`251830d`)
 - Tick the deployed criteria in the Supabase plan (`a9c6bee`)
 - Tick the CI criterion in the Supabase plan (`027651b`)
+- Remove micode plugin from AGENTS.md, drop from config sample (`47c52d2`)
+- List check_invariants' real codes instead of a false A-K range (`235ed94`)
 
 ### Chores
 
