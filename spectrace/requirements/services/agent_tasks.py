@@ -196,13 +196,30 @@ def claim_task(task_id: str, agent_id: str, lease_minutes: int = 30) -> Transiti
 
     from_status = task.status
     now = timezone.now()
+    lease_expires = now + timedelta(minutes=lease_minutes)
 
-    # Perform transition
+    # Perform transition as a compare-and-swap: only apply if the task is
+    # still UNCLAIMED at write time, so a concurrent claim that committed
+    # after we read the task can't be silently overwritten.
+    claimed = AgentTask.objects.filter(
+        pk=task.pk,
+        status=AgentTaskStatus.UNCLAIMED,
+    ).update(
+        status=AgentTaskStatus.CLAIMED,
+        claimed_by=agent,
+        claimed_at=now,
+        lease_expires=lease_expires,
+    )
+    if not claimed:
+        raise TransitionError(
+            f"Task '{task_id}' was claimed by another agent",
+            code="ALREADY_CLAIMED",
+        )
+
     task.status = AgentTaskStatus.CLAIMED
     task.claimed_by = agent
     task.claimed_at = now
-    task.lease_expires = now + timedelta(minutes=lease_minutes)
-    task.save()
+    task.lease_expires = lease_expires
 
     # Log history
     _log_history(
