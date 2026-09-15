@@ -35,7 +35,7 @@ spectrace = "spectrace.cli:main"
 [project.optional-dependencies]
 github = [
     "PyJWT>=2.8,<3.0",
-    "cryptography>=42.0,<44.0",
+    "cryptography>=42.0,<51.0",
 ]
 dev = [
     "pytest>=9.0,<10.0",
@@ -80,3 +80,6 @@ markers = [
     "linear(*issue_ids): link test to Linear issue IDs (e.g., CAN-1234)",
     "demo: intentionally failing tests for dashboard demo data",
 ]
+
+[tool.uv.sources]
+spectrace-flows = { path = "spectrace-flows", editable = true }
