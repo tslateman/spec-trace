@@ -148,18 +148,18 @@ def test_login_creates_session():
 
 SpecTrace provides Django management commands for various operations:
 
-| Command                                | Description                                                 |
-| -------------------------------------- | ----------------------------------------------------------- |
-| `parse_specs <dir>`                    | Import requirements from markdown specs into their project  |
-| `spec_coverage`                        | Report coverage for one project (`--project`)               |
-| `extract_links`                        | Extract test-requirement links from test files              |
-| `import_results <xml>`                 | Import pytest JUnit XML and compute status                  |
-| `validate_links <json>`                | Validate links for drift detection (CI)                     |
-| `import_slos <dir>`                    | Import SLOs from OpenSLO YAML files                         |
-| `update_slo_status --from-json <file>` | Update SLO status from observability data                   |
-| `import_inapp_validations <json>`      | Import in-app validation results                            |
-| `check_invariants`                     | Validate data consistency (INV-A through INV-K)             |
-| `parse_corpus <dir>`                   | Import corpus entries from markdown into immutable versions |
+| Command                                | Description                                                                                      |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `parse_specs <dir>`                    | Import requirements from markdown specs into their project                                       |
+| `spec_coverage`                        | Report coverage for one project (`--project`)                                                    |
+| `extract_links`                        | Extract test-requirement links from test files                                                   |
+| `import_results <xml>`                 | Import pytest JUnit XML and compute status                                                       |
+| `validate_links <json>`                | Validate links for drift detection (CI)                                                          |
+| `import_slos <dir>`                    | Import SLOs from OpenSLO YAML files                                                              |
+| `update_slo_status --from-json <file>` | Update SLO status from observability data                                                        |
+| `import_inapp_validations <json>`      | Import in-app validation results                                                                 |
+| `check_invariants`                     | Validate data consistency (INV-A, INV-B, INV-D, INV-E, INV-F, INV-G, INV-H, INV-I, INV-J, INV-K) |
+| `parse_corpus <dir>`                   | Import corpus entries from markdown into immutable versions                                      |
 
 **Agent Task Commands** (see [docs/agent-tasks.md](docs/agent-tasks.md)):
 
