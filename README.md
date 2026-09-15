@@ -67,6 +67,7 @@ SpecTrace includes a Makefile for common development tasks (uses `uv` for packag
 | `make clean`          | Remove caches and build artifacts                        |
 | `make setup`          | Create admin user (admin/admin)                          |
 | `make demo`           | Run the SpecTrace demo                                   |
+| `make demo-pipeline`  | Run the Document Pipeline example demo                   |
 
 **Note:** If you don't have `uv` installed, the Makefile commands will fail. Install it first: `pip install uv`
 
@@ -105,7 +106,7 @@ See the **[Document Pipeline Example](examples/document-pipeline/)** for a compr
 Run the demo:
 
 ```bash
-make demo
+make demo-pipeline
 # or: python scripts/demo_pipeline.py
 ```
 
