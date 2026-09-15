@@ -20,7 +20,6 @@ This project uses OpenCode with the following plugins for enhanced workflow capa
 2. **@plannotator/opencode** - Visual plan review with team collaboration
 3. **@franlol/opencode-md-table-formatter** - Clean up markdown tables from LLMs
 4. **@zenobius/opencode-skillful** - Lazy-loaded skills system
-5. **micode** - Brainstorm → Plan → Implement workflow with session continuity
 
 ### Plugin Configuration
 
@@ -33,8 +32,7 @@ Location: `~/.config/opencode/opencode.json`
     "@openspoon/subtask2@latest",
     "@plannotator/opencode@latest",
     "@franlol/opencode-md-table-formatter@0.0.3",
-    "@zenobius/opencode-skillful@latest",
-    "micode"
+    "@zenobius/opencode-skillful@latest"
   ]
 }
 ```
@@ -59,12 +57,6 @@ Location: `~/.config/opencode/opencode.json`
 - `skill_find "keyword"` - Search for relevant skills
 - `skill_use "skill_name"` - Load skill into chat context
 - `skill_resource skill_name="..." relative_path="..."` - Read skill resources
-
-**micode workflow:**
-
-- `/init` - Initialize project docs (ARCHITECTURE.md, CODE_STYLE.md)
-- `/ledger` - Create/update session continuity ledger
-- `/search` - Search past plans and ledgers
 
 ### CLI Tools Installed
 
