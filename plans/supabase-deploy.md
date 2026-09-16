@@ -220,6 +220,18 @@ them.
   is a later pass.
 - Supabase free tier, pause accepted.
 
+## Lockdown
+
+Supabase exposes every table in `public` through PostgREST to the `anon` and
+`authenticated` roles by default, and Django creates its tables there. On
+2026-09-15 the advisor flagged all 42 tables (`rls_disabled_in_public`) and
+`auth_user` (`sensitive_columns_exposed`). `scripts/supabase-lockdown.sql`
+revokes those grants, revokes them from future tables via default privileges,
+and enables RLS on every table. Django connects as `postgres`, which owns the
+tables and holds `bypassrls`, so the app is unaffected. The Data API is off
+(Integrations, Data API) as of 2026-09-15, so PostgREST serves nothing and the
+advisor reports zero errors. Re-run the script if the API is ever re-enabled.
+
 ## Follow-ups (outside this plan)
 
 - praxis: replace the `sqlite3` reader in `src/praxis/spectrace.py` with a
