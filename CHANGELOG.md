@@ -40,6 +40,7 @@ lives in [ROADMAP.md](ROADMAP.md).
 - Guard claim_task against concurrent lost updates (`9fcb344`)
 - Add make demo-pipeline target for Document Pipeline example (`b1a09fa`)
 - Close TOCTOU race in GitHub webhook idempotency check (`bd8104a`)
+- Lock Supabase public schema against anon PostgREST access (`22d7c8a`)
 
 ### Documentation
 
