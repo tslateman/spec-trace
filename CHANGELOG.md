@@ -55,6 +55,7 @@ lives in [ROADMAP.md](ROADMAP.md).
 - Tick the CI criterion in the Supabase plan (`027651b`)
 - Remove micode plugin from AGENTS.md, drop from config sample (`47c52d2`)
 - List check_invariants' real codes instead of a false A-K range (`235ed94`)
+- Add the archify architecture diagram source (`a0ac559`)
 
 ### Chores
 
