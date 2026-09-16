@@ -1,0 +1,387 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "SpecTrace System Architecture",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "output": "spectrace-architecture.html",
+    "repository": {
+      "url": "https://github.com/tslateman/spec-trace",
+      "revision": "ae35ee953a04bc3d05a68998ef049e542f46136b"
+    },
+    "viewBox": [
+      1380,
+      700
+    ],
+    "views": [
+      {
+        "id": "evidence-in",
+        "label": "Evidence intake",
+        "focus": [
+          "specs",
+          "tests",
+          "cli",
+          "core",
+          "db"
+        ],
+        "note": "Specs and JUnit XML enter through management commands that run Django in-process."
+      },
+      {
+        "id": "runtime-push",
+        "label": "Runtime push",
+        "focus": [
+          "runtime",
+          "slo",
+          "github",
+          "api",
+          "core"
+        ],
+        "note": "Instrumented apps, observability platforms, and GitHub push evidence to the REST API."
+      },
+      {
+        "id": "answers-out",
+        "label": "Answers out",
+        "focus": [
+          "db",
+          "admin",
+          "flows",
+          "linear"
+        ],
+        "note": "Coverage, risk, and flow state leave through the admin UI and the Linear integration."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "specs",
+      "type": "external",
+      "label": "Spec corpus",
+      "sublabel": "specs/ \u00b7 corpus/ Markdown",
+      "pos": [
+        40,
+        80
+      ],
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "tests",
+      "type": "external",
+      "label": "Test runner",
+      "sublabel": "pytest \u2192 JUnit XML",
+      "tag": "links.json",
+      "pos": [
+        40,
+        200
+      ],
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "runtime",
+      "type": "external",
+      "label": "Instrumented app",
+      "sublabel": "spectrace_client SDK",
+      "pos": [
+        40,
+        320
+      ],
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "github",
+      "type": "external",
+      "label": "GitHub",
+      "sublabel": "push \u00b7 pull requests",
+      "pos": [
+        40,
+        440
+      ],
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "slo",
+      "type": "external",
+      "label": "Observability platform",
+      "sublabel": "Datadog \u00b7 groundcover",
+      "pos": [
+        40,
+        560
+      ],
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "cli",
+      "type": "backend",
+      "label": "spectrace CLI",
+      "sublabel": "Click \u2192 manage.py",
+      "tag": "Django in-process",
+      "pos": [
+        300,
+        200
+      ],
+      "size": [
+        160,
+        68
+      ],
+      "sources": [
+        {
+          "path": "spectrace/cli.py",
+          "label": "Click entry point"
+        }
+      ]
+    },
+    {
+      "id": "api",
+      "type": "backend",
+      "label": "REST API",
+      "sublabel": "/api/v1/ on Fly.io",
+      "tag": "HMAC webhook",
+      "pos": [
+        300,
+        418
+      ],
+      "size": [
+        160,
+        96
+      ],
+      "sources": [
+        {
+          "path": "spectrace/requirements/api_v1.py",
+          "label": "v1 handlers"
+        },
+        {
+          "path": "spectrace/requirements/webhooks.py",
+          "label": "GitHub webhook"
+        }
+      ]
+    },
+    {
+      "id": "core",
+      "type": "backend",
+      "label": "requirements app",
+      "sublabel": "parser \u00b7 importer \u00b7 impact",
+      "pos": [
+        580,
+        250
+      ],
+      "size": [
+        180,
+        80
+      ],
+      "sources": [
+        {
+          "path": "spectrace/requirements/models.py",
+          "label": "Requirement tree"
+        },
+        {
+          "path": "spectrace/requirements/parser.py",
+          "label": "Spec parser"
+        },
+        {
+          "path": "spectrace/requirements/services/impact_analyzer.py",
+          "label": "Impact analysis"
+        }
+      ]
+    },
+    {
+      "id": "flows",
+      "type": "backend",
+      "label": "Verification flows",
+      "sublabel": "YAML steps \u00b7 executors",
+      "pos": [
+        580,
+        470
+      ],
+      "size": [
+        180,
+        68
+      ],
+      "sources": [
+        {
+          "path": "spectrace/requirements/flows/engine.py",
+          "label": "Flow engine"
+        }
+      ]
+    },
+    {
+      "id": "db",
+      "type": "database",
+      "label": "Supabase Postgres",
+      "sublabel": "session pooler :5432",
+      "tag": "shared by CLI and web",
+      "pos": [
+        880,
+        250
+      ],
+      "size": [
+        160,
+        80
+      ],
+      "sources": [
+        {
+          "path": "spectrace/spectrace/settings.py",
+          "label": "DATABASE_URL"
+        }
+      ]
+    },
+    {
+      "id": "linear",
+      "type": "external",
+      "label": "Linear",
+      "sublabel": "GraphQL issues",
+      "pos": [
+        880,
+        470
+      ],
+      "size": [
+        160,
+        68
+      ]
+    },
+    {
+      "id": "admin",
+      "type": "frontend",
+      "label": "Traceability matrix",
+      "sublabel": "Django Unfold admin",
+      "pos": [
+        1160,
+        250
+      ],
+      "size": [
+        170,
+        80
+      ],
+      "sources": [
+        {
+          "path": "spectrace/requirements/matrix.py",
+          "label": "Matrix view"
+        },
+        {
+          "path": "spectrace/requirements/dashboard.py",
+          "label": "Risk dashboards"
+        }
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "parse-specs",
+      "from": "specs",
+      "to": "cli",
+      "label": "parse_specs",
+      "toSide": "top"
+    },
+    {
+      "id": "import-results",
+      "from": "tests",
+      "to": "cli",
+      "label": "import_results",
+      "variant": "emphasis"
+    },
+    {
+      "id": "push-validations",
+      "from": "runtime",
+      "to": "api",
+      "label": "in-app validations",
+      "toSide": "top"
+    },
+    {
+      "id": "webhook",
+      "from": "github",
+      "to": "api",
+      "label": "HMAC-SHA256 webhook",
+      "variant": "security"
+    },
+    {
+      "id": "push-slo",
+      "from": "slo",
+      "to": "api",
+      "label": "SLO status JSON",
+      "toSide": "bottom"
+    },
+    {
+      "id": "cli-core",
+      "from": "cli",
+      "to": "core",
+      "label": "bootstraps Django",
+      "variant": "emphasis"
+    },
+    {
+      "id": "api-core",
+      "from": "api",
+      "to": "core",
+      "label": "JSON handlers"
+    },
+    {
+      "id": "core-db",
+      "from": "core",
+      "to": "db",
+      "label": "Django ORM",
+      "variant": "emphasis"
+    },
+    {
+      "id": "core-flows",
+      "from": "core",
+      "to": "flows",
+      "label": "run_flow",
+      "labelDy": 40
+    },
+    {
+      "id": "flows-linear",
+      "from": "flows",
+      "to": "linear",
+      "label": "issue steps"
+    },
+    {
+      "id": "db-admin",
+      "from": "db",
+      "to": "admin",
+      "label": "coverage + risk queries",
+      "variant": "emphasis"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Evidence in",
+      "items": [
+        "parse_specs reads specs/ and corpus/ Markdown into a treebeard requirement tree",
+        "import_results ingests JUnit XML; the pytest plugin emits links.json",
+        "Instrumented apps and observability platforms POST to /api/v1/"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "One shared database",
+      "items": [
+        "The CLI bootstraps Django in-process and writes to Postgres directly",
+        "Fly.io serves the API and admin against the same session pooler",
+        "DATABASE_URL falls back to local SQLite when unset"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Answers out",
+      "items": [
+        "post_impact_comment writes change-impact analysis back to the pull request",
+        "report_to_linear and the flow handler reach Linear over GraphQL",
+        "The matrix and high-risk dashboards answer what a change puts at risk"
+      ]
+    }
+  ]
+}

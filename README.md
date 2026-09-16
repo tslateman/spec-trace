@@ -18,6 +18,10 @@ verify, and what a change puts at risk.
 
 A rule engine asserts coverage. Reviewers judge whether a spec honors an obligation.
 
+`docs/spectrace-architecture.json` maps the components and the three flows through
+them: evidence in, one shared database, answers out. Render it with
+`just deliver architecture docs/spectrace-architecture.json docs/spectrace-architecture.html`.
+
 ## Prerequisites
 
 SpecTrace uses [uv](https://github.com/astral-sh/uv) for fast, reliable package management:
