@@ -1,0 +1,403 @@
+/* Hide empty Unfold header container on getting started page */
+#content > header,
+.container.h-16 {
+    display: none !important;
+}
+
+/* Page layout */
+.getting-started {
+    margin-top: var(--st-space-16);
+    padding: var(--st-space-8);
+}
+
+.getting-started__container {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+/* Hero section */
+.gs-hero {
+    text-align: center;
+    margin-bottom: var(--st-space-12);
+}
+
+.gs-hero__title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    color: var(--st-text);
+    margin-bottom: var(--st-space-4);
+}
+
+.gs-hero__subtitle {
+    font-size: 1.25rem;
+    color: var(--st-text-muted);
+    max-width: 600px;
+    margin: 0 auto;
+    line-height: 1.5;
+}
+
+/* Section styling */
+.gs-section {
+    margin-bottom: var(--st-space-12);
+}
+
+.gs-section__title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--st-text);
+    margin-bottom: var(--st-space-4);
+    display: flex;
+    align-items: center;
+    gap: var(--st-space-3);
+}
+
+.gs-section__number {
+    width: 36px;
+    height: 36px;
+    background: var(--st-accent-500);
+    color: white;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.gs-section__desc {
+    font-size: 1rem;
+    color: var(--st-text-muted);
+    line-height: 1.6;
+    margin-bottom: var(--st-space-6);
+}
+
+/* Code block with copy button */
+.gs-code-block {
+    position: relative;
+    margin-bottom: var(--st-space-6);
+}
+
+.gs-code-block__label {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--st-text-subtle);
+    background: var(--st-surface-sunken);
+    padding: var(--st-space-2) var(--st-space-4);
+    border-radius: var(--st-radius-md) var(--st-radius-md) 0 0;
+    border: 1px solid var(--st-border);
+    border-bottom: none;
+}
+
+html.dark .gs-code-block__label {
+    background: #0d0f12;
+    border-color: var(--st-border);
+}
+
+.gs-code-block__content {
+    position: relative;
+    background: #16191d;
+    border-radius: 0 0 var(--st-radius-md) var(--st-radius-md);
+    border: 1px solid #16191d;
+    overflow: hidden;
+}
+
+.gs-code-block__content--no-label {
+    border-radius: var(--st-radius-md);
+}
+
+html.dark .gs-code-block__content {
+    background: #0d0f12;
+    border-color: #0d0f12;
+}
+
+.gs-code-block pre {
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    color: #f1f3f5;
+    padding: var(--st-space-5);
+    padding-right: var(--st-space-12);
+    margin: 0;
+    overflow-x: auto;
+    line-height: 1.6;
+    white-space: pre;
+}
+
+.gs-copy-btn {
+    position: absolute;
+    top: var(--st-space-2);
+    right: var(--st-space-2);
+    padding: var(--st-space-2) var(--st-space-3);
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    border-radius: var(--st-radius-sm);
+    color: #adb5bd;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    transition: all 0.15s var(--st-ease-out);
+}
+
+.gs-copy-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: #f1f3f5;
+}
+
+.gs-copy-btn--copied {
+    background: var(--st-pass);
+    color: white;
+}
+
+/* Workflow steps */
+.gs-workflow {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--st-space-2);
+    padding: var(--st-space-6) 0;
+    overflow-x: auto;
+    margin-bottom: var(--st-space-6);
+}
+
+.gs-workflow-step {
+    flex: 1;
+    min-width: 140px;
+    padding: var(--st-space-5);
+    background: var(--st-surface);
+    border: 1px solid var(--st-border);
+    border-radius: var(--st-radius-lg);
+    text-align: center;
+}
+
+.gs-workflow-step__number {
+    width: 32px;
+    height: 32px;
+    background: var(--st-accent-500);
+    color: white;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 0.875rem;
+    margin-bottom: var(--st-space-3);
+}
+
+.gs-workflow-step__title {
+    font-weight: 600;
+    color: var(--st-text);
+    font-size: 0.9375rem;
+}
+
+.gs-workflow-step__desc {
+    font-size: 0.75rem;
+    color: var(--st-text-subtle);
+    margin-top: var(--st-space-1);
+}
+
+.gs-workflow-arrow {
+    display: flex;
+    align-items: center;
+    color: var(--st-text-subtle);
+    font-size: 1.25rem;
+    flex-shrink: 0;
+    padding-top: var(--st-space-6);
+}
+
+/* Result preview */
+.gs-result {
+    background: var(--st-surface-sunken);
+    border: 1px solid var(--st-border);
+    border-radius: var(--st-radius-lg);
+    padding: var(--st-space-6);
+    margin-bottom: var(--st-space-6);
+}
+
+.gs-result__title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--st-text);
+    margin-bottom: var(--st-space-4);
+}
+
+.gs-result__badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--st-space-4);
+    margin-bottom: var(--st-space-4);
+}
+
+.gs-badge-example {
+    display: flex;
+    align-items: center;
+    gap: var(--st-space-2);
+}
+
+.gs-badge-example__badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--st-space-1);
+    padding: 0.25rem 0.625rem;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    border-radius: var(--st-radius-sm);
+}
+
+.gs-badge-example__badge--pass {
+    background: var(--st-pass-muted);
+    color: var(--st-pass-dark);
+}
+
+html.dark .gs-badge-example__badge--pass {
+    color: var(--st-pass);
+}
+
+.gs-badge-example__badge--fail {
+    background: var(--st-fail-muted);
+    color: var(--st-fail-dark);
+}
+
+html.dark .gs-badge-example__badge--fail {
+    color: var(--st-fail);
+}
+
+.gs-badge-example__badge--untested {
+    background: var(--st-untested-muted);
+    color: var(--st-untested);
+}
+
+.gs-badge-example__label {
+    font-size: 0.8125rem;
+    color: var(--st-text-muted);
+}
+
+.gs-result__desc {
+    font-size: 0.875rem;
+    color: var(--st-text-muted);
+    line-height: 1.6;
+}
+
+/* Callout box */
+.gs-callout {
+    background: var(--st-accent-bg);
+    border-left: 4px solid var(--st-accent-500);
+    border-radius: var(--st-radius-sm);
+    padding: var(--st-space-4) var(--st-space-5);
+    margin-bottom: var(--st-space-6);
+}
+
+.gs-callout__text {
+    font-size: 0.9375rem;
+    color: var(--st-text);
+    line-height: 1.5;
+    margin: 0;
+}
+
+.gs-callout__text code {
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    background: rgba(0, 0, 0, 0.1);
+    padding: 0.125rem 0.375rem;
+    border-radius: var(--st-radius-sm);
+}
+
+html.dark .gs-callout__text code {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* Next steps grid */
+.gs-next-steps {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--st-space-4);
+    margin-top: var(--st-space-8);
+}
+
+.gs-next-step {
+    display: flex;
+    flex-direction: column;
+    padding: var(--st-space-5);
+    background: var(--st-surface);
+    border: 1px solid var(--st-border);
+    border-radius: var(--st-radius-lg);
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.2s ease;
+}
+
+.gs-next-step:hover {
+    border-color: var(--st-accent-500);
+    transform: translateY(-2px);
+    box-shadow: var(--st-shadow-md);
+}
+
+.gs-next-step__title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--st-text);
+    margin-bottom: var(--st-space-2);
+}
+
+.gs-next-step__desc {
+    font-size: 0.8125rem;
+    color: var(--st-text-muted);
+    line-height: 1.4;
+}
+
+/* Footer link */
+.gs-footer {
+    text-align: center;
+    padding: var(--st-space-8) 0;
+    margin-top: var(--st-space-8);
+    border-top: 1px solid var(--st-border);
+}
+
+.gs-footer a {
+    color: var(--st-accent-600);
+    text-decoration: none;
+}
+
+html.dark .gs-footer a {
+    color: var(--st-accent-400);
+}
+
+.gs-footer a:hover {
+    text-decoration: underline;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .gs-hero__title {
+        font-size: 2rem;
+    }
+
+    .gs-workflow {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .gs-workflow-arrow {
+        transform: rotate(90deg);
+        justify-content: center;
+        padding-top: 0;
+    }
+
+    .gs-section__title {
+        font-size: 1.25rem;
+    }
+
+    .gs-result__badges {
+        flex-direction: column;
+    }
+}
+

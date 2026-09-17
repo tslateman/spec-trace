@@ -2,6 +2,7 @@
 
 import yaml
 
+from requirements.services.impact_graph import EdgeSource
 from requirements.services.map_reader import MapReader
 
 
@@ -89,3 +90,124 @@ class TestMapReader:
         data = {"project": "x", "modules": {"a.py": {"requirements": "not-a-list"}}}
         errors = reader.validate_map(data)
         assert any("list" in e for e in errors)
+
+
+def _praxis_root(tmp_path):
+    return _make_project_root(
+        tmp_path,
+        "praxis",
+        {
+            "project": "praxis",
+            "modules": {
+                "src/praxis/spectrace.py": {
+                    "requirements": ["REQ-PRX-004"],
+                    "depends_on": [
+                        "spectrace:db/requirements_requirement",
+                        "spectrace:db/requirements_testrun",
+                    ],
+                },
+                "src/praxis/lore.py": {"requirements": ["REQ-PRX-001"]},
+            },
+        },
+    )
+
+
+def test_read_dependencies__returns_module_and_provider_surface_pairs(tmp_path):
+    reader = MapReader({"praxis": _praxis_root(tmp_path)})
+
+    assert reader.read_dependencies("praxis") == [
+        ("src/praxis/spectrace.py", "spectrace:db/requirements_requirement"),
+        ("src/praxis/spectrace.py", "spectrace:db/requirements_testrun"),
+    ]
+
+
+def test_read_all_dependencies__emits_dependency_edges_into_provider_surface_nodes(tmp_path):
+    reader = MapReader({"praxis": _praxis_root(tmp_path)})
+
+    edges = reader.read_all_dependencies()
+
+    assert [(e.source_id, e.target_id, e.source, e.project) for e in edges] == [
+        (
+            "praxis:src/praxis/spectrace.py",
+            "spectrace:db/requirements_requirement",
+            EdgeSource.DEPENDENCY,
+            "praxis",
+        ),
+        (
+            "praxis:src/praxis/spectrace.py",
+            "spectrace:db/requirements_testrun",
+            EdgeSource.DEPENDENCY,
+            "praxis",
+        ),
+    ]
+
+
+def test_read_all__leaves_dependencies_out_of_the_annotated_edges(tmp_path):
+    reader = MapReader({"praxis": _praxis_root(tmp_path)})
+
+    assert {e.source for e in reader.read_all()} == {EdgeSource.ANNOTATED}
+
+
+def test_validate_map__accepts_a_well_formed_depends_on_list():
+    data = {
+        "project": "praxis",
+        "modules": {
+            "src/praxis/spectrace.py": {
+                "requirements": ["REQ-PRX-004"],
+                "depends_on": ["spectrace:db/requirements_requirement"],
+            }
+        },
+    }
+
+    assert MapReader({}).validate_map(data) == []
+
+
+def test_validate_map__rejects_a_dependency_without_a_provider_prefix():
+    data = {
+        "project": "praxis",
+        "modules": {
+            "src/praxis/spectrace.py": {
+                "requirements": ["REQ-PRX-004"],
+                "depends_on": ["db/requirements_requirement"],
+            }
+        },
+    }
+
+    errors = MapReader({}).validate_map(data)
+
+    assert errors == [
+        "Module 'src/praxis/spectrace.py': dependency 'db/requirements_requirement'"
+        " must name a provider and a surface as 'project:surface'"
+    ]
+
+
+def test_validate_map__rejects_a_depends_on_that_is_not_a_list():
+    data = {
+        "project": "praxis",
+        "modules": {
+            "src/praxis/spectrace.py": {
+                "requirements": ["REQ-PRX-004"],
+                "depends_on": "spectrace:db/requirements_requirement",
+            }
+        },
+    }
+
+    errors = MapReader({}).validate_map(data)
+
+    assert errors == ["Module 'src/praxis/spectrace.py': 'depends_on' must be a list"]
+
+
+def test_validate_map__rejects_a_dependency_that_is_not_a_string():
+    data = {
+        "project": "praxis",
+        "modules": {
+            "src/praxis/spectrace.py": {
+                "requirements": ["REQ-PRX-004"],
+                "depends_on": [{"project": "spectrace"}],
+            }
+        },
+    }
+
+    errors = MapReader({}).validate_map(data)
+
+    assert errors == ["Module 'src/praxis/spectrace.py': dependency must be a string, got dict"]

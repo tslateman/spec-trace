@@ -10,13 +10,34 @@ from dataclasses import dataclass
 
 import requests
 
-from requirements.models import (
-    Requirement,
-    TestRequirementLink,
-    TestRun,
-)
-
 logger = logging.getLogger(__name__)
+
+
+PASSING_STATUS = "passed"
+FAILING_STATUSES = ("failed", "error")
+
+
+@dataclass
+class RequirementOutcome:
+    """How one requirement's linked tests came out in a run."""
+
+    passed: int = 0
+    failed: int = 0
+    total: int = 0
+
+
+def outcomes_by_requirement(results: list[dict]) -> dict[str, RequirementOutcome]:
+    """Tally each requirement's linked cases from a `test_run_payload` result list."""
+    outcomes: dict[str, RequirementOutcome] = {}
+    for result in results:
+        for requirement_id in result.get("requirement_ids", []):
+            outcome = outcomes.setdefault(requirement_id, RequirementOutcome())
+            outcome.total += 1
+            if result.get("status") == PASSING_STATUS:
+                outcome.passed += 1
+            elif result.get("status") in FAILING_STATUSES:
+                outcome.failed += 1
+    return outcomes
 
 
 @dataclass
@@ -206,15 +227,16 @@ class LinearReporter:
 
     def report_test_results(
         self,
-        test_run: TestRun,
+        run: dict,
         add_comments: bool = True,
         update_labels: bool = True,
         skip_closed: bool = True,
     ) -> LinearReportResult:
-        """Report test results to all linked Linear issues.
+        """Report a test run to every Linear issue its results name.
 
         Args:
-            test_run: TestRun to report results for.
+            run: `test_run_payload` output, optionally carrying `git_sha`,
+                `ci_job_url`, and `reported_at` for the comment body.
             add_comments: Whether to add comments to issues.
             update_labels: Whether to update labels on issues.
             skip_closed: Whether to skip closed/completed/canceled issues.
@@ -226,22 +248,17 @@ class LinearReporter:
         issues_updated = 0
         issues_skipped = 0
 
-        # Get all unique requirements that have linked tests in this run
-        requirements = Requirement.objects.filter(
-            test_links__last_run_at=test_run.imported_at
-        ).distinct()
-
-        for req in requirements:
+        for external_id, outcome in outcomes_by_requirement(run.get("results", [])).items():
             try:
-                result = self._report_to_requirement(
-                    req, test_run, add_comments, update_labels, skip_closed
+                reported = self._report_to_requirement(
+                    external_id, outcome, run, add_comments, update_labels, skip_closed
                 )
-                if result:
+                if reported:
                     issues_updated += 1
                 else:
                     issues_skipped += 1
             except Exception as e:
-                errors.append(f"{req.external_id}: {str(e)}")
+                errors.append(f"{external_id}: {str(e)}")
 
         return LinearReportResult(
             success=len(errors) == 0,
@@ -253,22 +270,24 @@ class LinearReporter:
 
     def _report_to_requirement(
         self,
-        requirement: Requirement,
-        test_run: TestRun,
+        external_id: str,
+        outcome: RequirementOutcome,
+        run: dict,
         add_comments: bool,
         update_labels: bool,
         skip_closed: bool,
     ) -> bool:
-        """Report test results to a single requirement's Linear issue.
+        """Report one requirement's outcome to its Linear issue.
 
         Returns True if updated, False if skipped.
         """
-        # Get issue from Linear
-        issue = self._get_issue_by_identifier(requirement.external_id)
-        if not issue:
-            return False  # Issue not found in Linear
+        if outcome.total == 0:
+            return False
 
-        # Skip closed issues
+        issue = self._get_issue_by_identifier(external_id)
+        if not issue:
+            return False
+
         state_type = issue.get("state", {}).get("type", "")
         if skip_closed and state_type in ("completed", "canceled"):
             return False
@@ -276,55 +295,21 @@ class LinearReporter:
         team_id = issue.get("team", {}).get("id")
         issue_id = issue.get("id")
 
-        # Get test results for this requirement
-        links = TestRequirementLink.objects.filter(
-            requirement=requirement,
-            last_run_at=test_run.imported_at,
-        )
-
-        passed = links.filter(last_status="passed").count()
-        failed = links.filter(last_status__in=["failed", "error"]).count()
-        total = links.count()
-
-        if total == 0:
-            return False
-
-        # Add comment
         if add_comments:
-            status_emoji = "✅" if failed == 0 else "❌"
-            body = f"""{status_emoji} **Test Results Updated**
+            self._add_comment(issue_id, self._comment_body(outcome, run))
 
-| Status | Count |
-|--------|-------|
-| Passed | {passed} |
-| Failed | {failed} |
-| Total | {total} |
-
-*From test run at {test_run.imported_at.strftime("%Y-%m-%d %H:%M UTC")}*
-"""
-            if test_run.git_sha:
-                body += f"\nCommit: `{test_run.git_sha[:8]}`"
-            if test_run.ci_job_url:
-                body += f"\n[View CI Job]({test_run.ci_job_url})"
-
-            self._add_comment(issue_id, body)
-
-        # Update labels
         if update_labels and team_id:
-            # Get current labels (excluding our managed labels)
             current_labels = [
                 lbl["id"]
                 for lbl in issue.get("labels", {}).get("nodes", [])
                 if lbl["name"] not in [self.LABEL_LINKED, self.LABEL_PASSING, self.LABEL_FAILING]
             ]
 
-            # Add linked label
             linked_label_id = self._get_or_create_label(team_id, self.LABEL_LINKED, "#888888")
             if linked_label_id:
                 current_labels.append(linked_label_id)
 
-            # Add passing/failing label
-            if failed == 0:
+            if outcome.failed == 0:
                 passing_label_id = self._get_or_create_label(team_id, self.LABEL_PASSING, "#22c55e")
                 if passing_label_id:
                     current_labels.append(passing_label_id)
@@ -336,3 +321,24 @@ class LinearReporter:
             self._update_labels(issue_id, current_labels)
 
         return True
+
+    def _comment_body(self, outcome: RequirementOutcome, run: dict) -> str:
+        status_emoji = "\u2705" if outcome.failed == 0 else "\u274c"
+        body = f"""{status_emoji} **Test Results Updated**
+
+| Status | Count |
+|--------|-------|
+| Passed | {outcome.passed} |
+| Failed | {outcome.failed} |
+| Total | {outcome.total} |
+"""
+        reported_at = run.get("reported_at")
+        if reported_at:
+            body += f"\n*From test run at {reported_at}*\n"
+        git_sha = run.get("git_sha")
+        if git_sha:
+            body += f"\nCommit: `{git_sha[:8]}`"
+        ci_job_url = run.get("ci_job_url")
+        if ci_job_url:
+            body += f"\n[View CI Job]({ci_job_url})"
+        return body

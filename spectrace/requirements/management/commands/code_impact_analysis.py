@@ -7,11 +7,27 @@ from pathlib import Path
 from django.core.management.base import BaseCommand, CommandError
 
 from ...projects import display_node
-from ...services.impact_analyzer import ImpactAnalyzer, RefPair, ref_labels
+from ...services.impact_analyzer import ImpactAnalyzer, ProjectRevision
 from ...services.impact_markdown import render_markdown
 
 BLOCKING_LEVELS = ("high", "critical")
-REF_RANGE_SEPARATOR = ".."
+
+
+def _parse_pairs(raw: str, flag: str, shape: str, example: str) -> dict[str, str]:
+    pairs: dict[str, str] = {}
+    for pair in raw.split(","):
+        pair = pair.strip()
+        if not pair:
+            continue
+        if "=" not in pair:
+            raise CommandError(
+                f"Invalid {flag} entry {pair!r}. Expected {shape} pairs, e.g. {example}"
+            )
+        name, value = pair.split("=", 1)
+        pairs[name.strip()] = value.strip()
+    if not pairs:
+        raise CommandError(f"{flag} was given but named no projects")
+    return pairs
 
 
 def parse_project_roots(raw: str) -> dict[str, Path]:
@@ -21,59 +37,59 @@ def parse_project_roots(raw: str) -> dict[str, Path]:
         CommandError: If a pair omits ``=`` or names a directory that is absent.
     """
     roots: dict[str, Path] = {}
-    for pair in raw.split(","):
-        pair = pair.strip()
-        if not pair:
-            continue
-        if "=" not in pair:
-            raise CommandError(
-                f"Invalid --project-roots entry {pair!r}. "
-                "Expected name=path pairs, e.g. praxis=/path/to/praxis"
-            )
-        name, path = pair.split("=", 1)
-        root = Path(path.strip()).expanduser()
+    for name, path in _parse_pairs(
+        raw, "--project-roots", "name=path", "praxis=/path/to/praxis"
+    ).items():
+        root = Path(path).expanduser()
         if not root.is_dir():
-            raise CommandError(f"Project root for {name.strip()!r} is not a directory: {root}")
-        roots[name.strip()] = root
-
-    if not roots:
-        raise CommandError("--project-roots was given but named no projects")
+            raise CommandError(f"Project root for {name!r} is not a directory: {root}")
+        roots[name] = root
     return roots
 
 
-def parse_project_refs(raw: str) -> dict[str, RefPair]:
-    """Parse comma-separated ``name=base..head`` entries into one ref pair per project.
+def parse_project_refs(raw: str) -> dict[str, tuple[str, str]]:
+    """Parse comma-separated ``name=base..head`` pairs into a ref pair per project.
 
     Raises:
-        CommandError: If an entry omits ``=`` or ``..``, leaves a ref empty, or
-            if the whole value names no project.
+        CommandError: If a pair omits ``=`` or its value is not ``base..head``.
     """
-    pairs: dict[str, RefPair] = {}
-    for entry in raw.split(","):
-        entry = entry.strip()
-        if not entry:
-            continue
-        if "=" not in entry:
+    refs: dict[str, tuple[str, str]] = {}
+    for name, span in _parse_pairs(
+        raw, "--project-refs", "name=base..head", "praxis=main..HEAD"
+    ).items():
+        base_ref, sep, head_ref = span.partition("..")
+        if not sep or not base_ref or not head_ref:
             raise CommandError(
-                f"Invalid --project-refs entry {entry!r}. "
-                "Expected name=base..head entries, e.g. praxis=main..HEAD"
+                f"Invalid --project-refs entry for {name!r}: {span!r}. Expected base..head"
             )
-        name, refs = entry.split("=", 1)
-        if refs.count(REF_RANGE_SEPARATOR) != 1:
-            raise CommandError(
-                f"Invalid --project-refs entry {entry!r}. "
-                f"Separate the two refs with one {REF_RANGE_SEPARATOR}, e.g. praxis=main..HEAD"
-            )
-        base, head = (part.strip() for part in refs.split(REF_RANGE_SEPARATOR))
-        if not base or not head:
-            raise CommandError(
-                f"Invalid --project-refs entry {entry!r}. Name a base and a head ref."
-            )
-        pairs[name.strip()] = RefPair(base, head)
+        refs[name] = (base_ref, head_ref)
+    return refs
 
-    if not pairs:
-        raise CommandError("--project-refs was given but named no projects")
-    return pairs
+
+def parse_projects(roots_raw: str, refs_raw: str) -> dict[str, ProjectRevision]:
+    """Pair every project root with its own ref pair.
+
+    Raises:
+        CommandError: If either flag is missing, a root has no refs, a ref pair
+            names no root, or a ref is malformed.
+    """
+    if not roots_raw or not refs_raw:
+        raise CommandError(
+            "--project-roots and --project-refs go together: "
+            "every project root needs its own base..head"
+        )
+    roots = parse_project_roots(roots_raw)
+    refs = parse_project_refs(refs_raw)
+    unpaired_roots = sorted(set(roots) - set(refs))
+    if unpaired_roots:
+        raise CommandError(f"--project-refs names no refs for: {', '.join(unpaired_roots)}")
+    unpaired_refs = sorted(set(refs) - set(roots))
+    if unpaired_refs:
+        raise CommandError(f"--project-roots names no root for: {', '.join(unpaired_refs)}")
+    try:
+        return {name: ProjectRevision(root, *refs[name]) for name, root in roots.items()}
+    except ValueError as e:
+        raise CommandError(str(e))
 
 
 class Command(BaseCommand):
@@ -84,15 +100,13 @@ class Command(BaseCommand):
             "base_ref",
             type=str,
             nargs="?",
-            default=None,
-            help="Base git ref (commit, branch, tag), shared by every project root",
+            help="Base git ref (commit, branch, tag) for the local repository",
         )
         parser.add_argument(
             "head_ref",
             type=str,
             nargs="?",
-            default=None,
-            help="Head git ref to compare against base, shared by every project root",
+            help="Head git ref to compare against base for the local repository",
         )
         parser.add_argument(
             "--format",
@@ -104,17 +118,16 @@ class Command(BaseCommand):
             "--project-roots",
             type=str,
             default=None,
-            help="Comma-separated project=path pairs (e.g., lore=/path/to/lore,praxis=/path)",
+            help=(
+                "Comma-separated project=path pairs (e.g., lore=/path/to/lore,praxis=/path). "
+                "Replaces the positional refs; pair it with --project-refs"
+            ),
         )
         parser.add_argument(
             "--project-refs",
             type=str,
             default=None,
-            help=(
-                "Comma-separated project=base..head entries, one per project root "
-                "(e.g., spectrace=HEAD~1..HEAD,praxis=main..HEAD). Name every root, "
-                "and leave the positional refs off."
-            ),
+            help="Comma-separated project=base..head pairs, one per --project-roots entry",
         )
         parser.add_argument(
             "--output",
@@ -125,37 +138,20 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         output_format = options["format"]
-
-        project_roots = None
-        if options["project_roots"]:
-            project_roots = parse_project_roots(options["project_roots"])
-
-        project_refs = None
-        if options["project_refs"]:
-            project_refs = parse_project_refs(options["project_refs"])
-
-        base_label, head_label = (
-            ref_labels(project_refs) if project_refs else (options["base_ref"], options["head_ref"])
-        )
-
         analyzer = ImpactAnalyzer()
+        projects = self._projects(analyzer, options)
 
         try:
-            result = analyzer.code_analyze(
-                options["base_ref"],
-                options["head_ref"],
-                project_roots=project_roots,
-                project_refs=project_refs,
-            )
+            result = analyzer.code_analyze(projects)
         except ValueError as e:
             raise CommandError(str(e))
 
         if output_format == "json":
             report = self._render_json(result)
         elif output_format in ("md", "markdown"):
-            report = render_markdown(result, base_label, head_label)
+            report = render_markdown(result)
         else:
-            report = self._render_text(result, base_label, head_label)
+            report = self._render_text(result)
 
         destination = options.get("output")
         if destination:
@@ -165,6 +161,27 @@ class Command(BaseCommand):
 
         if result.risk_level in BLOCKING_LEVELS:
             sys.exit(1)
+
+    def _projects(self, analyzer, options) -> dict[str, ProjectRevision]:
+        """Resolve the projects to diff from positional refs or the per-project flags."""
+        base_ref, head_ref = options["base_ref"], options["head_ref"]
+        multi = options["project_roots"] or options["project_refs"]
+        if multi and (base_ref or head_ref):
+            raise CommandError(
+                "Positional refs apply to the local repository only. "
+                "With --project-roots, give each project its refs in --project-refs"
+            )
+        if multi:
+            return parse_projects(options["project_roots"], options["project_refs"])
+        if not (base_ref and head_ref):
+            raise CommandError(
+                "Give base_ref and head_ref for the local repository, "
+                "or --project-roots with --project-refs"
+            )
+        try:
+            return analyzer.local_revision(base_ref, head_ref)
+        except ValueError as e:
+            raise CommandError(str(e))
 
     def _test_lines(self, result) -> list[str]:
         """List affected tests under the project whose requirements they verify."""
@@ -178,6 +195,10 @@ class Command(BaseCommand):
     def _render_json(self, result) -> str:
         """Render structured JSON."""
         output = {
+            "revisions": {
+                project: {"base_ref": revision.base_ref, "head_ref": revision.head_ref}
+                for project, revision in sorted(result.revisions.items())
+            },
             "changed_files": result.changed_files,
             "blast": result.blast,
             "affected_tests": result.affected_tests,
@@ -186,7 +207,6 @@ class Command(BaseCommand):
             "risk_level": result.risk_level,
             "edge_summary": result.edge_summary,
             "traversed_edges": result.traversed_edges,
-            "unresolved_dependencies": result.unresolved_dependencies,
             "summary": {
                 "files_changed": sum(len(v) for v in result.changed_files.values()),
                 "tests_affected": len(result.affected_tests),
@@ -196,13 +216,18 @@ class Command(BaseCommand):
         }
         return json.dumps(output, indent=2)
 
-    def _render_text(self, result, base_ref, head_ref) -> str:
+    def _render_text(self, result) -> str:
         """Render human-readable text."""
-        lines = [
-            f"Code Impact Analysis: {base_ref} .. {head_ref}",
-            "=" * 50,
-            "",
-        ]
+        if len(result.revisions) == 1:
+            (revision,) = result.revisions.values()
+            lines = [f"Code Impact Analysis: {revision.base_ref} .. {revision.head_ref}"]
+        else:
+            lines = ["Code Impact Analysis"]
+            lines.extend(
+                f"  [{project}] {revision.base_ref} .. {revision.head_ref}"
+                for project, revision in sorted(result.revisions.items())
+            )
+        lines.extend(["=" * 50, ""])
 
         total_files = sum(len(v) for v in result.changed_files.values())
         if not total_files:
@@ -243,23 +268,10 @@ class Command(BaseCommand):
         lines.append("")
         lines.append(
             f"Edges carrying this change: {edges['annotated']} annotated, "
+            f"{edges['dependency']} dependency, "
             f"{edges['contract']} contract, "
-            f"{edges['inferred']} inferred, "
-            f"{edges['dependency']} dependency"
+            f"{edges['inferred']} inferred"
         )
-
-        if result.unresolved_dependencies:
-            lines.append("")
-            lines.append(
-                self.style.WARNING(
-                    f"Dependencies not analysed ({len(result.unresolved_dependencies)}): "
-                    "a declared provider was absent from this run"
-                )
-            )
-            for item in result.unresolved_dependencies:
-                lines.append(
-                    f"  {item['consumer']}:{item['module']} -> {item['provider']}:{item['surface']}"
-                )
 
         if result.affected_tests:
             lines.append("")

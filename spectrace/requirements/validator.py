@@ -7,11 +7,17 @@ Detects drift between requirements, tests, and their linkages.
 import os
 import re
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
+from django.utils import timezone
+
+from .importer import normalize_nodeid
 from .models import Requirement, RiskLevel, TestRequirementLink, TestRun
+
+MAX_CHILDREN = 10
+MAX_UNTESTED_DAYS = 30
 
 
 @dataclass
@@ -255,13 +261,16 @@ def detect_stale_links() -> DriftResult:
     if not latest_run:
         return result
 
-    recent_nodeids = set(latest_run.results.values_list("test_nodeid", flat=True))
+    recent_nodeids = {
+        normalize_nodeid(nodeid)
+        for nodeid in latest_run.results.values_list("test_nodeid", flat=True)
+    }
 
     # Check each link
     for link in TestRequirementLink.objects.all():
         result.items_checked += 1
 
-        if link.test_nodeid not in recent_nodeids:
+        if normalize_nodeid(link.test_nodeid) not in recent_nodeids:
             result.errors.append(
                 ValidationIssue(
                     type="stale_link",
@@ -309,6 +318,72 @@ def detect_orphan_requirements() -> DriftResult:
                     },
                 )
             )
+
+    return result
+
+
+def detect_wide_parents(max_children: int = MAX_CHILDREN) -> DriftResult:
+    """Detect active requirements with more direct children than max_children.
+
+    Returns:
+        DriftResult with wide parent warnings, one per parent.
+    """
+    result = DriftResult()
+
+    for req in Requirement.objects.filter(status="active", numchild__gt=0):
+        result.items_checked += 1
+        if req.numchild <= max_children:
+            continue
+        result.warnings.append(
+            ValidationIssue(
+                type="wide_parent",
+                id=req.external_id,
+                message=(
+                    f"Requirement has {req.numchild} direct children, "
+                    f"over the limit of {max_children}; split it"
+                ),
+                details={
+                    "title": req.title,
+                    "source_file": req.source_file,
+                    "children": req.numchild,
+                    "max_children": max_children,
+                },
+            )
+        )
+
+    return result
+
+
+def detect_long_untested(max_days: int = MAX_UNTESTED_DAYS) -> DriftResult:
+    """Detect active leaf requirements still untested more than max_days after creation.
+
+    Returns:
+        DriftResult with long untested warnings, one per requirement.
+    """
+    result = DriftResult()
+    cutoff = timezone.now() - timedelta(days=max_days)
+
+    for req in Requirement.objects.filter(
+        status="active", numchild=0, verification_status="untested", created_at__lt=cutoff
+    ):
+        result.items_checked += 1
+        age_days = (timezone.now() - req.created_at).days
+        result.warnings.append(
+            ValidationIssue(
+                type="long_untested",
+                id=req.external_id,
+                message=(
+                    f"Requirement has stayed untested for {age_days} days, "
+                    f"over the limit of {max_days}"
+                ),
+                details={
+                    "title": req.title,
+                    "source_file": req.source_file,
+                    "age_days": age_days,
+                    "max_days": max_days,
+                },
+            )
+        )
 
     return result
 
@@ -389,6 +464,8 @@ def detect_all_drift(
     # Always run database-based checks
     result.merge(detect_stale_links())
     result.merge(detect_orphan_requirements())
+    result.merge(detect_wide_parents())
+    result.merge(detect_long_untested())
 
     # File-based checks only if directories provided
     if test_directory:

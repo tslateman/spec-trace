@@ -1,0 +1,25 @@
+name = "spectrace"
+main = "src/index.ts"
+compatibility_date = "2026-03-01"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = "./public"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "spectrace"
+database_id = "93274222-29a9-4c8c-9f55-a5c655902c06"
+migrations_dir = "migrations"
+
+[[durable_objects.bindings]]
+name = "TASK_LEDGER"
+class_name = "TaskLedger"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["TaskLedger"]
+
+[vars]
+SPECTRACE_PROJECT = "spectrace"
+DASHBOARD_URL = "https://spectrace-app.spectrace.workers.dev"

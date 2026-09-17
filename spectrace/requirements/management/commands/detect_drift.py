@@ -8,10 +8,12 @@ from django.core.management.base import BaseCommand
 
 from requirements.validator import (
     detect_all_drift,
+    detect_long_untested,
     detect_orphan_requirements,
     detect_spec_drift,
     detect_stale_links,
     detect_unmarked_tests,
+    detect_wide_parents,
 )
 
 
@@ -37,7 +39,7 @@ class Command(BaseCommand):
         )
         parser.add_argument(
             "--check",
-            choices=["all", "unmarked", "stale", "orphan", "drift"],
+            choices=["all", "unmarked", "stale", "orphan", "wide", "untested", "drift"],
             default="all",
             help="Which drift check to run (default: all)",
         )
@@ -67,6 +69,10 @@ class Command(BaseCommand):
             result = detect_stale_links()
         elif check == "orphan":
             result = detect_orphan_requirements()
+        elif check == "wide":
+            result = detect_wide_parents()
+        elif check == "untested":
+            result = detect_long_untested()
         else:  # drift
             if not specs_dir:
                 self.stderr.write(self.style.ERROR("--specs required for drift check"))
@@ -92,6 +98,8 @@ class Command(BaseCommand):
             "unmarked": "unmarked tests",
             "stale": "stale links",
             "orphan": "orphan requirements",
+            "wide": "wide parents",
+            "untested": "long untested requirements",
             "drift": "spec drift",
         }
         self.stdout.write(f"Running {check_names[check]}...\n")

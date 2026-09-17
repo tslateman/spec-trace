@@ -1,0 +1,87 @@
+name: Corpus
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  drift:
+    name: Drift
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The reviews run against the corpus as it stood before this change,
+          # so the job reads that revision out of history.
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: |
+          pip install uv
+          uv pip install --system -e ./spectrace-flows -e ".[dev]"
+
+      - name: Create the database
+        run: python spectrace/manage.py migrate --no-input
+
+      # Specs and corpus both come from the base revision, so a citation always
+      # resolves: the specs of that revision cite the entries of that revision.
+      # Reviewing this revision's specs against the base corpus would abort on
+      # every entry the change adds or bumps.
+      - name: Seed the specs and corpus as they stood before this change
+        run: |
+          base="${{ github.event.pull_request.base.sha || github.event.before }}"
+          git worktree add ../corpus-base "$base"
+          cd ../corpus-base
+          python "$GITHUB_WORKSPACE/spectrace/manage.py" parse_specs specs
+          python "$GITHUB_WORKSPACE/spectrace/manage.py" parse_specs meta/specs
+          for dir in corpus meta/corpus; do
+            if [ -d "$dir" ]; then
+              python "$GITHUB_WORKSPACE/spectrace/manage.py" parse_corpus "$dir"
+            fi
+          done
+
+      # Run from the base worktree so `git ls-files` lists the specs that
+      # revision had, and `parse_specs` stored their paths relative to it.
+      - name: Record a review of every spec against that corpus
+        run: |
+          cd ../corpus-base
+          for spec in $(git ls-files 'specs/**/*.md' 'meta/specs/*.md'); do
+            python "$GITHUB_WORKSPACE/spectrace/manage.py" corpus_review "$spec" --reviewer ci || true
+          done
+
+      # A review that aborts on a bad citation records nothing and exits 1, the
+      # same code a review reporting findings exits with. The ledger tells them
+      # apart: an aborted review leaves its requirements unreviewed.
+      - name: Confirm every requirement recorded a review
+        run: |
+          spectrace corpus coverage --format json > coverage.json
+          python -c "
+          import json, sys
+          rows = json.load(open('coverage.json'))['requirements']
+          missing = [row['requirement_id'] for row in rows if not row['reviewed']]
+          if missing:
+              sys.exit('::error::corpus review recorded nothing for ' + ', '.join(missing))
+          "
+
+      - name: Import the specs and corpus this change carries
+        run: |
+          python spectrace/manage.py parse_specs specs
+          python spectrace/manage.py parse_specs meta/specs
+          python spectrace/manage.py parse_corpus corpus
+          python spectrace/manage.py parse_corpus meta/corpus
+
+      - name: Report the drift as a job summary
+        run: spectrace corpus drift --format md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Fail on a review the corpus outran
+        run: spectrace corpus drift --strict

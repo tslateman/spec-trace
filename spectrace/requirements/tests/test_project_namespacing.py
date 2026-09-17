@@ -25,7 +25,7 @@ from requirements.projects import (
     resolve_project,
     unqualify,
 )
-from requirements.services.impact_analyzer import ImpactAnalyzer
+from requirements.services.impact_analyzer import ImpactAnalyzer, ProjectRevision
 from requirements.services.map_reader import MapReader, project_for_path
 
 HOST = "spectrace"
@@ -327,7 +327,9 @@ class TestGraphKeepsProjectsApart:
         empty = MagicMock(stdout="")
 
         with patch("subprocess.run", autospec=True, side_effect=[diff_lore, empty, empty, empty]):
-            result = ImpactAnalyzer().code_analyze("HEAD~1", "HEAD", project_roots=roots)
+            result = ImpactAnalyzer().code_analyze(
+                {name: ProjectRevision(root, "HEAD~1", "HEAD") for name, root in roots.items()}
+            )
 
         assert result.blast["affected_requirements"] == ["lore:REQ-L-1"]
         assert result.blast["affected_projects"] == ["lore"]

@@ -1,0 +1,4799 @@
+openapi: 3.0.3
+info:
+  title: SpecTrace Worker API
+  version: 1.0.0
+  description: |-
+    The v1 contract the Cloudflare Worker implements. Every path under `/api/v1/` survives from the Django server with its schemas intact, minus the Linear and GitHub webhook integrations. Five endpoints are new: the CLI pushes the requirement tree (`PUT /api/v1/specs/`), impact reports (`POST /api/v1/results/impact/`), and drift reports (`POST /api/v1/results/drift/`); `spectrace lore sync` drains the task outbox (`GET /api/v1/tasks/outcomes`, `POST /api/v1/tasks/outcomes/ack`). `GET /api/v1/specs/impact/` and `GET /api/v1/specs/drift/` serve the last pushed report instead of computing one; their response shapes stay.
+
+    The Worker enforces the API key on every route: send it in the `X-API-Key` header. A missing or wrong key returns 401 with an `ErrorEnvelope`.
+
+    Two error shapes exist. Routes that moved from `api.py` keep the legacy `ErrorResponse` (`{"success": false, "error": "..."}`); every other route returns `ErrorEnvelope` (`{"error": {"code", "message", "details"}}`). Success bodies on those routes wrap the payload as `{"data": ..., "meta": ...}` with `meta` present only when the route paginates.
+servers:
+- url: /
+security:
+- apiKey: []
+tags:
+- name: Specs
+  description: The contract surface. The CLI writes it, agents and screens read it.
+- name: Tasks
+  description: The agent surface. Claims, leases, reviews, and the Lore outbox.
+- name: Results
+  description: The evidence surface. CI and the CLI push, screens read.
+- name: Flows
+- name: Verification
+- name: Verification Runs
+- name: Test Runs
+- name: SLO
+paths:
+  /api/v1/specs/:
+    get:
+      tags:
+      - Specs
+      summary: Page one project's requirements in tree order
+      description: |-
+        Lists requirements ordered by materialized path, so parents precede their children. `parent_id` narrows the page to that requirement's descendants; naming a requirement the store lacks returns an empty page rather than an error. `tags` takes a comma-separated list and matches a requirement carrying any of them. `status`, `verification_status`, and `risk_level` each match one value exactly. `max_depth` limits how deep below the scope the page reaches: `1` returns the roots, or the direct children of `parent_id`. Every row carries a `descendants` rollup counting its whole subtree by verification status, with the highest risk level found there, so a collapsed parent still shows what lies beneath it. `attention=1` keeps only requirements that are not passing or that carry high or critical risk. When `parent_id` names a stored requirement, `data.scope` carries it with its ancestors, root first, for breadcrumbs.
+      operationId: api-v1-specs_get
+      parameters:
+      - $ref: '#/components/parameters/ProjectParam'
+      - name: status
+        in: query
+        description: Lifecycle status, matched exactly
+        schema:
+          type: string
+      - name: verification_status
+        in: query
+        schema:
+          $ref: '#/components/schemas/VerificationStatus'
+      - name: risk_level
+        in: query
+        schema:
+          $ref: '#/components/schemas/RiskLevel'
+      - name: tags
+        in: query
+        description: Comma-separated tags; a requirement carrying any of them matches
+        schema:
+          type: string
+      - name: parent_id
+        in: query
+        description: External id whose descendants make up the page
+        schema:
+          type: string
+      - name: max_depth
+        in: query
+        description: Levels below the scope to include; 1 returns the roots, or the direct children of `parent_id`
+        schema:
+          type: integer
+          minimum: 1
+      - name: attention
+        in: query
+        description: '`1` keeps only requirements that are not passing or that carry high or critical risk'
+        schema:
+          type: string
+          enum:
+          - '1'
+      - $ref: '#/components/parameters/PageParam'
+      - $ref: '#/components/parameters/PerPageParam'
+      responses:
+        '200':
+          description: One page of requirements
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                - meta
+                properties:
+                  data:
+                    $ref: '#/components/schemas/RequirementPage'
+                  meta:
+                    $ref: '#/components/schemas/PagePosition'
+        '400':
+          description: Ambiguous project; `details.projects` lists the candidates
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    put:
+      tags:
+      - Specs
+      summary: Replace one project's requirement tree, test links, and flows
+      description: |-
+        Bulk upsert from `spectrace push`. With `replace` the payload is the whole project: requirements the store holds for `project` but the payload omits are deleted, as are their test links and the flows the payload omits; without it, omitted rows stay. Requirements key on `external_id`, links on `(test_nodeid, requirement_id)`, flows on `name`. The tree is rebuilt from `parent_id`, siblings ordered by `external_id`, so a requirement whose parent changed moves. References in `parent_id`, `depends_on`, `links[].requirement_id`, and `flows[].requirements` resolve against the payload first and then against stored requirements of other projects; a reference that resolves nowhere is dropped and listed in `unresolved`. `verification_status`, `slo_status`, and `structure_completeness` are computed by the Worker and not accepted.
+      operationId: api-v1-specs_put
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SpecPushRequest'
+      responses:
+        '200':
+          description: Counts per kind after the store matches the payload
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SpecPushResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/slos/:
+    put:
+      tags:
+      - Integrations
+      summary: Upsert SLO definitions and relink them to requirements
+      description: |-
+        Bulk upsert from `spectrace push --slos`, which parses OpenSLO documents from disk. SLOs key on `name`. Each SLO's `requirement_ids` replace its links outright, so dropping an id unlinks it; an id matching no stored requirement is dropped and listed in `unresolved`. `status`, `current_value`, `error_budget_remaining`, and `last_updated` belong to observability platforms through `POST /api/v1/integrations/slo/status/` and are never written here: a new SLO starts at `not_linked` and an existing one keeps what it holds. Each requirement's `slo_status` is recomputed afterwards, so linking one here changes the matrix without a status push.
+      operationId: api-v1-slos_put
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SloPushRequest'
+      responses:
+        '200':
+          description: Counts of SLOs written, with the requirement ids that matched nothing
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SloPushResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/specs/coverage/:
+    get:
+      tags:
+      - Specs
+      summary: Coverage metrics and stale requirements for one project
+      description: |-
+        Counts requirements by verification status. `stale_requirements` are the requirement ids named by `stale_link` errors and `spec_drift` warnings in the last drift report pushed for the project, intersected with the project's requirements; without a stored report the list is empty.
+      operationId: api-v1-specs-coverage_get
+      parameters:
+      - $ref: '#/components/parameters/ProjectParam'
+      responses:
+        '200':
+          description: Coverage report
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CoverageReport'
+        '400':
+          description: Ambiguous project; `details.projects` lists the candidates
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/specs/coverage/trend:
+    get:
+      tags:
+      - Specs
+      summary: The coverage snapshot series for one project
+      description: |-
+        Serves the snapshots `POST /api/v1/results/coverage/` stored, oldest first, so a chart reads left to right. `limit` keeps the most recent runs. The Worker computes nothing here; `spectrace specs coverage --push` measures the checkout and sends the numbers.
+      operationId: api-v1-specs-coverage-trend_get
+      parameters:
+      - $ref: '#/components/parameters/ProjectParam'
+      - name: limit
+        in: query
+        description: Most recent snapshots to return (default 100, max 500)
+        schema:
+          type: integer
+          default: 100
+          maximum: 500
+      responses:
+        '200':
+          description: Coverage trend
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CoverageTrend'
+        '400':
+          description: Ambiguous project; `details.projects` lists the candidates
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/specs/drift/:
+    get:
+      tags:
+      - Specs
+      summary: The last pushed drift report
+      description: |-
+        Serves the report most recently stored by `POST /api/v1/results/drift/` for the project. The Worker computes nothing here; `spectrace drift --push` runs detection where the repo lives. Response shape unchanged from the Django server, plus `stored_at`.
+      operationId: api-v1-specs-drift_get
+      parameters:
+      - $ref: '#/components/parameters/ProjectParam'
+      responses:
+        '200':
+          description: Drift report
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/StoredDriftReport'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: No drift report has been pushed for the project
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/specs/impact/:
+    get:
+      tags:
+      - Specs
+      summary: The last pushed impact report
+      description: |-
+        Serves the report most recently stored by `POST /api/v1/results/impact/` for the project. The Worker computes nothing here; `spectrace impact --push` runs the analysis against git where the repo lives. The `spec_id` and `file_path` query parameters are gone with the computation. Response shape unchanged from the Django server, plus the report's `base`, `head`, `generated_at`, `stored_at`, and optional `code` block.
+      operationId: api-v1-specs-impact_get
+      parameters:
+      - $ref: '#/components/parameters/ProjectParam'
+      responses:
+        '200':
+          description: Impact report
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/StoredImpactReport'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: No impact report has been pushed for the project
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/specs/{external_id}/context:
+    get:
+      tags:
+      - Specs
+      summary: Surrounding context for one requirement
+      description: |-
+        The requirement with its test links, dependencies, dependents, and FRET fields. No trailing slash.
+      operationId: api-v1-specs-context_get
+      parameters:
+      - $ref: '#/components/parameters/ExternalIdParam'
+      responses:
+        '200':
+          description: Requirement context
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SpecContext'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/v1/specs/{external_id}/status/:
+    get:
+      tags:
+      - Specs
+      summary: Verification status for one requirement
+      operationId: api-v1-specs-status_get
+      parameters:
+      - $ref: '#/components/parameters/ExternalIdParam'
+      responses:
+        '200':
+          description: Requirement status
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SpecStatus'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/v1/tasks/:
+    get:
+      tags:
+      - Tasks
+      summary: List agent tasks
+      operationId: api-v1-tasks-list_get
+      parameters:
+      - $ref: '#/components/parameters/PageParam'
+      - $ref: '#/components/parameters/PerPageParam'
+      - name: status
+        in: query
+        description: Exact match on task status
+        schema:
+          $ref: '#/components/schemas/TaskStatus'
+      - name: sort
+        in: query
+        description: Comma-separated AgentTask fields; `-` prefix sorts descending. Unknown fields are
+          ignored.
+        schema:
+          type: string
+          default: -created_at
+          example: -priority,title
+      responses:
+        '200':
+          description: A page of tasks
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TaskSummary'
+                  meta:
+                    $ref: '#/components/schemas/PagePosition'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags:
+      - Tasks
+      summary: Create a draft task
+      description: |-
+        Records a task in `draft` with its requirements, scope, and falsifiable `done_when` criteria. Only PLANNER agents create tasks. The task stays in `draft` until a reviewer approves its spec through `approve-spec`.
+      operationId: api-v1-tasks-create_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTaskRequest'
+      responses:
+        '201':
+          description: Draft task created
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/TaskDraft'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/TransitionRejected'
+  /api/v1/tasks/agents/register/:
+    post:
+      tags:
+      - Tasks
+      summary: Register or update an agent
+      description: |-
+        Creates the agent or updates its role and marks it active. Carried from the Django `agent_register` command.
+      operationId: api-v1-tasks-agents-register_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterAgentRequest'
+      responses:
+        '200':
+          description: Agent registered
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Agent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/tasks/flow-runs/running/:
+    get:
+      tags:
+      - Flows
+      summary: Get running flow runs
+      description: Get currently running flow runs for live monitoring.
+      operationId: api-v1-tasks-flow-runs-running_get
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunningFlowRunsResponse'
+        '400':
+          description: Bad request - invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401': &id001
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/tasks/outcomes:
+    get:
+      tags:
+      - Tasks
+      summary: Read the Lore outbox
+      description: |-
+        Terminal task outcomes (`merged`, `abandoned`) in the order they happened, for `spectrace lore sync`. Each outcome carries an opaque, monotonically increasing `cursor`. Pass the last cursor you processed as `since` to read what follows it; without `since`, the page starts after the last acknowledged cursor. Outcomes stay readable after acknowledgement, marked `drained`. No trailing slash.
+      operationId: api-v1-tasks-outcomes_get
+      parameters:
+      - name: since
+        in: query
+        description: Cursor of the last outcome already processed; exclusive
+        schema:
+          type: string
+      - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: A page of outcomes, oldest first
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TaskOutcome'
+                  meta:
+                    $ref: '#/components/schemas/CursorPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/tasks/outcomes/ack:
+    post:
+      tags:
+      - Tasks
+      summary: Mark outcomes drained
+      description: |-
+        Marks every outcome with a cursor at or before `cursor` as drained. Idempotent. No trailing slash.
+      operationId: api-v1-tasks-outcomes-ack_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OutcomesAckRequest'
+      responses:
+        '200':
+          description: Acknowledged
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/OutcomesAckResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/tasks/{task_id}:
+    get:
+      tags:
+      - Tasks
+      summary: Read one task's ledger row
+      description: |-
+        The task as the ledger holds it: status, claim, `done_when`, scope, and the git facts `branch`, `commit_sha`, and `merge_sha`. `spectrace tasks merge` reads this before it touches git, because the drift check compares the task branch's tip against the commit the review read. `GET /api/v1/tasks/{task_id}/context` serves the requirement bundle instead. No trailing slash.
+      operationId: api-v1-tasks-detail_get
+      parameters:
+      - $ref: '#/components/parameters/TaskIdParam'
+      responses:
+        '200':
+          description: The task's ledger row
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/TaskDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/v1/tasks/{task_id}/context:
+    get:
+      tags:
+      - Tasks
+      summary: Assemble a task's context bundle
+      description: |-
+        The bundle an agent reads before it starts work: the task with its `done_when`, scope, and spec reference, every linked requirement with its FRET fields, tree placement, and test results, and live drift over the whole database. Carried from the Django `agent_context` command. The Worker has no subprocess, so the Lore overlay and the markdown rendering stay in the CLI. No trailing slash.
+      operationId: api-v1-tasks-context_get
+      parameters:
+      - $ref: '#/components/parameters/TaskIdParam'
+      responses:
+        '200':
+          description: The task's context bundle
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/TaskContext'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/v1/tasks/{task_id}/approve-spec:
+    post:
+      tags:
+      - Tasks
+      summary: Approve a draft task's spec
+      description: |-
+        The spec-review gate. A REVIEWER agent approves the spec and the task moves from `draft` to `unclaimed`; the approval lands in the task history as `SPEC_APPROVED` with the reviewer and feedback. Refused with `SPEC_INCOMPLETE` when the task names no requirements, no `scope_in`, or no `done_when` criteria, and with `NOT_DRAFT` when the task has already left `draft`. No trailing slash.
+      operationId: api-v1-tasks-approve-spec_post
+      parameters:
+      - $ref: '#/components/parameters/TaskIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApproveSpecRequest'
+      responses:
+        '200':
+          description: Spec approved
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                properties:
+                  data:
+                    allOf:
+                    - $ref: '#/components/schemas/TransitionResult'
+                    - type: object
+                      required:
+                      - reviewer_id
+                      properties:
+                        reviewer_id:
+                          type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/TransitionRejected'
+  /api/v1/tasks/{task_id}/reject-spec:
+    post:
+      tags:
+      - Tasks
+      summary: Reject a draft task's spec
+      description: |-
+        The other half of the spec-review gate. A REVIEWER agent rejects the spec and the task moves from `draft` to `abandoned`; the rejection lands in the task history as `SPEC_REJECTED` with the reviewer and the reason, and in the Lore outbox as an abandoned outcome. `reason` is required, so a rejected draft always carries why. Refused with `NOT_DRAFT` when the task has already left `draft`. No trailing slash.
+      operationId: api-v1-tasks-reject-spec_post
+      parameters:
+      - $ref: '#/components/parameters/TaskIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RejectSpecRequest'
+      responses:
+        '200':
+          description: Spec rejected
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                properties:
+                  data:
+                    allOf:
+                    - $ref: '#/components/schemas/TransitionResult'
+                    - type: object
+                      required:
+                      - reviewer_id
+                      - reason
+                      properties:
+                        reviewer_id:
+                          type: string
+                        reason:
+                          type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/TransitionRejected'
+  /api/v1/tasks/{task_id}/intent-validations:
+    post:
+      tags:
+      - Tasks
+      summary: Record an intent validation for a commit
+      description: |-
+        Records the verdict of an intent evaluation of one commit on the task. `validator_id` names the agent that judged; the Worker refuses the agent holding the task's claim with `SELF_INTENT_NOT_ALLOWED`, so a coder cannot score its own commit. `passed` defaults to every score reaching 70, the same threshold as the Django `validate_intent` command. `complete` and `submit` refuse a commit whose latest validation is missing (`INTENT_NOT_VALIDATED`) or failed (`INTENT_FAILED`). No trailing slash.
+      operationId: api-v1-tasks-intent-validations_post
+      parameters:
+      - $ref: '#/components/parameters/TaskIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntentValidationRequest'
+      responses:
+        '201':
+          description: Intent validation recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/IntentValidation'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/TransitionRejected'
+  /api/v1/tasks/{task_id}/claim:
+    post:
+      tags:
+      - Tasks
+      summary: Claim a task and take a lease
+      description: |-
+        Moves an unclaimed task to `claimed`. The TaskLedger serializes concurrent claims, so exactly one caller wins. No trailing slash.
+      operationId: api-v1-tasks-claim_post
+      parameters:
+      - $ref: '#/components/parameters/TaskIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClaimRequest'
+      responses:
+        '200':
+          description: Task claimed
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                properties:
+                  data:
+                    allOf:
+                    - $ref: '#/components/schemas/TransitionResult'
+                    - type: object
+                      required:
+                      - lease_expires
+                      - agent_id
+                      properties:
+                        lease_expires:
+                          type: string
+                          format: date-time
+                        agent_id:
+                          type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/TransitionRejected'
+  /api/v1/tasks/{task_id}/start:
+    post:
+      tags:
+      - Tasks
+      summary: Start a claimed task
+      description: |-
+        Moves the task from `claimed` to `in_progress`. Only the claiming agent may start it. No trailing slash.
+      operationId: api-v1-tasks-start_post
+      parameters:
+      - $ref: '#/components/parameters/TaskIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentActionRequest'
+      responses:
+        '200':
+          description: Task started
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/TransitionResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/TransitionRejected'
+  /api/v1/tasks/{task_id}/complete:
+    post:
+      tags:
+      - Tasks
+      summary: Submit a task for review
+      description: |-
+        Moves the task to `ready_for_review` and records the commit. Only the claiming agent may submit. No trailing slash.
+      operationId: api-v1-tasks-complete_post
+      parameters:
+      - $ref: '#/components/parameters/TaskIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompleteRequest'
+      responses:
+        '200':
+          description: Task submitted
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                properties:
+                  data:
+                    allOf:
+                    - $ref: '#/components/schemas/TransitionResult'
+                    - type: object
+                      required:
+                      - commit_sha
+                      properties:
+                        commit_sha:
+                          type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/TransitionRejected'
+  /api/v1/tasks/{task_id}/submit:
+    post:
+      tags:
+      - Tasks
+      summary: Submit a task for review
+      description: |-
+        Alias of `/complete`, named after the `spectrace agent submit` command. Same body, same responses. No trailing slash.
+      operationId: api-v1-tasks-submit_post
+      parameters:
+      - $ref: '#/components/parameters/TaskIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompleteRequest'
+      responses:
+        '200':
+          description: Task submitted
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                properties:
+                  data:
+                    allOf:
+                    - $ref: '#/components/schemas/TransitionResult'
+                    - type: object
+                      required:
+                      - commit_sha
+                      properties:
+                        commit_sha:
+                          type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/TransitionRejected'
+  /api/v1/tasks/{task_id}/review:
+    post:
+      tags:
+      - Tasks
+      summary: Review a submitted task
+      description: |-
+        Records a review. `approved` moves the task to `approved`. `changes_requested` moves it to `changes_requested` and counts an attempt; when `attempt_count` reaches `max_attempts` the task moves to `abandoned` instead, which appends an outcome to the Lore outbox. `rejected` targets `abandoned`, but the state machine has no `ready_for_review` to `abandoned` edge, so it is refused with `INVALID_TRANSITION`, as in Django. No trailing slash.
+      operationId: api-v1-tasks-review_post
+      parameters:
+      - $ref: '#/components/parameters/TaskIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewRequest'
+      responses:
+        '200':
+          description: Review recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/TransitionResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/TransitionRejected'
+  /api/v1/tasks/{task_id}/merge:
+    post:
+      tags:
+      - Tasks
+      summary: Record the merge of an approved task
+      description: |-
+        Records a merge that already happened in git: moves the task from `approved` to `merged`, stores `merge_sha` on the task, and appends an outcome to the Lore outbox. Refused with `BRANCH_DRIFTED` when `branch_head_sha` differs from the commit the review read, so a branch that moved since review cannot be recorded as merged. `spectrace tasks merge` runs the git merge and posts the result. No trailing slash.
+      operationId: api-v1-tasks-merge_post
+      parameters:
+      - $ref: '#/components/parameters/TaskIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MergeRequest'
+      responses:
+        '200':
+          description: Task merged
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                properties:
+                  data:
+                    allOf:
+                    - $ref: '#/components/schemas/TransitionResult'
+                    - type: object
+                      required:
+                      - merge_sha
+                      - branch
+                      properties:
+                        merge_sha:
+                          type: string
+                        branch:
+                          type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/TransitionRejected'
+  /api/v1/tasks/{task_id}/release:
+    post:
+      tags:
+      - Tasks
+      summary: Release a task back to the pool
+      description: |-
+        Drops the claim and lease and returns the task to `unclaimed`. The ledger's lease alarm calls this with reason `lease_expired`; callers may pass their own reason. No trailing slash.
+      operationId: api-v1-tasks-release_post
+      parameters:
+      - $ref: '#/components/parameters/TaskIdParam'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReleaseRequest'
+      responses:
+        '200':
+          description: Task released
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/TransitionResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/TransitionRejected'
+  /api/v1/reports/factory:
+    get:
+      tags:
+      - Tasks
+      summary: Throughput, refusals, state durations, and intent scores for the task loop
+      description: >-
+        One payload per dashboard read. Weekly buckets start on Monday in UTC and
+        cover the last `weeks` weeks including the current one. No trailing slash.
+      operationId: api-v1-reports-factory_get
+      parameters:
+      - name: weeks
+        in: query
+        description: How many weekly buckets to return, 1 to 52. Defaults to 12.
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: The factory report
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/FactoryReport'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/results/enforcement/:
+    post:
+      tags:
+      - Verification
+      summary: Submit verification results
+      description: Submit in-app validation results from product.
+      operationId: api-v1-results-enforcement_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ValidationResultRequest'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationResultResponse'
+        '400':
+          description: Bad request - invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401': *id001
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/results/enforcement-runs/:
+    get:
+      tags:
+      - Verification Runs
+      summary: List verification runs
+      description: List verification runs with filtering and pagination.
+      operationId: api-v1-results-enforcement-runs_get
+      parameters:
+      - $ref: '#/components/parameters/PageParam'
+      - $ref: '#/components/parameters/PerPageParam'
+      - name: requirement_id
+        in: query
+        schema:
+          type: string
+      - name: vendor
+        in: query
+        schema:
+          type: string
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - pass
+          - fail
+          - error
+          - skip
+      - name: start_date
+        in: query
+        schema:
+          type: string
+          format: date
+      - name: end_date
+        in: query
+        schema:
+          type: string
+          format: date
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationRunsPage'
+        '400':
+          description: Bad request - invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401': *id001
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/results/enforcement-runs/latest/:
+    get:
+      tags:
+      - Verification Runs
+      summary: The most recent enforcement run
+      operationId: api-v1-enforcement-runs-latest_get
+      parameters:
+      - name: source
+        in: query
+        description: Case-insensitive substring match on the run's source
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Latest run
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/LatestEnforcementRun'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/v1/results/enforcement-runs/{run_id}/:
+    get:
+      tags:
+      - Verification Runs
+      summary: Get verification run detail
+      description: Get verification run detail with all results.
+      operationId: api-v1-results-enforcement-run-detail_get
+      parameters:
+      - name: run_id
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationRunDetailResponse'
+        '400':
+          description: Bad request - invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401': *id001
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/results/enforcement-runs/{run_id}/diff/:
+    get:
+      tags:
+      - Verification Runs
+      summary: Compare a run against its predecessor
+      description: The predecessor is the most recent run imported before this one.
+      operationId: api-v1-enforcement-run-diff_get
+      parameters:
+      - $ref: '#/components/parameters/RunIdParam'
+      responses:
+        '200':
+          description: Comparison
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/EnforcementRunDiff'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: The run has no predecessor; `code` is `no_predecessor`
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/results/enforcement-runs/{run_id}/steps/:
+    get:
+      tags:
+      - Verification Runs
+      summary: Get verification run steps
+      description: Get step-level detail for a verification run.
+      operationId: api-v1-results-enforcement-run-steps_get
+      parameters:
+      - name: run_id
+        in: path
+        required: true
+        schema:
+          type: integer
+      - name: result_id
+        in: query
+        schema:
+          type: integer
+        description: Filter steps by validation result
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationRunStepsResponse'
+        '400':
+          description: Bad request - invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401': *id001
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/results/vendor-coverage/:
+    get:
+      tags:
+      - Results
+      summary: Verification coverage grouped by vendor
+      description: |-
+        Groups in-app validations by vendor and reports each vendor's pass rate from its validations' latest results. A regression names a validation whose latest result failed after its previous result passed. `common_flags` counts the feature flags submitted with each vendor's validations; `all_flags` lists every flag seen across vendors.
+      operationId: api-v1-results-vendor-coverage_get
+      parameters:
+      - $ref: '#/components/parameters/ProjectParam'
+      responses:
+        '200':
+          description: Vendor coverage report
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/VendorCoverageReport'
+        '400':
+          description: Ambiguous project; `details.projects` lists the candidates
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/results/test-runs/latest/:
+    get:
+      tags:
+      - Test Runs
+      summary: Get latest test run
+      description: Get the latest test run for dashboard polling.
+      operationId: api-v1-results-test-runs-latest_get
+      parameters:
+      - name: since
+        in: query
+        schema:
+          type: string
+          format: date-time
+        description: Only return run newer than this timestamp
+      - name: repo
+        in: query
+        schema:
+          type: string
+        description: Filter by repository (e.g., owner/repo)
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LatestTestRunResponse'
+        '400':
+          description: Bad request - invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401': *id001
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/results/test-runs/:
+    post:
+      tags:
+      - Test Runs
+      summary: Store a JUnit test run
+      description: |-
+        `spectrace results push <junit.xml> --links <links.json>` sends every test case with the requirements it verifies. The Worker stores the run and links each result, and `update_verification_status` recomputes the verification status a test-verified requirement reads.
+      operationId: api-v1-results-test-runs_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TestRunPush'
+      responses:
+        '200':
+          description: Run stored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TestRunPushResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/results/impact/:
+    post:
+      tags:
+      - Results
+      summary: Store an impact report
+      description: |-
+        `spectrace impact --push` sends the `ImpactAnalyzer` result for a `base..head` diff. The Worker stores it as the project's latest report and `GET /api/v1/specs/impact/` serves it.
+      operationId: api-v1-results-impact_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImpactReport'
+      responses:
+        '201':
+          description: Report stored
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/StoredReportReceipt'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/results/drift/:
+    post:
+      tags:
+      - Results
+      summary: Store a drift report
+      description: |-
+        `spectrace drift --push` sends the `detect_all_drift` result. The Worker stores it as the project's latest report; `GET /api/v1/specs/drift/` serves it and `GET /api/v1/specs/coverage/` derives `stale_requirements` from it.
+      operationId: api-v1-results-drift_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DriftReport'
+      responses:
+        '201':
+          description: Report stored
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/StoredReportReceipt'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/results/coverage/:
+    post:
+      tags:
+      - Results
+      summary: Store a coverage snapshot
+      description: |-
+        `spectrace specs coverage --push` sends the rates and counts one run measured. The Worker appends the snapshot to the project's series and returns the snapshot it held before, so the command reports the change. `GET /api/v1/specs/coverage/trend` serves the series.
+      operationId: api-v1-results-coverage_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CoverageSnapshotPush'
+      responses:
+        '201':
+          description: Snapshot stored
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/StoredCoverageSnapshotReceipt'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/results/conflicts/:
+    get:
+      tags:
+      - Results
+      summary: List detected conflicts
+      operationId: api-v1-results-conflicts_get
+      parameters:
+      - $ref: '#/components/parameters/PageParam'
+      - $ref: '#/components/parameters/PerPageParam'
+      - name: confidence
+        in: query
+        description: Ignored unless it names a known confidence level
+        schema:
+          $ref: '#/components/schemas/ConflictConfidence'
+      - name: pattern
+        in: query
+        schema:
+          type: string
+      - name: resolved
+        in: query
+        description: '`true` selects resolved conflicts; any other value selects unresolved ones'
+        schema:
+          type: string
+      - name: requirement_id
+        in: query
+        description: Matches conflicts naming the requirement on either side
+        schema:
+          type: string
+      responses:
+        '200':
+          description: A page of conflicts, newest first
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ConflictSummary'
+                  meta:
+                    $ref: '#/components/schemas/PagePosition'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/results/conflicts/counts:
+    get:
+      tags:
+      - Results
+      summary: Conflict totals across the whole log
+      description: Global totals, unaffected by filters or paging. No trailing slash.
+      operationId: api-v1-results-conflicts-counts_get
+      responses:
+        '200':
+          description: Open and resolved totals, plus the false-positive tally
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ConflictCounts'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/results/conflicts/detect:
+    post:
+      tags:
+      - Results
+      summary: Run conflict detection over stored enforcement runs
+      description: No trailing slash.
+      operationId: api-v1-results-conflicts-detect_post
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DetectConflictsRequest'
+      responses:
+        '200':
+          description: Detection finished
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/DetectConflictsResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/results/conflicts/{conflict_id}:
+    get:
+      tags:
+      - Results
+      summary: Conflict detail
+      description: No trailing slash.
+      operationId: api-v1-results-conflict-detail_get
+      parameters:
+      - $ref: '#/components/parameters/ConflictIdParam'
+      responses:
+        '200':
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ConflictDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/v1/results/conflicts/{conflict_id}/resolve:
+    post:
+      tags:
+      - Results
+      summary: Resolve a conflict
+      description: No trailing slash.
+      operationId: api-v1-results-conflict-resolve_post
+      parameters:
+      - $ref: '#/components/parameters/ConflictIdParam'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResolveConflictRequest'
+      responses:
+        '200':
+          description: Conflict resolved
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                properties:
+                  data:
+                    type: object
+                    required:
+                    - conflict_id
+                    - resolved_at
+                    properties:
+                      conflict_id:
+                        type: integer
+                      resolved_at:
+                        type: string
+                        format: date-time
+        '400':
+          description: Malformed JSON (`invalid_json`) or already resolved (`invalid_state`)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/v1/results/merge-safety:
+    get:
+      tags:
+      - Results
+      summary: Composed merge-safety view
+      description: |-
+        Composes the latest impact report, latest drift report, and unresolved conflicts into one verdict: `blocked` if any unresolved conflict has `high` confidence or drift has errors; `needs_review` if any unresolved conflict exists, drift has warnings, or impact risk is `high`/`critical`; otherwise `safe`. `impact` and `drift` are `null` when no report has been pushed yet.
+      operationId: api-v1-results-merge-safety_get
+      parameters:
+      - name: project
+        in: query
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Merge-safety summary
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                properties:
+                  data:
+                    type: object
+                    required:
+                    - generated_at
+                    - verdict
+                    - impact
+                    - drift
+                    - conflicts
+                    properties:
+                      generated_at:
+                        type: string
+                        format: date-time
+                      verdict:
+                        type: string
+                        enum: [safe, needs_review, blocked]
+                      impact:
+                        nullable: true
+                        type: object
+                      drift:
+                        nullable: true
+                        type: object
+                      conflicts:
+                        type: object
+                        required:
+                        - open_count
+                        - items
+                        properties:
+                          open_count:
+                            type: integer
+                          items:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/ConflictSummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/flows/runs/:
+    post:
+      tags:
+      - Flows
+      summary: Record one execution of a stored flow
+      description: |-
+        Written by `spectrace flows run`, which executes the flow where the repository is checked out and posts what happened. The flow must already be stored, which `spectrace push --flows` does; a run naming a flow the store lacks is refused rather than orphaned. Steps are stored in `step_order`, and the run keeps the timestamps the runner observed rather than the ones the Worker assigns, so a replayed run reads as when it ran.
+      operationId: api-v1-flows-runs_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FlowRunRecord'
+      responses:
+        '201':
+          description: The stored run
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/FlowRunPushResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/corpus/entries/:
+    put:
+      tags:
+      - Corpus
+      summary: Upsert corpus entries and record versions the store lacks
+      description: |-
+        Bulk upsert from `spectrace push --corpus`, which parses the corpus directory from disk. Entries key on `external_id`; versions key on `(entry, version)` and are immutable. Re-pushing a version whose `content_hash` differs from the stored one is refused, not overwritten: bump `version` to record new content. A version that drops a check id its predecessor defined is refused unless the document accounts for it, with `renamed_from` on the replacing check or the id under `retired_checks`, because a finding cites `ENTRY-ID#check-id` with no version in it. `supersedes` resolves against the payload first and then the store, and names a version that must exist. Snapshots are not written here; a snapshot records the versions a review ran against, so the Worker captures it when a review is stored.
+      operationId: api-v1-corpus-entries_put
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CorpusPushRequest'
+      responses:
+        '200':
+          description: Counts of entries and versions written
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CorpusPushResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/corpus/reviews/:
+    get:
+      tags:
+      - Corpus
+      summary: List spec reviews
+      operationId: api-v1-corpus-reviews_get
+      parameters:
+      - $ref: '#/components/parameters/PageParam'
+      - $ref: '#/components/parameters/PerPageParam'
+      - name: outcome
+        in: query
+        schema:
+          type: string
+      - name: reviewer
+        in: query
+        schema:
+          type: string
+      responses:
+        '200':
+          description: A page of spec reviews, newest first
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SpecReviewSummary'
+                  meta:
+                    $ref: '#/components/schemas/PagePosition'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/corpus/reviews/{review_id}/:
+    get:
+      tags:
+      - Corpus
+      summary: Spec review detail
+      operationId: api-v1-corpus-review-detail_get
+      parameters:
+      - name: review_id
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: Spec review with coverage and findings
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SpecReviewDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/v1/integrations/slo/status/:
+    get:
+      tags:
+      - SLO
+      summary: List SLO status
+      operationId: api-v1-integrations-slo-status_get
+      responses:
+        '200':
+          description: All SLOs and their linked requirements
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SLOStatusSummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags:
+      - SLO
+      summary: Update SLO status
+      description: Update SLO status from observability platform.
+      operationId: api-v1-integrations-slo-status_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SLOStatusRequest'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SLOStatusResponse'
+        '400':
+          description: Bad request - invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401': *id001
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+components:
+  securitySchemes:
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: The `SPECTRACE_API_KEY` Worker secret. Required on every route.
+  parameters:
+    ProjectParam:
+      name: project
+      in: query
+      description: Project name; defaults to the deployment's `SPECTRACE_PROJECT`
+      schema:
+        type: string
+    ExternalIdParam:
+      name: external_id
+      in: path
+      required: true
+      schema:
+        type: string
+    TaskIdParam:
+      name: task_id
+      in: path
+      required: true
+      schema:
+        type: string
+    RunIdParam:
+      name: run_id
+      in: path
+      required: true
+      schema:
+        type: integer
+    ConflictIdParam:
+      name: conflict_id
+      in: path
+      required: true
+      schema:
+        type: integer
+    LimitParam:
+      name: limit
+      in: query
+      description: Page size (default 50, max 100)
+      schema:
+        type: integer
+        default: 50
+        maximum: 100
+    PageParam:
+      name: page
+      in: query
+      description: 1-based page number; a page past the last returns the last page
+      schema:
+        type: integer
+        default: 1
+        minimum: 1
+    PerPageParam:
+      name: per_page
+      in: query
+      description: Page size (max 100). A non-integer value is a 400.
+      schema:
+        type: integer
+        default: 25
+        maximum: 100
+  responses:
+    Unauthorized:
+      description: Missing or wrong `X-API-Key`; `code` is `unauthorized`
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    BadRequest:
+      description: Malformed JSON, missing field, or invalid query parameter
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    NotFound:
+      description: No such resource; `code` is `not_found`
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    TransitionRejected:
+      description: |-
+        The ledger refused the transition. `code` is `transition_error` and `details.reason` carries the ledger's reason in upper case: `AGENT_INACTIVE`, `AGENT_BUSY`, `ROLE_NOT_ALLOWED`, `NOT_OWNER`, `NOT_APPROVED`, `NOT_DRAFT`, `SPEC_INCOMPLETE`, `INTENT_NOT_VALIDATED`, `INTENT_FAILED`, `SELF_INTENT_NOT_ALLOWED`, `DEPENDENCIES_NOT_MET`, `INVALID_TRANSITION`. Creating a task that already exists is a 409 with `code` `conflict` and `details.reason` `TASK_EXISTS`. An unknown task or agent (`TASK_NOT_FOUND`, `AGENT_NOT_FOUND`) is a 404 instead, with the same `details.reason`.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+  schemas:
+    ErrorEnvelope:
+      type: object
+      required:
+      - error
+      properties:
+        error:
+          type: object
+          required:
+          - code
+          - message
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: object
+              additionalProperties: true
+    CursorPage:
+      type: object
+      required:
+      - limit
+      - next_cursor
+      properties:
+        limit:
+          type: integer
+        next_cursor:
+          type: string
+          nullable: true
+          description: Pass as `since` to read the next page; null when this page is the last
+    RiskLevel:
+      type: string
+      enum:
+      - unclassified
+      - low
+      - medium
+      - high
+      - critical
+    VerificationMethod:
+      type: string
+      enum:
+      - unspecified
+      - test
+      - inapp
+      - both
+    VerificationStatus:
+      type: string
+      enum:
+      - untested
+      - passing
+      - failing
+    TaskStatus:
+      type: string
+      enum:
+      - draft
+      - unclaimed
+      - claimed
+      - in_progress
+      - ready_for_review
+      - changes_requested
+      - approved
+      - merged
+      - blocked
+      - abandoned
+    AgentRole:
+      type: string
+      enum:
+      - planner
+      - coder
+      - reviewer
+    ConflictConfidence:
+      type: string
+      enum:
+      - high
+      - medium
+      - low
+    SpecPushRequest:
+      type: object
+      required:
+      - project
+      - requirements
+      - links
+      - flows
+      properties:
+        project:
+          type: string
+          minLength: 1
+        replace:
+          type: boolean
+          default: false
+          description: Delete the project's stored requirements, their test links, and the flows the payload omits
+        requirements:
+          type: array
+          items:
+            $ref: '#/components/schemas/RequirementUpsert'
+        links:
+          type: array
+          items:
+            $ref: '#/components/schemas/TestLinkUpsert'
+        flows:
+          type: array
+          items:
+            $ref: '#/components/schemas/FlowUpsert'
+    RequirementUpsert:
+      description: |-
+        One requirement as `SpecParser.parse_directory` yields it. The tree is flat; `parent_id` names the parent.
+      type: object
+      required:
+      - external_id
+      - title
+      - source_file
+      properties:
+        external_id:
+          type: string
+          maxLength: 50
+        title:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          default: ''
+        tags:
+          type: array
+          items:
+            type: string
+          default: []
+        priority:
+          type: string
+          maxLength: 20
+          default: ''
+        status:
+          type: string
+          maxLength: 20
+          default: draft
+        risk_level:
+          $ref: '#/components/schemas/RiskLevel'
+        parent_id:
+          type: string
+          nullable: true
+          description: The parent's `external_id`; null for a root
+        source_file:
+          type: string
+          maxLength: 500
+        verification_method:
+          $ref: '#/components/schemas/VerificationMethod'
+        scope:
+          type: string
+          default: ''
+        condition:
+          type: string
+          default: ''
+        component:
+          type: string
+          maxLength: 255
+          default: ''
+        timing:
+          type: string
+          maxLength: 100
+          default: ''
+        response:
+          type: string
+          default: ''
+        depends_on:
+          type: array
+          description: Requirement ids this one depends on; may name requirements in other projects
+          items:
+            type: string
+          default: []
+    TestLinkUpsert:
+      description: One entry of `.spectrace/links.json` as `extract_links` writes it.
+      type: object
+      required:
+      - test_nodeid
+      - requirement_id
+      properties:
+        test_nodeid:
+          type: string
+          maxLength: 500
+        requirement_id:
+          type: string
+    FlowUpsert:
+      description: One flow YAML document as `YAMLFlowParser` reads it.
+      type: object
+      required:
+      - name
+      - display_name
+      - steps
+      properties:
+        name:
+          type: string
+          maxLength: 100
+          description: The YAML `id`
+        display_name:
+          type: string
+          maxLength: 200
+          description: The YAML `title`
+        description:
+          type: string
+          default: ''
+        version:
+          type: integer
+          default: 1
+        source_file:
+          type: string
+          default: ''
+        requirements:
+          type: array
+          items:
+            type: string
+          default: []
+        steps:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/FlowStepDefinition'
+    FlowStepDefinition:
+      type: object
+      required:
+      - name
+      - display_name
+      properties:
+        name:
+          type: string
+        display_name:
+          type: string
+        description:
+          type: string
+          default: ''
+        type:
+          type: string
+          enum:
+          - handler
+          - api_call
+          - assertion
+          - wait
+          default: handler
+        handler:
+          type: string
+          description: Dotted path; required when `type` is `handler`
+          default: ''
+        config:
+          type: object
+          additionalProperties: true
+          default: {}
+    FlowRunRecord:
+      type: object
+      required:
+      - flow_name
+      - status
+      - source
+      - started_at
+      - steps
+      properties:
+        flow_name:
+          type: string
+        status:
+          type: string
+        source:
+          type: string
+        context:
+          type: object
+        started_at:
+          type: string
+        completed_at:
+          type: string
+          nullable: true
+        steps:
+          type: array
+          items:
+            type: object
+            required:
+            - step_order
+            - name
+            - passed
+            - started_at
+            - completed_at
+            properties:
+              step_order:
+                type: integer
+              name:
+                type: string
+              passed:
+                type: boolean
+              details:
+                type: string
+              error_message:
+                type: string
+              response_status:
+                type: integer
+                nullable: true
+              response_body:
+                type: string
+              started_at:
+                type: string
+              completed_at:
+                type: string
+    FlowRunPushResult:
+      type: object
+      required:
+      - run_id
+      - flow
+      - status
+      - steps
+      properties:
+        run_id:
+          type: integer
+        flow:
+          type: string
+        status:
+          type: string
+        steps:
+          type: integer
+    UpsertCounts:
+      type: object
+      required:
+      - created
+      - updated
+      - deleted
+      properties:
+        created:
+          type: integer
+        updated:
+          type: integer
+        deleted:
+          type: integer
+    SloPushRequest:
+      type: object
+      required:
+      - slos
+      properties:
+        slos:
+          type: array
+          items:
+            type: object
+            required:
+            - name
+            - source_file
+            properties:
+              name:
+                type: string
+              display_name:
+                type: string
+              description:
+                type: string
+              service:
+                type: string
+              target:
+                type: number
+                nullable: true
+              time_window:
+                type: string
+              budgeting_method:
+                type: string
+              source_file:
+                type: string
+              requirement_ids:
+                type: array
+                items:
+                  type: string
+    SloPushResult:
+      type: object
+      required:
+      - created
+      - updated
+      - unresolved
+      properties:
+        created:
+          type: integer
+        updated:
+          type: integer
+        unresolved:
+          type: array
+          items:
+            type: string
+    CorpusPushRequest:
+      type: object
+      required:
+      - entries
+      properties:
+        entries:
+          type: array
+          items:
+            type: object
+            required:
+            - external_id
+            - version
+            - content_hash
+            - checks
+            - source_file
+            properties:
+              external_id:
+                type: string
+              kind:
+                type: string
+              title:
+                type: string
+              owner:
+                type: string
+              status:
+                type: string
+              version:
+                type: integer
+              body:
+                type: string
+              content_hash:
+                type: string
+              applies_to:
+                type: object
+              checks:
+                type: array
+                items:
+                  type: object
+              retired_checks:
+                type: array
+                items:
+                  type: string
+              enforcement:
+                type: string
+              effective_date:
+                type: string
+                nullable: true
+              supersedes:
+                type: string
+                nullable: true
+              source_file:
+                type: string
+    CorpusPushResult:
+      type: object
+      required:
+      - entries_created
+      - versions_created
+      - versions_unchanged
+      properties:
+        entries_created:
+          type: integer
+        versions_created:
+          type: integer
+        versions_unchanged:
+          type: integer
+    SpecPushResult:
+      type: object
+      required:
+      - project
+      - requirements
+      - links
+      - flows
+      - unresolved
+      properties:
+        project:
+          type: string
+        requirements:
+          $ref: '#/components/schemas/UpsertCounts'
+        links:
+          $ref: '#/components/schemas/UpsertCounts'
+        flows:
+          $ref: '#/components/schemas/UpsertCounts'
+        unresolved:
+          type: array
+          description: References dropped because they name no requirement in the payload or the store
+          items:
+            type: object
+            required:
+            - kind
+            - source
+            - ref
+            properties:
+              kind:
+                type: string
+                enum:
+                - parent_id
+                - depends_on
+                - link
+                - flow
+              source:
+                type: string
+                description: The requirement, test nodeid, or flow name holding the reference
+              ref:
+                type: string
+                description: The requirement id that resolved nowhere
+    RequirementPage:
+      type: object
+      required:
+      - project
+      - requirements
+      properties:
+        project:
+          type: string
+        scope:
+          $ref: '#/components/schemas/RequirementScope'
+        requirements:
+          type: array
+          items:
+            $ref: '#/components/schemas/RequirementSummary'
+    RequirementScope:
+      type: object
+      description: The `parent_id` requirement and its ancestors, root first; present only when `parent_id` names a stored requirement
+      required:
+      - external_id
+      - title
+      - ancestors
+      properties:
+        external_id:
+          type: string
+        title:
+          type: string
+        ancestors:
+          type: array
+          items:
+            type: object
+            required:
+            - external_id
+            - title
+            properties:
+              external_id:
+                type: string
+              title:
+                type: string
+    RequirementSummary:
+      type: object
+      required:
+      - external_id
+      - title
+      - description
+      - path
+      - depth
+      - numchild
+      - tags
+      - priority
+      - status
+      - verification_status
+      - verification_method
+      - risk_level
+      - source_file
+      - descendants
+      properties:
+        external_id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        path:
+          type: string
+          description: Materialized path; sorting by it yields tree order
+        depth:
+          type: integer
+        numchild:
+          type: integer
+        tags:
+          type: array
+          items:
+            type: string
+        priority:
+          type: string
+        status:
+          type: string
+        verification_status:
+          $ref: '#/components/schemas/VerificationStatus'
+        verification_method:
+          $ref: '#/components/schemas/VerificationMethod'
+        risk_level:
+          $ref: '#/components/schemas/RiskLevel'
+        source_file:
+          type: string
+        descendants:
+          $ref: '#/components/schemas/DescendantRollup'
+    DescendantRollup:
+      type: object
+      description: Counts over a requirement's whole subtree, excluding the requirement itself; all zero for a leaf
+      required:
+      - total
+      - passing
+      - failing
+      - untested
+      - highest_risk
+      properties:
+        total:
+          type: integer
+        passing:
+          type: integer
+        failing:
+          type: integer
+        untested:
+          type: integer
+        highest_risk:
+          $ref: '#/components/schemas/RiskLevel'
+    PagePosition:
+      type: object
+      required:
+      - page
+      - per_page
+      - total
+      - total_pages
+      - has_next
+      - has_prev
+      properties:
+        page:
+          type: integer
+        per_page:
+          type: integer
+        total:
+          type: integer
+        total_pages:
+          type: integer
+        has_next:
+          type: boolean
+        has_prev:
+          type: boolean
+    CoverageReport:
+      type: object
+      required:
+      - project
+      - metrics
+      - stale_requirements
+      properties:
+        project:
+          type: string
+        metrics:
+          type: object
+          required:
+          - total
+          - non_draft
+          - passing
+          - failing
+          - untested
+          - stale
+          properties:
+            total:
+              type: integer
+            non_draft:
+              type: integer
+            passing:
+              type: integer
+            failing:
+              type: integer
+            untested:
+              type: integer
+            stale:
+              type: integer
+        stale_requirements:
+          type: array
+          items:
+            type: string
+    CoverageMeasurement:
+      description: What one `spectrace specs coverage` run measured, and the commit it measured.
+      type: object
+      required:
+      - commit_sha
+      - git_branch
+      - generated_at
+      - specification_rate
+      - structure_rate
+      - verification_rate
+      - total
+      - non_draft
+      - passing
+      properties:
+        commit_sha:
+          type: string
+          description: HEAD of the checkout the run measured
+        git_branch:
+          type: string
+          description: Branch the run measured; `HEAD` on a detached checkout
+        generated_at:
+          type: string
+          format: date-time
+        specification_rate:
+          type: number
+          description: Non-draft requirements over total, 0 to 1
+        structure_rate:
+          type: number
+          description: Mean FRET completeness, 0 to 1
+        verification_rate:
+          type: number
+          description: Passing requirements over total, 0 to 1
+        total:
+          type: integer
+        non_draft:
+          type: integer
+        passing:
+          type: integer
+    CoverageSnapshot:
+      type: object
+      allOf:
+      - $ref: '#/components/schemas/CoverageMeasurement'
+      - type: object
+        required:
+        - stored_at
+        properties:
+          stored_at:
+            type: string
+            format: date-time
+    CoverageSnapshotPush:
+      type: object
+      allOf:
+      - $ref: '#/components/schemas/CoverageMeasurement'
+      - type: object
+        required:
+        - project
+        properties:
+          project:
+            type: string
+    CoverageTrend:
+      type: object
+      required:
+      - project
+      - snapshots
+      properties:
+        project:
+          type: string
+        snapshots:
+          type: array
+          description: Oldest first
+          items:
+            $ref: '#/components/schemas/CoverageSnapshot'
+    StoredCoverageSnapshotReceipt:
+      type: object
+      allOf:
+      - $ref: '#/components/schemas/StoredReportReceipt'
+      - type: object
+        required:
+        - previous
+        properties:
+          previous:
+            type: object
+            description: The snapshot stored before this one; null on the project's first run
+            allOf:
+            - $ref: '#/components/schemas/CoverageSnapshot'
+            nullable: true
+    SpecContext:
+      type: object
+      required:
+      - external_id
+      - title
+      - description
+      - tags
+      - status
+      - verification_status
+      - priority
+      - test_results
+      - depends_on
+      - depended_by
+      properties:
+        external_id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+        verification_status:
+          $ref: '#/components/schemas/VerificationStatus'
+        priority:
+          type: string
+        test_results:
+          type: array
+          items:
+            type: object
+            required:
+            - test_nodeid
+            - last_status
+            properties:
+              test_nodeid:
+                type: string
+              last_status:
+                type: string
+        depends_on:
+          type: array
+          items:
+            type: string
+        depended_by:
+          type: array
+          items:
+            type: string
+        fret:
+          type: object
+          description: Present only when at least one FRET field is set; each key present only when set
+          properties:
+            scope:
+              type: string
+            condition:
+              type: string
+            component:
+              type: string
+            timing:
+              type: string
+            response:
+              type: string
+    SpecStatus:
+      type: object
+      required:
+      - external_id
+      - title
+      - verification_status
+      - last_checked
+      - latest_result
+      - regression
+      properties:
+        external_id:
+          type: string
+        title:
+          type: string
+        verification_status:
+          $ref: '#/components/schemas/VerificationStatus'
+        last_checked:
+          type: string
+          format: date-time
+          nullable: true
+        latest_result:
+          type: object
+          nullable: true
+          required:
+          - status
+          - message
+          - checked_at
+          - steps_passed
+          - steps_failed
+          properties:
+            status:
+              type: string
+            message:
+              type: string
+            checked_at:
+              type: string
+              format: date-time
+            steps_passed:
+              type: integer
+            steps_failed:
+              type: integer
+        regression:
+          type: object
+          required:
+          - is_regression
+          properties:
+            is_regression:
+              type: boolean
+            previous_status:
+              type: string
+              nullable: true
+            regressed_at:
+              type: string
+              format: date-time
+              nullable: true
+    TaskSummary:
+      type: object
+      required:
+      - id
+      - title
+      - description
+      - status
+      - claimed_by
+      - sprint
+      - lease_expires
+      - attempt_count
+      - created_at
+      - commit_sha
+      - test_run
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          $ref: '#/components/schemas/TaskStatus'
+        claimed_by:
+          type: string
+          nullable: true
+        sprint:
+          type: string
+          nullable: true
+        lease_expires:
+          type: string
+          format: date-time
+          nullable: true
+        attempt_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        commit_sha:
+          type: string
+        test_run:
+          type: object
+          allOf:
+          - $ref: '#/components/schemas/TaskTestRun'
+          nullable: true
+    TransitionResult:
+      type: object
+      required:
+      - success
+      - task_id
+      - from_status
+      - to_status
+      - message
+      properties:
+        success:
+          type: boolean
+        task_id:
+          type: string
+        from_status:
+          $ref: '#/components/schemas/TaskStatus'
+        to_status:
+          $ref: '#/components/schemas/TaskStatus'
+        message:
+          type: string
+    RejectSpecRequest:
+      type: object
+      required:
+      - reviewer_id
+      - reason
+      properties:
+        reviewer_id:
+          type: string
+        reason:
+          type: string
+          description: Why the reviewer rejected the draft. Stored on the history row.
+    FactoryReport:
+      title: FactoryReport
+      description: What the task loop produced, refused, and scored over the reported weeks.
+      type: object
+      properties:
+        since:
+          type: string
+          description: Monday of the first reported week, as YYYY-MM-DD.
+        weeks:
+          type: array
+          items:
+            type: string
+          description: Every reported week's Monday, oldest first.
+        throughput:
+          type: array
+          items:
+            type: object
+            properties:
+              week:
+                type: string
+              merged:
+                type: integer
+              rejected_at_spec:
+                type: integer
+                description: Drafts a reviewer refused before any coder claimed them.
+              abandoned_at_review:
+                type: integer
+                description: Claimed work a reviewer refused until the attempts ran out.
+            required:
+            - week
+            - merged
+            - rejected_at_spec
+            - abandoned_at_review
+        refusals:
+          type: array
+          items:
+            type: object
+            properties:
+              code:
+                type: string
+                description: The TransitionCode the gate refused with.
+              count:
+                type: integer
+            required:
+            - code
+            - count
+        state_durations:
+          type: array
+          items:
+            type: object
+            properties:
+              status:
+                type: string
+              median_seconds:
+                type: number
+              samples:
+                type: integer
+            required:
+            - status
+            - median_seconds
+            - samples
+        intent_scores:
+          type: array
+          items:
+            type: object
+            properties:
+              task_id:
+                type: string
+              commit_sha:
+                type: string
+              created_at:
+                type: string
+              strategic:
+                type: integer
+              opportunity:
+                type: integer
+              drift:
+                type: integer
+              passed:
+                type: boolean
+            required:
+            - task_id
+            - commit_sha
+            - created_at
+            - strategic
+            - opportunity
+            - drift
+            - passed
+        regressions:
+          type: array
+          items:
+            type: object
+            properties:
+              week:
+                type: string
+              merged:
+                type: integer
+              failed_later:
+                type: integer
+                description: Merged tasks whose linked tests failed in a run imported after the merge.
+            required:
+            - week
+            - merged
+            - failed_later
+      required:
+      - since
+      - weeks
+      - throughput
+      - refusals
+      - state_durations
+      - intent_scores
+      - regressions
+    TaskDetail:
+      type: object
+      required:
+      - id
+      - title
+      - status
+      - branch
+      - commit_sha
+      - merge_sha
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          $ref: '#/components/schemas/TaskStatus'
+        claimed_by:
+          type: string
+          nullable: true
+        done_when:
+          type: array
+          items:
+            type: string
+        scope_in:
+          type: array
+          items:
+            type: string
+        scope_out:
+          type: array
+          items:
+            type: string
+        spec_ref:
+          type: string
+        branch:
+          type: string
+        commit_sha:
+          type: string
+        merge_sha:
+          type: string
+        attempt_count:
+          type: integer
+        max_attempts:
+          type: integer
+        lease_expires:
+          type: string
+          format: date-time
+          nullable: true
+        claimed_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    MergeRequest:
+      type: object
+      required:
+      - merge_sha
+      - branch_head_sha
+      properties:
+        merge_sha:
+          type: string
+          maxLength: 40
+          description: Commit the merge produced on the base branch.
+        branch_head_sha:
+          type: string
+          maxLength: 40
+          description: Tip of the task branch that was merged. Must equal the commit the review read, or the Worker refuses with `BRANCH_DRIFTED`.
+    Agent:
+      type: object
+      required:
+      - agent_id
+      - role
+      - is_active
+      properties:
+        agent_id:
+          type: string
+          maxLength: 100
+        role:
+          $ref: '#/components/schemas/AgentRole'
+        is_active:
+          type: boolean
+    RegisterAgentRequest:
+      type: object
+      required:
+      - agent_id
+      - role
+      properties:
+        agent_id:
+          type: string
+          maxLength: 100
+        role:
+          $ref: '#/components/schemas/AgentRole'
+        config:
+          type: object
+          additionalProperties: true
+          default: {}
+    ReleaseRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          default: manual
+    AgentActionRequest:
+      type: object
+      required:
+      - agent_id
+      properties:
+        agent_id:
+          type: string
+    ClaimRequest:
+      type: object
+      required:
+      - agent_id
+      properties:
+        agent_id:
+          type: string
+        lease_minutes:
+          type: integer
+          default: 30
+          minimum: 1
+    CreateTaskRequest:
+      type: object
+      required:
+      - agent_id
+      - task_id
+      - title
+      properties:
+        agent_id:
+          type: string
+          description: A registered PLANNER agent
+        task_id:
+          type: string
+          example: task-auth-001
+        title:
+          type: string
+        description:
+          type: string
+        requirements:
+          type: array
+          description: Requirement external ids the task implements
+          items:
+            type: string
+            example: REQ-AUTH-001
+        done_when:
+          type: array
+          description: Falsifiable completion criteria
+          items:
+            type: string
+            example: pytest tests/test_auth.py -k lockout exits 0
+        scope_in:
+          type: array
+          items:
+            type: string
+        scope_out:
+          type: array
+          items:
+            type: string
+        spec_ref:
+          type: string
+          example: specs/auth.md#REQ-AUTH-001
+        max_attempts:
+          type: integer
+          default: 2
+          minimum: 1
+    TaskContext:
+      type: object
+      description: Everything an agent needs before it touches the code for one task.
+      required:
+      - task_id
+      - title
+      - description
+      - status
+      - done_when
+      - scope_in
+      - scope_out
+      - spec_ref
+      - requirements
+      - drift
+      properties:
+        task_id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          $ref: '#/components/schemas/TaskStatus'
+        done_when:
+          type: array
+          items:
+            type: string
+        scope_in:
+          type: array
+          items:
+            type: string
+        scope_out:
+          type: array
+          items:
+            type: string
+        spec_ref:
+          type: string
+        requirements:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskContextRequirement'
+        drift:
+          type: object
+          required:
+          - stale_links
+          - orphan_requirements
+          properties:
+            stale_links:
+              $ref: '#/components/schemas/DriftSection'
+            orphan_requirements:
+              $ref: '#/components/schemas/DriftSection'
+    TaskContextRequirement:
+      type: object
+      required:
+      - external_id
+      - title
+      - description
+      - verification_status
+      - priority
+      - tags
+      - source_file
+      - test_results
+      - tree
+      properties:
+        external_id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        verification_status:
+          type: string
+        priority:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        source_file:
+          type: string
+        test_results:
+          type: array
+          items:
+            type: object
+            required:
+            - test_nodeid
+            - last_status
+            properties:
+              test_nodeid:
+                type: string
+              last_status:
+                type: string
+        tree:
+          type: object
+          description: Parent and children by materialized path; either key is absent when the requirement has none.
+          properties:
+            parent:
+              $ref: '#/components/schemas/TaskContextKin'
+            children:
+              type: array
+              items:
+                $ref: '#/components/schemas/TaskContextKin'
+        fret:
+          type: object
+          description: Present only when the requirement sets at least one FRET field.
+          additionalProperties:
+            type: string
+    TaskContextKin:
+      type: object
+      required:
+      - external_id
+      - title
+      properties:
+        external_id:
+          type: string
+        title:
+          type: string
+    DriftSection:
+      type: object
+      required:
+      - errors
+      - warnings
+      - summary
+      properties:
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/DriftIssue'
+        warnings:
+          type: array
+          items:
+            $ref: '#/components/schemas/DriftIssue'
+        summary:
+          type: object
+          required:
+          - items_checked
+          - errors
+          - warnings
+          properties:
+            items_checked:
+              type: integer
+            errors:
+              type: integer
+            warnings:
+              type: integer
+    TaskDraft:
+      type: object
+      required:
+      - id
+      - title
+      - description
+      - status
+      - requirements
+      - done_when
+      - scope_in
+      - scope_out
+      - spec_ref
+      - max_attempts
+      - created_at
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          $ref: '#/components/schemas/TaskStatus'
+        requirements:
+          type: array
+          items:
+            type: string
+        done_when:
+          type: array
+          items:
+            type: string
+        scope_in:
+          type: array
+          items:
+            type: string
+        scope_out:
+          type: array
+          items:
+            type: string
+        spec_ref:
+          type: string
+        max_attempts:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+    ApproveSpecRequest:
+      type: object
+      required:
+      - reviewer_id
+      properties:
+        reviewer_id:
+          type: string
+        feedback:
+          type: string
+    IntentValidationRequest:
+      type: object
+      required:
+      - validator_id
+      - commit_sha
+      - strategic_score
+      - opportunity_score
+      - drift_score
+      properties:
+        validator_id:
+          type: string
+          description: Agent that judged the commit; never the agent holding the claim
+        commit_sha:
+          type: string
+          maxLength: 40
+        strategic_score:
+          type: integer
+          minimum: 0
+          maximum: 100
+        opportunity_score:
+          type: integer
+          minimum: 0
+          maximum: 100
+        drift_score:
+          type: integer
+          minimum: 0
+          maximum: 100
+        passed:
+          type: boolean
+          description: Overrides the computed verdict
+        failure_reasons:
+          type: array
+          items:
+            type: string
+    IntentValidation:
+      type: object
+      required:
+      - task_id
+      - commit_sha
+      - strategic_score
+      - opportunity_score
+      - drift_score
+      - passed
+      - failure_reasons
+      - created_at
+      properties:
+        task_id:
+          type: string
+        commit_sha:
+          type: string
+        strategic_score:
+          type: integer
+        opportunity_score:
+          type: integer
+        drift_score:
+          type: integer
+        passed:
+          type: boolean
+        failure_reasons:
+          type: array
+          items:
+            type: string
+        created_at:
+          type: string
+          format: date-time
+    CompleteRequest:
+      type: object
+      required:
+      - agent_id
+      - commit_sha
+      properties:
+        agent_id:
+          type: string
+        commit_sha:
+          type: string
+          maxLength: 40
+        branch:
+          type: string
+          default: ''
+          description: Branch the commit sits on. Recorded on the task so `merge` merges what the review read instead of a branch name derived from the task id. Omitted, the task keeps the branch it already carries.
+    DoneWhenResult:
+      type: object
+      required:
+      - criterion
+      - passed
+      properties:
+        criterion:
+          type: string
+        passed:
+          type: boolean
+        notes:
+          type: string
+    ReviewRequest:
+      type: object
+      required:
+      - reviewer_id
+      - decision
+      properties:
+        reviewer_id:
+          type: string
+        decision:
+          type: string
+          enum:
+          - approved
+          - changes_requested
+          - rejected
+        feedback:
+          type: string
+          default: ''
+        done_when_results:
+          type: array
+          items:
+            $ref: '#/components/schemas/DoneWhenResult'
+        blocking_issues:
+          type: array
+          items:
+            type: string
+        suggestions:
+          type: array
+          items:
+            type: string
+    TaskOutcome:
+      description: |-
+        One row of the Lore outbox, appended when a task reaches `merged` or `abandoned`. Mirrors what `lore_bridge.notify_lore` records.
+      type: object
+      required:
+      - cursor
+      - task_id
+      - title
+      - status
+      - done_when_results
+      - reason
+      - commit_sha
+      - attempt_count
+      - max_attempts
+      - occurred_at
+      - task_created_at
+      - drained
+      properties:
+        cursor:
+          type: string
+          description: Opaque, strictly increasing in outcome order
+        task_id:
+          type: string
+        title:
+          type: string
+        status:
+          type: string
+          enum:
+          - merged
+          - abandoned
+        done_when_results:
+          type: array
+          nullable: true
+          description: The latest review's verdicts; null when the task was never reviewed
+          items:
+            $ref: '#/components/schemas/DoneWhenResult'
+        reason:
+          type: string
+          nullable: true
+          description: Why the task was abandoned -- the reviewer's rejection reason or review feedback; null on a merge
+        commit_sha:
+          type: string
+          description: Empty when the task never reached review
+        branch:
+          type: string
+          description: Branch the work sat on; empty for outcomes recorded before the ledger kept it
+        merge_sha:
+          type: string
+          description: Commit the merge produced on the base branch; empty on an abandoned outcome
+        attempt_count:
+          type: integer
+        max_attempts:
+          type: integer
+        occurred_at:
+          type: string
+          format: date-time
+          description: When the terminal transition happened
+        task_created_at:
+          type: string
+          format: date-time
+        drained:
+          type: boolean
+    OutcomesAckRequest:
+      type: object
+      required:
+      - cursor
+      properties:
+        cursor:
+          type: string
+    OutcomesAckResult:
+      type: object
+      required:
+      - cursor
+      - drained
+      properties:
+        cursor:
+          type: string
+        drained:
+          type: integer
+          description: Outcomes newly marked drained by this call
+    ImpactRiskLevel:
+      type: string
+      enum:
+      - low
+      - medium
+      - high
+      - critical
+    ImpactReport:
+      description: |-
+        An `ImpactAnalyzer` result for one `base..head` diff, keys as the Django `GET /api/v1/specs/impact/` returned them, plus provenance.
+      type: object
+      required:
+      - project
+      - base
+      - head
+      - generated_at
+      - changed_requirements
+      - affected_tests
+      - hierarchy_expansion
+      - dependency_expansion
+      - risk_score
+      - risk_level
+      properties:
+        project:
+          type: string
+        base:
+          type: string
+          description: Git ref the diff starts from
+        head:
+          type: string
+          description: Git ref the diff ends at
+        generated_at:
+          type: string
+          format: date-time
+        changed_requirements:
+          type: array
+          items:
+            type: string
+        affected_tests:
+          type: array
+          items:
+            type: string
+        hierarchy_expansion:
+          type: object
+          description: Parent requirement id to the child ids it pulled in
+          additionalProperties:
+            type: array
+            items:
+              type: string
+        dependency_expansion:
+          type: object
+          description: Requirement id to the dependent ids it pulled in
+          additionalProperties:
+            type: array
+            items:
+              type: string
+        risk_score:
+          type: number
+          minimum: 0
+          maximum: 1
+        risk_level:
+          $ref: '#/components/schemas/ImpactRiskLevel'
+        code:
+          $ref: '#/components/schemas/CodeImpact'
+    CodeImpact:
+      description: |-
+        The `CodeImpactResult` from `ImpactAnalyzer.code_analyze`, present when the CLI ran the code-graph analysis.
+      type: object
+      required:
+      - changed_files
+      - blast
+      - affected_tests
+      - affected_tests_by_project
+      - risk_score
+      - risk_level
+      - edge_summary
+      - traversed_edges
+      properties:
+        changed_files:
+          type: object
+          description: Project name to changed paths
+          additionalProperties:
+            type: array
+            items:
+              type: string
+        blast:
+          $ref: '#/components/schemas/BlastResult'
+        affected_tests:
+          type: array
+          items:
+            type: string
+        affected_tests_by_project:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+        risk_score:
+          type: number
+          minimum: 0
+          maximum: 1
+        risk_level:
+          $ref: '#/components/schemas/ImpactRiskLevel'
+        edge_summary:
+          $ref: '#/components/schemas/EdgeCounts'
+        traversed_edges:
+          $ref: '#/components/schemas/EdgeCounts'
+    BlastResult:
+      type: object
+      required:
+      - directly_changed
+      - affected_requirements
+      - affected_modules
+      - affected_projects
+      - cross_project_edges
+      - graph_risk_score
+      - graph_risk_level
+      properties:
+        directly_changed:
+          type: array
+          items:
+            type: string
+        affected_requirements:
+          type: array
+          items:
+            type: string
+        affected_modules:
+          type: array
+          items:
+            type: string
+        affected_projects:
+          type: array
+          items:
+            type: string
+        cross_project_edges:
+          type: integer
+        graph_risk_score:
+          type: number
+        graph_risk_level:
+          type: string
+    EdgeCounts:
+      type: object
+      required:
+      - annotated
+      - inferred
+      - contract
+      properties:
+        annotated:
+          type: integer
+        inferred:
+          type: integer
+        contract:
+          type: integer
+    StoredImpactReport:
+      allOf:
+      - $ref: '#/components/schemas/ImpactReport'
+      - type: object
+        required:
+        - stored_at
+        properties:
+          stored_at:
+            type: string
+            format: date-time
+    DriftIssue:
+      description: |-
+        One `ValidationIssue` as `DriftResult.to_dict` flattens it; the per-type detail keys sit beside `type`, `id`, and `message`.
+      type: object
+      required:
+      - type
+      - id
+      - message
+      additionalProperties: true
+      properties:
+        type:
+          type: string
+          enum:
+          - stale_link
+          - orphan_requirement
+          - unmarked_test
+          - spec_drift
+        id:
+          type: string
+        message:
+          type: string
+        test_nodeid:
+          type: string
+          description: '`stale_link`'
+        requirement_id:
+          type: string
+          description: '`stale_link`'
+        last_status:
+          type: string
+          description: '`stale_link`'
+        last_run_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: '`stale_link`'
+        title:
+          type: string
+          description: '`orphan_requirement`'
+        source_file:
+          type: string
+          description: '`orphan_requirement`'
+        path:
+          type: string
+          description: '`unmarked_test`, `spec_drift`'
+        modified_at:
+          type: string
+          format: date-time
+          description: '`spec_drift`'
+        last_test_run:
+          type: string
+          format: date-time
+          description: '`spec_drift`'
+        affected_requirements:
+          type: array
+          description: '`spec_drift`'
+          items:
+            type: string
+    DriftReport:
+      description: A `detect_all_drift` result, keys as `DriftResult.to_dict` emits them, plus provenance.
+      type: object
+      required:
+      - project
+      - generated_at
+      - errors
+      - warnings
+      - summary
+      properties:
+        project:
+          type: string
+        generated_at:
+          type: string
+          format: date-time
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/DriftIssue'
+        warnings:
+          type: array
+          items:
+            $ref: '#/components/schemas/DriftIssue'
+        summary:
+          type: object
+          required:
+          - items_checked
+          - errors
+          - warnings
+          properties:
+            items_checked:
+              type: integer
+            errors:
+              type: integer
+            warnings:
+              type: integer
+    StoredDriftReport:
+      allOf:
+      - $ref: '#/components/schemas/DriftReport'
+      - type: object
+        required:
+        - stored_at
+        properties:
+          stored_at:
+            type: string
+            format: date-time
+    TestRunPush:
+      type: object
+      required:
+      - source_file
+      - results
+      properties:
+        source_file:
+          type: string
+          description: Where the JUnit report came from
+        git_sha:
+          type: string
+        git_branch:
+          type: string
+        repository:
+          type: string
+        ci_job_url:
+          type: string
+        workflow_name:
+          type: string
+        workflow_run_id:
+          type: integer
+          nullable: true
+        update_verification_status:
+          type: boolean
+          default: false
+          description: Recompute every requirement's verification status from the stored results
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/TestResultItem'
+    TestResultItem:
+      type: object
+      required:
+      - test_nodeid
+      - status
+      properties:
+        test_nodeid:
+          type: string
+        status:
+          type: string
+          enum:
+          - passed
+          - failed
+          - error
+          - skipped
+        classname:
+          type: string
+        name:
+          type: string
+        time:
+          type: number
+        message:
+          type: string
+        requirement_ids:
+          type: array
+          items:
+            type: string
+          description: External ids of the requirements this case verifies
+    TestRunPushResponse:
+      type: object
+      required:
+      - success
+      - run_id
+      - imported
+      - linked
+      - passed
+      - failed
+      - errors
+      - skipped
+      properties:
+        success:
+          type: boolean
+        run_id:
+          type: integer
+        imported:
+          type: integer
+        linked:
+          type: integer
+          description: Result-to-requirement links created for this run
+        passed:
+          type: integer
+        failed:
+          type: integer
+        errors:
+          type: integer
+        skipped:
+          type: integer
+    StoredReportReceipt:
+      type: object
+      required:
+      - project
+      - generated_at
+      - stored_at
+      properties:
+        project:
+          type: string
+        generated_at:
+          type: string
+          format: date-time
+        stored_at:
+          type: string
+          format: date-time
+    LatestEnforcementRun:
+      type: object
+      required:
+      - run_id
+      - source
+      - imported_at
+      - pass_rate
+      - total
+      - passed
+      - failed
+      properties:
+        run_id:
+          type: integer
+        source:
+          type: string
+        imported_at:
+          type: string
+          format: date-time
+        pass_rate:
+          type: number
+          description: Percent, one decimal
+        total:
+          type: integer
+        passed:
+          type: integer
+        failed:
+          type: integer
+    EnforcementRunDiff:
+      type: object
+      required:
+      - compared_to
+      - summary
+      - changes
+      properties:
+        compared_to:
+          type: object
+          required:
+          - id
+          - source
+          - imported_at
+          properties:
+            id:
+              type: integer
+            source:
+              type: string
+            imported_at:
+              type: string
+              format: date-time
+        summary:
+          type: object
+          required:
+          - improved
+          - regressed
+          - unchanged
+          - new
+          - removed
+          properties:
+            improved:
+              type: integer
+            regressed:
+              type: integer
+            unchanged:
+              type: integer
+            new:
+              type: integer
+            removed:
+              type: integer
+        changes:
+          type: array
+          description: Ordered regressed, improved, new, removed, unchanged
+          items:
+            type: object
+            required:
+            - requirement_id
+            - validation_name
+            - vendor
+            - status_a
+            - status_b
+            - change_type
+            properties:
+              requirement_id:
+                type: string
+              validation_name:
+                type: string
+              vendor:
+                type: string
+              status_a:
+                type: string
+                nullable: true
+              status_b:
+                type: string
+                nullable: true
+              change_type:
+                type: string
+                enum:
+                - improved
+                - regressed
+                - unchanged
+                - new
+                - removed
+    ConflictSummary:
+      type: object
+      required:
+      - id
+      - requirement_a
+      - requirement_b
+      - pattern
+      - confidence
+      - resolved
+      - created_at
+      properties:
+        id:
+          type: integer
+        requirement_a:
+          type: string
+        requirement_b:
+          type: string
+        pattern:
+          type: string
+        confidence:
+          $ref: '#/components/schemas/ConflictConfidence'
+        resolved:
+          type: boolean
+        resolution_reason:
+          $ref: '#/components/schemas/ConflictResolutionReason'
+        times_detected:
+          type: integer
+          description: How many detection runs have reported this pair while it stayed open
+        last_seen_at:
+          type: string
+          format: date-time
+          description: The most recent detection run that reported this pair
+        created_at:
+          type: string
+          format: date-time
+    ConflictDetail:
+      allOf:
+      - $ref: '#/components/schemas/ConflictSummary'
+      - type: object
+        required:
+        - requirement_a_title
+        - requirement_b_title
+        - details
+        - resolved_at
+        - resolution_notes
+        properties:
+          requirement_a_title:
+            type: string
+          requirement_b_title:
+            type: string
+          details:
+            type: object
+            additionalProperties: true
+          resolved_at:
+            type: string
+            format: date-time
+            nullable: true
+          resolution_notes:
+            type: string
+    SpecReviewSummary:
+      type: object
+      required:
+      - id
+      - requirement_id
+      - spec_file
+      - reviewer
+      - outcome
+      - created_at
+      - snapshot_hash
+      - coverage_count
+      - findings_count
+      properties:
+        id:
+          type: integer
+        requirement_id:
+          type: string
+        spec_file:
+          type: string
+        reviewer:
+          type: string
+        outcome:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        snapshot_hash:
+          type: string
+        coverage_count:
+          type: integer
+        findings_count:
+          type: integer
+    SpecReviewDetail:
+      allOf:
+      - $ref: '#/components/schemas/SpecReviewSummary'
+      - type: object
+        required:
+        - coverage
+        - findings
+        properties:
+          coverage:
+            type: array
+            items:
+              type: object
+              required:
+              - matched_by
+              - cited
+              - entry_version_id
+              - enforcement
+              - entry_title
+              - entry_kind
+              properties:
+                matched_by:
+                  type: array
+                  items:
+                    type: string
+                cited:
+                  type: boolean
+                entry_version_id:
+                  type: integer
+                enforcement:
+                  type: string
+                entry_title:
+                  type: string
+                entry_kind:
+                  type: string
+          findings:
+            type: array
+            items:
+              type: object
+              required:
+              - finding_type
+              - check_id
+              - detail
+              - enforcement
+              properties:
+                finding_type:
+                  type: string
+                check_id:
+                  type: string
+                detail:
+                  type: string
+                enforcement:
+                  type: string
+    SLOStatusSummary:
+      type: object
+      required:
+      - name
+      - display_name
+      - service
+      - time_window
+      - budgeting_method
+      - status
+      - requirement_ids
+      properties:
+        name:
+          type: string
+        display_name:
+          type: string
+        service:
+          type: string
+        target:
+          type: number
+          nullable: true
+        time_window:
+          type: string
+        budgeting_method:
+          type: string
+        status:
+          type: string
+        current_value:
+          type: number
+          nullable: true
+        error_budget_remaining:
+          type: number
+          nullable: true
+        last_updated:
+          type: string
+          format: date-time
+          nullable: true
+        requirement_ids:
+          type: array
+          items:
+            type: string
+    DetectConflictsRequest:
+      type: object
+      properties:
+        min_runs:
+          type: integer
+          default: 10
+        min_overlap:
+          type: integer
+          default: 5
+        include_structured:
+          type: boolean
+          default: true
+    DetectConflictsResult:
+      type: object
+      required:
+      - conflicts_found
+      - logged
+      - skipped_existing
+      properties:
+        conflicts_found:
+          type: integer
+        logged:
+          type: integer
+        skipped_existing:
+          type: integer
+    ResolveConflictRequest:
+      type: object
+      properties:
+        resolution_notes:
+          type: string
+          default: ''
+        resolution_reason:
+          $ref: '#/components/schemas/ConflictResolutionReason'
+    ConflictResolutionReason:
+      type: string
+      description: Why a conflict was closed. Omitting it on resolve stores `unspecified`.
+      enum:
+      - false_positive
+      - fixed
+      - accepted
+      - wont_fix
+      - unspecified
+    ConflictCounts:
+      type: object
+      required:
+      - open
+      - open_high
+      - open_medium
+      - open_low
+      - resolved
+      - false_positive
+      properties:
+        open:
+          type: integer
+        open_high:
+          type: integer
+        open_medium:
+          type: integer
+        open_low:
+          type: integer
+        resolved:
+          type: integer
+        false_positive:
+          type: integer
+          description: Resolved conflicts closed as false positives, the numerator of the detector's false-positive rate
+    FlowRunStep:
+      title: FlowRunStep
+      type: object
+      properties:
+        id:
+          type: integer
+        flow_name:
+          type: string
+        flow_display_name:
+          type: string
+        started_at:
+          type: string
+        total_steps:
+          type: integer
+        completed_steps:
+          type: integer
+        current_step:
+          type: string
+          nullable: true
+        current_step_order:
+          type: integer
+          nullable: true
+      required:
+      - id
+      - flow_name
+      - flow_display_name
+      - started_at
+      - total_steps
+      - completed_steps
+      - current_step
+      - current_step_order
+    RunningFlowRunsResponse:
+      title: RunningFlowRunsResponse
+      type: object
+      properties:
+        runs:
+          type: array
+          items:
+            $ref: '#/components/schemas/FlowRunStep'
+      required:
+      - runs
+    ValidationItem:
+      title: ValidationItem
+      description: Individual validation result in a submission.
+      type: object
+      properties:
+        requirement_id:
+          type: string
+          maxLength: 100
+        name:
+          type: string
+          maxLength: 500
+        status:
+          type: string
+          maxLength: 20
+        message:
+          type: string
+          maxLength: 2000
+          default: ''
+        endpoint:
+          type: string
+          maxLength: 500
+          default: ''
+        checked_at:
+          default: null
+          type: string
+          nullable: true
+        steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationStep'
+          maxItems: 100
+          default: []
+        context:
+          default: null
+          type: object
+          nullable: true
+      required:
+      - requirement_id
+      - name
+      - status
+    ValidationStep:
+      title: ValidationStep
+      description: Individual validation step result.
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 500
+        passed:
+          type: boolean
+        details:
+          default: null
+          type: string
+          nullable: true
+        error_message:
+          default: null
+          type: string
+          nullable: true
+        duration_ms:
+          default: null
+          type: integer
+          nullable: true
+      required:
+      - name
+      - passed
+    ValidationResultRequest:
+      title: ValidationResultRequest
+      description: Request body for POST /api/v1/results/enforcement/.
+      type: object
+      properties:
+        source:
+          type: string
+          maxLength: 200
+        validations:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationItem'
+          maxItems: 500
+        update_verification_status:
+          type: boolean
+          default: false
+      required:
+      - source
+      - validations
+    ValidationResultResponse:
+      title: ValidationResultResponse
+      description: Response for POST /api/v1/results/enforcement/.
+      type: object
+      properties:
+        success:
+          type: boolean
+        imported:
+          type: integer
+        skipped:
+          type: integer
+        created_validations:
+          type: integer
+        successful:
+          type: integer
+        failed:
+          type: integer
+      required:
+      - success
+      - imported
+      - skipped
+      - created_validations
+      - successful
+      - failed
+    ValidationRunSummary:
+      title: ValidationRunSummary
+      description: Summary of a validation run.
+      type: object
+      properties:
+        id:
+          type: integer
+        source:
+          type: string
+        imported_at:
+          type: string
+        total_validations:
+          type: integer
+        successful:
+          type: integer
+        failed:
+          type: integer
+      required:
+      - id
+      - source
+      - imported_at
+      - total_validations
+      - successful
+      - failed
+    ValidationRunsPage:
+      title: ValidationRunsPage
+      description: Response for GET /api/v1/results/enforcement-runs/.
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationRunSummary'
+        meta:
+          $ref: '#/components/schemas/PagePosition'
+      required:
+      - data
+      - meta
+    ValidationRunResult:
+      title: ValidationRunResult
+      description: Individual result in a validation run detail.
+      type: object
+      properties:
+        id:
+          type: integer
+        validation_id:
+          type: integer
+        validation_name:
+          type: string
+        requirement_id:
+          type: string
+        vendor:
+          type: string
+        status:
+          type: string
+        message:
+          type: string
+        checked_at:
+          type: string
+        step_count:
+          type: integer
+        steps_passed:
+          type: integer
+      required:
+      - id
+      - validation_id
+      - validation_name
+      - requirement_id
+      - vendor
+      - status
+      - message
+      - checked_at
+      - step_count
+      - steps_passed
+    ValidationRunDetailResponse:
+      title: ValidationRunDetailResponse
+      description: Response for GET /api/v1/results/enforcement-runs/{id}/.
+      type: object
+      properties:
+        id:
+          type: integer
+        source:
+          type: string
+        imported_at:
+          type: string
+        total_validations:
+          type: integer
+        successful:
+          type: integer
+        failed:
+          type: integer
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationRunResult'
+      required:
+      - id
+      - source
+      - imported_at
+      - total_validations
+      - successful
+      - failed
+      - results
+    StepResult:
+      title: StepResult
+      description: Result with step-level detail.
+      type: object
+      properties:
+        result_id:
+          type: integer
+        validation_name:
+          type: string
+        requirement_id:
+          type: string
+        status:
+          type: string
+        steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationStep'
+        context:
+          type: object
+      required:
+      - result_id
+      - validation_name
+      - requirement_id
+      - status
+      - steps
+      - context
+    ValidationRunStepsResponse:
+      title: ValidationRunStepsResponse
+      description: Response for GET /api/v1/results/enforcement-runs/{id}/steps/.
+      type: object
+      properties:
+        run_id:
+          type: integer
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/StepResult'
+      required:
+      - run_id
+      - results
+    VendorCoverageReport:
+      type: object
+      required:
+      - vendors
+      - all_flags
+      - total_vendors
+      - total_validations
+      properties:
+        vendors:
+          type: array
+          items:
+            $ref: '#/components/schemas/VendorCoverage'
+        all_flags:
+          type: array
+          items:
+            type: string
+        total_vendors:
+          type: integer
+        total_validations:
+          type: integer
+    VendorCoverage:
+      type: object
+      required:
+      - name
+      - total
+      - passing
+      - failing
+      - not_run
+      - pass_rate
+      - regressions
+      - common_flags
+      properties:
+        name:
+          type: string
+        total:
+          type: integer
+        passing:
+          type: integer
+        failing:
+          type: integer
+        not_run:
+          type: integer
+        pass_rate:
+          type: number
+        regressions:
+          type: array
+          items:
+            $ref: '#/components/schemas/VendorRegression'
+        common_flags:
+          type: array
+          items:
+            $ref: '#/components/schemas/VendorFlagCount'
+    VendorRegression:
+      type: object
+      required:
+      - name
+      - regressed_at
+      - run_id
+      properties:
+        name:
+          type: string
+        regressed_at:
+          type: string
+          format: date-time
+        run_id:
+          type: integer
+    VendorFlagCount:
+      type: object
+      required:
+      - flag
+      - count
+      properties:
+        flag:
+          type: string
+        count:
+          type: integer
+    TestRunSummary:
+      title: TestRunSummary
+      type: object
+      properties:
+        id:
+          type: integer
+        imported_at:
+          type: string
+        source_file:
+          default: null
+          type: string
+          nullable: true
+        git_sha:
+          default: null
+          type: string
+          nullable: true
+        git_branch:
+          default: null
+          type: string
+          nullable: true
+        workflow_name:
+          default: null
+          type: string
+          nullable: true
+        workflow_run_id:
+          default: null
+          type: string
+          nullable: true
+        repository:
+          default: null
+          type: string
+          nullable: true
+        total_tests:
+          type: integer
+          default: 0
+        passed:
+          type: integer
+          default: 0
+        failed:
+          type: integer
+          default: 0
+        errors:
+          type: integer
+          default: 0
+        skipped:
+          type: integer
+          default: 0
+      required:
+      - id
+      - imported_at
+    TaskTestRun:
+      title: TaskTestRun
+      description: |-
+        What the task's linked tests did at the commit its coder submitted. `passing` means every linked requirement has at least one result at that commit and none of them failed; `missing` means a requirement has no result there; `failing` means one failed. `approve` refuses any task whose summary is not `passing`.
+      type: object
+      required:
+      - commit_sha
+      - status
+      - run_ids
+      - imported_at
+      - passed
+      - failed
+      - requirements
+      properties:
+        commit_sha:
+          type: string
+        status:
+          type: string
+          enum:
+          - passing
+          - failing
+          - missing
+        run_ids:
+          type: array
+          items:
+            type: integer
+        imported_at:
+          type: string
+          format: date-time
+          nullable: true
+        passed:
+          type: integer
+        failed:
+          type: integer
+        requirements:
+          type: array
+          items:
+            type: object
+            required:
+            - requirement_id
+            - passed
+            - failed
+            properties:
+              requirement_id:
+                type: string
+              passed:
+                type: integer
+              failed:
+                type: integer
+    LatestTestRunResponse:
+      title: LatestTestRunResponse
+      type: object
+      properties:
+        test_run:
+          type: object
+          allOf:
+          - $ref: '#/components/schemas/TestRunSummary'
+          nullable: true
+      required:
+      - test_run
+    SLOStatusItem:
+      title: SLOStatusItem
+      description: Individual SLO status update.
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 500
+        status:
+          type: string
+          maxLength: 20
+        current_value:
+          default: null
+          type: number
+          nullable: true
+        error_budget_remaining:
+          default: null
+          type: number
+          nullable: true
+      required:
+      - name
+      - status
+    SLOStatusRequest:
+      title: SLOStatusRequest
+      description: Request body for POST /api/v1/integrations/slo/status/.
+      type: object
+      properties:
+        slos:
+          type: array
+          items:
+            $ref: '#/components/schemas/SLOStatusItem'
+          maxItems: 200
+        update_verification_status:
+          type: boolean
+          default: false
+      required:
+      - slos
+    SLOStatusResponse:
+      title: SLOStatusResponse
+      description: Response for POST /api/v1/integrations/slo/status/.
+      type: object
+      properties:
+        success:
+          type: boolean
+        updated:
+          type: integer
+        not_found:
+          type: integer
+        requirement_status:
+          type: object
+          additionalProperties:
+            type: integer
+      required:
+      - success
+      - updated
+      - not_found
+      - requirement_status
+    ErrorResponse:
+      title: ErrorResponse
+      description: Standard error response.
+      type: object
+      properties:
+        success:
+          type: boolean
+          default: false
+        error:
+          type: string
+          default: ''
+      required: []

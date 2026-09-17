@@ -4,6 +4,11 @@ priority: high
 status: active
 risk_level: medium
 verification_method: test
+complies_with:
+  - DEC-API-001@1
+  - STD-API-001@1
+  - STD-API-002@1
+  - STD-CORE-001@1
 ---
 
 # API v1 — agent surface

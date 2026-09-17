@@ -1,0 +1,35 @@
+/* Matrix-specific styles */
+.matrix-wrapper {
+    overflow-x: auto;
+    border-radius: var(--st-radius-lg);
+}
+
+.matrix-header-cell {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    transform: rotate(180deg);
+    max-height: 140px;
+    padding: var(--st-space-2) var(--st-space-1);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    color: var(--st-text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.matrix-row-label {
+    position: sticky;
+    left: 0;
+    z-index: 10;
+    background: var(--st-surface);
+    min-width: 240px;
+    padding: var(--st-space-3) var(--st-space-4);
+    border-right: 1px solid var(--st-border);
+}
+
+.matrix-row:hover .matrix-row-label {
+    background: var(--st-surface-sunken);
+}
+

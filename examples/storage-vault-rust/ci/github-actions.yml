@@ -1,0 +1,51 @@
+# Push the Rust example's links and results to SpecTrace on every change.
+#
+# Copy this into .github/workflows/ and set SPECTRACE_URL and SPECTRACE_API_KEY
+# as repository secrets.
+
+name: Storage Vault Traceability
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: examples/storage-vault-rust
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
+
+      # continue-on-error keeps a red suite pushing its results; SpecTrace is
+      # where the failure shows up as an unverified requirement.
+      - name: Run the suite for its JUnit report
+        continue-on-error: true
+        run: cargo nextest run --profile ci
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Install the SpecTrace CLI
+        run: pip install spectrace
+
+      - name: Push the specs and the links the trial names carry
+        run: spectrace push --specs specs --links target/nextest/ci/junit.xml --replace
+        env:
+          SPECTRACE_URL: ${{ secrets.SPECTRACE_URL }}
+          SPECTRACE_API_KEY: ${{ secrets.SPECTRACE_API_KEY }}
+
+      - name: Push the results
+        run: spectrace results push target/nextest/ci/junit.xml
+        env:
+          SPECTRACE_URL: ${{ secrets.SPECTRACE_URL }}
+          SPECTRACE_API_KEY: ${{ secrets.SPECTRACE_API_KEY }}

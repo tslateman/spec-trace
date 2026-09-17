@@ -1,0 +1,32 @@
+{
+  "name": "spectrace-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "vitest run",
+    "typecheck": "wrangler types && tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate:local": "wrangler d1 migrations apply spectrace --local",
+    "db:migrate:remote": "wrangler d1 migrations apply spectrace --remote",
+    "lint": "biome check",
+    "format": "biome check --write"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.45.2",
+    "hono": "^4.7.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.13",
+    "@cfworker/json-schema": "^4.1.1",
+    "@cloudflare/vitest-plugin": "^1.1.7",
+    "@cloudflare/workers-types": "^5.20260828.1",
+    "drizzle-kit": "^0.31.0",
+    "typescript": "^5.8.0",
+    "vitest": "^4.1.0",
+    "wrangler": "^4.131.0",
+    "yaml": "^2.9.0"
+  }
+}

@@ -1,270 +1,173 @@
 # Agent Guidelines for SpecTrace
 
-This document provides coding guidelines and conventions for AI coding agents working in the SpecTrace repository. SpecTrace is a requirements traceability system connecting product specs (markdown files) to verified code through pytest test annotations and a Django dashboard.
+This document provides coding guidelines and conventions for AI coding agents working in the SpecTrace repository. SpecTrace is a requirements traceability system connecting product specs (markdown files) to verified code through pytest test annotations, served by a Cloudflare Worker and read by a React dashboard.
 
 ## Project Overview
 
-- **Language**: Python 3.12+ (currently using 3.13)
-- **Framework**: Django 5.2 LTS
-- **Database**: SQLite (development), PostgreSQL recommended for production
-- **Testing**: pytest 9.x with pytest-django
-- **Key Dependencies**: django-treebeard (hierarchical requirements), python-frontmatter (spec parsing), Markdown
+SpecTrace is mid-port from a Django server to Cloudflare Workers. See
+`plans/cloudflare-port.md` for the full architecture and phase status. Three
+deployables exist today:
 
-## OpenCode Plugin Setup
+- **Worker** (`worker/`) — TypeScript, Hono, Drizzle on D1. Serves the v1 API
+  and one public demo page, and redirects its old data-screen URLs to the
+  dashboard. Production:
+  `spectrace.spectrace.workers.dev`. CI deploys it on every merge to `main`
+  (`.github/workflows/worker.yml`).
+- **Dashboard** (`app/`) — React, behind GitHub OAuth. Reads the Worker over a
+  Cloudflare service binding (`SPECTRACE` in `app/wrangler.jsonc`). Production:
+  `spectrace-app.spectrace.workers.dev`. CI deploys it on every merge to
+  `main` (`.github/workflows/app.yml`).
+- **CLI + Django server** (`spectrace/`) — Python. The CLI (`spectrace push`,
+  `spectrace results push`, …) parses specs, tests, and git state and pushes
+  them to the Worker; it stays. The Django server that used to serve the same
+  data is being retired — do not build on it — but it has **not** been
+  stopped yet, so `spectrace/requirements/views.py` and friends still run.
 
-This project uses OpenCode with the following plugins for enhanced workflow capabilities:
+`plans/openapi-worker.yaml` is the frozen v1 API contract.
+Any change to Worker request or response shape updates that document and the
+Worker tests in `worker/test/` in the same change; `worker/test/contract.test.ts`
+fails when the Worker's `/api/v1` operations and the contract's differ.
 
-### Installed Plugins
+- **Worker language**: TypeScript, Hono, Drizzle ORM, D1 (SQLite dialect)
+- **Dashboard language**: TypeScript, React, Vite
+- **CLI/legacy server language**: Python 3.12+ (currently using 3.13), Django 5.2 LTS
+- **Database**: D1 (Worker, production), SQLite (Django, being retired)
+- **Testing**: Vitest (`worker/test/`) for the Worker; pytest 9.x with pytest-django for the Python side
+- **Key Python dependencies**: django-treebeard (hierarchical requirements), python-frontmatter (spec parsing), Markdown
 
-1. **@openspoon/subtask2** - Command orchestration with parallel execution and chaining
-2. **@plannotator/opencode** - Visual plan review with team collaboration
-3. **@franlol/opencode-md-table-formatter** - Clean up markdown tables from LLMs
-4. **@zenobius/opencode-skillful** - Lazy-loaded skills system
+## OpenCode
 
-### Plugin Configuration
-
-Location: `~/.config/opencode/opencode.json`
-
-```json
-{
-  "$schema": "https://opencode.ai/config.json",
-  "plugin": [
-    "@openspoon/subtask2@latest",
-    "@plannotator/opencode@latest",
-    "@franlol/opencode-md-table-formatter@0.0.3",
-    "@zenobius/opencode-skillful@latest"
-  ]
-}
-```
-
-### Key Plugin Commands
-
-**subtask2 orchestration:**
-
-- Use `return:` in command frontmatter to chain prompts or commands
-- Use `parallel:` to run multiple subtasks concurrently
-- Use `$TURN[n]` to inject previous conversation context
-- Use `{model:provider/model-id}` for inline model overrides
-
-**plannotator visual review:**
-
-- `/plannotator` - Open visual plan review UI in browser
-- `/plannotator-review` - Review git diffs with inline annotations
-- Annotate, approve, or request changes visually
-
-**opencode-skillful:**
-
-- `skill_find "keyword"` - Search for relevant skills
-- `skill_use "skill_name"` - Load skill into chat context
-- `skill_resource skill_name="..." relative_path="..."` - Read skill resources
-
-### CLI Tools Installed
-
-- **plannotator**: `~/.local/bin/plannotator` - Plan review integration
-
-## Knowledge Management & Session Continuity
-
-### Philosophy
-
-- **Manual notes in .planning/** for decisions and project state
-- **/ledger command** for end-of-session context capture
-- **opencode-skillful** for reusable patterns and expertise
-- **Guidelines over enforcement** - use structure when it helps
-
-### Session Continuity Practices
-
-#### Using /ledger Command
-
-**When to create a ledger:**
-
-- End of coding session
-- Before context switching to another project
-- After completing significant milestones
-- When you need to pause work for extended period
-
-**What to capture:**
-
-- What was accomplished this session
-- Decisions made and why
-- Current blockers or open questions
-- What to resume next session
-- Links to relevant .planning/ docs
-
-**Output location:** `thoughts/ledgers/CONTINUITY_{session}.md`
-
-#### Manual Notes in .planning/
-
-Continue using existing structure:
-
-- `STATE.md` - Update after each plan completion
-- `PROJECT.md` - Log key decisions in decisions table
-- `phases/` - Per-phase context and plans
-- `research/` - Research artifacts and evaluations
-
-**Relationship to /ledger:**
-
-- Ledgers are session-oriented (what happened today)
-- .planning/ docs are project-oriented (overall state)
-- Reference ledgers from STATE.md when decisions span sessions
-
-### Organizing Knowledge with opencode-skillful
-
-**Optional directory:** `~/.config/opencode/skills/`
-
-**When to create skills:**
-
-- You solve a problem more than once
-- Pattern is reusable across features
-- External expertise needs to be captured (library docs, best practices)
-- Onboarding new team members to patterns
-
-**Skill commands:**
-
-- `skill_find "django testing"` - Search for relevant skills
-- `skill_use "experts/django-patterns"` - Load into context
-- `skill_resource skill_name="..." relative_path="resources/examples.py"` - Read files
-
-### Preventing Truth Decay
-
-Truth Decay = Requirements/decisions degrade as code evolves without updates
-
-**Project-Level Prevention** (SpecTrace's mission):
-
-- Specs in version control (specs/)
-- Test markers link code to requirements (@pytest.mark.requirement)
-- Dashboard shows verification status
-
-**Development-Level Prevention** (Your workflow):
-
-1. **Decision Logging**: Update PROJECT.md decisions table when making architectural choices
-2. **Session Ledgers**: Run /ledger before ending sessions to capture context
-3. **Linking**: Reference requirement IDs in commit messages, ledgers, and .planning/ docs
-4. **Review**: Periodically review STATE.md and ledgers to refresh context
-
-### Workflow Patterns (Guidelines, Not Rules)
-
-#### Starting New Feature
-
-1. Check STATE.md for current project position
-2. Review relevant past ledgers: `skill_find "continuity"` or manual search
-3. Create phase planning doc in .planning/phases/{phase}/
-4. Start work
-
-#### During Development
-
-- Update STATE.md decisions as you make them
-- Use skill_find when encountering solved problems
-- Create new skills when patterns emerge
-
-#### Ending Session
-
-1. Run `/ledger` to capture session context
-2. Update STATE.md with progress/metrics
-3. Commit work with descriptive messages
-4. Note resume point in ledger
-
-#### Multi-Session Features
-
-- Reference previous ledgers at session start
-- Keep STATE.md current position updated
-- Link ledgers together with "Previous: CONTINUITY_20260120.md" references
-
-### Integration with Other Plugins
-
-**subtask2 + ledger:**
-
-- Use $TURN[n] to reference past decisions from ledgers
-- Chain commands: research → plan → implement → ledger
-
-**plannotator + ledger:**
-
-- Create ledger after plan review sessions
-- Capture review feedback in ledger
-
-**skillful + ledger:**
-
-- Note in ledger when new skills are created
-- Reference skills used during session
+Plugin setup and session-continuity practices live in
+[docs/opencode-workflow.md](docs/opencode-workflow.md).
 
 ## Commands
 
-### Testing
+`just` is the task runner. Bare `just` lists every recipe; `just --summary`
+prints their names. The justfile lives at the repo root — read it before
+assuming a recipe name.
+
+### Python (CLI, Django server)
 
 ```bash
-# Run all tests
-make test
-# or
-pytest
+# Everything CI runs: lint, format check, changelog gate, tests
+just check
 
-# Run specific test file
+# Run all tests (skips demo-marked tests)
+just test
+# or, for one file or one function
 pytest path/to/test_file.py
-
-# Run specific test function
 pytest path/to/test_file.py::test_function_name
 
-# Run tests with verbose output
-pytest -v
+# Lint / format
+just lint
+just format         # check only
+just format-fix      # rewrite files
 
-# Run tests matching a pattern
-pytest -k "pattern"
-```
-
-### Development Server
-
-```bash
-# Start Django development server
-make run
-# or
-python spectrace/manage.py runserver
+# Start the Django development server (retiring — do not build new features here)
+just run
 
 # Django shell
-make shell
-# or
-python spectrace/manage.py shell
+just shell
+
+# Migrations
+just migrate
+just makemigrations
+
+# Parse spec files into the Django database
+python spectrace/manage.py parse_specs specs/
+python spectrace/manage.py parse_specs specs/ --clear    # clear existing first
+python spectrace/manage.py parse_specs specs/ --dry-run  # validate without saving
 ```
 
-### Database
+### Worker (`worker/`)
 
 ```bash
-# Run migrations
-make migrate
-# or
-python spectrace/manage.py migrate
-
-# Create new migrations
-make makemigrations
-# or
-python spectrace/manage.py makemigrations
-
-# Parse spec files into database
-python spectrace/manage.py parse_specs specs/
-python spectrace/manage.py parse_specs specs/ --clear  # Clear existing first
-python spectrace/manage.py parse_specs specs/ --dry-run  # Validate without saving
+just worker-test           # vitest; the run prints the count
+just worker-typecheck       # wrangler types && tsc --noEmit
+just worker-lint            # biome check: lint, format, import order
+just worker-dev              # serve against local D1
+just worker-migrate-local    # apply D1 migrations locally
+just worker-deploy           # migrate remote D1, then wrangler deploy (CI runs this on merge to main)
 ```
+
+### Dashboard (`app/`)
+
+```bash
+just app-typecheck   # tsc --noEmit
+just app-lint        # biome check: lint, format, import order
+just app-test        # vitest
+just app-build        # vite build
+just app-dev           # serve against the deployed Worker (key from the login keychain)
+just app-dev-local     # serve the dashboard and the Worker together against local D1
+just deploy-app         # vite build, then wrangler deploy; CI does this on merge to main
+```
+
+### Pushing
+
+`CHANGELOG.md` carries a generated block. The gate fails when a commit since
+the baseline has no entry.
+
+```bash
+just push              # regenerate, commit CHANGELOG.md alone, then push
+just push origin main  # arguments pass through to git push
+just changelog         # regenerate only
+just changelog-check   # report staleness
+```
+
+Two paths keep the section current:
+
+| Path             | Who writes the commit                 |
+| ---------------- | ------------------------------------- |
+| `just push`      | you, before the push                  |
+| any other client | `github-actions[bot]`, after the push |
+
+The `Changelog` job on `main` regenerates the section, commits it, and pushes.
+The pre-push hook reports a stale section and lets the push through. A commit
+pushed with `GITHUB_TOKEN` starts no workflow run, so the repair cannot loop.
+Pull after pushing from another client — CI adds its commit on top of yours.
+
+Commit `CHANGELOG.md` by itself. A commit touching only `CHANGELOG.md` needs
+no entry, so bundling other files makes the gate demand an entry that cannot
+exist yet.
 
 ### Installation
 
 ```bash
-# Install package in editable mode (uses uv - recommended)
-make install
-# or
-uv pip install -e .
+# Create the virtualenv and install the package + spectrace-flows (uses uv)
+just install
 
-# Install with dev dependencies
-make install-dev
-# or
-uv pip install -e ".[dev]"
+# Install with dev dependencies, and point git at .githooks
+just install-dev
 
-# Note: If uv is not installed, install it first:
+# Note: if uv is not installed, install it first:
 # curl -LsSf https://astral.sh/uv/install.sh | sh
 # or: pip install uv
 ```
+
+### Secrets
+
+Deployed secrets live in Cloudflare (`wrangler secret list`) and in GitHub
+Actions. None belong in the repo.
+
+Local development needs no deployed secret. `just dev-secrets` writes
+`worker/.dev.vars` with a dummy key, and `just app-dev-local` generates the
+rest per run, so `app/.dev.vars` normally does not exist.
+
+`just app-dev` is the exception: its service binding is remote, so the
+dashboard presents the production `SPECTRACE_API_KEY` to the deployed Worker.
+Store that key once with `just secret-set`, which prompts and writes to the
+login keychain. The recipe reads it at startup into a 0600 `app/.dev.vars`
+and removes the file when it exits. `just secret-list` reports what the
+keychain holds.
+
+`app/.dev.vars.example` documents the GitHub OAuth app setup (two callback
+URLs) and the `ALLOWED_LOGINS` allowlist.
 
 ### Cleanup
 
 ```bash
 # Remove caches and build artifacts
-make clean
+just clean
 ```
 
 ## Code Style Guidelines
@@ -404,13 +307,13 @@ except Exception as e:
 
 ### Testing
 
-- Place tests adjacent to code being tested (not in separate tests/ directory)
+- Place tests in a `tests/` directory next to the code being tested (e.g. `spectrace/requirements/tests/`)
 - Use pytest conventions: `test_*.py` or `*_test.py` files
 - Name test functions with `test_` prefix
 - Use descriptive test names that explain what is being tested
 - Configure pytest via `pyproject.toml` under `[tool.pytest.ini_options]`
 - Use pytest fixtures for shared setup
-- Future: Use `@pytest.mark.requirement("REQ-XXX")` to link tests to requirements
+- Use `@pytest.mark.requirement("REQ-XXX")` to link tests to requirements — already in use across `spectrace/requirements/tests/` and `spectrace/tests/`
 
 ### File Paths
 
@@ -430,30 +333,57 @@ except Exception as e:
 
 ```
 spec-trace/
-├── spectrace/              # Django project root
-│   ├── spectrace/          # Django settings package
-│   │   ├── settings.py     # Django configuration
-│   │   ├── urls.py         # URL routing
-│   │   └── wsgi.py         # WSGI configuration
-│   ├── requirements/       # Main Django app
-│   │   ├── models.py       # Requirement model (django-treebeard)
-│   │   ├── parser.py       # SpecParser class for parsing markdown
-│   │   ├── admin.py        # Django admin configuration
-│   │   └── management/
-│   │       └── commands/
-│   │           └── parse_specs.py  # CLI command for importing specs
-│   ├── manage.py           # Django management script
-│   └── db.sqlite3          # SQLite database (ignored in git)
+├── worker/                 # Worker: Hono + Drizzle + D1, the v1 API and /demo/
+│   ├── src/api/v1/         # API route handlers (specs, results, tasks, push)
+│   ├── src/ledger/         # TaskLedger Durable Object and its state machine
+│   ├── src/screens/        # Hono JSX: the public demo page and redirects.ts
+│   ├── src/db/schema.ts    # Drizzle schema
+│   ├── migrations/         # D1 migrations
+│   └── test/                # Vitest suite; `just worker-test` prints the count
+├── app/                    # Dashboard: React + Vite, behind GitHub OAuth
+│   ├── src/client/          # React app (pages, components)
+│   ├── src/server/          # Hono server: OAuth, session, proxy to the Worker
+│   └── src/shared/           # Types shared by client and server
+├── spectrace/              # CLI (kept) + Django server (retiring, not yet stopped)
+│   ├── spectrace_client/    # HTTP client the CLI uses to push to the Worker
+│   ├── spectrace/           # Django settings package
+│   ├── requirements/        # Django app: models, parser, views, services
+│   ├── manage.py            # Django management script
+│   └── db.sqlite3           # SQLite database (ignored in git)
 ├── specs/                  # Spec markdown files
 │   ├── example.md          # Example requirement spec
 │   └── auth/               # Feature-specific specs
 │       ├── login.md
 │       └── register.md
+├── plans/
+│   ├── cloudflare-port.md    # Architecture and phase status for the port
+│   └── openapi-worker.yaml   # Frozen v1 API contract (43 operations)
 ├── .planning/              # Project planning documents (internal use)
 ├── pyproject.toml          # Python project metadata & dependencies
-├── Makefile                # Common development commands
+├── justfile                # Task runner — see Commands above
 └── .gitignore              # Git ignore patterns
 ```
+
+### Where to make a change
+
+- **API behavior or shape** (new field, new endpoint, changed response):
+  update `plans/openapi-worker.yaml` first, then `worker/src/api/v1/`, then
+  the matching test in `worker/test/`. The contract, the handler, and the
+  test move together.
+- **A screen** (matrix, coverage, impact, high-risk, requirement detail, …):
+  `app/src/client/pages/` in the dashboard. PR #2 deleted the Worker's data
+  screens; `worker/src/screens/` keeps only the public demo page and the
+  redirects to the dashboard.
+- **Task claiming, leases, or the Lore outbox**: `worker/src/ledger/`.
+- **Spec parsing, drift detection, or anything the CLI pushes**:
+  `spectrace/requirements/parser.py`, `spectrace/requirements/services/`, and
+  `spectrace/cli.py`. These stay Python; they do not move to the Worker.
+- **Dashboard auth** (GitHub OAuth, session, allowed logins):
+  `app/src/server/auth/`.
+- **Anything under `spectrace/requirements/views.py`,
+  `spectrace/requirements/api.py`, or Django templates**: this is the
+  retiring server. Fix a bug there if asked, but build new features on the
+  Worker instead.
 
 ## Spec File Format
 
@@ -499,19 +429,21 @@ Logout functionality description...
 ## Key Architectural Decisions
 
 - **Specs in codebase**: Markdown files live in `specs/` directory, version-controlled with code
-- **Hierarchical storage**: Uses django-treebeard's materialized path for efficient tree queries
+- **Hierarchical storage**: Uses django-treebeard's materialized path for efficient tree queries in the Django server; the Worker keeps the same materialized-path string as a D1 column
 - **Parser design**: SpecParser extracts YAML frontmatter + markdown content, handles both single and multi-requirement files
-- **Test linking**: Future pytest markers (`@pytest.mark.requirement("REQ-XXX")`) will link tests to requirements
+- **Test linking**: pytest markers (`@pytest.mark.requirement("REQ-XXX")`) link tests to requirements
 - **Simple state**: Requirement verification status computed from test results, not stored as state machine
+- **CLI pushes, Worker serves**: the Worker has no filesystem or subprocess, so it never parses specs or reads git directly. The CLI parses on the machine that holds the checkout and pushes the result over the v1 API. See `plans/cloudflare-port.md` for why.
 
 ## Common Tasks
 
 ### Adding a New Field to Requirement Model
 
 1. Edit `spectrace/requirements/models.py` to add field
-2. Run `make makemigrations` to create migration
-3. Run `make migrate` to apply migration
+2. Run `just makemigrations` to create migration
+3. Run `just migrate` to apply migration
 4. Update parser if field should come from spec frontmatter
+5. If the field is part of the v1 contract, add it to `plans/openapi-worker.yaml` and to the matching Drizzle column in `worker/src/db/schema.ts`
 
 ### Adding a New Management Command
 
@@ -527,5 +459,5 @@ Logout functionality description...
 
 ---
 
-**Last Updated**: 2026-01-21
-**Project Status**: Milestone Complete - All 4 phases done with extended features (SLO, in-app validation, REST API)
+**Last Updated**: 2026-09-11
+**Project Status**: Cloudflare port — phases 0-4 shipped, phase 5 (cutover) in progress. See `plans/cloudflare-port.md`.

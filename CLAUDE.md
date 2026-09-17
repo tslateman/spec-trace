@@ -19,8 +19,7 @@ health.py <──── engine.py        health_types.py
 
 Example from this codebase:
 - `health_types.py` contains `VerificationCheck`, `TestConnectionResult`, `_get_timestamp`
-- `health.py` imports from `health_types` and re-exports for backward compatibility
-- `flows/engine.py` imports `VerificationCheck` from `health_types` instead of `health`
+- `health.py` imports `VerificationCheck` from `health_types` instead of defining it inline, avoiding a circular import with `flows/engine.py`, and re-exports it for backward compatibility
 
 ---
 
@@ -101,3 +100,20 @@ dev/test  versioned   all users
 - ❌ Generic descriptions — name the actual API endpoint, the actual model
 - ❌ Hedging everything — "This could potentially help" → "This helps"
 - ❌ AI slop — vague, safe, says everything and nothing
+
+---
+
+## Concurrent Sessions
+
+Several Claude sessions work on this repository at once. Each session works in
+its own git worktree; nobody edits or commits in the main checkout directly.
+
+```
+git worktree add ../spec-trace-cloudflare-<topic> -b <branch> main
+```
+
+Do every edit and commit inside that worktree, then merge or open a PR. Stage
+files by name and never commit a path you did not edit, even inside a
+worktree. A commit staged from whole-repo status sweeps up every other
+session's in-flight files, and a branch switch discards their uncommitted
+work. Both happened here in September 2026.

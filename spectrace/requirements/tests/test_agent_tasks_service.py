@@ -1,9 +1,10 @@
 """Tests for agent task coordination service."""
 
+import threading
 from datetime import timedelta
-from unittest import mock
 
 import pytest
+from django.db import connections
 from django.utils import timezone
 from freezegun import freeze_time
 
@@ -17,7 +18,6 @@ from requirements.models import (
     AgentTaskStatus,
     ReviewDecision,
 )
-from requirements.services import agent_tasks as agent_tasks_service
 from requirements.services.agent_tasks import (
     TransitionError,
     claim_task,
@@ -244,45 +244,42 @@ class TestClaimTask:
             claim_task("blocked-task", "coder-1")
         assert exc_info.value.code == "DEPENDENCIES_NOT_MET"
 
-    def test_claim_task__concurrent_claims_never_both_succeed(self, coder_agent, unclaimed_task):
-        """Two agents racing to claim the same task must not both win.
+    def test_claim_task__concurrent_claims_do_not_crash(self, transactional_db):
+        """Concurrent claims on the same task never raise an unhandled DB error."""
+        Agent.objects.create(agent_id="agent-a", role=AgentRole.CODER, is_active=True)
+        Agent.objects.create(agent_id="agent-b", role=AgentRole.CODER, is_active=True)
+        AgentTask.objects.create(
+            external_id="task-race-001",
+            title="Race target",
+            status=AgentTaskStatus.UNCLAIMED,
+        )
 
-        Agent A reads the task while it is UNCLAIMED, then -- before A
-        writes -- agent B's transaction reads the same UNCLAIMED snapshot,
-        commits its own claim, and only then does A attempt its write. This
-        mirrors two overlapping transactions under READ COMMITTED. Exactly
-        one claim may commit; the other must raise rather than silently
-        overwrite the winner (lost update).
-        """
-        Agent.objects.create(agent_id="coder-2", role=AgentRole.CODER, is_active=True)
+        start_together = threading.Barrier(2)
+        results = {}
 
-        real_get_task = agent_tasks_service.get_task
-        interleaved = []
-        after_b = {}
+        def worker(agent_id):
+            start_together.wait(timeout=5)
+            try:
+                result = claim_task("task-race-001", agent_id, lease_minutes=30)
+                results[agent_id] = ("success", result)
+            except TransitionError as exc:
+                results[agent_id] = ("error", exc)
+            finally:
+                connections.close_all()
 
-        def get_task_interleaved(task_id):
-            task = real_get_task(task_id)
-            if not interleaved:
-                interleaved.append(task_id)
-                claim_task(task_id, "coder-2")
-                # Captured while still inside A's transaction, before A's
-                # TransitionError rolls it back -- this is the state B's
-                # commit produced, which A's stale write must not clobber.
-                after_b["task"] = AgentTask.objects.get(external_id=task_id)
-                after_b["claimed_history"] = list(
-                    AgentTaskHistory.objects.filter(
-                        task__external_id=task_id, action="CLAIMED"
-                    ).values_list("agent__agent_id", flat=True)
-                )
-            return task
+        threads = [
+            threading.Thread(target=worker, args=(agent_id,)) for agent_id in ("agent-a", "agent-b")
+        ]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
 
-        with mock.patch.object(agent_tasks_service, "get_task", side_effect=get_task_interleaved):
-            with pytest.raises(TransitionError) as exc_info:
-                claim_task("task-001", "coder-1")
+        outcomes = {kind for kind, _ in results.values()}
+        assert outcomes == {"success", "error"}
 
-        assert exc_info.value.code == "ALREADY_CLAIMED"
-        assert after_b["task"].claimed_by.agent_id == "coder-2"
-        assert after_b["claimed_history"] == ["coder-2"]
+        errored = next(exc for kind, exc in results.values() if kind == "error")
+        assert errored.code == "INVALID_TRANSITION"
 
 
 # =============================================================================

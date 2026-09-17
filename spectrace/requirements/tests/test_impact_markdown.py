@@ -1,8 +1,10 @@
 """Tests for the Markdown renderer behind the pull request impact gate."""
 
+from pathlib import Path
+
 import pytest
 
-from requirements.services.impact_analyzer import CodeImpactResult
+from requirements.services.impact_analyzer import CodeImpactResult, ProjectRevision
 from requirements.services.impact_markdown import MARKER_PREFIX, marker, render_markdown
 
 
@@ -10,6 +12,7 @@ from requirements.services.impact_markdown import MARKER_PREFIX, marker, render_
 def result():
     return CodeImpactResult(
         changed_files={"local": ["a.py", "b.py"]},
+        revisions={"local": ProjectRevision(Path("."), "base", "head")},
         blast={
             "affected_requirements": ["REQ-A-001", "REQ-A-002"],
             "affected_modules": ["src/one.py"],
@@ -28,26 +31,45 @@ def test_marker__names_the_risk_level():
 
 
 def test_render_markdown__opens_with_the_hidden_marker(result):
-    body = render_markdown(result, "base", "head")
+    body = render_markdown(result)
 
     assert body.splitlines()[0] == "<!-- spectrace-impact-gate risk=critical -->"
     assert MARKER_PREFIX in body
 
 
 def test_render_markdown__states_the_risk_level_and_score(result):
-    body = render_markdown(result, "base", "head")
+    body = render_markdown(result)
 
     assert "**Risk:** CRITICAL (0.86)" in body
 
 
 def test_render_markdown__names_the_compared_refs(result):
-    body = render_markdown(result, "abc123", "def456")
+    result.revisions = {"local": ProjectRevision(Path("."), "abc123", "def456")}
+
+    body = render_markdown(result)
 
     assert "**Comparing:** `abc123` .. `def456`" in body
 
 
+def test_render_markdown__names_each_projects_own_refs(result):
+    result.revisions = {
+        "praxis": ProjectRevision(Path("praxis"), "release/2026-09", "main"),
+        "lore": ProjectRevision(Path("lore"), "v1.4.0", "HEAD"),
+    }
+
+    body = render_markdown(result)
+
+    assert (
+        "**Comparing:**\n"
+        "- `[lore]` `v1.4.0` .. `HEAD`\n"
+        "- `[praxis]` `release/2026-09` .. `main`\n"
+        "\n"
+        "**Risk:**"
+    ) in body
+
+
 def test_render_markdown__lists_affected_requirements(result):
-    body = render_markdown(result, "base", "head")
+    body = render_markdown(result)
 
     assert "### Affected Requirements (2)" in body
     assert "- REQ-A-001" in body
@@ -55,13 +77,13 @@ def test_render_markdown__lists_affected_requirements(result):
 
 
 def test_render_markdown__reports_the_edges_that_carried_the_change(result):
-    body = render_markdown(result, "base", "head")
+    body = render_markdown(result)
 
-    assert "annotated: 12 | contract: 2 | inferred: 1" in body
+    assert "annotated: 12 | dependency: 1 | contract: 2 | inferred: 1" in body
 
 
 def test_render_markdown__omits_the_whole_graph_edge_inventory(result):
-    body = render_markdown(result, "base", "head")
+    body = render_markdown(result)
 
     assert "64" not in body
 
@@ -69,7 +91,7 @@ def test_render_markdown__omits_the_whole_graph_edge_inventory(result):
 def test_render_markdown__truncates_a_long_test_list_with_a_count(result):
     result.affected_tests = [f"tests/test_{n}.py::test_it" for n in range(270)]
 
-    body = render_markdown(result, "base", "head")
+    body = render_markdown(result)
 
     assert "### Affected Tests (270)" in body
     assert "…and 255 more." in body
@@ -79,27 +101,27 @@ def test_render_markdown__truncates_a_long_test_list_with_a_count(result):
 def test_render_markdown__truncates_a_long_requirement_list_with_a_count(result):
     result.blast["affected_requirements"] = [f"REQ-A-{n:03d}" for n in range(100)]
 
-    body = render_markdown(result, "base", "head")
+    body = render_markdown(result)
 
     assert "### Affected Requirements (100)" in body
     assert "- …and 75 more" in body
 
 
 def test_render_markdown__keeps_a_short_list_whole(result):
-    body = render_markdown(result, "base", "head")
+    body = render_markdown(result)
 
     assert "more" not in body.split("### Affected Requirements")[1].split("###")[0]
 
 
 def test_render_markdown__collapses_the_changed_file_list(result):
-    body = render_markdown(result, "base", "head")
+    body = render_markdown(result)
 
     assert "<summary>Changed Files (2)</summary>" in body
     assert "</details>" in body
 
 
 def test_render_markdown__says_the_gate_only_warns(result):
-    body = render_markdown(result, "base", "head")
+    body = render_markdown(result)
 
     assert "warns, it does not block" in body
 
@@ -107,7 +129,7 @@ def test_render_markdown__says_the_gate_only_warns(result):
 def test_render_markdown__marks_an_empty_diff_without_dropping_the_marker():
     empty = CodeImpactResult(changed_files={}, blast={}, affected_tests=[])
 
-    body = render_markdown(empty, "base", "head")
+    body = render_markdown(empty)
 
     assert body.startswith("<!-- spectrace-impact-gate risk=low -->")
     assert "**Risk:** LOW (0.00)" in body
@@ -117,27 +139,7 @@ def test_render_markdown__marks_an_empty_diff_without_dropping_the_marker():
 def test_render_markdown__honors_explicit_limits(result):
     result.affected_tests = ["a::x", "b::x", "c::x"]
 
-    body = render_markdown(result, "base", "head", list_limit=1, test_limit=2)
+    body = render_markdown(result, list_limit=1, test_limit=2)
 
     assert "…and 1 more." in body
     assert "- …and 1 more" in body
-
-
-def test_render_markdown__names_a_dependency_whose_provider_was_absent(result):
-    result.unresolved_dependencies = [
-        {
-            "consumer": "praxis",
-            "module": "src/praxis/spectrace.py",
-            "provider": "spectrace",
-            "surface": "db/requirements_requirement",
-        }
-    ]
-
-    body = render_markdown(result, "HEAD~1", "HEAD")
-
-    assert "### Dependencies Not Analysed" in body
-    assert "`spectrace:db/requirements_requirement`" in body
-
-
-def test_render_markdown__omits_the_unanalysed_section_when_every_provider_was_loaded(result):
-    assert "Dependencies Not Analysed" not in render_markdown(result, "HEAD~1", "HEAD")

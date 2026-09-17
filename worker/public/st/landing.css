@@ -1,0 +1,291 @@
+/* Hide empty Unfold header container on landing page */
+#content > header,
+.container.h-16 {
+    display: none !important;
+}
+
+/* Add top margin to compensate for hidden header */
+.landing {
+    margin-top: var(--st-space-16);
+}
+
+.landing {
+    min-height: calc(100vh - 120px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--st-space-8);
+}
+
+.landing-header {
+    text-align: center;
+    margin-bottom: var(--st-space-10);
+}
+
+.landing-logo {
+    font-size: 3.5rem;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    color: var(--st-text);
+    margin-bottom: var(--st-space-3);
+}
+
+.landing-logo span {
+    color: var(--st-accent-500);
+}
+
+.landing-tagline {
+    font-size: 1.25rem;
+    color: var(--st-text-muted);
+    max-width: 400px;
+    line-height: 1.5;
+}
+
+.landing-paths {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--st-space-6);
+    max-width: 700px;
+    width: 100%;
+    margin-bottom: var(--st-space-10);
+}
+
+.landing-path {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: var(--st-space-8);
+    background: var(--st-surface);
+    border: 1px solid var(--st-border);
+    border-radius: var(--st-radius-xl);
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.2s ease;
+}
+
+.landing-path:hover {
+    border-color: var(--st-accent-500);
+    box-shadow: var(--st-shadow-lg);
+    transform: translateY(-2px);
+}
+
+.landing-path__icon {
+    width: 64px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--st-accent-bg);
+    border-radius: var(--st-radius-lg);
+    color: var(--st-accent-500);
+    margin-bottom: var(--st-space-4);
+}
+
+.landing-path__title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: var(--st-space-2);
+}
+
+.landing-path__desc {
+    font-size: 0.9375rem;
+    color: var(--st-text-muted);
+    text-align: center;
+    line-height: 1.5;
+}
+
+/* Dark mode: ensure text contrast */
+html.dark .landing-logo {
+    color: #f1f3f5;
+}
+
+html.dark .landing-tagline {
+    color: #adb5bd;
+}
+
+html.dark .landing-path__title {
+    color: #f1f3f5;
+}
+
+html.dark .landing-path__desc {
+    color: #adb5bd;
+}
+
+html.dark .landing-stat__label {
+    color: #868e96;
+}
+
+html.dark .landing-footer {
+    color: #868e96;
+}
+
+.landing-stats {
+    display: flex;
+    gap: var(--st-space-8);
+    padding: var(--st-space-6);
+    background: var(--st-surface-sunken);
+    border-radius: var(--st-radius-lg);
+    margin-bottom: var(--st-space-8);
+}
+
+.landing-stat {
+    text-align: center;
+    min-width: 100px;
+}
+
+.landing-stat__value {
+    font-family: var(--font-mono);
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--st-text);
+    line-height: 1;
+}
+
+.landing-stat__value--accent {
+    color: var(--st-accent-500);
+}
+
+.landing-stat__value--pass {
+    color: var(--st-pass);
+}
+
+.landing-stat__value--warn {
+    color: var(--st-warn);
+}
+
+.landing-stat__label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--st-text-subtle);
+    margin-top: var(--st-space-1);
+}
+
+.landing-footer {
+    font-size: 0.875rem;
+    color: var(--st-text-subtle);
+}
+
+.landing-footer a {
+    color: var(--st-accent-500);
+    text-decoration: none;
+}
+
+.landing-footer a:hover {
+    text-decoration: underline;
+}
+
+.feature-highlights {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: var(--st-space-4);
+    max-width: 900px;
+    width: 100%;
+    margin-bottom: var(--st-space-10);
+}
+
+.st-animate-delay-8 { animation-delay: 0.3s; }
+.st-animate-delay-9 { animation-delay: 0.35s; }
+
+.feature-highlight {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: var(--st-space-5);
+    background: var(--st-surface);
+    border: 1px solid var(--st-border);
+    border-radius: var(--st-radius-lg);
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.2s ease;
+    text-align: center;
+}
+
+.feature-highlight:hover {
+    border-color: var(--st-accent-500);
+    transform: translateY(-2px);
+}
+
+.feature-highlight__icon {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--st-accent-bg);
+    border-radius: var(--st-radius-md);
+    color: var(--st-accent-500);
+    margin-bottom: var(--st-space-3);
+}
+
+.feature-highlight__title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: var(--st-space-1);
+}
+
+.feature-highlight__desc {
+    font-size: 0.8125rem;
+    color: var(--st-text-muted);
+    line-height: 1.4;
+}
+
+/* Dark mode for feature highlights */
+html.dark .feature-highlight__title {
+    color: #f1f3f5;
+}
+
+html.dark .feature-highlight__desc {
+    color: #adb5bd;
+}
+
+@media (max-width: 640px) {
+    .landing-paths {
+        grid-template-columns: 1fr;
+    }
+
+    .landing-stats {
+        flex-direction: column;
+        gap: var(--st-space-4);
+    }
+
+    .feature-highlights {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* Driver.js tour customization */
+.driver-popover {
+    border-radius: var(--st-radius-lg) !important;
+    box-shadow: var(--st-shadow-lg) !important;
+}
+.driver-popover-title {
+    font-weight: 600 !important;
+    font-size: 1.125rem !important;
+}
+.driver-popover-description {
+    font-size: 0.9375rem !important;
+    line-height: 1.5 !important;
+    color: var(--st-text-muted) !important;
+}
+.driver-popover-progress-text {
+    font-size: 0.75rem !important;
+}
+
+/* Dark mode support */
+html.dark .driver-popover {
+    background: var(--st-surface);
+    border-color: var(--st-border);
+}
+
+html.dark .driver-popover-title {
+    color: var(--st-text);
+}
+
+html.dark .driver-popover-description {
+    color: var(--st-text-muted);
+}
+

@@ -59,6 +59,10 @@ modules:
     requirements: [REQ-RSLT-005, REQ-RSLT-006]
   spectrace/requirements/services/impact_analyzer.py:
     requirements: [REQ-SPEC-004]
+  spectrace/requirements/services/impact_graph.py:
+    requirements: [REQ-SPEC-004]
+  spectrace/requirements/services/map_reader.py:
+    requirements: [REQ-SPEC-004]
   spectrace/requirements/services/dependency_validator.py:
     requirements: [REQ-SPEC-004]
   spectrace/requirements/management/commands/impact_analysis.py:

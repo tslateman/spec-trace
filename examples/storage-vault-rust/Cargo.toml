@@ -1,0 +1,12 @@
+[package]
+name = "storage-vault"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dev-dependencies]
+libtest-mimic = "0.8"
+
+[[test]]
+name = "vault"
+harness = false

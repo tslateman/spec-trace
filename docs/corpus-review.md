@@ -34,7 +34,7 @@ would prove nothing about what was covered.
 | `spectrace corpus coverage`                     | The audit ledger: each requirement's latest review | always 0                |
 | `spectrace corpus drift`                        | Reviews the corpus has moved out from under        | 0, or 1 with `--strict` |
 | `spectrace corpus suggest`                      | Proposes `applies_to` widenings for a human        | always 0                |
-| `python spectrace/manage.py parse_corpus <dir>` | Imports `corpus/**/*.md` into immutable versions   | 1 on a parse error      |
+| `python spectrace/manage.py parse_corpus <dir>` | Imports `<dir>/**/*.md` into immutable versions    | 1 on a parse error      |
 
 Common options:
 

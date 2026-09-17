@@ -1,12 +1,18 @@
 # Writing a corpus entry
 
 A corpus entry is one org standard, decision, or commitment, written as a
-markdown file under `corpus/`. `parse_corpus` reads it into an immutable
-version. `spectrace corpus review` decides which specs it binds to and which of
-its checks they fail.
+markdown file. `parse_corpus` reads it into an immutable version.
+`spectrace corpus review` decides which specs it binds to and which of its
+checks they fail.
 
-> This guide lives in `docs/`, not in `corpus/`. `parse_corpus` globs
-> `corpus/**/*.md` and rejects any file that lacks entry frontmatter, so a
+Entries live in two trees. `corpus/` holds the obligations the product carries —
+billing, identity, platform, security — and binds to `specs/`. `meta/corpus/`
+holds the obligations SpecTrace carries about itself and binds to `meta/specs/`.
+`parse_corpus` takes the directory as an argument, so the two import
+independently and neither reaches the other's specs.
+
+> This guide lives in `docs/`, not in either corpus tree. `parse_corpus` globs
+> `<dir>/**/*.md` and rejects any file that lacks entry frontmatter, so a
 > `corpus/README.md` fails the whole import:
 >
 > ```
@@ -47,6 +53,7 @@ Import it:
 ```bash
 python spectrace/manage.py parse_corpus corpus/ --dry-run
 python spectrace/manage.py parse_corpus corpus/
+python spectrace/manage.py parse_corpus meta/corpus/
 ```
 
 `parse_corpus` is idempotent and refuses `--clear`. Entry versions are
@@ -103,7 +110,7 @@ entry means editing that one file and raising the number in it.
 file at version 3 and again at version 4 holds both; snapshots pinned by reviews
 point at the version that was current when each ran.
 
-**A fresh deployment starts at the current version.** `make migrate &&
+**A fresh deployment starts at the current version.** `just migrate &&
 parse_corpus corpus/` on a clone yields one version per entry — the version its
 file declares. There is no earlier history to import, because the earlier bodies
 live in git, not in `corpus/`.
@@ -352,6 +359,56 @@ corpus and every one was noise.
 | `declared in both … and …`                         | Two files claiming one `id`                                                 |
 | `supersedes … names a version that does not exist` | A `supersedes` target absent from both the corpus and the database          |
 | `--clear is not supported for the corpus`          | Entry versions are immutable and reviews reference them                     |
+
+## Which domains the corpus covers
+
+An entry earns its place when three things hold at once: a spec already asserts
+it, a pattern under `applies_to` binds it to that spec, and at least one check
+reads a field a spec author fills. Miss the first and the entry is a policy no
+one wrote down. Miss the second and it binds to nothing. Miss the third and its
+findings table stays red forever.
+
+`corpus/` covers billing, identity, platform, and security, and reaches
+`specs/workspaces/**` through the path globs on `STD-SEC-001`, `COM-PLAT-001`,
+and `DEC-IAM-002`. `meta/corpus/` covers SpecTrace itself:
+
+| Group             | Entries                        | Binds to                             |
+| ----------------- | ------------------------------ | ------------------------------------ |
+| API v1 contract   | `STD-API-001`, `DEC-API-001`   | `meta/specs/api-*.md`                |
+| Write semantics   | `STD-API-002`                  | the two surfaces that accept POST    |
+| Traceability loop | `COM-CORE-001`, `COM-CORE-002` | `meta/specs/core-loop.md`            |
+| Input rejection   | `STD-CORE-001`                 | the loop and all three API specs     |
+| Worker source     | `STD-WORKER-001`               | `meta/specs/prune-screen-exports.md` |
+
+Every one of the seven restates something a spec in `meta/specs/` already
+asserts, so each spec cites the entries that bind to it in `complies_with` and
+every check they carry holds today. A version bump on any of them turns those
+citations stale and fails `.github/workflows/corpus.yml`.
+
+### Deferred, and why
+
+**The React dashboard under `app/`.** No spec declares it. An entry scoped to a
+spec that does not exist binds to nothing and ages quietly, which is the failure
+the corpus exists to prevent. The spec comes first.
+
+**The D1 schema and the Worker migrations.** `meta/specs/` describes one Worker
+change, the screen prune. The storage standards — migration reversibility, which
+tables a tenant read may touch — belong with the spec that states the data model,
+and that spec lands with the corpus push path.
+
+**API key issuance and rotation.** `DEC-API-001` says which endpoints need a key.
+Nothing specs how a key is issued, rotated, or revoked, so a standard about it
+would assert more than any spec claims.
+
+**Rescoping `COM-PLAT-001`.** Its `tags: [core, workspaces, collaboration]`
+matches `REQ-CORE-*` on the bare `core` tag, so a workspace-durability
+commitment surfaces on all six stages of the traceability loop and reports an
+unaddressed obligation no traceability spec can address. Narrowing the tags to
+`[workspaces, collaboration]` fixes it and preserves every intended match, but
+`applies_to` feeds the content hash, so the fix is a bump to `COM-PLAT-001@3`
+and a new corpus snapshot hash. `docs/corpus-review.md` pins that hash in four
+pasted output blocks and `test_docs_walkthrough.py` compares them against live
+output, so the rescope and the refresh land together, in a commit platform owns.
 
 ## Related
 

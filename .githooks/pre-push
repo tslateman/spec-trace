@@ -1,10 +1,17 @@
 #!/usr/bin/env bash
-# Reject a push whose commits are missing from CHANGELOG.md's Unreleased section.
+# Report commits missing from CHANGELOG.md's Unreleased section.
+#
+# CI regenerates and commits the section on main, so this warns rather than
+# rejects. `just push` does the same work locally and keeps the bot out of
+# the history.
 #
 # Install: git config core.hooksPath .githooks
-# Bypass:  git push --no-verify
 
-set -euo pipefail
+set -uo pipefail
 
 repo_root="$(git rev-parse --show-toplevel)"
-python3 "$repo_root/scripts/changelog.py" check
+if ! python3 "$repo_root/scripts/changelog.py" check; then
+  echo
+  echo "Pushing anyway — CI commits the update. Run \`just push\` to do it here."
+fi
+exit 0

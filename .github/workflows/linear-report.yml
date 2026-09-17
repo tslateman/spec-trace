@@ -1,0 +1,80 @@
+name: Linear report
+
+on:
+  workflow_run:
+    workflows: [Worker]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: linear-report
+  cancel-in-progress: false
+
+jobs:
+  report:
+    name: Report to Linear
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+
+    env:
+      LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+      LINEAR_WORKSPACE: ${{ vars.LINEAR_WORKSPACE }}
+      LINEAR_TEAM: ${{ vars.LINEAR_TEAM }}
+
+    steps:
+      - name: Stop unless LINEAR_API_KEY is set
+        id: secret
+        run: |
+          if [ -z "$LINEAR_API_KEY" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::LINEAR_API_KEY is not set; no run reaches Linear. README.md, under CI Integration, says how to mint the key and add it."
+            exit 0
+          fi
+          echo "configured=true" >> "$GITHUB_OUTPUT"
+
+      - name: Check out the commit whose results landed
+        if: steps.secret.outputs.configured == 'true'
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - uses: actions/setup-python@v7
+        if: steps.secret.outputs.configured == 'true'
+        with:
+          python-version: "3.13"
+
+      - name: Install the CLI
+        if: steps.secret.outputs.configured == 'true'
+        run: |
+          pip install uv
+          uv pip install --system -e ./spectrace-flows -e ".[dev]"
+
+      - name: Verify the token before it reaches an issue
+        if: steps.secret.outputs.configured == 'true'
+        run: spectrace linear check --workspace "$LINEAR_WORKSPACE" --team "$LINEAR_TEAM"
+
+      - name: Map each test to the requirement it verifies
+        if: steps.secret.outputs.configured == 'true'
+        run: |
+          python spectrace/manage.py migrate --no-input
+          python spectrace/manage.py parse_specs specs
+          python spectrace/manage.py parse_specs meta/specs
+          python spectrace/manage.py extract_links --path spectrace --output links.json
+
+      - name: Run the suite for its JUnit report
+        if: steps.secret.outputs.configured == 'true'
+        continue-on-error: true
+        run: python -m pytest -m "not demo" --tb=no -q --junitxml=test_results.xml
+
+      - name: Report the run to the Linear issues its tests verify
+        if: steps.secret.outputs.configured == 'true'
+        run: >
+          spectrace linear report test_results.xml --links links.json
+          --git-sha "$GIT_SHA" --ci-job-url "$CI_JOB_URL"
+        env:
+          GIT_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+          CI_JOB_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

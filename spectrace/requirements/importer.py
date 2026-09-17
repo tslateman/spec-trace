@@ -3,9 +3,10 @@
 import json
 
 from django.utils import timezone
-from junitparser import Error, Failure, JUnitXml, Skipped
+from junitparser import JUnitXml
 
 from .models import Requirement, TestRequirementLink, TestResult, TestRun
+from .services.junit_cases import case_nodeid, case_outcome, normalize_nodeid
 
 
 def import_junit_xml(
@@ -40,32 +41,10 @@ def import_junit_xml(
 
     for suite in xml:
         for case in suite:
-            # Determine status from result list
-            # Default: no result element = passed
-            status = "passed"
-            message = ""
-
-            if case.result:
-                for result in case.result:
-                    if isinstance(result, Failure):
-                        status = "failed"
-                        message = result.message or ""
-                        break
-                    elif isinstance(result, Error):
-                        status = "error"
-                        message = result.message or ""
-                        break
-                    elif isinstance(result, Skipped):
-                        status = "skipped"
-                        message = result.message or ""
-
-            # Build nodeid from classname and name
-            # pytest format: classname is "tests.test_module" or file path
-            nodeid = f"{case.classname}::{case.name}" if case.classname else case.name
-
+            status, message = case_outcome(case)
             TestResult.objects.create(
                 test_run=test_run,
-                test_nodeid=nodeid,
+                test_nodeid=case_nodeid(case),
                 classname=case.classname or "",
                 name=case.name,
                 time=case.time or 0.0,
@@ -78,37 +57,6 @@ def import_junit_xml(
     test_run.save()
 
     return test_run
-
-
-def _normalize_nodeid(nodeid: str) -> str:
-    """Normalize a test nodeid to a canonical format.
-
-    JUnit XML uses dotted class paths (spectrace.tests.test_example::test_func)
-    while extract_links uses file paths (spectrace/tests/test_example.py::test_func).
-
-    This normalizes to the file path format.
-
-    Args:
-        nodeid: Test nodeid in either format.
-
-    Returns:
-        Normalized nodeid in file path format.
-    """
-    if "::" in nodeid:
-        path_part, test_part = nodeid.split("::", 1)
-    else:
-        path_part = nodeid
-        test_part = ""
-
-    # If path part has dots and no slashes, convert to file path
-    if "." in path_part and "/" not in path_part and not path_part.endswith(".py"):
-        # Convert dotted path to file path:
-        # spectrace.tests.test_example -> spectrace/tests/test_example.py
-        path_part = path_part.replace(".", "/") + ".py"
-
-    if test_part:
-        return f"{path_part}::{test_part}"
-    return path_part
 
 
 def link_results_to_requirements(test_run: TestRun, links_json_path: str) -> dict:
@@ -132,7 +80,7 @@ def link_results_to_requirements(test_run: TestRun, links_json_path: str) -> dic
     # Build normalized nodeid -> requirement_ids lookup
     nodeid_to_reqs = {}
     for link in data.get("links", []):
-        nodeid = _normalize_nodeid(link["test_nodeid"])
+        nodeid = normalize_nodeid(link["test_nodeid"])
         req_id = link["requirement_id"]
         if nodeid not in nodeid_to_reqs:
             nodeid_to_reqs[nodeid] = []
@@ -143,7 +91,7 @@ def link_results_to_requirements(test_run: TestRun, links_json_path: str) -> dic
 
     for result in test_run.results.all():
         # Normalize the result nodeid for comparison
-        normalized_nodeid = _normalize_nodeid(result.test_nodeid)
+        normalized_nodeid = normalize_nodeid(result.test_nodeid)
         req_ids = nodeid_to_reqs.get(normalized_nodeid, [])
         if req_ids:
             requirements = Requirement.objects.filter(external_id__in=req_ids)
@@ -175,12 +123,12 @@ def update_test_requirement_links(test_run: TestRun) -> dict:
     # Build a mapping of normalized nodeids to test results
     nodeid_to_result = {}
     for result in test_run.results.all():
-        normalized = _normalize_nodeid(result.test_nodeid)
+        normalized = normalize_nodeid(result.test_nodeid)
         nodeid_to_result[normalized] = result
 
     # Update all matching TestRequirementLinks
     for link in TestRequirementLink.objects.all():
-        normalized = _normalize_nodeid(link.test_nodeid)
+        normalized = normalize_nodeid(link.test_nodeid)
         result = nodeid_to_result.get(normalized)
 
         if result:

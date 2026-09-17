@@ -1,0 +1,184 @@
+# Each example project under examples/ runs its own suite and pushes the links
+# its test names carry plus the results of the run. One job per language: the
+# bracketed requirement tag is the same mechanism in all four.
+
+name: Examples
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  SPECTRACE_URL: ${{ secrets.SPECTRACE_URL }}
+  SPECTRACE_API_KEY: ${{ secrets.SPECTRACE_API_KEY }}
+
+jobs:
+  python:
+    name: Python (document-pipeline)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Install the CLI and the example's test dependencies
+        run: |
+          pip install uv
+          uv pip install --system -e ./spectrace-flows -e ".[dev]"
+          uv pip install --system pytest-asyncio
+
+      # DOC-ING-004 fails on purpose, so the example shows an unverified
+      # requirement. Let the run finish and push what it found.
+      - name: Run the suite for its JUnit report
+        continue-on-error: true
+        working-directory: examples/document-pipeline
+        run: python -m pytest -q --junitxml=junit.xml
+
+      - name: Prepare the requirement database extract_links reads
+        run: |
+          python spectrace/manage.py migrate --no-input
+          python spectrace/manage.py parse_specs examples/document-pipeline/specs
+
+      # Python links through @pytest.mark.requirement, so the links come from
+      # extract_links rather than from the test names. Collecting from the
+      # example directory gives the links the nodeids the report carries.
+      - name: Collect the links the markers carry
+        working-directory: examples/document-pipeline
+        run: python ../../spectrace/manage.py extract_links --path tests --output links.json
+
+      - name: Push the specs and the links
+        if: env.SPECTRACE_API_KEY != ''
+        working-directory: examples/document-pipeline
+        run: spectrace push --specs specs --links links.json --replace
+
+      - name: Push the results
+        if: env.SPECTRACE_API_KEY != ''
+        working-directory: examples/document-pipeline
+        run: spectrace results push junit.xml --links links.json
+
+  typescript:
+    name: TypeScript (session-api)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: examples/session-api-typescript
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
+      - run: npm ci
+
+      - name: Run the suite for its JUnit report
+        continue-on-error: true
+        run: npm test
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Install the CLI
+        working-directory: .
+        run: |
+          pip install uv
+          uv pip install --system -e ./spectrace-flows -e .
+
+      - name: Push the specs and the links the test names carry
+        if: env.SPECTRACE_API_KEY != ''
+        run: spectrace push --specs specs --links junit.xml --replace
+
+      - name: Push the results
+        if: env.SPECTRACE_API_KEY != ''
+        run: spectrace results push junit.xml
+
+  go:
+    name: Go (upload-gateway)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: examples/upload-gateway-go
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.23"
+          cache-dependency-path: examples/upload-gateway-go/go.mod
+
+      # go test writes no JUnit; gotestsum wraps it and does.
+      - name: Install gotestsum
+        run: go install gotest.tools/gotestsum@v1.12.1
+
+      - name: Run the suite for its JUnit report
+        continue-on-error: true
+        run: gotestsum --junitfile junit.xml --format testname ./...
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Install the CLI
+        working-directory: .
+        run: |
+          pip install uv
+          uv pip install --system -e ./spectrace-flows -e .
+
+      - name: Push the specs and the links the test names carry
+        if: env.SPECTRACE_API_KEY != ''
+        run: spectrace push --specs specs --links junit.xml --replace
+
+      - name: Push the results
+        if: env.SPECTRACE_API_KEY != ''
+        run: spectrace results push junit.xml
+
+  rust:
+    name: Rust (storage-vault)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: examples/storage-vault-rust
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      # cargo test writes no JUnit; cargo nextest does, from the ci profile in
+      # .config/nextest.toml.
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
+
+      - name: Run the suite for its JUnit report
+        continue-on-error: true
+        run: cargo nextest run --profile ci
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Install the CLI
+        working-directory: .
+        run: |
+          pip install uv
+          uv pip install --system -e ./spectrace-flows -e .
+
+      - name: Push the specs and the links the trial names carry
+        if: env.SPECTRACE_API_KEY != ''
+        run: spectrace push --specs specs --links target/nextest/ci/junit.xml --replace
+
+      - name: Push the results
+        if: env.SPECTRACE_API_KEY != ''
+        run: spectrace results push target/nextest/ci/junit.xml

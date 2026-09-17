@@ -100,7 +100,7 @@ Point to output as it runs:
 ./manage.py agent_merge REQ-UPGRADE-001
 ```
 
-> "Review shows exactly which requirements this change affects. Merge brings it to main and auto-runs consolidate to clean up branches."
+> "Review shows exactly which requirements this change affects. Merge brings it to main."
 
 ---
 

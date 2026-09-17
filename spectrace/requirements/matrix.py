@@ -233,6 +233,42 @@ def get_cell_color(status):
     return colors.get(status, "bg-gray-200")
 
 
+MATRIX_DEMO_TESTS = [
+    ("tests/test_auth.py::test_login_success", "test_login_success", "passed"),
+    (
+        "tests/test_auth.py::test_login_invalid_password",
+        "test_login_invalid_password",
+        "passed",
+    ),
+    (
+        "tests/test_auth.py::test_login_user_not_found",
+        "test_login_user_not_found",
+        "failed",
+    ),
+    ("tests/test_auth.py::test_logout", "test_logout", "passed"),
+    ("tests/test_upgrade.py::test_create_request", "test_create_request", "passed"),
+    (
+        "tests/test_upgrade.py::test_request_validation",
+        "test_request_validation",
+        "passed",
+    ),
+    (
+        "tests/test_upgrade.py::test_duplicate_request",
+        "test_duplicate_request",
+        "failed",
+    ),
+    ("tests/test_wallet.py::test_provision_pass", "test_provision_pass", "passed"),
+    (
+        "tests/test_wallet.py::test_device_registration",
+        "test_device_registration",
+        "passed",
+    ),
+    ("tests/test_wallet.py::test_bundle_fetch", "test_bundle_fetch", "error"),
+    ("tests/test_export.py::test_csv_export", "test_csv_export", "passed"),
+    ("tests/test_export.py::test_pdf_export", "test_pdf_export", "skipped"),
+]
+
+
 def setup_matrix_demo(clear: bool = True) -> dict:
     """Set up demo data for the traceability matrix.
 
@@ -286,44 +322,8 @@ def setup_matrix_demo(clear: bool = True) -> dict:
         git_branch="main",
     )
 
-    # Create sample test results with various statuses
-    demo_tests = [
-        ("tests/test_auth.py::test_login_success", "test_login_success", "passed"),
-        (
-            "tests/test_auth.py::test_login_invalid_password",
-            "test_login_invalid_password",
-            "passed",
-        ),
-        (
-            "tests/test_auth.py::test_login_user_not_found",
-            "test_login_user_not_found",
-            "failed",
-        ),
-        ("tests/test_auth.py::test_logout", "test_logout", "passed"),
-        ("tests/test_upgrade.py::test_create_request", "test_create_request", "passed"),
-        (
-            "tests/test_upgrade.py::test_request_validation",
-            "test_request_validation",
-            "passed",
-        ),
-        (
-            "tests/test_upgrade.py::test_duplicate_request",
-            "test_duplicate_request",
-            "failed",
-        ),
-        ("tests/test_wallet.py::test_provision_pass", "test_provision_pass", "passed"),
-        (
-            "tests/test_wallet.py::test_device_registration",
-            "test_device_registration",
-            "passed",
-        ),
-        ("tests/test_wallet.py::test_bundle_fetch", "test_bundle_fetch", "error"),
-        ("tests/test_export.py::test_csv_export", "test_csv_export", "passed"),
-        ("tests/test_export.py::test_pdf_export", "test_pdf_export", "skipped"),
-    ]
-
     # Distribute tests across requirements
-    for i, (nodeid, name, status) in enumerate(demo_tests):
+    for i, (nodeid, name, status) in enumerate(MATRIX_DEMO_TESTS):
         # Link to requirement(s) in a round-robin fashion
         req_index = i % len(requirements)
 

@@ -1,0 +1,4 @@
+project: storage-vault
+modules:
+  src/lib.rs:
+    requirements: [VLT-ENC-001, VLT-ENC-002, VLT-RET-001]

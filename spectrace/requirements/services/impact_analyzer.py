@@ -11,9 +11,9 @@ from typing import Optional
 from requirements.models import Requirement, TestRequirementLink
 from requirements.projects import node_name, qualify
 
-from .contract_snapshot import contract_edges as build_contract_edges
+from .contract_snapshot import ContractSnapshot
 from .git_cochange import GitCoChangeAnalyzer
-from .impact_graph import BlastResult, EdgeSource, ImpactGraphBuilder
+from .impact_graph import BlastResult, EdgeSource, GraphEdge, ImpactGraphBuilder
 from .map_reader import MapReader
 
 logger = logging.getLogger(__name__)
@@ -82,62 +82,24 @@ def validate_git_ref(ref: str) -> None:
 
 
 @dataclass(frozen=True)
-class RefPair:
-    """The two refs one project's diff runs between."""
-
-    base: str
-    head: str
-
-
-def resolve_ref_pairs(
-    root_keys: list[str],
-    shared: Optional[RefPair],
-    per_project: Optional[dict[str, RefPair]],
-) -> dict[str, RefPair]:
-    """Give every project root the ref pair its own diff runs between.
-
-    A shared pair covers every root, which is what a single-root run and a
-    monorepo both want. A per-project mapping must name every root: a root left
-    out raises, because one repository's refs resolve in another only by luck.
+class ProjectRevision:
+    """One project root with the ref pair to diff inside it.
 
     Raises:
-        ValueError: If both forms arrive, if neither does, if a root goes
-            unnamed, or if a name matches no root.
+        ValueError: If either ref fails ``validate_git_ref``.
     """
-    if shared and per_project:
-        raise ValueError("Pass one shared base and head pair, or one pair per project, not both.")
-    if shared:
-        return {key: shared for key in root_keys}
-    if not per_project:
-        raise ValueError(
-            "Name the refs to diff: a shared base and head pair, or one pair per project."
-        )
 
-    unnamed = sorted(set(root_keys) - set(per_project))
-    if unnamed:
-        raise ValueError(
-            f"No refs given for {', '.join(unnamed)}. Name a base..head pair for every "
-            "project, or pass one shared pair covering them all."
-        )
-    unknown = sorted(set(per_project) - set(root_keys))
-    if unknown:
-        raise ValueError(
-            f"Refs name {', '.join(unknown)}, which no project root supplies. "
-            f"Known projects: {', '.join(sorted(root_keys))}."
-        )
-    return {key: per_project[key] for key in root_keys}
+    root: Path
+    base_ref: str
+    head_ref: str
 
+    def __post_init__(self):
+        validate_git_ref(self.base_ref)
+        validate_git_ref(self.head_ref)
 
-def ref_labels(ref_pairs: dict[str, RefPair]) -> tuple[str, str]:
-    """Label a comparison for the report: bare refs when shared, tagged per project when not."""
-    bases = {pair.base for pair in ref_pairs.values()}
-    heads = {pair.head for pair in ref_pairs.values()}
-    if len(bases) == 1 and len(heads) == 1:
-        return bases.pop(), heads.pop()
-    return (
-        ", ".join(f"{project}={pair.base}" for project, pair in sorted(ref_pairs.items())),
-        ", ".join(f"{project}={pair.head}" for project, pair in sorted(ref_pairs.items())),
-    )
+    @property
+    def span(self) -> str:
+        return f"{self.base_ref}..{self.head_ref}"
 
 
 @dataclass
@@ -159,6 +121,7 @@ class CodeImpactResult:
     changed_files: dict[str, list[str]]  # project -> files
     blast: dict  # BlastResult as dict
     affected_tests: list[str]
+    revisions: dict[str, ProjectRevision] = field(default_factory=dict)  # project -> refs
     affected_tests_by_project: dict[str, list[str]] = field(default_factory=dict)
     risk_score: float = 0.0
     risk_level: str = "low"
@@ -168,7 +131,6 @@ class CodeImpactResult:
     traversed_edges: dict[str, int] = field(
         default_factory=lambda: {"annotated": 0, "inferred": 0, "contract": 0, "dependency": 0}
     )
-    unresolved_dependencies: list[dict[str, str]] = field(default_factory=list)
 
 
 class ImpactAnalyzer:
@@ -405,19 +367,17 @@ class ImpactAnalyzer:
         except subprocess.TimeoutExpired:
             raise ValueError("Git diff timed out")
 
-    def _diff_project(self, project: str, root: Path, refs: RefPair) -> list[str]:
-        """List files changed between one project's own refs inside its root.
-
-        The trailing ``--`` stops git from reading an unresolved ref as a path,
-        so a ref this repository lacks fails instead of matching no files.
+    def _diff_project(self, project: str, revision: ProjectRevision) -> list[str]:
+        """List files changed between the revision's refs inside its root.
 
         Raises:
             ValueError: If git cannot resolve the refs or the root is unusable,
                 so a mistyped ref never reads as an empty diff.
         """
+        root = revision.root
         try:
             result = subprocess.run(
-                ["git", "diff", "--name-only", refs.base, refs.head, "--"],
+                ["git", "diff", "--name-only", revision.base_ref, revision.head_ref],
                 cwd=root,
                 capture_output=True,
                 text=True,
@@ -427,28 +387,26 @@ class ImpactAnalyzer:
         except subprocess.CalledProcessError as e:
             logger.error("Git diff failed for %s at %s: %s", project, root, e.stderr)
             raise ValueError(
-                f"Git diff failed for project {project!r} at {root} between "
-                f"{refs.base} and {refs.head}: "
+                f"Git diff failed for project {project!r} at {root}: "
                 f"{(e.stderr or '').strip() or 'git exited nonzero'}"
             ) from e
         except subprocess.TimeoutExpired as e:
-            raise ValueError(
-                f"Git diff timed out for project {project!r} at {root} between "
-                f"{refs.base} and {refs.head}"
-            ) from e
+            raise ValueError(f"Git diff timed out for project {project!r} at {root}") from e
         except OSError as e:
             raise ValueError(f"Cannot run git for project {project!r} at {root}: {e}") from e
 
         return [f for f in result.stdout.strip().split("\n") if f]
 
-    def code_analyze(
-        self,
-        base_ref: Optional[str] = None,
-        head_ref: Optional[str] = None,
-        project_roots: Optional[dict[str, Path]] = None,
-        project_refs: Optional[dict[str, RefPair]] = None,
-    ) -> CodeImpactResult:
+    def local_revision(self, base_ref: str, head_ref: str) -> dict[str, ProjectRevision]:
+        """Describe the analyzer's own repository as the single project to diff."""
+        return {"local": ProjectRevision(self.repo_path, base_ref, head_ref)}
+
+    def code_analyze(self, projects: dict[str, ProjectRevision]) -> CodeImpactResult:
         """Full code impact analysis across the ecosystem.
+
+        Each project carries its own ref pair, since one ref rarely names the
+        same commit in two repositories. A ref that a project cannot resolve
+        raises rather than reporting that project clean.
 
         1. git diff --name-only base head per project (all files, not just specs/)
         2. Build ImpactGraph via ImpactGraphBuilder
@@ -456,39 +414,27 @@ class ImpactAnalyzer:
         4. Query TestRequirementLink for affected tests
         5. Compute risk with edge-source weighting
 
-        Each project diffs at its own refs. Pass `base_ref` and `head_ref` to
-        run every root at the same pair; pass `project_refs`, keyed by the same
-        names as `project_roots`, to give each root a pair of its own. Naming
-        both raises. Leaving a root out of `project_refs` raises too: a project
-        this run gave no refs goes unanalysed, and an empty diff must never
-        stand for that.
-
-        Risk weights: annotated 1.0x, contract 0.8x, git-inferred 0.6x.
+        Risk weights: annotated 1.0x, dependency 1.0x, contract 0.8x, git-inferred 0.6x.
         Cross-project edges get 1.5x multiplier.
         """
-        roots = project_roots or {}
-        if not roots:
-            # Default: use repo_path as the single project
-            roots = {"local": self.repo_path}
+        if not projects:
+            raise ValueError("code_analyze needs at least one project to diff")
 
-        shared = RefPair(base_ref, head_ref) if base_ref or head_ref else None
-        ref_pairs = resolve_ref_pairs(list(roots), shared, project_refs)
-        for pair in ref_pairs.values():
-            validate_git_ref(pair.base)
-            validate_git_ref(pair.head)
-
+        roots = {key: revision.root for key, revision in projects.items()}
         map_reader = MapReader(roots)
         project_names = {key: map_reader.project_name(key) for key in roots}
+        revisions = {project_names[key]: revision for key, revision in projects.items()}
 
         # 1. Get all changed files per project
         changed_files: dict[str, list[str]] = {}
-        for key, root in roots.items():
-            files = self._diff_project(project_names[key], root, ref_pairs[key])
+        for key, revision in projects.items():
+            files = self._diff_project(project_names[key], revision)
             if files:
                 changed_files.setdefault(project_names[key], []).extend(files)
 
         # 2. Collect edges from all sources
         annotated_edges = map_reader.read_all()
+        dependency_edges = map_reader.read_all_dependencies()
 
         inferred_edges = []
         for key, root in roots.items():
@@ -497,9 +443,20 @@ class ImpactAnalyzer:
 
         contract_edges = []
         for key, root in roots.items():
-            contract_edges.extend(build_contract_edges(project_names[key], root))
-
-        dependency_edges, unresolved = map_reader.read_all_dependencies()
+            snap_path = root / "contract.snapshot.json"
+            if snap_path.exists():
+                snap = ContractSnapshot.load(snap_path)
+                # Contract edges connect surfaces to project
+                for surface_name in snap.surfaces:
+                    contract_edges.append(
+                        GraphEdge(
+                            source_id=qualify(project_names[key], surface_name),
+                            target_id=surface_name,
+                            source=EdgeSource.CONTRACT,
+                            weight=0.8,
+                            project=project_names[key],
+                        )
+                    )
 
         # 3. Build graph and compute blast radius
         builder = ImpactGraphBuilder(roots)
@@ -538,6 +495,7 @@ class ImpactAnalyzer:
 
         return CodeImpactResult(
             changed_files=changed_files,
+            revisions=revisions,
             affected_tests_by_project=tests_by_project,
             blast={
                 "directly_changed": blast.directly_changed,
@@ -558,15 +516,6 @@ class ImpactAnalyzer:
                 "dependency": len(dependency_edges),
             },
             traversed_edges=count_traversed_edges(blast),
-            unresolved_dependencies=[
-                {
-                    "consumer": item.consumer,
-                    "module": item.module,
-                    "provider": item.provider,
-                    "surface": item.surface,
-                }
-                for item in unresolved
-            ],
         )
 
     def analyze(
@@ -616,6 +565,81 @@ class ImpactAnalyzer:
         )
         result.risk_score, result.risk_level = self.compute_risk(result)
         return result
+
+
+def prepare_impact_demo_branch(repo_path: Path, specs_dir: Path, demo_branch: str) -> None:
+    """Recreate the demo branch from main with one spec changed and come back."""
+    # Clean up any existing demo branch
+    subprocess.run(
+        ["git", "branch", "-D", demo_branch],
+        cwd=repo_path,
+        capture_output=True,
+        timeout=10,
+    )
+
+    # Get current branch to return to
+    try:
+        current = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=10,
+        )
+        original_branch = current.stdout.strip()
+    except subprocess.SubprocessError:
+        original_branch = "main"
+
+    try:
+        # Create demo branch from main
+        subprocess.run(
+            ["git", "checkout", "-b", demo_branch, "main"],
+            cwd=repo_path,
+            check=True,
+            capture_output=True,
+            timeout=30,
+        )
+
+        # Find a spec file to modify
+        spec_file = None
+        for f in specs_dir.rglob("*.md"):
+            if f.name != "legacy.md":
+                spec_file = f
+                break
+
+        if spec_file:
+            # Append a demo change to the spec
+            content = spec_file.read_text()
+            if "## Demo Change" not in content:
+                demo_addition = (
+                    "\n\n## Demo Change\n\nThis section was added to demonstrate impact analysis.\n"
+                )
+                spec_file.write_text(content + demo_addition)
+
+                subprocess.run(
+                    ["git", "add", str(spec_file.relative_to(repo_path))],
+                    cwd=repo_path,
+                    check=True,
+                    timeout=10,
+                )
+                subprocess.run(
+                    ["git", "commit", "-m", "demo: modify spec for impact analysis"],
+                    cwd=repo_path,
+                    check=True,
+                    timeout=30,
+                )
+
+    except subprocess.SubprocessError as e:
+        logger.warning("Failed to create demo branch: %s", e)
+    finally:
+        # Return to original branch
+        subprocess.run(
+            ["git", "checkout", original_branch],
+            cwd=repo_path,
+            capture_output=True,
+            timeout=30,
+        )
 
 
 def setup_impact_demo(repo_path: Optional[Path] = None) -> dict:
@@ -721,78 +745,6 @@ def setup_impact_demo(repo_path: Optional[Path] = None) -> dict:
                 result["test_links_created"] += 1
 
     # Step 3: Create demo branch with modified spec
-    demo_branch = result["demo_branch"]
-
-    # Clean up any existing demo branch
-    subprocess.run(
-        ["git", "branch", "-D", demo_branch],
-        cwd=repo_path,
-        capture_output=True,
-        timeout=10,
-    )
-
-    # Get current branch to return to
-    try:
-        current = subprocess.run(
-            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-            cwd=repo_path,
-            capture_output=True,
-            text=True,
-            check=True,
-            timeout=10,
-        )
-        original_branch = current.stdout.strip()
-    except subprocess.SubprocessError:
-        original_branch = "main"
-
-    try:
-        # Create demo branch from main
-        subprocess.run(
-            ["git", "checkout", "-b", demo_branch, "main"],
-            cwd=repo_path,
-            check=True,
-            capture_output=True,
-            timeout=30,
-        )
-
-        # Find a spec file to modify
-        spec_file = None
-        for f in specs_dir.rglob("*.md"):
-            if f.name != "legacy.md":
-                spec_file = f
-                break
-
-        if spec_file:
-            # Append a demo change to the spec
-            content = spec_file.read_text()
-            if "## Demo Change" not in content:
-                demo_addition = (
-                    "\n\n## Demo Change\n\nThis section was added to demonstrate impact analysis.\n"
-                )
-                spec_file.write_text(content + demo_addition)
-
-                subprocess.run(
-                    ["git", "add", str(spec_file.relative_to(repo_path))],
-                    cwd=repo_path,
-                    check=True,
-                    timeout=10,
-                )
-                subprocess.run(
-                    ["git", "commit", "-m", "demo: modify spec for impact analysis"],
-                    cwd=repo_path,
-                    check=True,
-                    timeout=30,
-                )
-
-    except subprocess.SubprocessError as e:
-        logger.warning("Failed to create demo branch: %s", e)
-    finally:
-        # Return to original branch
-        subprocess.run(
-            ["git", "checkout", original_branch],
-            cwd=repo_path,
-            capture_output=True,
-            timeout=30,
-        )
+    prepare_impact_demo_branch(repo_path, specs_dir, result["demo_branch"])
 
     return result

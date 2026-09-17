@@ -1,0 +1,90 @@
+    .flow-pipeline {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    .flow-pipeline-step {
+        width: 24px;
+        height: 8px;
+        border-radius: 2px;
+        background: var(--st-border);
+        position: relative;
+    }
+    .flow-pipeline-step--passed {
+        background: var(--st-pass);
+    }
+    .flow-pipeline-step--failed {
+        background: var(--st-fail);
+    }
+    .flow-pipeline-step--running {
+        background: var(--st-warn);
+        animation: st-pulse 1.5s ease-in-out infinite;
+    }
+    .flow-pipeline-connector {
+        width: 8px;
+        height: 2px;
+        background: var(--st-border-muted);
+    }
+    .live-card {
+        transition: border-color 0.2s var(--st-ease-out);
+    }
+    .live-card:hover {
+        border-color: var(--st-accent-400);
+    }
+    .live-indicator {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--st-pass);
+        animation: st-pulse 2s var(--st-ease-out) infinite;
+    }
+    .live-indicator--paused {
+        background: var(--st-slate-400);
+        animation: none;
+    }
+    .progress-bar {
+        height: 6px;
+        background: var(--st-border);
+        border-radius: 3px;
+        overflow: hidden;
+    }
+    .progress-bar__fill {
+        height: 100%;
+        background: var(--st-warn);
+        border-radius: 3px;
+        transition: width 0.3s var(--st-ease-out);
+    }
+    .current-step-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--st-space-2);
+        padding: var(--st-space-2) var(--st-space-3);
+        background: var(--st-warn-muted);
+        border-radius: var(--st-radius-md);
+        color: var(--st-warn-dark);
+    }
+    .current-step-indicator__dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--st-warn);
+        animation: st-pulse 1.5s ease-in-out infinite;
+    }
+    .empty-state {
+        text-align: center;
+        padding: var(--st-space-12);
+    }
+    .empty-state__icon {
+        width: 64px;
+        height: 64px;
+        margin: 0 auto var(--st-space-4);
+        opacity: 0.5;
+    }
+    .empty-pulse {
+        animation: empty-pulse 3s ease-in-out infinite;
+    }
+    @keyframes empty-pulse {
+        0%, 100% { opacity: 0.4; }
+        50% { opacity: 0.7; }
+    }
+

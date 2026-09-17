@@ -9,24 +9,6 @@ from treebeard.mp_tree import MP_Node
 from .projects import default_project
 
 
-class RequirementStatus(models.TextChoices):
-    """Lifecycle states for a requirement."""
-
-    DRAFT = "draft", "Draft"
-    ACTIVE = "active", "Active"
-    DEPRECATED = "deprecated", "Deprecated"
-
-
-class RequirementPriority(models.TextChoices):
-    """Priority levels a requirement carries, from the spec frontmatter or Linear."""
-
-    URGENT = "urgent", "Urgent"
-    CRITICAL = "critical", "Critical"
-    HIGH = "high", "High"
-    MEDIUM = "medium", "Medium"
-    LOW = "low", "Low"
-
-
 class VerificationStatus(models.TextChoices):
     """Verification status for requirements based on linked test results."""
 
@@ -139,15 +121,11 @@ class Requirement(MP_Node):
     # Metadata from frontmatter
     tags = models.JSONField(default=list, blank=True, help_text="Category tags for filtering")
     priority = models.CharField(
-        max_length=20,
-        blank=True,
-        choices=RequirementPriority.choices,
-        help_text="Priority level (urgent, critical, high, medium, low)",
+        max_length=20, blank=True, help_text="Priority level (high, medium, low)"
     )
     status = models.CharField(
         max_length=20,
-        choices=RequirementStatus.choices,
-        default=RequirementStatus.DRAFT,
+        default="draft",
         help_text="Requirement status (draft, active, deprecated)",
     )
     risk_level = models.CharField(
@@ -775,16 +753,6 @@ class VerificationFlowStep(models.Model):
         return None
 
 
-class LinkStatus(models.TextChoices):
-    """Result of the last test run recorded against a test-requirement link."""
-
-    PASSED = "passed", "Passed"
-    FAILED = "failed", "Failed"
-    ERROR = "error", "Error"
-    SKIPPED = "skipped", "Skipped"
-    UNKNOWN = "unknown", "Unknown"
-
-
 class TestRequirementLink(models.Model):
     """Links a test nodeid to a Requirement for traceability.
 
@@ -808,8 +776,7 @@ class TestRequirementLink(models.Model):
     )
     last_status = models.CharField(
         max_length=20,
-        choices=LinkStatus.choices,
-        default=LinkStatus.UNKNOWN,
+        default="unknown",
         help_text="Status from last test run (passed, failed, error, skipped, unknown)",
     )
     last_run_at = models.DateTimeField(

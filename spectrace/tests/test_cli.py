@@ -40,15 +40,22 @@ def test_specs_help__lists_subcommands(runner):
 def test_tasks_help__lists_subcommands(runner):
     result = runner.invoke(cli, ["tasks", "--help"])
     assert result.exit_code == 0
-    assert "register" in result.output
-    assert "list" in result.output
-    assert "claim" in result.output
-    assert "start" in result.output
-    assert "context" in result.output
-    assert "complete" in result.output
-    assert "review" in result.output
-    assert "merge" in result.output
-    assert "expire-leases" in result.output
+    for command in (
+        "register",
+        "create",
+        "approve-spec",
+        "list",
+        "claim",
+        "start",
+        "validate-intent",
+        "complete",
+        "review",
+        "merge",
+        "release",
+        "context",
+    ):
+        assert command in result.output
+    assert "expire-leases" not in result.output
 
 
 def test_results_help__lists_subcommands(runner):
@@ -71,17 +78,10 @@ def test_version(runner):
 
 
 @patch("cli._run")
-def test_tasks_context__delegates(mock_run, runner):
-    result = runner.invoke(cli, ["tasks", "context", "T-1"])
-    assert result.exit_code == 0
-    mock_run.assert_called_once_with("agent_context", "T-1", format="text")
-
-
-@patch("cli._run")
 def test_specs_coverage__delegates(mock_run, runner):
     result = runner.invoke(cli, ["specs", "coverage", "--format", "json"])
     assert result.exit_code == 0
-    mock_run.assert_called_once_with("spec_coverage", format="json")
+    mock_run.assert_called_once_with("spec_coverage", format="json", project=None)
 
 
 @patch("cli._run")
@@ -169,140 +169,6 @@ def test_results_verify__delegates(mock_run, runner):
     )
 
 
-@patch("cli._run")
-def test_specs_parse__delegates(mock_run, runner):
-    result = runner.invoke(cli, ["specs", "parse", "specs/", "--project", "praxis"])
-    assert result.exit_code == 0
-    mock_run.assert_called_once_with("parse_specs", "specs/", project="praxis")
-
-
-@patch("cli._run")
-def test_specs_parse__defaults_project_to_map(mock_run, runner):
-    result = runner.invoke(cli, ["specs", "parse", "specs/"])
-    assert result.exit_code == 0
-    mock_run.assert_called_once_with("parse_specs", "specs/", project=None)
-
-
-@patch("cli._run")
-def test_results_extract__delegates(mock_run, runner):
-    result = runner.invoke(cli, ["results", "extract", "--path", "src", "-o", "links.json"])
-    assert result.exit_code == 0
-    mock_run.assert_called_once_with("extract_links", path="src", output="links.json")
-
-
-@patch("cli._run")
-def test_results_link__delegates(mock_run, runner):
-    result = runner.invoke(cli, ["results", "link", "links.json", "--dry-run"])
-    assert result.exit_code == 0
-    mock_run.assert_called_once_with("import_test_links", "links.json", dry_run=True)
-
-
-@patch("cli._run")
-def test_tasks_register__delegates(mock_run, runner):
-    result = runner.invoke(cli, ["tasks", "register", "bot-1", "--role", "coder"])
-    assert result.exit_code == 0
-    mock_run.assert_called_once_with(
-        "agent_register",
-        "bot-1",
-        role="coder",
-        config="{}",
-        format="text",
-    )
-
-
-@patch("cli._run")
-def test_tasks_list__delegates(mock_run, runner):
-    result = runner.invoke(cli, ["tasks", "list", "--format", "json"])
-    assert result.exit_code == 0
-    mock_run.assert_called_once_with(
-        "agent_tasks", status=None, sprint=None, agent=None, format="json"
-    )
-
-
-@patch("cli._run")
-def test_tasks_claim__delegates(mock_run, runner):
-    result = runner.invoke(cli, ["tasks", "claim", "T-1", "--agent", "c-1"])
-    assert result.exit_code == 0
-    mock_run.assert_called_once_with(
-        "agent_claim",
-        "T-1",
-        agent="c-1",
-        lease_minutes=30,
-        format="text",
-    )
-
-
-@patch("cli._run")
-def test_tasks_start__delegates(mock_run, runner):
-    result = runner.invoke(cli, ["tasks", "start", "T-1", "--agent", "c-1"])
-    assert result.exit_code == 0
-    mock_run.assert_called_once_with("agent_start", "T-1", agent="c-1", format="text")
-
-
-@patch("cli._run")
-def test_tasks_complete__delegates(mock_run, runner):
-    result = runner.invoke(
-        cli, ["tasks", "complete", "T-1", "--agent", "c-1", "--commit-sha", "abc123"]
-    )
-    assert result.exit_code == 0
-    mock_run.assert_called_once_with(
-        "agent_submit",
-        "T-1",
-        agent="c-1",
-        commit_sha="abc123",
-        format="text",
-    )
-
-
-@patch("cli._run")
-def test_tasks_review__delegates(mock_run, runner):
-    result = runner.invoke(
-        cli,
-        [
-            "tasks",
-            "review",
-            "T-1",
-            "--reviewer",
-            "r-1",
-            "--decision",
-            "approved",
-            "--feedback",
-            "Looks good",
-            "--blocking-issues",
-            "issue-1",
-            "--suggestions",
-            "nit-1",
-            "--suggestions",
-            "nit-2",
-        ],
-    )
-    assert result.exit_code == 0
-    mock_run.assert_called_once_with(
-        "agent_review",
-        "T-1",
-        reviewer="r-1",
-        decision="approved",
-        feedback="Looks good",
-        blocking_issues=["issue-1"],
-        suggestions=["nit-1", "nit-2"],
-        format="text",
-    )
-
-
-@patch("cli._run")
-def test_tasks_merge__delegates(mock_run, runner):
-    result = runner.invoke(cli, ["tasks", "merge", "T-1"])
-    assert result.exit_code == 0
-    mock_run.assert_called_once_with("agent_merge", "T-1", format="text")
-
-
-@patch("cli._run")
-def test_tasks_expire_leases__delegates(mock_run, runner):
-    result = runner.invoke(cli, ["tasks", "expire-leases", "--dry-run"])
-    assert result.exit_code == 0
-    mock_run.assert_called_once_with("expire_leases", dry_run=True, format="text")
-
-
 # =============================================================================
 # Deprecation tests
 # =============================================================================
@@ -353,13 +219,36 @@ def test_invalid_choice__exits_2(runner):
     assert "Invalid value" in result.output or "hacker" in result.output
 
 
-# =============================================================================
-# Integration test
-# =============================================================================
+def test_cli_group__leaves_django_unconfigured(runner):
+    """Worker-only commands must not pay for the app registry."""
+    with patch("cli._bootstrap_django", autospec=True) as bootstrap:
+        result = runner.invoke(cli, ["--help"])
 
-
-@pytest.mark.django_db
-def test_agent_tasks_json__integration(runner):
-    result = runner.invoke(cli, ["tasks", "list", "--format", "json"])
     assert result.exit_code == 0
-    assert '"tasks"' in result.output
+    bootstrap.assert_not_called()
+
+
+@patch("cli._bootstrap_django", autospec=True)
+def test_tasks_list__starts_no_django(bootstrap, runner):
+    """`tasks list` reaches the Worker and never touches the ORM."""
+    with patch("cli._client", autospec=True) as client:
+        client.return_value.list_tasks.return_value = {
+            "data": [],
+            "meta": {"page": 1, "total_pages": 1, "total": 0},
+        }
+        result = runner.invoke(cli, ["tasks", "list", "--url", "http://w", "--api-key", "k"])
+
+    assert result.exit_code == 0, result.output
+    bootstrap.assert_not_called()
+
+
+@patch("cli._bootstrap_django", autospec=True)
+def test_run__starts_django_before_the_management_command(bootstrap):
+    """Every management-command bridge initializes the app registry first."""
+    from cli import _run
+
+    with patch("django.core.management.call_command", autospec=True) as call_command:
+        _run("spec_coverage", format="json")
+
+    bootstrap.assert_called_once_with()
+    call_command.assert_called_once_with("spec_coverage", format="json")

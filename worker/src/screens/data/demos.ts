@@ -1,0 +1,120 @@
+type Demo = {
+  id: string;
+  name: string;
+  description: string;
+  entry_point: string;
+  alt_entry_point?: string;
+  duration: string;
+  audience: string[];
+  prerequisites: string[];
+  urls?: string[];
+  files?: string[];
+  cli_setup?: string;
+};
+
+export const demoCatalog: Demo[] = [
+  {
+    id: "spectrace-overview",
+    name: "SpecTrace Deep Dive",
+    description:
+      "Interactive slideshow explaining what SpecTrace is and how it works. Covers the core problem, solution architecture, and key features with links to try each one. Perfect for onboarding or stakeholder demos.\n",
+    entry_point: "open http://localhost:8000/demo/spectrace-overview/",
+    duration: "5 minutes",
+    audience: [
+      "New team members learning SpecTrace",
+      "Stakeholders evaluating the tool",
+      "Anyone wanting a comprehensive overview",
+    ],
+    prerequisites: ["Server running (`just run`)"],
+    urls: ["http://localhost:8000/demo/spectrace-overview/"],
+  },
+  {
+    id: "qa-ecosystem",
+    name: "QA Ecosystem Integration",
+    description:
+      "Explains how SpecTrace fits alongside other QA initiatives like PR smoke tests, mutation testing, and ephemeral environments. Shows SpecTrace as the traceability layer connecting test execution to business requirements.\n",
+    entry_point: "open http://localhost:8000/demo/qa-ecosystem/",
+    duration: "3 minutes",
+    audience: [
+      "Engineering leads planning QA strategy",
+      "Teams evaluating where SpecTrace fits",
+      "Anyone comparing SpecTrace to other tools",
+    ],
+    prerequisites: ["Server running (`just run`)"],
+    urls: ["http://localhost:8000/demo/qa-ecosystem/"],
+  },
+  {
+    id: "demo-hub",
+    name: "Demo Hub (Meta)",
+    description:
+      "Web-based catalog of all SpecTrace demos. Reads from this demos.yaml file and displays demos as cards with direct links to web-based demos or commands for CLI demos.\n",
+    entry_point: "open http://localhost:8000/demo/",
+    duration: "N/A",
+    audience: ["Anyone exploring SpecTrace capabilities", "Sales engineers preparing demos"],
+    prerequisites: ["Server running (`just run`)"],
+    urls: ["http://localhost:8000/demo/"],
+  },
+  {
+    id: "spectrace-workflow",
+    name: "SpecTrace Core Workflow",
+    description:
+      "Complete walkthrough of the SpecTrace workflow: parsing requirements from markdown specs, linking them to pytest markers, running tests, and showing verification status in the admin dashboard.\n",
+    entry_point: "just demo",
+    duration: "5 minutes",
+    audience: ["Engineering leads", "QA teams", "Product managers evaluating spec-trace"],
+    prerequisites: ["Run `just setup` first (or `python scripts/setup_demo.py`)", "Database migrated and seeded"],
+  },
+  {
+    id: "document-pipeline",
+    name: "Document Pipeline Example",
+    description:
+      "Realistic 8-step demo showing nested requirement hierarchy (3 levels), multiple verification methods, SLO integration, and various test patterns (parametrized, async, xfail, class-based).\n",
+    entry_point: "python scripts/demo_pipeline.py",
+    duration: "4 minutes",
+    audience: ["Developers learning spec-trace patterns", "Teams evaluating for complex projects"],
+    prerequisites: ["Run `just setup` first"],
+  },
+  {
+    id: "agent-pipeline",
+    name: "Agent-Assisted Development Pipeline",
+    description:
+      "Demonstrates how AI agents claim work from requirements, implement with tests, pass invariant checks, and merge—all tracked against specs. Available as both a CLI walkthrough and interactive web presenter.\n",
+    entry_point: "open http://localhost:8000/demo/agent-pipeline/",
+    alt_entry_point: "Follow docs/demo-agent-pipeline.md",
+    duration: "4 minutes",
+    audience: ["Engineering leads interested in AI-assisted workflows", "PMs evaluating agent integration"],
+    prerequisites: [
+      "Database set up with requirements parsed",
+      "Agent configuration in place",
+      "Review pre-demo checklist in the doc",
+    ],
+    urls: ["http://localhost:8000/demo/agent-pipeline/"],
+  },
+  {
+    id: "example-project",
+    name: "Document Pipeline Example Project",
+    description:
+      "Complete working example in examples/document-pipeline/ showing full spec-trace integration with specs, tests, SLOs, and CI workflow.\n",
+    entry_point: "Browse examples/document-pipeline/",
+    duration: "Self-paced",
+    audience: ["Developers setting up spec-trace in new projects", "Reference implementation for patterns"],
+    prerequisites: ["None (self-contained example)"],
+    files: [
+      "examples/document-pipeline/specs/",
+      "examples/document-pipeline/tests/",
+      "examples/document-pipeline/slos/",
+      "examples/document-pipeline/ci/github-actions.yml",
+    ],
+  },
+  {
+    id: "impact-demo",
+    name: "Impact Analysis Demo",
+    description:
+      "End-to-end CLI demo: change a spec, see which tests break, run them, import results, and show coverage. Five steps in one command with --step N for presenter pacing.\n",
+    entry_point: "spectrace demo",
+    duration: "3 minutes",
+    audience: ["Engineering leads evaluating change-impact workflows", "Teams adopting spec-driven testing"],
+    prerequisites: ["Run `just setup` first (or `python scripts/setup_demo.py`)", "Database migrated and seeded"],
+    cli_setup: "spectrace setup-impact-demo",
+  },
+];

@@ -3,10 +3,10 @@
 import json
 
 from django.core.management.base import BaseCommand, CommandError
-from django.db.models import Avg, Count, Q
 
 from ...models import Requirement
 from ...projects import AmbiguousProjectError, resolve_project
+from ...services.coverage_metrics import coverage_metrics
 
 
 class Command(BaseCommand):
@@ -32,70 +32,43 @@ class Command(BaseCommand):
         except AmbiguousProjectError as e:
             raise CommandError(f"{e} Pass --project.") from e
 
-        metrics = Requirement.objects.filter(project=project).aggregate(
-            total=Count("id"),
-            non_draft=Count("id", filter=~Q(status="draft")),
-            passing=Count("id", filter=Q(verification_status="passing")),
-            avg_structure=Avg("structure_completeness"),
-        )
-
-        total = metrics["total"]
-        non_draft = metrics["non_draft"]
-        passing = metrics["passing"]
-        avg_structure = metrics["avg_structure"] or 0.0
-
-        if total > 0:
-            spec_rate = non_draft / total
-            verif_rate = passing / total
-        else:
-            spec_rate = 0.0
-            verif_rate = 0.0
-
-        struct_rate = avg_structure
-
-        data = {
-            "project": project,
-            "spec_rate": spec_rate,
-            "struct_rate": struct_rate,
-            "verif_rate": verif_rate,
-            "total": total,
-            "non_draft": non_draft,
-            "passing": passing,
-        }
+        metrics = coverage_metrics(project)
 
         if options["format"] == "json":
-            self._output_json(data)
+            self._output_json(metrics)
         else:
-            self._output_text(data)
+            self._output_text(metrics)
 
-    def _output_json(self, data):
+    def _output_json(self, metrics):
         output = {
-            "project": data["project"],
-            "specification_rate": data["spec_rate"],
-            "structure_rate": data["struct_rate"],
-            "verification_rate": data["verif_rate"],
+            "project": metrics["project"],
+            "specification_rate": metrics["specification_rate"],
+            "structure_rate": metrics["structure_rate"],
+            "verification_rate": metrics["verification_rate"],
             "counts": {
-                "total": data["total"],
-                "non_draft": data["non_draft"],
-                "passing": data["passing"],
+                "total": metrics["total"],
+                "non_draft": metrics["non_draft"],
+                "passing": metrics["passing"],
             },
         }
         self.stdout.write(json.dumps(output, indent=2))
 
-    def _output_text(self, data):
-        spec_pct = data["spec_rate"] * 100
-        struct_pct = data["struct_rate"] * 100
-        verif_pct = data["verif_rate"] * 100
+    def _output_text(self, metrics):
+        spec_pct = metrics["specification_rate"] * 100
+        struct_pct = metrics["structure_rate"] * 100
+        verif_pct = metrics["verification_rate"] * 100
 
         spec_line = (
-            f"Specification rate: {spec_pct:.1f}% ({data['non_draft']}/{data['total']} non-draft)"
+            f"Specification rate: {spec_pct:.1f}%"
+            f" ({metrics['non_draft']}/{metrics['total']} non-draft)"
         )
         struct_line = f"Structure rate:     {struct_pct:.1f}% (avg FRET completeness)"
         verif_line = (
-            f"Verification rate:  {verif_pct:.1f}% ({data['passing']}/{data['total']} passing)"
+            f"Verification rate:  {verif_pct:.1f}%"
+            f" ({metrics['passing']}/{metrics['total']} passing)"
         )
 
-        self.stdout.write(f"Project: {data['project']}")
+        self.stdout.write(f"Project: {metrics['project']}")
         self.stdout.write(self._colorize(spec_line, spec_pct))
         self.stdout.write(self._colorize(struct_line, struct_pct))
         self.stdout.write(self._colorize(verif_line, verif_pct))

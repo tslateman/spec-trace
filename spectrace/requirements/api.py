@@ -395,11 +395,9 @@ def test_linear_connection(request, data: LinearTestRequest | None = None):
     return JsonResponse(response_data)
 
 
-@require_api_key
 @require_http_methods(["GET"])
 @ratelimit(key="ip", rate=RATE_LIMIT_READ, block=True)
 @validate_request(
-    requires_auth=True,
     response_schema=ValidationRunsResponse,
     tags=["Verification Runs"],
     summary="List verification runs",
@@ -507,11 +505,9 @@ def list_validation_runs(request, data=None):
     )
 
 
-@require_api_key
 @require_http_methods(["GET"])
 @ratelimit(key="ip", rate=RATE_LIMIT_READ, block=True)
 @validate_request(
-    requires_auth=True,
     response_schema=ValidationRunDetailResponse,
     tags=["Verification Runs"],
     summary="Get verification run detail",
@@ -557,11 +553,9 @@ def get_validation_run(request, run_id, data=None):
     )
 
 
-@require_api_key
 @require_http_methods(["GET"])
 @ratelimit(key="ip", rate=RATE_LIMIT_READ, block=True)
 @validate_request(
-    requires_auth=True,
     response_schema=ValidationRunStepsResponse,
     tags=["Verification Runs"],
     summary="Get verification run steps",
@@ -611,11 +605,9 @@ def get_validation_run_steps(request, run_id, data=None):
     )
 
 
-@require_api_key
 @require_http_methods(["GET"])
 @ratelimit(key="ip", rate=RATE_LIMIT_READ, block=True)
 @validate_request(
-    requires_auth=True,
     response_schema=RunningFlowRunsResponse,
     tags=["Flows"],
     summary="Get running flow runs",
@@ -654,11 +646,9 @@ def get_running_flow_runs(request, data=None):
     return JsonResponse({"runs": runs_data})
 
 
-@require_api_key
 @require_http_methods(["GET"])
 @ratelimit(key="ip", rate=RATE_LIMIT_READ, block=True)
 @validate_request(
-    requires_auth=True,
     response_schema=LinearHealthResponse,
     tags=["Integrations"],
     summary="Get Linear health status",
@@ -695,11 +685,9 @@ def get_linear_health(request, data=None):
     )
 
 
-@require_api_key
 @require_http_methods(["GET"])
 @ratelimit(key="ip", rate=RATE_LIMIT_READ, block=True)
 @validate_request(
-    requires_auth=True,
     response_schema=LatestTestRunResponse,
     tags=["Test Runs"],
     summary="Get latest test run",

@@ -1,48 +1,17 @@
 """Reader for spectrace-map.yaml files."""
 
 import logging
-from dataclasses import dataclass
 from pathlib import Path
 
 import yaml
 
 from ..projects import NODE_SEPARATOR, qualify, unqualify
-from .contract_snapshot import SNAPSHOT_FILENAME, ContractSnapshot
 from .impact_graph import EdgeSource, GraphEdge
 
 logger = logging.getLogger(__name__)
 
 MAP_FILENAME = "spectrace-map.yaml"
-
-
-class UnknownSurfaceError(ValueError):
-    """A map declares a dependency on a surface its provider does not publish."""
-
-    def __init__(self, consumer: str, module: str, declaration: str, known: list[str]):
-        super().__init__(
-            f"{consumer} module {module!r} declares a dependency on {declaration!r}, "
-            f"which its provider does not publish. Known surfaces: {', '.join(sorted(known))}"
-        )
-
-
-class MalformedDependencyError(ValueError):
-    """A dependency declaration does not name a project and a surface."""
-
-    def __init__(self, consumer: str, module: str, declaration: str):
-        super().__init__(
-            f"{consumer} module {module!r} declares the dependency {declaration!r}, which "
-            f"does not name a project and a surface as 'project{NODE_SEPARATOR}surface'."
-        )
-
-
-@dataclass
-class UnresolvedDependency:
-    """A declared dependency whose provider was absent from the analysed roots."""
-
-    consumer: str
-    module: str
-    provider: str
-    surface: str
+DEPENDS_ON_KEY = "depends_on"
 
 
 def load_map(root: Path) -> dict | None:
@@ -117,7 +86,12 @@ class MapReader:
         return pairs
 
     def read_dependencies(self, project: str) -> list[tuple[str, str]]:
-        """Parse one map's dependency declarations, return (module, declaration) pairs."""
+        """Parse one spectrace-map.yaml, return (module, provider surface node) pairs.
+
+        A module lists the surfaces it reads from other projects under
+        ``depends_on`` as ``{provider}:{surface}`` strings, which are graph node
+        ids as written.
+        """
         root = self.project_roots.get(project)
         if not root:
             return []
@@ -134,73 +108,31 @@ class MapReader:
         for module_path, info in modules.items():
             if not isinstance(info, dict):
                 continue
-            declarations = info.get("depends_on", [])
-            if not isinstance(declarations, list):
+            dependencies = info.get(DEPENDS_ON_KEY, [])
+            if not isinstance(dependencies, list):
                 continue
-            for declaration in declarations:
-                if isinstance(declaration, str):
-                    pairs.append((module_path, declaration))
+            for surface_node in dependencies:
+                if isinstance(surface_node, str):
+                    pairs.append((module_path, surface_node))
 
         return pairs
 
-    def published_surfaces(self, project: str) -> set[str]:
-        """Name every surface a project publishes: its contract surfaces and mapped modules."""
-        root = self.project_roots.get(project)
-        if not root:
-            return set()
-
-        surfaces = {module_path for module_path, _ in self.read_map(project)}
-        snapshot_path = root / SNAPSHOT_FILENAME
-        if snapshot_path.exists():
-            surfaces |= set(ContractSnapshot.load(snapshot_path).surfaces)
-        return surfaces
-
-    def read_all_dependencies(self) -> tuple[list[GraphEdge], list[UnresolvedDependency]]:
-        """Build directed provider-to-consumer edges from every map's declarations.
-
-        Raises:
-            MalformedDependencyError: A declaration does not name a project and a surface.
-            UnknownSurfaceError: A declaration names a loaded project that does not
-                publish the surface.
-        """
-        keys_by_name = {self.project_name(key): key for key in self.project_roots}
-        surfaces_by_name: dict[str, set[str]] = {}
-
-        edges: list[GraphEdge] = []
-        unresolved: list[UnresolvedDependency] = []
-
-        for key in self.project_roots:
-            consumer = self.project_name(key)
-            for module_path, declaration in self.read_dependencies(key):
-                provider, surface = unqualify(declaration)
-                if not provider or not surface:
-                    raise MalformedDependencyError(consumer, module_path, declaration)
-
-                if provider not in keys_by_name:
-                    unresolved.append(
-                        UnresolvedDependency(consumer, module_path, provider, surface)
-                    )
-                    continue
-
-                if provider not in surfaces_by_name:
-                    surfaces_by_name[provider] = self.published_surfaces(keys_by_name[provider])
-                if surface not in surfaces_by_name[provider]:
-                    raise UnknownSurfaceError(
-                        consumer, module_path, declaration, surfaces_by_name[provider]
-                    )
-
+    def read_all_dependencies(self) -> list[GraphEdge]:
+        """Read all projects, return dependency GraphEdges into provider surfaces."""
+        edges = []
+        for project in self.project_roots:
+            name = self.project_name(project)
+            for module_path, surface_node in self.read_dependencies(project):
                 edges.append(
                     GraphEdge(
-                        source_id=qualify(provider, surface),
-                        target_id=qualify(consumer, module_path),
+                        source_id=qualify(name, module_path),
+                        target_id=surface_node,
                         source=EdgeSource.DEPENDENCY,
                         weight=1.0,
-                        project=consumer,
-                        directed=True,
+                        project=name,
                     )
                 )
-
-        return edges, unresolved
+        return edges
 
     def read_all(self) -> list[GraphEdge]:
         """Read all projects, return annotated GraphEdges keyed by project."""
@@ -254,23 +186,30 @@ class MapReader:
                             f"Module '{path}': requirement ID must be a string,"
                             f" got {type(req).__name__}"
                         )
+            errors.extend(self._validate_dependencies(path, info))
 
-            declarations = info.get("depends_on")
-            if declarations is None:
-                continue
-            if not isinstance(declarations, list):
-                errors.append(f"Module '{path}': 'depends_on' must be a list")
-                continue
-            for declaration in declarations:
-                if not isinstance(declaration, str):
-                    errors.append(
-                        f"Module '{path}': dependency must be a string,"
-                        f" got {type(declaration).__name__}"
-                    )
-                elif NODE_SEPARATOR not in declaration:
-                    errors.append(
-                        f"Module '{path}': dependency '{declaration}' must name a project"
-                        f" and a surface as 'project{NODE_SEPARATOR}surface'"
-                    )
+        return errors
 
+    def _validate_dependencies(self, path: str, info: dict) -> list[str]:
+        """Check one module's ``depends_on`` list, return error strings."""
+        if DEPENDS_ON_KEY not in info:
+            return []
+        dependencies = info[DEPENDS_ON_KEY]
+        if not isinstance(dependencies, list):
+            return [f"Module '{path}': '{DEPENDS_ON_KEY}' must be a list"]
+
+        errors = []
+        for surface_node in dependencies:
+            if not isinstance(surface_node, str):
+                errors.append(
+                    f"Module '{path}': dependency must be a string,"
+                    f" got {type(surface_node).__name__}"
+                )
+                continue
+            provider, surface = unqualify(surface_node)
+            if not provider or not surface:
+                errors.append(
+                    f"Module '{path}': dependency '{surface_node}' must name a provider"
+                    f" and a surface as 'project{NODE_SEPARATOR}surface'"
+                )
         return errors

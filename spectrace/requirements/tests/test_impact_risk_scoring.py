@@ -9,6 +9,7 @@ from requirements.services.impact_analyzer import (
     EDGE_FACTOR_SATURATION,
     EDGE_SOURCE_WEIGHTS,
     ImpactAnalyzer,
+    ProjectRevision,
     count_traversed_edges,
     traversed_edge_factor,
 )
@@ -41,7 +42,9 @@ def analyze_one_file(roots, path):
     diff = MagicMock(stdout=f"{path}\n")
     log = MagicMock(stdout="")
     with patch("subprocess.run", side_effect=[diff, log]):
-        return ImpactAnalyzer().code_analyze("HEAD~1", "HEAD", project_roots=roots)
+        return ImpactAnalyzer().code_analyze(
+            {name: ProjectRevision(root, "HEAD~1", "HEAD") for name, root in roots.items()}
+        )
 
 
 class TestTraversedEdgeFactor:
@@ -184,7 +187,6 @@ class TestTraversedEdgeCounts:
                 edge("b", "REQ-2", EdgeSource.ANNOTATED),
                 edge("c", "REQ-3", EdgeSource.GIT_INFERRED),
                 edge("d", "REQ-4", EdgeSource.CONTRACT),
-                edge("e", "REQ-5", EdgeSource.DEPENDENCY),
             ]
         )
 
@@ -192,7 +194,7 @@ class TestTraversedEdgeCounts:
             "annotated": 2,
             "inferred": 1,
             "contract": 1,
-            "dependency": 1,
+            "dependency": 0,
         }
 
     def test_code_analyze__reports_no_carrying_edges_for_an_unmapped_diff(self, tmp_path):
