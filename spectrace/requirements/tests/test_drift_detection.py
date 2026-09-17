@@ -1,6 +1,7 @@
 """Tests for drift detection logic."""
 
 import pytest
+from freezegun import freeze_time
 
 from requirements.models import (
     Requirement,
@@ -11,10 +12,12 @@ from requirements.models import (
 from requirements.validator import (
     DriftResult,
     detect_all_drift,
+    detect_long_untested,
     detect_orphan_requirements,
     detect_spec_drift,
     detect_stale_links,
     detect_unmarked_tests,
+    detect_wide_parents,
 )
 
 
@@ -172,6 +175,46 @@ class TestDetectStaleLinks:
 
         assert not result.has_errors
 
+    @pytest.mark.django_db
+    def test_detect_stale__matches_a_dotted_result_to_a_path_link(self, requirement, test_run):
+        """import_results stores JUnit's dotted classname; extract_links writes a file path."""
+        TestRequirementLink.objects.create(
+            test_nodeid="spectrace/tests/test_example.py::test_one",
+            requirement=requirement,
+            last_status="passed",
+        )
+        TestResult.objects.create(
+            test_run=test_run,
+            test_nodeid="spectrace.tests.test_example::test_one",
+            name="test_one",
+            status="passed",
+        )
+
+        result = detect_stale_links()
+
+        assert not result.has_errors
+
+    @pytest.mark.django_db
+    def test_detect_stale__matches_a_dotted_result_to_a_path_link_inside_a_class(
+        self, requirement, test_run
+    ):
+        """A class in the classname becomes a nodeid segment, not a directory."""
+        TestRequirementLink.objects.create(
+            test_nodeid="spectrace/tests/test_example.py::TestBilling::test_overage",
+            requirement=requirement,
+            last_status="passed",
+        )
+        TestResult.objects.create(
+            test_run=test_run,
+            test_nodeid="spectrace.tests.test_example.TestBilling::test_overage",
+            name="test_overage",
+            status="passed",
+        )
+
+        result = detect_stale_links()
+
+        assert not result.has_errors
+
 
 class TestDetectOrphanRequirements:
     """Tests for orphan requirement detection."""
@@ -235,6 +278,126 @@ class TestDetectOrphanRequirements:
 
         orphan_ids = [w.id for w in result.warnings]
         assert "REQ-DRAFT" not in orphan_ids
+
+
+def _add_children(parent, count):
+    for index in range(count):
+        parent.add_child(
+            external_id=f"{parent.external_id}-{index:03d}",
+            title=f"Child {index}",
+            status="active",
+            source_file="test.md",
+        )
+
+
+class TestDetectWideParents:
+    """Tests for detect_wide_parents."""
+
+    @pytest.mark.django_db
+    def test_detect_wide_parents__warns_over_limit(self, requirement):
+        """Warning names the parent whose direct children exceed the limit."""
+        _add_children(requirement, 3)
+
+        result = detect_wide_parents(max_children=2)
+
+        assert len(result.warnings) == 1
+        assert result.warnings[0].type == "wide_parent"
+        assert result.warnings[0].id == "REQ-001"
+        assert result.warnings[0].details["children"] == 3
+
+    @pytest.mark.django_db
+    def test_detect_wide_parents__no_warning_at_limit(self, requirement):
+        """A parent with exactly the limit passes."""
+        _add_children(requirement, 2)
+
+        result = detect_wide_parents(max_children=2)
+
+        assert not result.has_warnings
+        assert result.items_checked == 1
+
+    @pytest.mark.django_db
+    def test_detect_wide_parents__ignores_draft(self, db):
+        """Draft parents are not counted."""
+        parent = Requirement.add_root(
+            external_id="REQ-DRAFT",
+            title="Draft Parent",
+            status="draft",
+            source_file="test.md",
+        )
+        _add_children(parent, 3)
+
+        result = detect_wide_parents(max_children=2)
+
+        assert not result.has_warnings
+
+
+class TestDetectLongUntested:
+    """Tests for detect_long_untested."""
+
+    @pytest.mark.django_db
+    def test_detect_long_untested__warns_past_limit(self, db):
+        """Warning for an untested leaf older than the limit."""
+        with freeze_time("2026-01-01 12:00:00"):
+            Requirement.add_root(
+                external_id="REQ-OLD",
+                title="Old Requirement",
+                status="active",
+                source_file="test.md",
+            )
+
+        with freeze_time("2026-02-15 12:00:00"):
+            result = detect_long_untested(max_days=30)
+
+        assert len(result.warnings) == 1
+        assert result.warnings[0].type == "long_untested"
+        assert result.warnings[0].id == "REQ-OLD"
+        assert result.warnings[0].details["age_days"] == 45
+
+    @pytest.mark.django_db
+    def test_detect_long_untested__no_warning_within_limit(self, db):
+        """A recent untested leaf passes."""
+        with freeze_time("2026-02-01 12:00:00"):
+            Requirement.add_root(
+                external_id="REQ-NEW",
+                title="New Requirement",
+                status="active",
+                source_file="test.md",
+            )
+
+        with freeze_time("2026-02-15 12:00:00"):
+            result = detect_long_untested(max_days=30)
+
+        assert not result.has_warnings
+
+    @pytest.mark.django_db
+    def test_detect_long_untested__ignores_tested_and_parents(self, db):
+        """Passing leaves and parents are exempt however old they are."""
+        with freeze_time("2026-01-01 12:00:00"):
+            Requirement.add_root(
+                external_id="REQ-PASSING",
+                title="Passing Requirement",
+                status="active",
+                source_file="test.md",
+                verification_status="passing",
+            )
+            parent = Requirement.add_root(
+                external_id="REQ-PARENT",
+                title="Parent Requirement",
+                status="active",
+                source_file="test.md",
+            )
+            parent.add_child(
+                external_id="REQ-PARENT-CHILD",
+                title="Child",
+                status="active",
+                source_file="test.md",
+                verification_status="passing",
+            )
+
+        with freeze_time("2026-02-15 12:00:00"):
+            result = detect_long_untested(max_days=30)
+
+        assert not result.has_warnings
 
 
 class TestDetectSpecDrift:

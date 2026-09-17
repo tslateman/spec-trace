@@ -1,0 +1,11 @@
+    .run-selector {
+        border: 2px solid transparent;
+        transition: border-color 0.2s;
+    }
+    .run-selector.selected {
+        border-color: #3b82f6;
+    }
+    .run-selector:hover {
+        border-color: #93c5fd;
+    }
+

@@ -1,0 +1,63 @@
+name: Task runner
+
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: Tasks to drain this run
+        default: "1"
+      dry_run:
+        description: Show the unclaimed queue and stop before claiming
+        type: boolean
+        default: false
+  schedule:
+    - cron: "*/30 * * * *"
+
+concurrency:
+  group: task-runner
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  drain:
+    runs-on: ubuntu-latest
+    env:
+      SPECTRACE_URL: ${{ secrets.SPECTRACE_URL }}
+      SPECTRACE_API_KEY: ${{ secrets.SPECTRACE_API_KEY }}
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Install the CLI
+        run: |
+          pip install uv
+          uv pip install --system -e ./spectrace-flows -e .
+      - name: Show the unclaimed queue
+        run: spectrace tasks list --status unclaimed
+      - name: Install the coder
+        if: ${{ !inputs.dry_run }}
+        run: npm install -g @anthropic-ai/claude-code
+      - name: Drain the queue
+        if: ${{ !inputs.dry_run }}
+        run: |
+          if [ -z "$CLAUDE_CODE_OAUTH_TOKEN" ]; then
+            echo "CLAUDE_CODE_OAUTH_TOKEN is not set; the queue stays as it is"
+            exit 0
+          fi
+          git config user.name spectrace-runner
+          git config user.email runner@spectrace
+          spectrace tasks register gha-coder --role coder
+          spectrace tasks register gha-scorer --role reviewer
+          spectrace tasks run --agent gha-coder --repo . --worktrees "$RUNNER_TEMP/tasks" \
+            --base origin/main --remote origin \
+            --coder scripts/task-coder.sh \
+            --tests 'python -m pytest {linked} -q --junitxml={junit}' \
+            --scorer scripts/task-scorer.sh \
+            --scorer-agent gha-scorer \
+            --limit "${{ inputs.limit || '1' }}"

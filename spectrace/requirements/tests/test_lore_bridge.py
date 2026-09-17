@@ -59,6 +59,27 @@ class TestBuildRationale:
         rationale = _build_rationale("ABANDONED", [], 2, 2)
         assert "abandoned after 2/2 attempts" in rationale
 
+    def test_abandoned_rationale_carries_the_reviewers_reason(self):
+        rationale = _build_rationale(
+            "ABANDONED", [], 0, 2, "scope_in names no file the coder can open"
+        )
+        assert "scope_in names no file the coder can open" in rationale
+
+    def test_merged_rationale_omits_the_reason_line(self):
+        assert "Reviewer's reason" not in _build_rationale("MERGED", [], 1, 2, None)
+
+    def test_rationale_stays_on_one_line(self):
+        results = [
+            {"criterion": "pytest exits 0", "passed": True},
+            {"criterion": "coverage >= 80%", "passed": False, "notes": "got 72%"},
+        ]
+        rationale = _build_rationale("MERGED", results, 1, 2, merge_sha="99f0011")
+
+        assert "\n" not in rationale
+        assert "pytest exits 0" in rationale
+        assert "coverage >= 80% -- got 72%" in rationale
+        assert "Merged as 99f0011." in rationale
+
 
 # =============================================================================
 # Unit Tests: notify_lore
@@ -96,6 +117,25 @@ class TestNotifyLore:
         assert "journal" in cmd
         assert "record" in cmd
         assert "merged" in cmd[3].lower()
+
+    @patch("requirements.services.lore_bridge.subprocess.run")
+    @patch("requirements.services.lore_bridge.LORE_SH")
+    def test_records_the_merge_sha_in_the_rationale_and_files(self, mock_path, mock_run):
+        mock_path.exists.return_value = True
+        mock_path.__str__ = lambda self: "/dev/lore/lore.sh"
+        mock_run.return_value.returncode = 0
+
+        notify_lore(
+            task_id="task-auth-001",
+            task_name="Implement auth",
+            status="MERGED",
+            commit_sha="abc123",
+            merge_sha="99f0011",
+        )
+
+        cmd = mock_run.call_args[0][0]
+        assert "Merged as 99f0011." in cmd[cmd.index("--rationale") + 1]
+        assert cmd[cmd.index("--files") + 1] == "abc123,99f0011"
 
     @patch("requirements.services.lore_bridge.subprocess.run")
     @patch("requirements.services.lore_bridge.LORE_SH")

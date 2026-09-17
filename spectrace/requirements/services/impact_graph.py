@@ -7,7 +7,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Optional
 
-from ..projects import node_name, node_project
+from ..projects import node_name, unqualify
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,6 @@ class GraphEdge:
     source: EdgeSource
     weight: float = 1.0
     project: str = ""
-    directed: bool = False
 
 
 @dataclass
@@ -47,6 +46,13 @@ class BlastResult:
     risk_level: str = "low"
 
 
+def crosses_projects(edge: GraphEdge) -> bool:
+    """Tell whether an edge joins nodes owned by two different projects."""
+    source_project, _ = unqualify(edge.source_id)
+    target_project, _ = unqualify(edge.target_id)
+    return bool(source_project and target_project and source_project != target_project)
+
+
 class ImpactGraph:
     """In-memory impact graph assembled from multiple sources.
 
@@ -54,6 +60,7 @@ class ImpactGraph:
     - spectrace-map.yaml (annotated edges)
     - Git co-change inference (inferred edges)
     - Contract snapshots (contract edges)
+    - spectrace-map.yaml depends_on lists (dependency edges into another project)
     """
 
     def __init__(self):
@@ -91,8 +98,6 @@ class ImpactGraph:
                     queue.append((edge.target_id, depth + 1))
 
             for edge in self._reverse.get(current, []):
-                if edge.directed:
-                    continue
                 if edge.source_id not in visited:
                     visited.add(edge.source_id)
                     queue.append((edge.source_id, depth + 1))
@@ -109,9 +114,9 @@ class ImpactGraph:
                 requirements.append(node_id)
             elif "/" in name:
                 modules.append(node_id)
-            project = node_project(node_id)
-            if project:
-                projects.add(project)
+            for edge in self._adjacency.get(node_id, []) + self._reverse.get(node_id, []):
+                if edge.project:
+                    projects.add(edge.project)
 
         # Detect cross-project edges among visited nodes
         traversed: list[GraphEdge] = []
@@ -119,9 +124,7 @@ class ImpactGraph:
         for edge in self._edges:
             if edge.source_id in visited and edge.target_id in visited:
                 traversed.append(edge)
-                source_project = node_project(edge.source_id)
-                target_project = node_project(edge.target_id)
-                if source_project and target_project and source_project != target_project:
+                if crosses_projects(edge):
                     cross_project.append(edge)
 
         result.affected_requirements = sorted(requirements)
@@ -177,7 +180,7 @@ class ImpactGraph:
 
 
 class ImpactGraphBuilder:
-    """Assembles an ImpactGraph from all three edge sources."""
+    """Assembles an ImpactGraph from all four edge sources."""
 
     def __init__(self, project_roots: dict[str, Path]):
         self.project_roots = project_roots

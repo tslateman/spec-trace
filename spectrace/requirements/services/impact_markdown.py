@@ -32,10 +32,28 @@ def _section(lines: list[str], heading: str, items: list[str], limit: int, bulle
     lines.append("")
 
 
+def comparison_lines(result: CodeImpactResult) -> list[str]:
+    """Name the ref pair each project was diffed across.
+
+    A single project reads as one line; several projects list one line each,
+    since each carries its own refs.
+    """
+    revisions = result.revisions
+    if len(revisions) == 1:
+        (revision,) = revisions.values()
+        return [f"**Comparing:** `{revision.base_ref}` .. `{revision.head_ref}`"]
+    return [
+        "**Comparing:**",
+        *(
+            f"- `[{project}]` `{revision.base_ref}` .. `{revision.head_ref}`"
+            for project, revision in sorted(revisions.items())
+        ),
+        "",
+    ]
+
+
 def render_markdown(
     result: CodeImpactResult,
-    base_ref: str,
-    head_ref: str,
     list_limit: int = DEFAULT_LIST_LIMIT,
     test_limit: int = DEFAULT_TEST_LIMIT,
 ) -> str:
@@ -49,7 +67,7 @@ def render_markdown(
         marker(result.risk_level),
         "## Code Impact Analysis",
         "",
-        f"**Comparing:** `{base_ref}` .. `{head_ref}`",
+        *comparison_lines(result),
         f"**Risk:** {result.risk_level.upper()} ({result.risk_score:.2f})",
         "",
     ]
@@ -97,24 +115,11 @@ def render_markdown(
     lines.append(
         "Edges carrying this change — "
         f"annotated: {edges['annotated']} | "
+        f"dependency: {edges['dependency']} | "
         f"contract: {edges['contract']} | "
-        f"inferred: {edges['inferred']} | "
-        f"dependency: {edges['dependency']}"
+        f"inferred: {edges['inferred']}"
     )
     lines.append("")
-
-    if result.unresolved_dependencies:
-        lines.append("### Dependencies Not Analysed")
-        lines.append(
-            f"{len(result.unresolved_dependencies)} declared "
-            "dependencies name a project absent from this run:"
-        )
-        for item in result.unresolved_dependencies:
-            lines.append(
-                f"- `{item['consumer']}:{item['module']}` depends on "
-                f"`{item['provider']}:{item['surface']}`"
-            )
-        lines.append("")
 
     tests = sorted(result.affected_tests)
     if tests:

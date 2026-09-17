@@ -27,7 +27,7 @@ demos:
       - Stakeholders evaluating the tool
       - Anyone wanting a comprehensive overview
     prerequisites:
-      - Server running (`make run`)
+      - Server running (`just run`)
     urls:
       - http://localhost:8000/demo/spectrace-overview/
 
@@ -44,7 +44,7 @@ demos:
       - Teams evaluating where SpecTrace fits
       - Anyone comparing SpecTrace to other tools
     prerequisites:
-      - Server running (`make run`)
+      - Server running (`just run`)
     urls:
       - http://localhost:8000/demo/qa-ecosystem/
 
@@ -60,7 +60,7 @@ demos:
       - Anyone exploring SpecTrace capabilities
       - Sales engineers preparing demos
     prerequisites:
-      - Server running (`make run`)
+      - Server running (`just run`)
     urls:
       - http://localhost:8000/demo/
   - id: spectrace-workflow
@@ -69,14 +69,14 @@ demos:
       Complete walkthrough of the SpecTrace workflow: parsing requirements from
       markdown specs, linking them to pytest markers, running tests, and showing
       verification status in the admin dashboard.
-    entry_point: make demo
+    entry_point: just demo
     duration: 5 minutes
     audience:
       - Engineering leads
       - QA teams
       - Product managers evaluating spec-trace
     prerequisites:
-      - Run `make setup` first (or `python scripts/setup_demo.py`)
+      - Run `just setup` first (or `python scripts/setup_demo.py`)
       - Database migrated and seeded
 
   - id: document-pipeline
@@ -91,7 +91,7 @@ demos:
       - Developers learning spec-trace patterns
       - Teams evaluating for complex projects
     prerequisites:
-      - Run `make setup` first
+      - Run `just setup` first
 
   - id: agent-pipeline
     name: Agent-Assisted Development Pipeline
@@ -124,7 +124,7 @@ demos:
       - Teams with multi-step integration flows
       - QA monitoring verification pipelines
     prerequisites:
-      - Server running (`make run`)
+      - Server running (`just run`)
     urls:
       - http://localhost:8000/admin/flow-status/
     cli_setup: python manage.py setup_flow_demo
@@ -142,7 +142,7 @@ demos:
       - QA teams monitoring verification
       - Compliance auditors
     prerequisites:
-      - Server running (`make run`)
+      - Server running (`just run`)
     urls:
       - http://localhost:8000/admin/matrix/
 
@@ -159,7 +159,7 @@ demos:
       - QA monitoring vendor-specific validation
       - Engineering leads tracking integration health
     prerequisites:
-      - Server running (`make run`)
+      - Server running (`just run`)
     urls:
       - http://localhost:8000/admin/vendor-coverage/
 
@@ -193,6 +193,6 @@ demos:
       - Engineering leads evaluating change-impact workflows
       - Teams adopting spec-driven testing
     prerequisites:
-      - Run `make setup` first (or `python scripts/setup_demo.py`)
+      - Run `just setup` first (or `python scripts/setup_demo.py`)
       - Database migrated and seeded
     cli_setup: spectrace setup-impact-demo

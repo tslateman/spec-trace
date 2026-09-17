@@ -1,5 +1,94 @@
 # Project Milestones: SpecTrace
 
+## Unreleased — Cloudflare Port (In progress)
+
+**Delivering:** A Worker-hosted API and a React dashboard that CI and agents reach at any hour, fed by the Python CLI running where the repo lives.
+
+**Phases completed:** 0-4 of [plans/cloudflare-port.md](../plans/cloudflare-port.md); phase 5 (cutover) partly done
+
+**Key accomplishments:**
+
+- Worker on Hono, Drizzle, and D1 serving the v1 API at `spectrace.spectrace.workers.dev`, deployed by CI on every merge to main
+- `plans/openapi-worker.yaml` frozen as the contract, held by `worker/test/contract.test.ts`
+- TaskLedger Durable Object owning task transitions, leases, lease alarms, and the Lore outbox
+- React dashboard in `app/` behind GitHub OAuth, reading the Worker over a service binding; PR #2 retired the Worker's own data screens
+- CLI pushes specs, links, flows, JUnit results, impact, and drift; `spectrace tasks` and `spectrace linear` run with no Django in the path
+- `spectrace tasks run` drains the unclaimed queue, hosted on GitHub Actions every 30 minutes
+
+**Remaining:** stop the Django server. See [ROADMAP.md](../ROADMAP.md) item 1.
+
+**Stats:**
+
+- 190 commits
+- 286 files modified
+- 2026-08-30 → 2026-09-16
+
+**Git range:** `cfd1af6` → `6d0b149`
+
+**Plan:** [plans/cloudflare-port.md](../plans/cloudflare-port.md)
+
+---
+
+## v11 Corpus Review & Self-Verification (Shipped: 2026-08-30)
+
+**Delivered:** The agent-facing API under `/api/v1/`, a corpus of standards specs are reviewed against, an impact graph that walks code to requirement, and SpecTrace verifying itself.
+
+**Phases completed:** API restructure phases 1-5, then corpus work ad-hoc (outside the GSD workflow)
+
+**Key accomplishments:**
+
+- Every agent-facing endpoint moved under `/api/v1/` with enforcement, impact, and validation-run routes
+- Corpus schema, parser, applicability resolver, check evaluator, and the five finding types
+- Corpus drift derived from coverage rows and the pinned snapshot; check ids hold across version edits
+- Impact graph for cross-project blast radius, plus the Scenario DSL in `spectrace-flows`
+- Intent-to-Execution validator with historical tracking
+- Task outcomes written to the Lore journal on merge and abandon
+- SpecTrace verifying SpecTrace: 23 requirements of its own, gated in CI
+- Changelog's Unreleased section generated from the commit log
+
+**Stats:**
+
+- 60 commits
+- 186 files modified
+- +21,564 lines added
+- 6 months (2026-02-27 → 2026-08-30)
+
+**Git range:** `bd320eb` → `04c788e` (tag `v0.11.0`)
+
+---
+
+## v10 Spec as Interface (Shipped: 2026-02-27)
+
+**Delivered:** Specs became the interface agents work from, and coverage became the number that says how much of the interface holds.
+
+**Phases completed:** 1-2 (v10)
+
+**Key accomplishments:**
+
+- `agent_context <task_id>` assembles requirements, `done_when` criteria, dependency tree, test outcomes, and scope boundaries into a markdown document for prompt injection
+- `spec_coverage` reports specification, structure, and verification rates
+- `detect_integration_risks` finds conflicts across in-flight agent tasks
+- Risk scoring on impact analysis and an end-to-end impact demo command
+- Conflicts REST API with detection, listing, and resolution endpoints
+- OpenAPI spec completed with security schemes and query parameters
+- `spectrace` CLI wrapping the Django management commands, and CI running ruff as a blocking gate
+
+**Stats:**
+
+- 14 commits
+- 171 files modified
+- +11,414 lines added
+- 2 days (2026-02-26 → 2026-02-27)
+
+**Git range:** `f7b76cc` → `cd4aa16`
+
+**Tag:** none. `cd4aa16` (docs: Mark v10 milestone complete, 2026-02-27) is the
+last commit of the milestone; `bd320eb` opens v11.
+
+**Deferred:** coverage trend snapshots — ROADMAP.md item 2.
+
+---
+
 ## v9 Demo & Marketing Polish (Shipped: 2026-02-03)
 
 **Delivered:** Clear value proposition, guided onboarding, and polished demo experience for engineering leads evaluating SpecTrace.
@@ -118,7 +207,13 @@
 - 30 new tests (228 total)
 - 5 phases, 1 day
 
-**Git range:** `0a47cdf` → `fd13976`
+**Git range:** `a3bdbc4` ends the feature work (docs: add v5 Structured
+Requirements milestone, 2026-01-24); `c0b1b73` (fix(admin): replace
+EmptyFieldListFilter, 2026-01-25) is the last commit before `9ff2af6` opens v6.
+The range this file recorded before, `0a47cdf` → `fd13976`, names two commits
+that no longer exist in this repository.
+
+**Tag:** none.
 
 **What's next:** v6 — Historical tracking, scheduled validation, alerting
 
@@ -199,7 +294,12 @@
 - 4 phases, 4 plans
 - 1 day (2026-01-21)
 
-**Git range:** `72310b2` → `9feffb7`
+**Git range:** `532969a` (docs: create v2 Traceability Matrix milestone) →
+`2427557` (docs: mark v2 milestone complete), both 2026-01-21. The range this
+file recorded before, `72310b2` → `9feffb7`, names two commits that precede the
+`v0.1.0` tag and belong to v1.
+
+**Tag:** none. `63ba019` opens v3.
 
 **What's next:** v3 — Integration health monitoring
 

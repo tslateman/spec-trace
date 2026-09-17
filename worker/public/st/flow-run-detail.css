@@ -1,0 +1,59 @@
+    .flow-pipeline {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    .flow-pipeline-step {
+        flex: 1;
+        height: 8px;
+        border-radius: 2px;
+        background: var(--st-border);
+        position: relative;
+        min-width: 40px;
+    }
+    .flow-pipeline-step--passed {
+        background: var(--st-pass);
+    }
+    .flow-pipeline-step--failed {
+        background: var(--st-fail);
+    }
+    .flow-pipeline-step--running {
+        background: var(--st-warn);
+        animation: st-pulse 1.5s ease-in-out infinite;
+    }
+    .flow-pipeline-connector {
+        width: 8px;
+        height: 2px;
+        background: var(--st-border-muted);
+    }
+    .step-timeline {
+        position: relative;
+        padding-left: 24px;
+    }
+    .step-timeline::before {
+        content: '';
+        position: absolute;
+        left: 8px;
+        top: 4px;
+        bottom: 4px;
+        width: 2px;
+        background: var(--st-border);
+    }
+    .step-item {
+        position: relative;
+        padding: var(--st-space-3) 0;
+    }
+    .step-dot {
+        position: absolute;
+        left: -20px;
+        top: 18px;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+    }
+    .step-dot--passed { background: var(--st-pass); }
+    .step-dot--failed { background: var(--st-fail); }
+    [x-cloak] {
+        display: none !important;
+    }
+

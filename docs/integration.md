@@ -1,17 +1,18 @@
 # Integrating SpecTrace
 
-One SpecTrace database serves every project. Each repo installs the CLI,
-points `DATABASE_URL` at the shared Postgres, and runs the management commands
-from its own checkout. The hosted admin reads the same database.
+Add SpecTrace to your Django project as a dependency.
 
 ## Installation
 
 ```bash
+# pip
+pip install git+https://github.com/tslateman/spec-trace.git
+
 # uv
 uv pip install git+https://github.com/tslateman/spec-trace.git
 
-# pip
-pip install git+https://github.com/tslateman/spec-trace.git
+# requirements.txt
+spectrace @ git+https://github.com/tslateman/spec-trace.git
 
 # pyproject.toml
 dependencies = [
@@ -25,58 +26,62 @@ Pin to a specific commit for stability:
 spectrace @ git+https://github.com/tslateman/spec-trace.git@25c836e
 ```
 
-## Connecting
+## Django Configuration
 
-Set `DATABASE_URL` to the Supabase session pooler. Every `spectrace` command
-and `manage.py` command then reads and writes the shared database.
+### settings.py
 
-```bash
-export DATABASE_URL='postgres://postgres.<project-ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres?sslmode=require'
+```python
+INSTALLED_APPS = [
+    # django-unfold must be before django.contrib.admin
+    "unfold",
+    "unfold.contrib.filters",
+    "django.contrib.admin",
+    # ... other Django apps ...
+
+    # SpecTrace apps
+    "treebeard",
+    "requirements",
+    "spectrace_client",  # Optional: in-app validation SDK
+]
 ```
 
-Use the session pooler on port 5432. The direct connection is IPv6-only, and
-the transaction pooler on port 6543 drops the prepared statements Django
-relies on. Percent-encode reserved characters in the password.
+### urls.py
 
-Without `DATABASE_URL`, SpecTrace falls back to a local SQLite file. That is
-the right mode for running SpecTrace's own test suite, not for project work.
+```python
+from django.urls import include, path
 
-Store the URL as a repository secret in CI and as a `.env` entry locally. Every
-holder of the URL reads and writes every project.
+urlpatterns = [
+    # Your app URLs...
 
-## Registering a Project
+    # SpecTrace admin views (before admin.site.urls)
+    path("", include("requirements.urls")),
 
-Give your specs a `project:` and parse them from your checkout:
-
-```bash
-spectrace specs parse specs/ --project myproject
-spectrace results extract --path src --output links.json
-spectrace results link links.json
+    path("admin/", admin.site.urls),
+]
 ```
 
-Run the same commands in CI on pushes to your main branch so the shared
-database tracks what shipped. Pull requests should skip the write, or point at
-a throwaway SQLite database, so an unmerged change never lands in it.
+Or selectively include only what you need:
 
-## Claiming Tasks
+```python
+from requirements import api
+from requirements.views import matrix_view, validation_run_list_view
 
-Agents claim and complete tasks with the CLI from any checkout that holds
-`DATABASE_URL`:
+urlpatterns = [
+    # Just the matrix view
+    path("admin/matrix/", matrix_view, name="admin-matrix"),
 
-```bash
-spectrace tasks register my-agent --role coder
-spectrace tasks list --status unclaimed
-spectrace tasks claim <task_id> --agent my-agent
-spectrace tasks complete <task_id> --agent my-agent
+    # Just the API
+    path(
+        "api/v1/results/enforcement/",
+        api.submit_validation_result,
+        name="api-v1-results-enforcement",
+    ),
+]
 ```
 
-The HTTP API at `/api/v1/tasks/` covers list, claim, and complete for callers
-that hold `SPECTRACE_API_KEY` but not the database URL.
-
-## Reading Status
-
-The hosted admin serves the matrix, coverage, drift, and impact views under
-`/admin/`. Ask for a staff account to read them.
+Keep the `name=` when you wire routes by hand. The redirects that serve the
+retired `/api/` paths resolve their targets by URL name, so a route registered
+without its name breaks them.
 
 ## Public API Surface
 
@@ -131,7 +136,7 @@ python manage.py import_inapp_validations results.json
 python manage.py check_invariants
 
 # Agent coordination
-python manage.py agent_register my-agent --role coder
+python manage.py agent_register --name my-agent --role coder
 python manage.py agent_tasks --status unclaimed
 python manage.py agent_claim <task_id> --agent my-agent
 ```
@@ -148,14 +153,34 @@ Every endpoint lives under `/api/v1/`. The full catalog is in
 | `/api/v1/specs/<external_id>/status/`    | GET    | Get requirement verification status  |
 | `/api/v1/results/enforcement-runs/`      | GET    | List enforcement runs                |
 | `/api/v1/results/enforcement-runs/<id>/` | GET    | Get enforcement run details          |
-| `/api/v1/integrations/linear/health/`    | GET    | Linear integration health check      |
 
-Every `/api/v1/` endpoint requires an API key once `SPECTRACE_API_KEY` is set;
-only `/api/docs/`, `/api/openapi.json`, and the landing page stay open. Send
-the key as `X-API-Key`:
+The Worker guards every `/api/` route with `SPECTRACE_API_KEY`. Send it as
+`X-API-Key`, `Authorization: Bearer`, or `Authorization: Api-Key`.
+
+## Linear
+
+The CLI holds the Linear token; no server sees it.
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/results/enforcement/ \
+export LINEAR_API_KEY=lin_api_...
+
+spectrace linear check --workspace acme --team PROJ
+spectrace linear pull --label requirement --project spectrace
+spectrace linear report junit.xml --links links.json --git-sha "$GITHUB_SHA"
+```
+
+`pull` fetches every issue carrying the label, converts each to a requirement,
+and pushes the set to the Worker, so a labeled issue reaches the matrix.
+`report` reads the same JUnit report CI already pushes, tallies each
+requirement's linked cases, and posts the counts as an issue comment plus a
+`tests:passing` or `tests:failing` label. `check` verifies the token's shape,
+its identity, and its read access, and exits 1 when any check fails.
+
+`pull` upserts. It never deletes, so a requirement parsed from a spec file
+survives a pull into the same project.
+
+```bash
+curl -X POST https://spectrace.spectrace.workers.dev/api/v1/results/enforcement/ \
   -H "Content-Type: application/json" \
   -H "X-API-Key: $SPECTRACE_API_KEY" \
   -d '{
@@ -202,6 +227,22 @@ markers = [
     "requirement(*req_ids): link test to requirement IDs",
 ]
 ```
+
+### Name Tags
+
+Runners without a marker API link by test name. A bracketed requirement ID
+anywhere in the JUnit case name is a link, and the ID normalizes to upper case
+with hyphens. `spectrace push --links junit.xml` derives the links and
+`spectrace results push junit.xml` derives the results from the same report.
+
+```typescript
+describe("POST /login [REQ-AUTH-001]", () => {
+  it("[REQ-AUTH-002] refuses a locked account", async () => {});
+});
+```
+
+Vitest writes the report through its `junit` reporter; gotestsum and
+cargo-nextest write the same format for Go and Rust.
 
 ## Extending SpecTrace
 
@@ -256,8 +297,9 @@ MY_DOMAIN_FLOW = FlowDefinition(
 
 ## Version Compatibility
 
-SpecTrace follows semantic versioning once stable. Current version: **0.1.0** (pre-release).
+SpecTrace is pre-1.0, so minor versions may change the surface. Current
+version: **0.11.0** (`pyproject.toml`).
 
 | SpecTrace | Python | Django |
 | --------- | ------ | ------ |
-| 0.1.x     | ≥3.12  | 5.2.x  |
+| 0.11.x    | ≥3.12  | 5.2.x  |

@@ -1,0 +1,30 @@
+# Copy to .dev.vars, which stays untracked.
+
+# The spec-trace Worker's key. The SPECTRACE service binding is remote, so
+# `just app-dev` reaches the deployed Worker and needs its production key.
+# `just app-dev-local` runs both Workers locally and overrides this with
+# worker/.dev.vars instead, so local work never needs the production value.
+SPECTRACE_API_KEY=
+
+# Signs the dashboard session cookie. Rotating it signs every browser out.
+#   openssl rand -base64 32
+SESSION_SECRET=
+
+# GitHub OAuth app: Settings > Developer settings > OAuth Apps.
+# An OAuth app holds one callback URL, and it belongs to the deployment:
+#   https://spectrace-app.spectrace.workers.dev/auth/callback
+# GitHub therefore rejects any localhost callback. Use DEV_LOGIN below instead.
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
+
+# Comma-separated GitHub logins allowed to sign in. Empty denies everyone.
+ALLOWED_LOGINS=
+
+# Lets scripts call /api/* with X-API-Key instead of a browser session.
+#   openssl rand -base64 32
+DASHBOARD_API_KEY=
+
+# Signs you in as this login and skips GitHub entirely. Local only: `just
+# app-dev-local` sets it, and leaving it unset restores the OAuth flow. Never
+# put it in wrangler.jsonc vars or a deployed secret -- it disables auth.
+DEV_LOGIN=tslateman

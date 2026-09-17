@@ -76,21 +76,21 @@ def github_webhook(request):
         logger.info("Webhook from non-allowed repository: %s", repository)
         return JsonResponse({"error": f"Repository {repository} not in allowlist"}, status=403)
 
-    # Create audit log entry
-    webhook_event, created = WebhookEvent.objects.get_or_create(
-        delivery_id=delivery_id,
-        defaults={
-            "event_type": event_type,
-            "action": action,
-            "repository": repository,
-            "sender": sender,
-            "payload": _sanitize_payload(payload),
-            "status": WebhookEventStatus.RECEIVED,
-        },
-    )
-    if not created:
+    # Check for duplicate delivery (idempotency)
+    if WebhookEvent.objects.filter(delivery_id=delivery_id).exists():
         logger.info("Duplicate webhook delivery: %s", delivery_id)
         return JsonResponse({"status": "duplicate", "delivery_id": delivery_id})
+
+    # Create audit log entry
+    webhook_event = WebhookEvent.objects.create(
+        delivery_id=delivery_id,
+        event_type=event_type,
+        action=action,
+        repository=repository,
+        sender=sender,
+        payload=_sanitize_payload(payload),
+        status=WebhookEventStatus.RECEIVED,
+    )
 
     # Only process workflow_run.completed events
     if event_type != "workflow_run":

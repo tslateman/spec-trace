@@ -73,10 +73,9 @@ class TestImpactGraph:
             GraphEdge(
                 source_id="lore:src/lore/reader.py",
                 target_id="praxis:src/praxis/lore.py",
-                source=EdgeSource.DEPENDENCY,
+                source=EdgeSource.ANNOTATED,
                 weight=1.0,
-                project="praxis",
-                directed=True,
+                project="lore",
             )
         )
         graph.add_edge(
@@ -89,44 +88,7 @@ class TestImpactGraph:
             )
         )
         result = graph.blast_radius(["lore:src/lore/reader.py"])
-
         assert len(result.cross_project_edges) == 1
-        assert result.cross_project_edges[0].target_id == "praxis:src/praxis/lore.py"
-
-    def test_cross_project_edges__ignores_an_edge_inside_one_project(self):
-        graph = ImpactGraph()
-        graph.add_edge(
-            GraphEdge(
-                source_id="praxis:src/praxis/lore.py",
-                target_id="praxis:REQ-PRAXIS-001",
-                source=EdgeSource.ANNOTATED,
-                weight=1.0,
-                project="praxis",
-            )
-        )
-
-        result = graph.blast_radius(["praxis:src/praxis/lore.py"])
-
-        assert result.cross_project_edges == []
-
-    def test_blast_radius__does_not_walk_a_directed_edge_backwards(self):
-        graph = ImpactGraph()
-        graph.add_edge(
-            GraphEdge(
-                source_id="lore:src/lore/reader.py",
-                target_id="praxis:src/praxis/lore.py",
-                source=EdgeSource.DEPENDENCY,
-                weight=1.0,
-                project="praxis",
-                directed=True,
-            )
-        )
-
-        forward = graph.blast_radius(["lore:src/lore/reader.py"])
-        backward = graph.blast_radius(["praxis:src/praxis/lore.py"])
-
-        assert "praxis:src/praxis/lore.py" in forward.affected_modules
-        assert backward.affected_modules == []
 
     def test_cycle_does_not_infinite_loop(self):
         graph = ImpactGraph()
@@ -198,3 +160,63 @@ class TestImpactGraphBuilder:
         contract = [GraphEdge("e", "f", EdgeSource.CONTRACT)]
         graph = builder.build(annotated, inferred, contract)
         assert len(graph.edges) == 3
+
+
+def _dependency_graph():
+    graph = ImpactGraph()
+    graph.add_edge(
+        GraphEdge(
+            source_id="spectrace:spectrace-map.yaml",
+            target_id="spectrace-map.yaml",
+            source=EdgeSource.CONTRACT,
+            weight=0.8,
+            project="spectrace",
+        )
+    )
+    graph.add_edge(
+        GraphEdge(
+            source_id="praxis:src/praxis/impact.py",
+            target_id="spectrace:spectrace-map.yaml",
+            source=EdgeSource.DEPENDENCY,
+            project="praxis",
+        )
+    )
+    graph.add_edge(
+        GraphEdge(
+            source_id="praxis:src/praxis/impact.py",
+            target_id="praxis:REQ-PRX-006",
+            source=EdgeSource.ANNOTATED,
+            project="praxis",
+        )
+    )
+    return graph
+
+
+def test_blast_radius__crosses_projects_along_a_dependency_edge():
+    result = _dependency_graph().blast_radius(["spectrace:spectrace-map.yaml"])
+
+    assert result.affected_modules == ["praxis:src/praxis/impact.py"]
+    assert result.affected_requirements == ["praxis:REQ-PRX-006"]
+    assert "praxis" in result.affected_projects
+    assert [(e.source_id, e.target_id) for e in result.cross_project_edges] == [
+        ("praxis:src/praxis/impact.py", "spectrace:spectrace-map.yaml")
+    ]
+
+
+def test_blast_radius__keeps_contract_edges_out_of_the_cross_project_count():
+    result = _dependency_graph().blast_radius(["spectrace:spectrace-map.yaml"])
+
+    assert {e.source for e in result.cross_project_edges} == {EdgeSource.DEPENDENCY}
+
+
+def test_build__adds_dependency_edges_to_the_graph():
+    dependency = GraphEdge(
+        source_id="praxis:src/praxis/impact.py",
+        target_id="spectrace:spectrace-map.yaml",
+        source=EdgeSource.DEPENDENCY,
+        project="praxis",
+    )
+
+    graph = ImpactGraphBuilder({}).build(dependency_edges=[dependency])
+
+    assert graph.edges == [dependency]

@@ -2,8 +2,9 @@
 
 import requests
 
-from requirements.models import VerificationMethod
 from requirements.services.requirement_parser import extract_structured_fields
+
+UNSPECIFIED_VERIFICATION = "unspecified"
 
 
 class LinearClient:
@@ -36,9 +37,9 @@ class LinearClient:
     # Map Linear labels to verification method
     # Labels like "verify:test", "verify:inapp", "verify:both"
     VERIFICATION_METHOD_MAP = {
-        "verify:test": VerificationMethod.TEST,
-        "verify:inapp": VerificationMethod.INAPP,
-        "verify:both": VerificationMethod.BOTH,
+        "verify:test": "test",
+        "verify:inapp": "inapp",
+        "verify:both": "both",
     }
 
     def __init__(self, api_key: str):
@@ -162,7 +163,7 @@ class LinearClient:
         label_names = [lbl["name"] for lbl in labels]
 
         # Determine verification method from labels
-        verification_method = VerificationMethod.UNSPECIFIED
+        verification_method = UNSPECIFIED_VERIFICATION
         for label in label_names:
             if label in self.VERIFICATION_METHOD_MAP:
                 verification_method = self.VERIFICATION_METHOD_MAP[label]

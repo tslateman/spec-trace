@@ -1,0 +1,4 @@
+project: session-api
+modules:
+  src/session.ts:
+    requirements: [SES-AUTH-001, SES-AUTH-002, SES-TTL-001]

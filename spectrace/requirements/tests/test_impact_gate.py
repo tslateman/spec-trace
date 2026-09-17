@@ -1,6 +1,7 @@
 """Tests for the CI impact gate: exit codes, project roots, and PR comments."""
 
 import json
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -9,14 +10,19 @@ from django.core.management import call_command
 from django.core.management.base import CommandError
 
 from cli import cli
-from requirements.management.commands.code_impact_analysis import parse_project_roots
+from requirements.management.commands.code_impact_analysis import (
+    parse_project_refs,
+    parse_project_roots,
+    parse_projects,
+)
 from requirements.services.github_comment import CommentResult
-from requirements.services.impact_analyzer import CodeImpactResult
+from requirements.services.impact_analyzer import CodeImpactResult, ProjectRevision
 
 
 def make_result(risk_level, risk_score=0.5):
     return CodeImpactResult(
         changed_files={"local": ["a.py"]},
+        revisions={"local": ProjectRevision(Path("."), "base", "head")},
         blast={
             "affected_requirements": ["REQ-A-001"],
             "affected_modules": ["a.py"],
@@ -57,6 +63,116 @@ class TestParseProjectRoots:
     def test_parse_project_roots__rejects_an_empty_value(self):
         with pytest.raises(CommandError, match="named no projects"):
             parse_project_roots(",,")
+
+
+class TestParseProjectRefs:
+    def test_parse_project_refs__splits_each_span_into_a_ref_pair(self):
+        refs = parse_project_refs("alpha=v1.4.0..HEAD, beta=release/2026-09..main")
+
+        assert refs == {"alpha": ("v1.4.0", "HEAD"), "beta": ("release/2026-09", "main")}
+
+    def test_parse_project_refs__rejects_a_span_without_two_refs(self):
+        with pytest.raises(CommandError, match="Expected base..head"):
+            parse_project_refs("alpha=HEAD")
+
+    def test_parse_project_refs__rejects_a_bare_span(self):
+        with pytest.raises(CommandError, match="Expected name=base..head pairs"):
+            parse_project_refs("main..HEAD")
+
+
+class TestParseProjects:
+    def test_parse_projects__pairs_each_root_with_its_own_refs(self, tmp_path):
+        (tmp_path / "alpha").mkdir()
+        (tmp_path / "beta").mkdir()
+
+        projects = parse_projects(
+            f"alpha={tmp_path / 'alpha'},beta={tmp_path / 'beta'}",
+            "alpha=v1.4.0..HEAD,beta=release/2026-09..main",
+        )
+
+        assert projects == {
+            "alpha": ProjectRevision(tmp_path / "alpha", "v1.4.0", "HEAD"),
+            "beta": ProjectRevision(tmp_path / "beta", "release/2026-09", "main"),
+        }
+
+    def test_parse_projects__rejects_a_root_without_refs(self, tmp_path):
+        (tmp_path / "alpha").mkdir()
+        (tmp_path / "beta").mkdir()
+
+        with pytest.raises(CommandError, match="names no refs for: beta"):
+            parse_projects(
+                f"alpha={tmp_path / 'alpha'},beta={tmp_path / 'beta'}", "alpha=main..HEAD"
+            )
+
+    def test_parse_projects__rejects_refs_without_a_root(self, tmp_path):
+        (tmp_path / "alpha").mkdir()
+
+        with pytest.raises(CommandError, match="names no root for: beta"):
+            parse_projects(f"alpha={tmp_path / 'alpha'}", "alpha=main..HEAD,beta=main..HEAD")
+
+    def test_parse_projects__requires_both_flags(self, tmp_path):
+        (tmp_path / "alpha").mkdir()
+
+        with pytest.raises(CommandError, match="go together"):
+            parse_projects(f"alpha={tmp_path / 'alpha'}", None)
+
+    def test_parse_projects__rejects_an_unsafe_ref(self, tmp_path):
+        (tmp_path / "alpha").mkdir()
+
+        with pytest.raises(CommandError, match="Invalid git ref"):
+            parse_projects(f"alpha={tmp_path / 'alpha'}", "alpha=main..HEAD;rm")
+
+
+class TestGateProjects:
+    def test_handle__diffs_the_local_repository_across_the_positional_refs(self):
+        with patch(
+            "requirements.management.commands.code_impact_analysis.ImpactAnalyzer",
+            autospec=True,
+        ) as analyzer:
+            analyzer.return_value.code_analyze.return_value = make_result("low")
+            call_command("code_impact_analysis", "base", "head")
+
+        analyzer.return_value.local_revision.assert_called_once_with("base", "head")
+        analyzer.return_value.code_analyze.assert_called_once_with(
+            analyzer.return_value.local_revision.return_value
+        )
+
+    def test_handle__diffs_each_project_across_its_own_refs(self, tmp_path):
+        (tmp_path / "alpha").mkdir()
+        (tmp_path / "beta").mkdir()
+        with patch(
+            "requirements.management.commands.code_impact_analysis.ImpactAnalyzer",
+            autospec=True,
+        ) as analyzer:
+            analyzer.return_value.code_analyze.return_value = make_result("low")
+            call_command(
+                "code_impact_analysis",
+                project_roots=f"alpha={tmp_path / 'alpha'},beta={tmp_path / 'beta'}",
+                project_refs="alpha=v1.4.0..HEAD,beta=release/2026-09..main",
+            )
+
+        analyzer.return_value.code_analyze.assert_called_once_with(
+            {
+                "alpha": ProjectRevision(tmp_path / "alpha", "v1.4.0", "HEAD"),
+                "beta": ProjectRevision(tmp_path / "beta", "release/2026-09", "main"),
+            }
+        )
+
+    def test_handle__rejects_positional_refs_alongside_project_roots(self, tmp_path):
+        (tmp_path / "alpha").mkdir()
+
+        with pytest.raises(CommandError, match="local repository only"):
+            call_command(
+                "code_impact_analysis",
+                "base",
+                "head",
+                project_roots=f"alpha={tmp_path / 'alpha'}",
+                project_refs="alpha=main..HEAD",
+            )
+
+    def test_handle__rejects_a_missing_ref_pair(self):
+        with pytest.raises(CommandError, match="Give base_ref and head_ref"):
+            call_command("code_impact_analysis", "base")
 
 
 class TestGateExitCodes:
@@ -243,6 +359,35 @@ class TestCliOptions:
         assert run.call_args[0][0] == "code_impact_analysis"
         assert run.call_args.kwargs["format"] == "markdown"
         assert run.call_args.kwargs["output"] == "impact.md"
+
+    def test_impact__passes_each_projects_refs_to_the_gate(self):
+        with patch("cli._run", autospec=True) as run, patch("cli._bootstrap_django", autospec=True):
+            runner = CliRunner()
+            result = runner.invoke(
+                cli,
+                [
+                    "specs",
+                    "impact",
+                    "--code",
+                    "--project-roots",
+                    "lore=/p/lore,praxis=/p/praxis",
+                    "--project-refs",
+                    "lore=v1.4.0..HEAD,praxis=main..HEAD",
+                ],
+            )
+
+        assert result.exit_code == 0, result.output
+        assert run.call_args.args == ("code_impact_analysis",)
+        assert run.call_args.kwargs["project_roots"] == "lore=/p/lore,praxis=/p/praxis"
+        assert run.call_args.kwargs["project_refs"] == "lore=v1.4.0..HEAD,praxis=main..HEAD"
+
+    def test_impact__requires_refs_for_spec_only_analysis(self):
+        with patch("cli._run", autospec=True), patch("cli._bootstrap_django", autospec=True):
+            runner = CliRunner()
+            result = runner.invoke(cli, ["specs", "impact", "base"])
+
+        assert result.exit_code == 2
+        assert "BASE_REF and HEAD_REF are required" in result.output
 
     def test_impact__narrows_markdown_to_md_for_spec_only_analysis(self):
         with patch("cli._run", autospec=True) as run, patch("cli._bootstrap_django", autospec=True):

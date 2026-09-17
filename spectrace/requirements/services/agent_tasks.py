@@ -9,11 +9,14 @@ Provides functions for the agent task state machine:
 - expire_stale_leases: Release tasks with expired leases
 """
 
+import random
+import time
 from dataclasses import dataclass
 from datetime import timedelta
+from functools import wraps
 from typing import Literal
 
-from django.db import transaction
+from django.db import OperationalError, transaction
 from django.utils import timezone
 
 from requirements.models import (
@@ -147,6 +150,54 @@ def get_task(task_id: str) -> AgentTask:
         )
 
 
+def _retry_on_lock_conflict(func):
+    """Retry a @transaction.atomic function on OperationalError.
+
+    Args:
+        func: Function wrapping a single @transaction.atomic call
+    """
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        delay = 0.01
+        max_attempts = 8
+        for attempt in range(1, max_attempts + 1):
+            try:
+                return func(*args, **kwargs)
+            except OperationalError:
+                if attempt == max_attempts:
+                    raise
+                time.sleep(random.uniform(0, delay))
+                delay *= 2
+
+    return wrapper
+
+
+def _apply_transition_or_conflict(task: AgentTask, expected_status: str, updates: dict) -> None:
+    """Apply a status-guarded UPDATE, raising TransitionError if it no-ops.
+
+    Args:
+        task: The task to transition (must already be loaded)
+        expected_status: Status the row must still be in for the write to apply
+        updates: Fields to set on the row when the guard passes
+
+    Raises:
+        TransitionError: If the row was no longer in expected_status
+    """
+    updated = AgentTask.objects.filter(pk=task.pk, status=expected_status).update(**updates)
+
+    if updated == 0:
+        task.refresh_from_db()
+        allowed = AGENT_TASK_STATE_TRANSITIONS.get(task.status, [])
+        raise TransitionError(
+            f"Cannot transition from '{task.status}' to '{updates['status']}'. Allowed: {allowed}",
+            code="INVALID_TRANSITION",
+        )
+
+    task.refresh_from_db()
+
+
+@_retry_on_lock_conflict
 @transaction.atomic
 def claim_task(task_id: str, agent_id: str, lease_minutes: int = 30) -> TransitionResult:
     """Claim an unclaimed task for an agent.
@@ -198,28 +249,17 @@ def claim_task(task_id: str, agent_id: str, lease_minutes: int = 30) -> Transiti
     now = timezone.now()
     lease_expires = now + timedelta(minutes=lease_minutes)
 
-    # Perform transition as a compare-and-swap: only apply if the task is
-    # still UNCLAIMED at write time, so a concurrent claim that committed
-    # after we read the task can't be silently overwritten.
-    claimed = AgentTask.objects.filter(
-        pk=task.pk,
-        status=AgentTaskStatus.UNCLAIMED,
-    ).update(
-        status=AgentTaskStatus.CLAIMED,
-        claimed_by=agent,
-        claimed_at=now,
-        lease_expires=lease_expires,
+    # Perform transition
+    _apply_transition_or_conflict(
+        task,
+        AgentTaskStatus.UNCLAIMED,
+        {
+            "status": AgentTaskStatus.CLAIMED,
+            "claimed_by": agent,
+            "claimed_at": now,
+            "lease_expires": lease_expires,
+        },
     )
-    if not claimed:
-        raise TransitionError(
-            f"Task '{task_id}' was claimed by another agent",
-            code="ALREADY_CLAIMED",
-        )
-
-    task.status = AgentTaskStatus.CLAIMED
-    task.claimed_by = agent
-    task.claimed_at = now
-    task.lease_expires = lease_expires
 
     # Log history
     _log_history(
@@ -248,6 +288,7 @@ def claim_task(task_id: str, agent_id: str, lease_minutes: int = 30) -> Transiti
     )
 
 
+@_retry_on_lock_conflict
 @transaction.atomic
 def start_task(task_id: str, agent_id: str) -> TransitionResult:
     """Start work on a claimed task.
@@ -279,8 +320,11 @@ def start_task(task_id: str, agent_id: str) -> TransitionResult:
     from_status = task.status
 
     # Perform transition
-    task.status = AgentTaskStatus.IN_PROGRESS
-    task.save()
+    _apply_transition_or_conflict(
+        task,
+        AgentTaskStatus.CLAIMED,
+        {"status": AgentTaskStatus.IN_PROGRESS},
+    )
 
     # Log history
     _log_history(
@@ -549,6 +593,7 @@ def merge_task(task_id: str) -> TransitionResult:
     )
 
 
+@_retry_on_lock_conflict
 @transaction.atomic
 def release_task(task_id: str, reason: str = "lease_expired") -> TransitionResult:
     """Release a claimed task back to unclaimed.
@@ -576,11 +621,16 @@ def release_task(task_id: str, reason: str = "lease_expired") -> TransitionResul
     previous_agent = task.claimed_by
 
     # Perform transition
-    task.status = AgentTaskStatus.UNCLAIMED
-    task.claimed_by = None
-    task.claimed_at = None
-    task.lease_expires = None
-    task.save()
+    _apply_transition_or_conflict(
+        task,
+        AgentTaskStatus.CLAIMED,
+        {
+            "status": AgentTaskStatus.UNCLAIMED,
+            "claimed_by": None,
+            "claimed_at": None,
+            "lease_expires": None,
+        },
+    )
 
     # Log history
     _log_history(

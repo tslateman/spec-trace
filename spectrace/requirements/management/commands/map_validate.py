@@ -90,6 +90,8 @@ class Command(BaseCommand):
                 pairs = reader.read_map(project_name)
                 self.stdout.write(f"  Modules: {len(set(p[0] for p in pairs))}")
                 self.stdout.write(f"  Requirement links: {len(pairs)}")
+                dependencies = reader.read_dependencies(project_name)
+                self.stdout.write(f"  Dependencies: {len(dependencies)}")
 
             if req_warnings:
                 self.stdout.write(self.style.WARNING("\nWarnings:"))

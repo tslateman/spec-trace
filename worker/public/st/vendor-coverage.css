@@ -1,0 +1,176 @@
+/* Vendor-specific styles */
+.vendor-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    gap: var(--st-space-5);
+}
+
+.vendor-card {
+    position: relative;
+    padding: var(--st-space-6);
+    background: var(--st-surface);
+    border: 1px solid var(--st-border);
+    border-radius: var(--st-radius-lg);
+    transition: all 0.2s var(--st-ease-out);
+}
+
+.vendor-card:hover {
+    box-shadow: var(--st-shadow-md);
+}
+
+.vendor-card__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: var(--st-space-5);
+}
+
+.vendor-card__name {
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--st-text);
+}
+
+.vendor-card__rate {
+    font-family: var(--font-mono);
+    font-size: 1.75rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1;
+}
+
+.vendor-card__rate--good { color: var(--st-pass); }
+.vendor-card__rate--warning { color: var(--st-warn); }
+.vendor-card__rate--danger { color: var(--st-fail); }
+
+.vendor-card__rate-label {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--st-text-subtle);
+    margin-top: var(--st-space-1);
+}
+
+.vendor-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--st-space-3);
+    padding: var(--st-space-4) 0;
+    border-top: 1px solid var(--st-border-muted);
+    border-bottom: 1px solid var(--st-border-muted);
+    margin-bottom: var(--st-space-4);
+}
+
+.vendor-stat {
+    text-align: center;
+}
+
+.vendor-stat__value {
+    font-family: var(--font-mono);
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--st-text);
+}
+
+.vendor-stat__value--pass { color: var(--st-pass); }
+.vendor-stat__value--fail { color: var(--st-fail); }
+.vendor-stat__value--muted { color: var(--st-text-subtle); }
+
+.vendor-stat__label {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--st-text-subtle);
+    margin-top: var(--st-space-1);
+}
+
+.vendor-flags {
+    margin-top: var(--st-space-4);
+}
+
+.vendor-flags__label {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--st-text-subtle);
+    margin-bottom: var(--st-space-2);
+}
+
+.flag-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--st-space-1);
+    padding: var(--st-space-1) var(--st-space-2);
+    background: var(--st-surface-sunken);
+    border-radius: var(--st-radius-sm);
+    font-size: 0.75rem;
+    font-family: var(--font-mono);
+    color: var(--st-text-muted);
+    margin-right: var(--st-space-2);
+    margin-bottom: var(--st-space-2);
+}
+
+.flag-tag__count {
+    background: var(--st-border-muted);
+    padding: 0 var(--st-space-1);
+    border-radius: 2px;
+    font-weight: 600;
+    font-size: 0.6875rem;
+}
+
+.regression-alert {
+    margin-top: var(--st-space-4);
+    padding: var(--st-space-4);
+    background: var(--st-fail-muted);
+    border-left: 3px solid var(--st-fail);
+    border-radius: var(--st-radius-sm);
+}
+
+.regression-alert__title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--st-fail-dark);
+    margin-bottom: var(--st-space-2);
+    display: flex;
+    align-items: center;
+    gap: var(--st-space-2);
+}
+
+html.dark .regression-alert__title {
+    color: var(--st-fail);
+}
+
+.regression-item {
+    padding: var(--st-space-2) var(--st-space-2);
+    margin: 0 calc(-1 * var(--st-space-2));
+    border-bottom: 1px solid rgba(239, 68, 68, 0.2);
+    border-radius: var(--st-radius-sm);
+    transition: background 0.15s ease;
+}
+
+.regression-item:hover {
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.regression-item:last-child {
+    border-bottom: none;
+    padding-bottom: var(--st-space-2);
+}
+
+.regression-item__name {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--st-text);
+}
+
+.regression-item__time {
+    font-size: 0.75rem;
+    font-family: var(--font-mono);
+    color: var(--st-text-subtle);
+    margin-top: var(--st-space-1);
+}
+

@@ -1,0 +1,4 @@
+# The Unreleased block is generated from git log by scripts/changelog.py and
+# rewritten wholesale on every push to main. Union the sides rather than
+# conflicting: whatever duplication that leaves, the next run on main corrects.
+CHANGELOG.md merge=union

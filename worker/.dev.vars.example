@@ -1,0 +1,6 @@
+# Copy to .dev.vars, which stays untracked.
+#
+# The Worker checks this on every /api/ route, and the test suite presents it.
+# It is local only and deliberately differs from the deployed secret, so a
+# leak here reaches nothing. Any non-empty string works.
+SPECTRACE_API_KEY=dev-key

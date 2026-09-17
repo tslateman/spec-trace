@@ -4,6 +4,11 @@ priority: high
 status: active
 risk_level: high
 verification_method: test
+complies_with:
+  - COM-CORE-001@1
+  - COM-CORE-002@1
+  - STD-API-002@1
+  - STD-CORE-001@1
 ---
 
 # Core traceability loop

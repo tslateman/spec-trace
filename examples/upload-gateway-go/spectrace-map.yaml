@@ -1,0 +1,4 @@
+project: upload-gateway
+modules:
+  gateway.go:
+    requirements: [GW-UPL-001, GW-UPL-002, GW-RTL-001]

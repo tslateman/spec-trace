@@ -43,16 +43,27 @@ def _build_rationale(
     done_when_results: list[dict],
     attempt_count: int,
     max_attempts: int,
+    reason: str | None = None,
+    merge_sha: str | None = None,
 ) -> str:
     """Build the rationale string including done_when criteria verdicts."""
     parts = []
     if status == "MERGED":
         parts.append("All done_when criteria passed review.")
+        if merge_sha:
+            parts.append(f"Merged as {merge_sha}.")
     else:
         parts.append(f"Task abandoned after {attempt_count}/{max_attempts} attempts.")
+    if reason:
+        parts.append(f"Reviewer's reason: {reason}")
 
-    parts.append(f"\ndone_when results:\n{_format_done_when(done_when_results)}")
-    return "\n".join(parts)
+    parts.append(f"done_when results: {_format_done_when(done_when_results)}")
+    return _single_line(" ".join(parts))
+
+
+def _single_line(text: str) -> str:
+    """Collapse a rationale to the one line `lore journal record` reads; it breaks on a newline."""
+    return " ".join(text.split())
 
 
 def notify_lore(
@@ -63,6 +74,8 @@ def notify_lore(
     attempt_count: int = 0,
     max_attempts: int = 2,
     commit_sha: str | None = None,
+    reason: str | None = None,
+    merge_sha: str | None = None,
 ) -> bool:
     """Write a task outcome to Lore's journal.
 
@@ -74,6 +87,8 @@ def notify_lore(
         attempt_count: Number of attempts before terminal state
         max_attempts: Maximum attempts allowed
         commit_sha: Git commit SHA associated with the task
+        reason: Why the task was abandoned, as the reviewer wrote it
+        merge_sha: Commit the merge produced on the base branch, for a MERGED outcome
 
     Returns:
         True if journal write succeeded, False otherwise.
@@ -92,6 +107,8 @@ def notify_lore(
         done_when_results or [],
         attempt_count,
         max_attempts,
+        reason,
+        merge_sha,
     )
 
     cmd = [
@@ -107,8 +124,9 @@ def notify_lore(
         f"spec-trace,task-outcome,{status.lower()}",
     ]
 
-    if commit_sha:
-        cmd.extend(["--files", commit_sha])
+    files = [sha for sha in (commit_sha, merge_sha) if sha]
+    if files:
+        cmd.extend(["--files", ",".join(files)])
 
     try:
         result = subprocess.run(

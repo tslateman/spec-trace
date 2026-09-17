@@ -3,7 +3,6 @@
 import json
 import sys
 
-from django.core.management import call_command
 from django.core.management.base import BaseCommand
 
 from requirements.services.agent_tasks import TransitionError, merge_task
@@ -35,8 +34,6 @@ class Command(BaseCommand):
                 self.stdout.write(json.dumps(result.to_dict(), indent=2))
             else:
                 self.stdout.write(self.style.SUCCESS(f"✓ {result.message}"))
-                # Run consolidation after successful merge (text output only)
-                call_command("consolidate", stdout=self.stdout, stderr=self.stderr)
 
         except TransitionError as e:
             if options["format"] == "json":

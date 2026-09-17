@@ -17,6 +17,7 @@ from django.core.management import call_command
 from requirements.importer import (
     import_junit_xml,
     link_results_to_requirements,
+    normalize_nodeid,
     update_test_requirement_links,
 )
 from requirements.management.commands.extract_links import RequirementCollector
@@ -234,6 +235,28 @@ class TestImportingTestResults:
 
         assert run.git_sha == "abc123"
         assert run.git_branch == "main"
+
+
+@pytest.mark.requirement("REQ-CORE-003")
+class TestNormalizingNodeids:
+    """`normalize_nodeid` maps JUnit's dotted class path onto extract_links' file path."""
+
+    def test_normalize_nodeid__converts_a_module_path_to_a_file_path(self):
+        assert (
+            normalize_nodeid("tests.test_loop::test_covered") == "tests/test_loop.py::test_covered"
+        )
+
+    def test_normalize_nodeid__keeps_the_class_out_of_the_file_path(self):
+        assert (
+            normalize_nodeid("tests.test_loop.TestGroup::test_covered")
+            == "tests/test_loop.py::TestGroup::test_covered"
+        )
+
+    def test_normalize_nodeid__leaves_a_file_path_nodeid_unchanged(self):
+        assert (
+            normalize_nodeid("tests/test_loop.py::TestGroup::test_covered")
+            == "tests/test_loop.py::TestGroup::test_covered"
+        )
 
 
 @pytest.mark.requirement("REQ-CORE-000")

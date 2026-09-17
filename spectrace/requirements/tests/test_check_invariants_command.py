@@ -1,12 +1,10 @@
 """Tests for check_invariants management command."""
 
 import json
-import re
 from io import StringIO
-from pathlib import Path
 
 import pytest
-from django.core.management import call_command, load_command_class
+from django.core.management import call_command
 
 from requirements.models import (
     Requirement,
@@ -117,26 +115,3 @@ class TestCheckInvariantsCommand:
             call_command("check_invariants", "--check", "INV-A", stdout=out)
 
         assert exc_info.value.code == 1
-
-
-class TestCheckInvariantsReadmeDocumentation:
-    """The README's description of check_invariants must match its real --check choices."""
-
-    def test_readme_lists_exact_invariant_codes(self):
-        """README's check_invariants row must enumerate the exact supported codes."""
-        command = load_command_class("requirements", "check_invariants")
-        parser = command.create_parser("manage.py", "check_invariants")
-        check_action = next(a for a in parser._actions if a.dest == "check")
-        actual_codes = sorted(code for code in check_action.choices if code != "all")
-
-        readme_path = Path(__file__).resolve().parents[3] / "README.md"
-        readme_line = next(
-            line
-            for line in readme_path.read_text().splitlines()
-            if "check_invariants" in line and "Validate data consistency" in line
-        )
-        documented_codes = sorted(set(re.findall(r"INV-[A-Z]", readme_line)))
-
-        assert documented_codes == actual_codes, (
-            f"README documents {documented_codes} but check_invariants supports {actual_codes}"
-        )

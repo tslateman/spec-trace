@@ -1,0 +1,51 @@
+# Push the TypeScript example's links and results to SpecTrace on every change.
+#
+# Copy this into .github/workflows/ and set SPECTRACE_URL and SPECTRACE_API_KEY
+# as repository secrets.
+
+name: Session API Traceability
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: examples/session-api-typescript
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
+      - run: npm ci
+
+      # continue-on-error keeps a red suite pushing its results; SpecTrace is
+      # where the failure shows up as an unverified requirement.
+      - name: Run the suite for its JUnit report
+        continue-on-error: true
+        run: npm test
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Install the SpecTrace CLI
+        run: pip install spectrace
+
+      - name: Push the specs and the links the test names carry
+        run: spectrace push --specs specs --links junit.xml --replace
+        env:
+          SPECTRACE_URL: ${{ secrets.SPECTRACE_URL }}
+          SPECTRACE_API_KEY: ${{ secrets.SPECTRACE_API_KEY }}
+
+      - name: Push the results
+        run: spectrace results push junit.xml
+        env:
+          SPECTRACE_URL: ${{ secrets.SPECTRACE_URL }}
+          SPECTRACE_API_KEY: ${{ secrets.SPECTRACE_API_KEY }}

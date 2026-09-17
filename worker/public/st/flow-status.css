@@ -1,0 +1,34 @@
+    .flow-pipeline {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    .flow-pipeline-step {
+        width: 24px;
+        height: 8px;
+        border-radius: 2px;
+        background: var(--st-border);
+        position: relative;
+    }
+    .flow-pipeline-step--passed {
+        background: var(--st-pass);
+    }
+    .flow-pipeline-step--failed {
+        background: var(--st-fail);
+    }
+    .flow-pipeline-step--running {
+        background: var(--st-warn);
+        animation: st-pulse 1.5s ease-in-out infinite;
+    }
+    .flow-pipeline-connector {
+        width: 8px;
+        height: 2px;
+        background: var(--st-border-muted);
+    }
+    .flow-card {
+        transition: border-color 0.2s var(--st-ease-out);
+    }
+    .flow-card:hover {
+        border-color: var(--st-accent-400);
+    }
+

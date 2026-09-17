@@ -6,18 +6,9 @@ from pathlib import Path
 from django.core.management.base import BaseCommand, CommandError
 
 from requirements.models import Requirement, TestRequirementLink
+from requirements.services.link_records import requirement_ids_of
 
-
-def _requirement_ids(link: dict) -> list[str]:
-    """Return the requirement external IDs a link record names.
-
-    Accepts both link shapes: `linear_issue_ids` from the pytest plugin and
-    `requirement_id` from the `extract_links` command.
-    """
-    if "linear_issue_ids" in link:
-        return link["linear_issue_ids"]
-    requirement_id = link.get("requirement_id")
-    return [requirement_id] if requirement_id else []
+__all__ = ["Command", "requirement_ids_of"]
 
 
 class Command(BaseCommand):
@@ -64,7 +55,7 @@ class Command(BaseCommand):
 
         for link in links:
             test_nodeid = link["test_nodeid"]
-            issue_ids = _requirement_ids(link)
+            issue_ids = requirement_ids_of(link)
 
             for issue_id in issue_ids:
                 # Look up requirement by external_id (Linear identifier like CAN-1234)
@@ -120,5 +111,5 @@ class Command(BaseCommand):
                 )
             )
             self.stdout.write(
-                "  Hint: Run 'python manage.py import_linear' to import requirements from Linear"
+                "  Hint: Run 'spectrace linear pull' to import requirements from Linear"
             )
