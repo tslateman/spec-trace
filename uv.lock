@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.12"
 
 [[package]]
@@ -240,14 +240,14 @@ wheels = [
 
 [[package]]
 name = "django-treebeard"
-version = "4.8.0"
+version = "7.0.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/7a/d2/615c2d33b3b55e106ee590b164c0d4a8372527293c85c61175e81ded2aea/django_treebeard-4.8.0.tar.gz", hash = "sha256:61b8076b576107da21f6f6040774c0d17025200c2efdb70dd1f14b18c9206c3a", size = 292517, upload-time = "2025-12-03T03:58:40.625Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/59/02/abc22fcc3f6077fdcf85c69c946a5ee2d2e3d95d9421e1038086facbf7f5/django_treebeard-7.0.1.tar.gz", hash = "sha256:c998eb140f28b844b7006c0cf44c8706775159dc18a5c66d14e27b020b6050f2", size = 230536, upload-time = "2026-08-19T04:29:54.205Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/aa/3a/3731f6d5696b5dfd1c7830a64450e1f49b512cb192b2d3e37b72cc75470b/django_treebeard-4.8.0-py3-none-any.whl", hash = "sha256:ecaa7a0bbfa86a48fc91ff335513e83c841cdfe1add6229d04ac7096198d5d51", size = 70997, upload-time = "2025-12-03T03:58:37.292Z" },
+    { url = "https://files.pythonhosted.org/packages/44/0f/3b7e2db8e79de858b77c6d207d9696c1a71d5520647ec71d5d8c7788e665/django_treebeard-7.0.1-py3-none-any.whl", hash = "sha256:4c62fbbe4a474dcc4b93ce9a9b71b403cca143e52736654a97b73ece0c4a6e37", size = 80001, upload-time = "2026-08-19T04:29:53.049Z" },
 ]
 
 [[package]]
@@ -653,7 +653,7 @@ requires-dist = [
     { name = "dj-database-url", specifier = ">=2.3,<3.0" },
     { name = "django", specifier = ">=5.2,<5.3" },
     { name = "django-ratelimit", specifier = ">=4.1,<5.0" },
-    { name = "django-treebeard", specifier = ">=4.8,<5.0" },
+    { name = "django-treebeard", specifier = ">=4.8,<8.0" },
     { name = "django-unfold", specifier = ">=0.76,<1.0" },
     { name = "freezegun", marker = "extra == 'dev'", specifier = ">=1.4,<2.0" },
     { name = "gunicorn", specifier = ">=23,<24" },
